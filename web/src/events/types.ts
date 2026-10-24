@@ -126,41 +126,54 @@ export interface TrainingEvent {
   curve: [number, number][];
   video_url: string | null;
 }
-/** One randomized world of a stress test. */
+/** One randomized world of a stress test. Drone and gripper worlds share the first fields. */
 export interface StressWorld {
   i: number;
   pass: boolean;
-  /** crashed, drifted, sagged, or "" when it survived. */
+  /** Drone: crashed, drifted, sagged. Gripper: dropped, slipped. "" when it survived. */
   reason: string;
   mass_pct: number;
+  /** Motor (drone) or servo (gripper) strength against the datasheet. */
   motor_pct: number;
-  gust_mps: number;
-  downdraft_pct: number;
-  /** Where the gust blows to, 0 is +x. */
-  gust_dir_deg: number;
-  gust_start_s: number;
-  gust_len_s: number;
-  noise_cm: number;
-  drift_m: number;
-  low_z_m: number;
-  /** 1 is a perfect hover, 0 or less a lost world. */
+  /** 1 is a perfect run, 0 or less a lost world. */
   margin: number;
+  // Drone worlds.
+  gust_mps?: number;
+  downdraft_pct?: number;
+  /** Where the gust blows to, 0 is +x. */
+  gust_dir_deg?: number;
+  gust_start_s?: number;
+  gust_len_s?: number;
+  noise_cm?: number;
+  drift_m?: number;
+  low_z_m?: number;
+  // Gripper worlds.
+  friction_pct?: number;
+  shake_x?: number;
+  noise_pct?: number;
+  slip_mm?: number;
 }
 export interface StressEvent {
   type: "stress";
   run: number;
+  product: "drone" | "gripper";
   status: "running" | "done" | "failed";
   total: number;
   done: number;
   survived: number;
   seed: number;
-  policy: "trained" | "default";
+  /** trained or default controller gains for the drone; design for the gripper. */
+  policy: "trained" | "default" | "design";
   gains: Record<string, number>;
   weight_g: number;
-  thrust_to_weight: number;
+  thrust_to_weight?: number;
+  payload_g?: number;
+  object_width_mm?: number;
+  force_n?: number;
+  safety_factor?: number;
   worlds: StressWorld[];
-  worst: (StressWorld & { trajectory: TrajectorySample[] }) | null;
-  weakest: "gust" | "motor" | "mass" | "noise" | null;
+  worst: (StressWorld & { trajectory: TrajectorySample[]; hand?: [number, number][] }) | null;
+  weakest: string | null;
   explanation: string;
 }
 

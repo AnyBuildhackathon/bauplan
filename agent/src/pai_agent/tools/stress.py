@@ -1,15 +1,18 @@
-"""Stress test: the best controller flies in 50 randomized MuJoCo worlds.
+"""Stress test: the current product in 50 randomized MuJoCo worlds.
 
-Each world draws its own mass (+-15 %), motor strength (-25..0 %), a wind gust
-of up to 6 m/s with a downdraft share, and sensor noise. The drone takes off,
-holds 0.5 m over its start point, and the gust hits it. A world is survived
-when it never touches down after take-off, never drifts more than 0.35 m off
-its spot, and settles back at height for the last half second.
+For the drone, each world draws its own mass (+-15 %), motor strength (-25..0 %),
+a wind gust of up to 6 m/s with a downdraft share, and sensor noise. The drone
+takes off, holds 0.5 m over its start point, and the gust hits it. A world is
+survived when it never touches down after take-off, never drifts more than
+0.35 m off its spot, and settles back at height for the last half second.
+The gripper's worlds (pad friction, servo strength, payload, arm shake, servo
+jitter) live in stress_grip.py.
 
-The controller is a cascaded PD: height and position loops command thrust and a
-tilt, the attitude loop turns the tilt into torque. Its gains come from the
-training module when that has produced a result (``state.trained_gains`` or the
-``gains`` argument); otherwise the default gains below fly.
+The drone controller is a cascaded PD: height and position loops command thrust
+and a tilt, the attitude loop turns the tilt into torque. Its gains come from the
+training module when that has produced a result (``set_trained_gains`` /
+``state.trained_gains``, or the ``gains`` argument); otherwise the default gains
+below fly.
 
 Worlds run through a ``Rollout``: ``MujocoRollout`` here in the backend. The
 browser MuJoCo workers of the training module can take over later by running the
@@ -23,7 +26,7 @@ import math
 import random
 import re
 from dataclasses import asdict, dataclass, fields
-from typing import Protocol
+from typing import Callable, Protocol
 
 from pai_agent.context import Ctx
 from pai_agent.tools.physics import PhysicsError, compute
@@ -357,58 +360,113 @@ def _bounded_int(value, default: int, low: int, high: int) -> int:
         return default
 
 
-async def stress_test(ctx: Ctx, args: dict, rollout: Rollout | None = None) -> dict:
-    try:
-        metrics = compute(ctx.state)
-    except PhysicsError as exc:
-        message = "Build the drone first: " + str(exc)
-        return {"ok": False, "error": message, "detail": message}
+@dataclass
+class StressPlan:
+    """What one product needs for a stress test: its worlds, how to run one, and how to read the results."""
 
+    product: str
+    base: dict
+    worlds: list
+    run: Callable[[object], dict]
+    row: Callable[[object, dict], dict]
+    weakest: Callable[[list[dict]], tuple[str | None, str]]
+    # Outcome fields the worst world's replay needs besides the trajectory.
+    replay_keys: tuple[str, ...] = ()
+
+
+def _drone_plan(state, args: dict, total: int, seed: int, rollout: Rollout | None) -> StressPlan:
+    try:
+        metrics = compute(state)
+    except PhysicsError as exc:
+        raise ValueError("Build the drone first: " + str(exc)) from exc
+    gains, policy = trained_gains(state, args.get("gains"))
+    runner = rollout or MujocoRollout()
+    return StressPlan(
+        product="drone",
+        base={
+            "policy": policy,
+            "gains": asdict(gains),
+            "weight_g": metrics["weight_g"],
+            "thrust_to_weight": metrics["thrust_to_weight"],
+        },
+        worlds=sample_worlds(total, seed),
+        run=lambda world: runner.run(metrics["weight_g"], metrics["thrust_g"], gains, world),
+        row=world_row,
+        weakest=weakest_point,
+    )
+
+
+def _gripper_plan(state, total: int, seed: int) -> StressPlan:
+    from pai_agent.tools.gripper import compute_grip
+    from pai_agent.tools.stress_grip import grip_row, grip_weakest, run_grip_world, sample_grip_worlds
+
+    try:
+        metrics = compute_grip(state)
+    except ValueError as exc:
+        raise ValueError("Build the gripper first: " + str(exc)) from exc
+    brief = state.brief or {"object_mass_g": 200.0, "object_width_mm": 66.0}
+    payload = float(brief["object_mass_g"])
+    width = float(brief["object_width_mm"])
+    return StressPlan(
+        product="gripper",
+        base={
+            "policy": "design",
+            "gains": {},
+            "weight_g": metrics["weight_g"],
+            "payload_g": payload,
+            "object_width_mm": width,
+            "force_n": metrics["grip_force_n"],
+            "safety_factor": metrics["safety_factor"],
+        },
+        worlds=sample_grip_worlds(total, seed),
+        run=lambda world: run_grip_world(payload, width, metrics["grip_force_n"], metrics["friction"], world),
+        row=grip_row,
+        weakest=grip_weakest,
+        replay_keys=("hand",),
+    )
+
+
+async def stress_test(ctx: Ctx, args: dict, rollout: Rollout | None = None) -> dict:
     total = _bounded_int(args.get("worlds"), WORLDS, 5, 200)
     seed = _bounded_int(args.get("seed"), SEED, 0, 1_000_000)
-    gains, policy = trained_gains(ctx.state, args.get("gains"))
-    runner = rollout or MujocoRollout()
-    worlds = sample_worlds(total, seed)
+    try:
+        if getattr(ctx.state, "product", "drone") == "gripper":
+            plan = _gripper_plan(ctx.state, total, seed)
+        else:
+            plan = _drone_plan(ctx.state, args, total, seed, rollout)
+    except ValueError as exc:
+        return {"ok": False, "error": str(exc), "detail": str(exc)}
+
     run = getattr(ctx.state, "stress_run", 0) + 1
     ctx.state.stress_run = run
-    base = {
-        "type": "stress",
-        "run": run,
-        "total": total,
-        "seed": seed,
-        "policy": policy,
-        "gains": asdict(gains),
-        "weight_g": metrics["weight_g"],
-        "thrust_to_weight": metrics["thrust_to_weight"],
-    }
+    base = {"type": "stress", "run": run, "product": plan.product, "total": total, "seed": seed, **plan.base}
     rows: list[dict] = []
-    trajectories: dict[int, list] = {}
+    replays: dict[int, dict] = {}
     await ctx.emit({**base, "status": "running", "done": 0, "survived": 0, "worlds": [], "worst": None, "weakest": None, "explanation": ""})
     chunk = 5
     for start in range(0, total, chunk):
-        batch = worlds[start : start + chunk]
-        outcomes = await asyncio.to_thread(
-            lambda b=batch: [runner.run(metrics["weight_g"], metrics["thrust_g"], gains, w) for w in b]
-        )
+        batch = plan.worlds[start : start + chunk]
+        outcomes = await asyncio.to_thread(lambda b=batch: [plan.run(w) for w in b])
         for world, outcome in zip(batch, outcomes):
-            rows.append(world_row(world, outcome))
-            trajectories[world.i] = outcome["trajectory"]
+            rows.append(plan.row(world, outcome))
+            replays[world.i] = {"trajectory": outcome["trajectory"], **{k: outcome[k] for k in plan.replay_keys}}
         survived = sum(1 for r in rows if r["pass"])
         await ctx.emit({**base, "status": "running", "done": len(rows), "survived": survived, "worlds": rows, "worst": None, "weakest": None, "explanation": ""})
         await ctx.emit({"type": "tool", "name": "stress_test", "status": "running", "detail": f"World {len(rows)}/{total} · {survived} survived"})
 
     survived = sum(1 for r in rows if r["pass"])
     worst_row = min(rows, key=lambda r: r["margin"])
-    weakest, explanation = weakest_point(rows)
-    worst = {**worst_row, "trajectory": trajectories[worst_row["i"]]}
+    weakest, explanation = plan.weakest(rows)
+    worst = {**worst_row, **replays[worst_row["i"]]}
     await ctx.emit({**base, "status": "done", "done": total, "survived": survived, "worlds": rows, "worst": worst, "weakest": weakest, "explanation": explanation})
-    ctx.state.last_stress = {"survived": survived, "total": total, "weakest": weakest, "explanation": explanation, "policy": policy}
+    ctx.state.last_stress = {"survived": survived, "total": total, "weakest": weakest, "explanation": explanation, "policy": plan.base["policy"]}
     return {
         "ok": True,
         "detail": f"Survived {survived}/{total}",
+        "product": plan.product,
         "survived": survived,
         "total": total,
-        "policy": policy,
+        "policy": plan.base["policy"],
         "weakest": weakest,
         "explanation": explanation,
         "worst_world": {k: v for k, v in worst_row.items() if k != "margin"},
@@ -423,19 +481,28 @@ async def run_stress_mock(ctx: Ctx) -> None:
 
     from pai_agent.tools.registry import call_tool
 
+    gripper = getattr(ctx.state, "product", "drone") == "gripper"
+    product = "gripper" if gripper else "drone"
     if not ctx.state.selected:
-        await call_tool(ctx, "mascot_say", {"state": "besorgt", "say": "There is nothing to stress yet. Build the drone first."})
-        await ctx.chat("agent", "There is no drone to stress test yet. Let the kickoff build v1 first, then ask again.")
+        await call_tool(ctx, "mascot_say", {"state": "besorgt", "say": "There is nothing to stress yet. Build it first."})
+        await ctx.chat("agent", "There is nothing to stress test yet. Let the kickoff build v1 first, then ask again.")
         return
-    gains, policy = trained_gains(ctx.state, None)
-    del gains
-    source = "the trained controller" if policy == "trained" else "the default controller gains (no training result yet)"
-    await call_tool(ctx, "mascot_say", {"state": "denkt", "say": "Fifty randomized worlds. Let's shake it."})
-    await ctx.chat(
-        "agent",
-        "Stress test with " + source + ": 50 MuJoCo worlds, each with its own mass (±15 %), motor strength (−25…0 %), "
-        "a gust of up to 6 m/s, and sensor noise.",
-    )
+    if gripper:
+        intro = (
+            "Stress test of the gripper design: 50 MuJoCo worlds, each with its own payload mass (±15 %), servo strength "
+            "(−25…0 %), pad friction (−40…+10 %), a harder arm shake (1–2×), and servo jitter."
+        )
+        say = "Fifty randomized worlds. Let's see if it lets go."
+    else:
+        _gains, policy = trained_gains(ctx.state, None)
+        source = "the trained controller" if policy == "trained" else "the default controller gains (no training result yet)"
+        intro = (
+            "Stress test with " + source + ": 50 MuJoCo worlds, each with its own mass (±15 %), motor strength (−25…0 %), "
+            "a gust of up to 6 m/s, and sensor noise."
+        )
+        say = "Fifty randomized worlds. Let's shake it."
+    await call_tool(ctx, "mascot_say", {"state": "denkt", "say": say})
+    await ctx.chat("agent", intro)
     result = await call_tool(ctx, "stress_test", {})
     if result.get("ok") is False:
         await call_tool(ctx, "mascot_say", {"state": "besorgt", "say": "The stress test fell over."})
@@ -445,7 +512,5 @@ async def run_stress_mock(ctx: Ctx) -> None:
     state = "freut_sich" if survived == total else "erklaert" if survived >= total * 0.9 else "besorgt"
     await call_tool(ctx, "mascot_say", {"state": state, "say": result["explanation"]})
     worst = result["worst_world"]
-    if survived == total:
-        await ctx.chat("agent", f"Survived {survived}/{total}. The closest call, world {worst['i']}, replays in the card.")
-    else:
-        await ctx.chat("agent", f"Survived {survived}/{total}. The worst failure, world {worst['i']}, replays in the card.")
+    which = "closest call" if survived == total else "worst failure"
+    await ctx.chat("agent", f"The {product} survived {survived}/{total}. The {which}, world {worst['i']}, replays in the card.")

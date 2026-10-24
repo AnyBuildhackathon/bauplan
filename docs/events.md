@@ -260,19 +260,31 @@ A `done` event after an `offline` tool means the fallback file was played, not t
 
 ### stress
 
-The stress test flies one controller in randomized MuJoCo worlds (`stress_test`, 50 worlds by default).
+The stress test runs the current product in randomized MuJoCo worlds (`stress_test`, 50 worlds by default).
+`product` is `drone` or `gripper`.
 `status` is `running` while worlds finish, then `done`.
 `run` counts stress tests in the session; `total`, `done`, and `survived` count worlds, so the score reads `Survived {survived}/{total}`.
 `seed` makes the worlds reproducible; the same seed draws the same worlds.
-`policy` is `trained` when the training module left gains (`state.trained_gains`) or the tool got `gains`, else `default`.
-`gains` are the controller gains that flew: `kp_z`, `kd_z`, `kp_xy`, `kd_xy`, `kp_att`, `kd_att`.
-`weight_g` and `thrust_to_weight` are the nominal build the worlds vary.
-`worlds` lists every finished world: `{i, pass, reason, mass_pct, motor_pct, gust_mps, downdraft_pct, gust_dir_deg, gust_start_s, gust_len_s, noise_cm, drift_m, low_z_m, margin}`.
-`mass_pct` is −15…+15, `motor_pct` is −25…0, `gust_mps` is the gust peak 0…6 m/s, `downdraft_pct` the share of it blowing down, `gust_dir_deg` where it blows to (0 is +x), `gust_start_s` and `gust_len_s` when it blows, `noise_cm` the sensor noise.
-`reason` is `crashed`, `drifted` (more than 0.35 m off its spot), `sagged` (below 0.35 m in the last half second), or an empty string when it survived.
-`margin` is 1 for a perfect hover and 0 or less for a lost world.
-`worst` is `null` while running; when `done` it is the world with the lowest margin plus its `trajectory` (`[[t, x, y, z], ...]`, 5 s, the same shape as `sim`).
-`weakest` is `gust`, `motor`, `mass`, `noise`, or `null` when every world survived; `explanation` is Bolzen's one sentence about it.
+`weight_g` is the nominal build the worlds vary.
+`worlds` lists every finished world; every world has `{i, pass, reason, mass_pct, motor_pct, margin}`.
+`mass_pct` is −15…+15 (the drone, or the gripper's payload) and `motor_pct` −25…0 (motors, or the gripper servo).
+`margin` is 1 for a perfect run and 0 or less for a lost world; `reason` is an empty string when the world survived.
+`worst` is `null` while running; when `done` it is the world with the lowest margin plus its `trajectory` (`[[t, x, y, z], ...]`, the same shape as `sim`).
+`weakest` names the factor that separates lost worlds from survived ones, or is `null` when every world survived; `explanation` is Bolzen's one sentence about it.
+
+Drone: the controller holds 0.5 m over its start point for 6 s while a 1-cosine gust hits it.
+`policy` is `trained` when the training module left gains (`set_trained_gains` in `tools/stress.py`) or the tool got `gains`, else `default`.
+`gains` are the controller gains that flew: `kp_z`, `kd_z`, `kp_xy`, `kd_xy`, `kp_att`, `kd_att`; `thrust_to_weight` is the nominal one.
+Drone worlds add `gust_mps` (peak 0…6 m/s), `downdraft_pct` (the share of it blowing down), `gust_dir_deg` (where it blows to, 0 is +x), `gust_start_s` and `gust_len_s` (when it blows), `noise_cm` (sensor noise), `drift_m` (farthest from its spot) and `low_z_m` (lowest height after the gust).
+`reason` is `crashed`, `drifted` (more than 0.35 m off its spot), or `sagged` (below 0.35 m in the last half second).
+`weakest` is `gust`, `motor`, `mass`, or `noise`.
+
+Gripper: the grip test from `sim` (lift 15 cm, hold, shake at 2.5 Hz), 3.2 s.
+`policy` is `design` and `gains` is empty; the event also carries `payload_g`, `object_width_mm`, `force_n` (per finger), and `safety_factor` of the nominal build.
+Gripper worlds add `friction_pct` (pad friction −40…+10), `shake_x` (shake amplitude 1–2× the nominal 1.5 cm), `noise_pct` (slow servo jitter on the squeeze force, 0…15) and `slip_mm`.
+`reason` is `slipped` (the object lagged the hand by more than 10 mm) or `dropped`.
+`worst` also has `hand` (`[[t, z], ...]`, as in `sim`).
+`weakest` is `friction`, `motor`, `mass`, `shake`, or `noise`.
 
 ## Scene targets
 
