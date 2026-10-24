@@ -21,7 +21,7 @@ export type Params = Record<string, number>;
 
 /**
  * Per-run physics changes. Every field is optional; a missing field means nominal.
- * The trainer uses only `seed`, `init_*` and `gust_scale`; the stress test can vary the rest.
+ * The trainer uses only `seed`, `init_*` and `gust_scale`; the stress test varies the rest.
  */
 export interface Perturbation {
   seed?: number;
@@ -39,6 +39,10 @@ export interface Perturbation {
   init_offset?: [number, number, number];
   /** Start tilt, radians [roll, pitch]. */
   init_tilt?: [number, number];
+  /** A 1-cosine gust of wind instead of the scripted push (the stress test): peak m/s, where it blows to, when, and its downward share. */
+  gust_wind?: { mps: number; dir_deg: number; start_s: number; len_s: number; downdraft: number };
+  /** Sensor noise, metres: the standard deviation of the position the controller reads. */
+  noise_m?: number;
 }
 
 export interface RolloutJob {

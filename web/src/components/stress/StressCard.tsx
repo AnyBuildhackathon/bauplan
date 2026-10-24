@@ -20,7 +20,7 @@ const REASON: Record<string, string> = {
 
 const POLICY: Record<StressEvent["policy"], string> = {
   trained: "trained gains",
-  default: "default gains",
+  default: "default gains · not trained yet",
   design: "as designed",
 };
 
@@ -79,7 +79,7 @@ export function StressCard({ run }: { run: number }) {
   const ev = useSession((s) => s.stress[run]);
   const latest = useSession((s) => Math.max(0, ...Object.keys(s.stress).map(Number)));
   const replay = useMemo<Run | null>(() => {
-    if (!ev?.worst) return null;
+    if (!ev?.worst || ev.worst.trajectory.length < 2) return null;
     return {
       type: "sim",
       kind: ev.product === "gripper" ? "grip" : "hover",

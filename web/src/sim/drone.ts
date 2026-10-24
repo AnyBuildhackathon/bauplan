@@ -30,6 +30,12 @@ const GUST = { from: 4, to: 4.6, weights: 0.15 };
 const YAW_K = 0.008;
 const MOTOR_TAU_S = 0.03;
 const SETTLE_S = 2;
+// Stress test gust: air density and the drag area of a 65 mm whoop, side-on and from above (m²).
+const RHO = 1.225;
+const CDA_SIDE = 0.008;
+const CDA_TOP = 0.012;
+// Drift counts once the drone has caught itself after the start.
+const DRIFT_FROM_S = 1;
 
 function dims(spec: DroneSpec) {
   const mass = Math.max(0.005, spec.mass_g / 1000);
@@ -41,7 +47,11 @@ function dims(spec: DroneSpec) {
 }
 
 function buildMjcf(spec: DroneSpec): string {
-  const { mass, arm, d, ixx, izz, fmax } = dims(spec);
+  const { mass, arm, d, ixx, fmax } = dims(spec);
+  // izz is printed as exactly twice the printed ixx: rounded separately it can land above
+  // ixx + ixx, and MuJoCo rejects the model ("inertia must satisfy A + B >= C").
+  const ixxText = ixx.toExponential(4);
+  const izzText = (2 * Number(ixxText)).toExponential(5);
   const motor = (name: string, x: number, y: number, spin: number) =>
     `<site name="${name}" pos="${x.toFixed(4)} ${y.toFixed(4)} 0" size="0.004"/>` +
     `<geom type="cylinder" pos="${x.toFixed(4)} ${y.toFixed(4)} 0.006" size="${(arm * 0.55).toFixed(4)} 0.001" mass="0" rgba="0.5 0.5 0.6 0.3" contype="0" conaffinity="0"/>` +
@@ -55,7 +65,7 @@ function buildMjcf(spec: DroneSpec): string {
     <geom name="floor" type="plane" size="4 4 0.1" friction="0.9 0.05 0.01"/>
     <body name="drone" pos="${START.join(" ")}">
       <freejoint name="root"/>
-      <inertial pos="0 0 0" mass="${mass.toFixed(5)}" diaginertia="${ixx.toExponential(4)} ${ixx.toExponential(4)} ${izz.toExponential(4)}"/>
+      <inertial pos="0 0 0" mass="${mass.toFixed(5)}" diaginertia="${ixxText} ${ixxText} ${izzText}"/>
       <geom name="hull" type="box" size="${(arm * 0.4).toFixed(4)} ${(arm * 0.4).toFixed(4)} 0.006" mass="0" friction="0.9 0.05 0.01"/>
       ${sites}
     </body>
@@ -95,6 +105,24 @@ const BETAFLIGHT_DEFAULT = { roll: { p: 45, i: 80 }, pitch: { p: 47, i: 84 } };
 const REFERENCE_KD_ATT = 12;
 const sig = (v: number) => Number(v.toPrecision(4));
 
+/** The inverse of `exportGains`: physical gains (attitude in N m/rad) back to the trainer's units. */
+export function droneParams(gains: Record<string, unknown>, spec: DroneSpec): Params {
+  const { ixx } = dims(spec);
+  const num = (key: string) => {
+    const v = gains[key];
+    return typeof v === "number" && Number.isFinite(v) ? v : 0;
+  };
+  return {
+    kp_z: num("kp_z"),
+    ki_z: num("ki_z"),
+    kd_z: num("kd_z"),
+    kp_xy: num("kp_xy"),
+    kd_xy: num("kd_xy"),
+    kp_att: num("kp_att") / ixx,
+    kd_att: num("kd_att") / ixx,
+  };
+}
+
 /**
  * Flat cascaded gains with the attitude terms in N m/rad and N m s/rad (times the inertia), plus
  * Betaflight roll and pitch P and I: the defaults scaled by the trained rate damping, 0.5x to 2x.
@@ -128,6 +156,13 @@ function episode(params: Params, p: Perturbation, spec: DroneSpec): Episode {
   // The gust comes from a random side, so a controller cannot overfit one direction.
   const gustAngle = rnd() * Math.PI * 2;
   const gustN = GUST.weights * m * G * gustScale;
+  const wind1c = p.gust_wind;
+  const noise = p.noise_m ?? 0;
+  // Seeded normal noise (Box-Muller), only drawn when the run has sensor noise.
+  const gauss = (sd: number) => (sd > 0 ? sd * Math.sqrt(-2 * Math.log(1 - rnd())) * Math.cos(2 * Math.PI * rnd()) : 0);
+  let drift = 0;
+  let lowZ = Infinity;
+  let tailZ = Infinity;
   const [kpZ, kiZ, kdZ, kpXY, kdXY, kpA, kdA] = [params.kp_z, params.ki_z ?? 0, params.kd_z, params.kp_xy, params.kd_xy, params.kp_att, params.kd_att];
   let iz_err = 0;
   let err2 = 0;
@@ -153,12 +188,16 @@ function episode(params: Params, p: Perturbation, spec: DroneSpec): Episode {
     control(_model: MjModel, data: MjData, t: number) {
       const q = data.qpos;
       const v = data.qvel;
-      const { roll, pitch, yaw } = euler(q[3], q[4], q[5], q[6]);
-      const ax = kpXY * (DRONE_TARGET[0] - q[0]) - kdXY * v[0];
-      const ay = kpXY * (DRONE_TARGET[1] - q[1]) - kdXY * v[1];
+      const truth = euler(q[3], q[4], q[5], q[6]);
+      // What the flight controller reads: with sensor noise every reading is off a little.
+      const x = q[0] + gauss(noise), y = q[1] + gauss(noise), z = q[2] + gauss(noise);
+      const vx = v[0] + gauss(noise * 5), vy = v[1] + gauss(noise * 5), vz = v[2] + gauss(noise * 5);
+      const roll = truth.roll + gauss(noise * 0.5), pitch = truth.pitch + gauss(noise * 0.5), yaw = truth.yaw;
+      const ax = kpXY * (DRONE_TARGET[0] - x) - kdXY * vx;
+      const ay = kpXY * (DRONE_TARGET[1] - y) - kdXY * vy;
       // Integral on altitude, clamped so it cannot wind up past half the weight.
-      iz_err = clamp(iz_err + (DRONE_TARGET[2] - q[2]) * DT, -0.5 * G / Math.max(kiZ, 1e-6), 0.5 * G / Math.max(kiZ, 1e-6));
-      const az = kpZ * (DRONE_TARGET[2] - q[2]) + kiZ * iz_err - kdZ * v[2];
+      iz_err = clamp(iz_err + (DRONE_TARGET[2] - z) * DT, -0.5 * G / Math.max(kiZ, 1e-6), 0.5 * G / Math.max(kiZ, 1e-6));
+      const az = kpZ * (DRONE_TARGET[2] - z) + kiZ * iz_err - kdZ * vz;
       const cy = Math.cos(yaw), sy = Math.sin(yaw);
       const axb = cy * ax + sy * ay;
       const ayb = -sy * ax + cy * ay;
@@ -180,6 +219,20 @@ function episode(params: Params, p: Perturbation, spec: DroneSpec): Episode {
       f[6] = wind[0] + gust * Math.cos(gustAngle);
       f[7] = wind[1] + gust * Math.sin(gustAngle);
       f[8] = wind[2];
+      if (wind1c) {
+        // Drag of the air moving past the drone, side-on and through the props.
+        const k = (t - wind1c.start_s) / wind1c.len_s;
+        const speed = k > 0 && k < 1 ? (wind1c.mps * (1 - Math.cos(2 * Math.PI * k))) / 2 : 0;
+        if (speed > 0) {
+          const dir = (wind1c.dir_deg * Math.PI) / 180;
+          const side = speed * Math.sqrt(1 - wind1c.downdraft * wind1c.downdraft);
+          const rx = side * Math.cos(dir) - v[0], ry = side * Math.sin(dir) - v[1], rz = -speed * wind1c.downdraft - v[2];
+          const across = Math.hypot(rx, ry);
+          f[6] += 0.5 * RHO * CDA_SIDE * across * rx;
+          f[7] += 0.5 * RHO * CDA_SIDE * across * ry;
+          f[8] += 0.5 * RHO * CDA_TOP * Math.abs(rz) * rz;
+        }
+      }
     },
     observe(_model: MjModel, data: MjData, t: number) {
       const q = data.qpos;
@@ -189,6 +242,11 @@ function episode(params: Params, p: Perturbation, spec: DroneSpec): Episode {
       const tiltNow = Math.acos(clamp(Math.cos(roll) * Math.cos(pitch), -1, 1));
       lastT = t;
       cost += (Math.min(e, 2) + 0.15 * tiltNow) * DT;
+      if (wind1c) {
+        if (t >= DRIFT_FROM_S) drift = Math.max(drift, Math.hypot(ex, ey));
+        if (t >= wind1c.start_s) lowZ = Math.min(lowZ, q[2]);
+        if (t >= HORIZON_S - 0.5) tailZ = Math.min(tailZ, q[2]);
+      }
       if (t >= SETTLE_S) {
         err2 += e * e;
         errN += 1;
@@ -220,6 +278,14 @@ function episode(params: Params, p: Perturbation, spec: DroneSpec): Episode {
           survived_s: Math.round((crashed ? crashedAt : HORIZON_S) * 100) / 100,
           crashed,
           held: !crashed && rms < 0.1,
+          // Stress test readouts: farthest off the spot, lowest after the gust, lowest in the last half second.
+          ...(wind1c
+            ? {
+                drift_m: Math.round(drift * 1000) / 1000,
+                low_z_m: Math.round((Number.isFinite(lowZ) ? lowZ : 0) * 1000) / 1000,
+                tail_z_m: Math.round((Number.isFinite(tailZ) ? tailZ : 0) * 1000) / 1000,
+              }
+            : {}),
         },
       };
     },

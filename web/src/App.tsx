@@ -4,6 +4,7 @@ import { IconRail } from "./components/IconRail";
 import SidebarChat from "./components/chat/SidebarChat";
 import { TopBar } from "./components/TopBar";
 import { useBrowserTraining } from "./components/training/useBrowserTraining";
+import { useBrowserStress } from "./components/stress/useBrowserStress";
 import { DrawLayer } from "./components/overlay/DrawLayer";
 import { PointerLayer } from "./components/overlay/PointerLayer";
 import { useSource } from "./events/source";
@@ -55,6 +56,7 @@ export default function App() {
   const view = useUi((s) => s.view);
   useBolzenVoice();
   useBrowserTraining();
+  useBrowserStress();
   return (
     <div className="flex h-full min-h-0">
       <IconRail />

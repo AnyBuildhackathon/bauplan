@@ -17,6 +17,7 @@ from pai_agent.env import claude_enabled, load_env
 from pai_agent.paths import FALLBACK_DIR, REPO_ROOT, SESSIONS_DIR
 from pai_agent.session import Session
 from pai_agent.tools.browser_train import router as browser_train_router
+from pai_agent.tools.stress import router as stress_router
 
 
 class PromptIn(BaseModel):
@@ -57,6 +58,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(browser_train_router)
+app.include_router(stress_router)
 
 
 @app.get("/api/health")
