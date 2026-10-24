@@ -38,6 +38,7 @@ export interface CommunityEntry {
 type Sort = "new" | "popular";
 const AUTHOR_KEY = "anybuild.author";
 const PARTS_SHOWN = 5;
+const TEAM = "AnyBuild team";
 
 function storedAuthor(): string {
   try {
@@ -60,6 +61,18 @@ function numbers(entry: CommunityEntry): { label: string; value: string }[] {
     { label: "Parts", value: m.parts != null ? String(m.parts) : "–" },
     { label: "Checks", value: m.requirements ? `${m.requirements_passed ?? 0}/${m.requirements}` : "–" },
   ];
+}
+
+/** Entries the AnyBuild team published carry the AnyBuild mark next to the name. */
+function Author({ name, className = "" }: { name: string; className?: string }) {
+  return (
+    <span className={`inline-flex min-w-0 items-center gap-1.5 ${className}`}>
+      {name === TEAM && (
+        <img src={`${import.meta.env.BASE_URL}logo-mark.webp`} alt="" draggable={false} className="h-4 w-4 shrink-0 rounded-[4px] select-none" />
+      )}
+      <span className="truncate">{name}</span>
+    </span>
+  );
 }
 
 function Thumbnail({ entry, className = "" }: { entry: CommunityEntry; className?: string }) {
@@ -102,10 +115,12 @@ function Card({ entry, selected, onSelect }: { entry: CommunityEntry; selected: 
       </div>
       <div className="px-1.5">
         <div className="text-[16px] leading-snug font-semibold text-ink">{entry.title}</div>
-        <div className="mt-0.5 truncate text-[13px] text-muted">
-          {entry.author}
-          {entry.published_at ? ` · ${dateLabel(entry.published_at)}` : ""}
-          {entry.remixed_from ? ` · remix of ${entry.remixed_from.title}` : ""}
+        <div className="mt-0.5 flex min-w-0 items-center text-[13px] text-muted">
+          <Author name={entry.author} className="shrink-0" />
+          <span className="truncate whitespace-pre">
+            {entry.published_at ? ` · ${dateLabel(entry.published_at)}` : ""}
+            {entry.remixed_from ? ` · remix of ${entry.remixed_from.title}` : ""}
+          </span>
         </div>
         <div className="num mt-2 text-[13px] font-medium text-ink-2">{line.join(" · ")}</div>
       </div>
@@ -122,7 +137,9 @@ function Inspect({ entry, live, onRemix, onOpen }: { entry: CommunityEntry; live
           {[entry.product_label, dateLabel(entry.published_at), `${entry.remixes} remix${entry.remixes === 1 ? "" : "es"}`].filter(Boolean).join(" · ")}
         </div>
         <h2 className="text-[20px] leading-tight font-semibold tracking-[-0.01em] text-ink">{entry.title}</h2>
-        <div className="mt-0.5 text-[14px] font-medium text-ink-2">by {entry.author}</div>
+        <div className="mt-0.5 flex items-center gap-1 text-[14px] font-medium text-ink-2">
+          by <Author name={entry.author} />
+        </div>
         {entry.remixed_from && (
           <button
             type="button"
