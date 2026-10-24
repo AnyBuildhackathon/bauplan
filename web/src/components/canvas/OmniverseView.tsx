@@ -63,7 +63,7 @@ export function OmniverseView() {
         <div><p className="text-xs font-bold tracking-widest text-muted uppercase">NVIDIA Omniverse</p>
           <h2 className="mt-1 text-xl font-bold">Test the next possibility.</h2></div>
         <span className={`rounded-full px-3 py-1.5 text-xs font-semibold ${recorded ? "bg-agent-soft text-agent-ink" : "bg-tile text-muted"}`}>
-          {busy ? "GPU job running" : recorded ? "Recorded demo" : result ? "GPU result" : "GPU experiments"}
+          {busy ? "GPU job running" : recorded ? "Recorded result" : result ? "GPU result" : "GPU experiments"}
         </span>
       </div>
 
@@ -93,7 +93,6 @@ export function OmniverseView() {
       {!result && <div className="flex min-h-48 flex-1 flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-line p-6 text-center">
         <Cloud className="h-9 w-9 text-agent" /><h3 className="font-semibold">From CAD to a GPU experiment</h3>
         <p className="max-w-sm text-sm leading-relaxed text-muted">Ask Mechanic to test gusty wind, add a 10 g camera, or train a reference policy. A finished video and values appear here.</p>
-        <p className="text-xs text-muted">No pod connected? A clearly labelled recorded demo is available.</p>
       </div>}
       {result && <>
         <div role="status" className={`mb-3 rounded-2xl p-3 text-sm leading-relaxed ${recorded ? "bg-agent-soft text-agent-ink" : "bg-white text-ink-2"}`}>

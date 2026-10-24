@@ -15,6 +15,7 @@ from fastapi.responses import FileResponse, Response, StreamingResponse
 from pydantic import BaseModel
 
 from pai_agent import explain
+from pai_agent.access import AccessGate, access_code
 from pai_agent.env import claude_enabled, load_env
 from pai_agent.paths import FALLBACK_DIR, REPO_ROOT, SESSIONS_DIR
 from pai_agent.session import Session
@@ -73,13 +74,34 @@ async def _lifespan(app: FastAPI):
     await session.shutdown()
 
 
-app = FastAPI(title="Physical AI Agent", lifespan=_lifespan)
+def _cors_origins() -> str:
+    """The dashboard on localhost (any port Vite or Tauri picked), the Mac app, the Vercel deployments,
+    and any extra origins in ANYBUILD_CORS_ORIGINS (comma-separated)."""
+
+    patterns = [
+        r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
+        r"tauri://localhost",
+        r"https?://tauri\.localhost",
+        r"https://anybuild-demo\.vercel\.app",
+        # Preview deployments of the same Vercel project.
+        r"https://anybuild-demo-[a-z0-9-]+\.vercel\.app",
+    ]
+    extra = [o.strip().rstrip("/") for o in os.environ.get("ANYBUILD_CORS_ORIGINS", "").split(",") if o.strip()]
+    patterns += [re.escape(o) for o in extra]
+    return "^(" + "|".join(patterns) + ")$"
+
+
+load_env()
+app = FastAPI(title="Physical AI Agent", lifespan=_lifespan, docs_url=None, redoc_url=None, openapi_url=None)
+# Added first, so it runs inside CORS: a 401 or 429 still carries CORS headers the browser can read.
+app.add_middleware(AccessGate)
 app.add_middleware(
     CORSMiddleware,
-    # The dashboard and the Mac app run on localhost, on whatever port Vite or Tauri picked.
-    allow_origin_regex=r"^(https?://(localhost|127\.0\.0\.1)(:\d+)?|tauri://localhost)$",
+    allow_origin_regex=_cors_origins(),
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Sample-Rate", "Retry-After"],
 )
 app.include_router(browser_train_router)
 app.include_router(stress_router)
@@ -88,7 +110,19 @@ app.include_router(stress_router)
 @app.get("/api/health")
 async def health(request: Request) -> dict:
     # busy tells tests and the profiler when a run has finished.
-    return {"ok": True, "mode": "claude" if claude_enabled() else "mock", "busy": request.app.state.session._busy()}
+    return {
+        "ok": True,
+        "mode": "claude" if claude_enabled() else "mock",
+        "busy": request.app.state.session._busy(),
+        "access": "required" if access_code() else "open",
+    }
+
+
+@app.get("/api/access")
+@app.post("/api/access")
+async def access() -> dict:
+    # Reached only without ANYBUILD_ACCESS_CODE; with it, AccessGate answers both.
+    return {"ok": True, "access": "open"}
 
 
 @app.post("/api/prompt")
@@ -241,7 +275,7 @@ def _check_webhook_secret(request: Request) -> None:
     import hmac
 
     secret = os.environ.get("JAMIE_WEBHOOK_SECRET", "").strip()
-    if not secret:
+    if not secret or getattr(request.state, "access_session", None):
         return
     given = request.headers.get("x-jamie-secret") or request.query_params.get("secret") or ""
     if not hmac.compare_digest(given.encode("utf-8"), secret.encode("utf-8")):

@@ -65,7 +65,8 @@ The drone and the gripper keep their own flows as special cases.
 The math behind each check is in `agent/src/pai_agent/analysis.py` and `agent/src/pai_agent/rigid_sim.py`, the wire format in `docs/events.md`.
 
 With a backend running, the dashboard opens in live mode with an empty bench; the top bar says whether Claude is live or the backend runs the scripted mock because `ANTHROPIC_API_KEY` is missing.
-The recorded drone run plays only with `?demo` or when no backend answers, and says so.
+Without a backend, the dashboard shows "Live backend offline, try again shortly" and connects on its own once the backend answers.
+The recorded drone run is not offered in the interface; it plays only with the `?demo` URL parameter, for recording videos.
 
 ## Mock Mode
 
@@ -249,12 +250,59 @@ Shell variables override values in `.env`.
 | `RUNPOD_SSH_PORT` | SSH port for RunPod pod, defaulting to `22`. |
 | `RUNPOD_SSH_USER` | SSH username for RunPod pod, defaulting to `root`. |
 | `RUNPOD_SSH_KEY` | File path to private SSH key for RunPod access. |
+| `ANYBUILD_ACCESS_CODE` | Access code for a public backend; when set, every route except `GET /api/health` needs a session from `POST /api/access`, and the rate limits apply. Leave empty for local work. |
+| `ANYBUILD_CORS_ORIGINS` | Extra allowed browser origins, comma-separated, besides localhost, the Mac app, and `https://anybuild-demo.vercel.app` with its preview deployments. |
+| `ANYBUILD_LIMIT_BUILDS` | Builds (prompts, sketches, reference starts, version restores, test and rebuild buttons, meeting webhooks) per session and hour with an access code, defaulting to `20`; each IP gets three times the per-session limit. |
+| `ANYBUILD_LIMIT_SPEECH` | ElevenLabs speech requests per session and hour, defaulting to `300`. |
+| `ANYBUILD_LIMIT_STT` | Reson8 token requests per session and hour, defaulting to `60`. |
+| `ANYBUILD_LIMIT_CAD` | CAD parameter recomputes per session and hour, defaulting to `120`. |
+| `ANYBUILD_LIMIT_EXPLAIN` | Learning-mode explanations per session and hour, defaulting to `120`. |
+
+## Public Live Deployment
+
+The public web app at https://anybuild-demo.vercel.app is the real app: it talks to the live backend on the team's Mac, which runs Claude, FreeCAD, Blender, MuJoCo, ElevenLabs and Reson8.
+Tailscale Funnel publishes that backend over HTTPS, and an access code shared only with the team and the jury keeps strangers from spending the API credit.
+
+On the Mac, start the backend with an access code (put real values in `agent/.env`, never in the repository):
+
+```bash
+cd agent && ANYBUILD_ACCESS_CODE=<code> uv run physical-ai-agent
+```
+
+Publish port 8100 through Tailscale Funnel; the backend is then reachable at `https://<machine>.<tailnet>.ts.net`:
+
+```bash
+tailscale funnel --bg 8100
+```
+
+Build the web app against that URL; on Vercel, set `VITE_API_BASE` as a build environment variable:
+
+```bash
+cd web && VITE_API_BASE=https://<machine>.<tailnet>.ts.net npm run build
+```
+
+On start the web app calls `GET /api/health`.
+When the backend answers and asks for a code, the app shows one field, "Enter access code", then the full app.
+When it does not answer, the app shows "Live backend offline, try again shortly" and retries every few seconds.
+The session token lasts 24 hours and is kept in the browser's local storage; changing `ANYBUILD_ACCESS_CODE` and restarting the backend signs everyone out.
+Ten wrong codes from one IP within 15 minutes block that IP for the rest of the window, and builds, speech and Reson8 tokens have hourly limits (see the table above), answered with HTTP 429 and a notice in the app.
+Per-IP limits use the last `X-Forwarded-For` hop that the local proxy (Tailscale Funnel) adds.
+All visitors share the one bench session on the Mac, as in a live demo.
+
+Check the gate from any machine:
+
+```bash
+curl -s https://<machine>.<tailnet>.ts.net/api/health
+curl -s -o /dev/null -w "%{http_code}\n" -X POST https://<machine>.<tailnet>.ts.net/api/prompt
+```
+
+The first prints `"access": "required"`, the second `401`.
 
 ## Omniverse GPU experiments
 
 For drones, the **Omniverse** tab runs wind, payload and hover experiments in NVIDIA Isaac Sim and reference Crazyflie training in Isaac Lab over SSH.
 Blender exports the current CAD assembly as USD with per-part masses.
-Without a working GPU pod, the app plays a clearly labelled recorded demo with synthetic fixture values.
+Without a working GPU pod, the app shows a clearly labelled recorded result with synthetic fixture values.
 See [Omniverse setup, tools, limitations and verification](docs/omniverse.md) for the full contract, including local ports 8113 and 5193.
 
 ## Smoke Test
@@ -269,7 +317,7 @@ The smoke test launches an isolated server instance on port 8101 (`SMOKE_PORT`),
 
 ## Recorded session
 
-The app opens in Live. `?demo` still replays a recorded mock run, so the numbers on that path match the backend.
+The app opens in Live. The hidden `?demo` URL parameter still replays a recorded mock run for videos, so the numbers on that path match the backend; the interface never links to it.
 After making changes to the story, component catalogs, or physics parameters, re-record the fixture:
 
 ```bash

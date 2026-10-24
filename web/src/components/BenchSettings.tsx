@@ -1,13 +1,13 @@
 // The Settings panel behind the sliders icon. The dashboard shows only the essentials;
 // these toggles add the rest (agent steps, tool cards, Jamie activity, all metrics,
-// learning mode), show which speech recognition listens, switch the mic from
-// hands-free to push-to-talk, and switch to the recorded demo. In live mode it also holds the bench's model settings:
+// learning mode), show which speech recognition listens, and switch the mic from
+// hands-free to push-to-talk. In live mode it also holds the bench's model settings:
 // which Claude orchestrates, which runs the sub-agents, how hard each one thinks
 // (effort), and whether the orchestrator delegates. GET/POST /api/settings.
 import { useEffect, useRef, useState } from "react";
 import { SlidersHorizontal } from "lucide-react";
 import { useSource } from "../events/source";
-import { apiUrl } from "../lib/api";
+import { apiFetch } from "../lib/api";
 import { useUi, type Display } from "../lib/ui";
 
 const DISPLAY: { key: keyof Display; label: string; hint: string; control?: string }[] = [
@@ -77,7 +77,6 @@ export function BenchSettings() {
 
   const display = useUi((s) => s.display);
   const setDisplay = useUi((s) => s.setDisplay);
-  const resetUi = useUi((s) => s.resetUi);
   const micMode = useUi((s) => s.micMode);
   const setMicMode = useUi((s) => s.setMicMode);
   const stt = useUi((s) => s.stt);
@@ -95,7 +94,7 @@ export function BenchSettings() {
   }, [open, setOpen]);
   useEffect(() => {
     if (!open || !live) return;
-    fetch(apiUrl("/api/settings"))
+    apiFetch("/api/settings")
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((body: Settings) => setSettings(body))
       .catch(() => setError("Settings need the live backend."));
@@ -104,7 +103,7 @@ export function BenchSettings() {
   const change = async (patch: Partial<Settings>) => {
     setError(null);
     try {
-      const res = await fetch(apiUrl("/api/settings"), {
+      const res = await apiFetch("/api/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(patch),
@@ -146,16 +145,6 @@ export function BenchSettings() {
             onChange={(on) => setMicMode(on ? "ptt" : "handsfree")}
           />
           <p className="pt-1 text-[12px] text-muted">{SPEECH[stt]}</p>
-          <h3 className="eyebrow mt-3 mb-1 border-t border-line pt-3">Source</h3>
-          <Toggle
-            label="Recorded demo"
-            hint={live ? "Replay the recorded drone run" : "Playing the recording, not the backend"}
-            on={!live}
-            onChange={(on) => {
-              resetUi();
-              useSource.getState().setMode(on ? "demo" : "live");
-            }}
-          />
           {live && (
             <div className="mt-3 border-t border-line pt-3">
               {!settings ? (

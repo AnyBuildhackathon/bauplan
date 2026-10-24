@@ -9,7 +9,7 @@
 // start), speech pauses at once; it stops for good when they really said something, and
 // resumes when the "turn" was only Mechanic's own voice echoing into the microphone.
 import { create } from "zustand";
-import { apiUrl } from "./api";
+import { apiFetch } from "./api";
 import { voiceCapabilities } from "./voice";
 import type { SayEvent } from "../events/types";
 
@@ -199,7 +199,7 @@ export function isEcho(text: string): boolean {
 
 /** The person started talking: the backend opens its model and voice connections before the reply needs them. */
 export function warmUp() {
-  void fetch(apiUrl("/api/voice/warm"), { method: "POST" }).catch(() => undefined);
+  void apiFetch("/api/voice/warm", { method: "POST" }).catch(() => undefined);
 }
 
 /** The person started talking: pause at once, mid-word. */
@@ -265,7 +265,7 @@ async function requestAudio(phrase: Phrase): Promise<ReadableStreamDefaultReader
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), SPEAK_FIRST_BYTE_MS);
   try {
-    const res = await fetch(apiUrl("/api/voice/speak"), {
+    const res = await apiFetch("/api/voice/speak", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: phrase.text, previous_text: phrase.previous }),

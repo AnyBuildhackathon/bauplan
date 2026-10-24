@@ -150,8 +150,23 @@ It is HTTP 409 when another client holds the job or it is over, and 404 for a jo
 `POST /api/stress/{job_id}/progress` with `{"client", "status": "running"|"done"|"failed", "results": [{i, metrics, trajectory}], "error"}` from the claiming client hands finished worlds to the backend, which scores them and publishes the `stress` events; `metrics` are the drone episode's `crashed`, `drift_m`, `low_z_m`, and `tail_z_m`, and `trajectory` is `[[t, x, y, z], ...]` at 20 Hz.
 `GET /api/training/browser` returns `{"ok": true, "job": {...}}` with the latest browser job of the session in the `training` event shape without `type`, or `job: null`.
 
-`GET /api/health` returns `{"ok": true, "mode": "mock"|"claude", "busy": bool}`; `busy` is true while a run is in flight, which the end-to-end tests and agent/scripts/profile_build.py wait on.
-The dashboard calls it on start: when the backend answers it opens in live mode with an empty bench, and only without a backend (or with `?demo`) does it play the recording, with a notice saying so.
+`GET /api/health` returns `{"ok": true, "mode": "mock"|"claude", "busy": bool, "access": "open"|"required"}`; `busy` is true while a run is in flight, which the end-to-end tests and agent/scripts/profile_build.py wait on.
+The dashboard calls it on start: when the backend answers it opens in live mode with an empty bench (after the access code, when `access` is `required`); without a backend it shows "Live backend offline, try again shortly" and retries.
+Only the hidden `?demo` URL parameter plays the recording.
+
+### Access
+
+With `ANYBUILD_ACCESS_CODE` set on the backend, every route except `GET /api/health` and `POST /api/access` (including `GET /api/events`, the voice routes and `/files/`) needs a session, else HTTP 401 with `{"detail": "...", "access": "required"}`.
+`POST /api/access` with `{"code": "..."}` (`Content-Type: application/json`) returns `{"ok": true, "token": "...", "expires_at": <unix seconds>}` and sets the same token as an `anybuild_session` cookie (`HttpOnly; Secure; SameSite=None`), valid for 24 hours.
+A wrong code is HTTP 401; ten wrong codes from one IP in 15 minutes (or 200 from all IPs) are HTTP 429 until the window passes.
+Clients send the token as `Authorization: Bearer <token>`, as the cookie, or as `?access_token=<token>` on URLs the browser loads itself (EventSource, images, models, videos).
+`GET /api/access` is HTTP 200 while the session is valid, and always 200 without an access code.
+`POST /api/webhooks/jamie` also accepts Jamie's own calls without a session when `JAMIE_WEBHOOK_SECRET` is set; signed-in users skip that secret.
+
+With an access code, these calls are rate limited per session and, at three times the limit, per IP, in a sliding hour: builds (`POST /api/prompt`, `POST /api/sketch`, `POST /api/library/{id}/open`, `POST /api/versions/{n}/restore`, `POST /api/control`, `POST /api/webhooks/jamie`; `ANYBUILD_LIMIT_BUILDS`, default 20), `POST /api/voice/speak` (`ANYBUILD_LIMIT_SPEECH`, 300), `POST /api/voice/token` (`ANYBUILD_LIMIT_STT`, 60), `POST /api/cad/params` (`ANYBUILD_LIMIT_CAD`, 120), and `POST /api/explain` (`ANYBUILD_LIMIT_EXPLAIN`, 120).
+Over the limit, the answer is HTTP 429 with `{"detail": "Hourly limit of 20 builds reached. Try again in 12 minutes.", "limit": "build"}` and a `Retry-After` header; the dashboard shows `detail` as a notice.
+
+Browsers may call the backend from localhost, the Mac app, `https://anybuild-demo.vercel.app` and its preview deployments, and origins in `ANYBUILD_CORS_ORIGINS`, with credentials.
 
 `GET /files/{bucket}/{name}` serves one file.
 `bucket` is the session id, or `fallback` for recorded clips.

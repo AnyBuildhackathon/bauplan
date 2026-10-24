@@ -2,7 +2,7 @@
 // strategy over the rollout pool, and posts every generation back as a `training` event.
 // The local store feeds the grid and the large replay in this tab.
 import { create } from "zustand";
-import { apiUrl } from "../lib/api";
+import { apiFetch } from "../lib/api";
 import { CrossEntropy, toParams } from "./es";
 import { sharedPool } from "./pool";
 import { productFor } from "./products";
@@ -99,7 +99,7 @@ const CLIENT = "tab-" + Math.random().toString(36).slice(2, 10);
 let abort: AbortController | null = null;
 
 async function post(path: string, body: unknown): Promise<Response> {
-  return fetch(apiUrl(path), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  return apiFetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
 }
 
 const sleep = (ms: number, signal: AbortSignal) =>

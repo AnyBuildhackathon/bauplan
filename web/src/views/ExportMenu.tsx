@@ -7,7 +7,7 @@ import { ChevronDown, FileArchive, FileSpreadsheet, Link2, ShoppingCart } from "
 import { useSession } from "../events/store";
 import { useSource } from "../events/source";
 import type { BomEvent } from "../events/types";
-import { apiUrl } from "../lib/api";
+import { apiFetch, apiStreamUrl } from "../lib/api";
 
 const csvCell = (v: string | number) => (/[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
 
@@ -66,7 +66,7 @@ export function ExportMenu({ bom, onOrder }: { bom: BomEvent; onOrder: () => voi
     try {
       let id = CODE_REFERENCE[product];
       if (!id) {
-        const res = await fetch(apiUrl("/api/library"), { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+        const res = await apiFetch("/api/library", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
         const body = (await res.json()) as { item?: { id: string }; detail?: string };
         if (!res.ok || !body.item) throw new Error(body.detail ?? `HTTP ${res.status}`);
         id = body.item.id;
@@ -105,7 +105,7 @@ export function ExportMenu({ bom, onOrder }: { bom: BomEvent; onOrder: () => voi
       {open && (
         <div role="menu" className="card absolute right-0 z-10 mt-2 w-[270px] p-1.5 shadow-[var(--shadow-float)]">
           {live ? (
-            <a role="menuitem" href={apiUrl("/api/export/bom.csv")} download onClick={() => setOpen(false)} className={item}>
+            <a role="menuitem" href={apiStreamUrl("/api/export/bom.csv")} download onClick={() => setOpen(false)} className={item}>
               <FileSpreadsheet className="h-4.5 w-4.5 text-muted" /> Download BOM (CSV)
             </a>
           ) : (
@@ -114,7 +114,7 @@ export function ExportMenu({ bom, onOrder }: { bom: BomEvent; onOrder: () => voi
             </button>
           )}
           {live && (
-            <a role="menuitem" href={apiUrl("/api/export/bundle.zip")} download onClick={() => setOpen(false)} className={item}>
+            <a role="menuitem" href={apiStreamUrl("/api/export/bundle.zip")} download onClick={() => setOpen(false)} className={item}>
               <FileArchive className="h-4.5 w-4.5 text-muted" /> Download all files (ZIP)
             </a>
           )}

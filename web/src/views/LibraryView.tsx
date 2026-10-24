@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Box, Plus, RotateCcw, Save, Search } from "lucide-react";
 import { useSession } from "../events/store";
 import { useSource, type ReferenceBuild } from "../events/source";
-import { apiUrl, assetUrl } from "../lib/api";
+import { apiFetch, assetUrl } from "../lib/api";
 import { useUi } from "../lib/ui";
 
 type Filter = "all" | "reference" | "project";
@@ -155,7 +155,7 @@ export function LibraryView() {
   // Fresh list on every visit, so a project saved a moment ago shows up.
   useEffect(() => {
     if (!live) return;
-    fetch(apiUrl("/api/library"))
+    apiFetch("/api/library")
       .then((r) => (r.ok ? r.json() : null))
       .then((body: { items?: ReferenceBuild[] } | null) => body?.items && useSource.setState({ references: body.items }))
       .catch(() => undefined);
@@ -178,7 +178,7 @@ export function LibraryView() {
   const save = async () => {
     setSaving(true);
     try {
-      const res = await fetch(apiUrl("/api/library"), { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+      const res = await apiFetch("/api/library", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
       const body = (await res.json()) as { item?: ReferenceBuild; detail?: string };
       if (!res.ok || !body.item) throw new Error(body.detail ?? `HTTP ${res.status}`);
       useSource.setState((s) => ({ references: [...s.references.filter((r) => r.id !== body.item!.id), body.item!] }));
