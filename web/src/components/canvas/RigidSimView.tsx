@@ -11,10 +11,13 @@ import type { Run } from "../../events/store";
 import { assetUrl } from "../../lib/api";
 import { fmtNum } from "../../lib/format";
 import { useSelectedVersion, useVersions } from "../../lib/hooks";
+import { lookFor, materialsFromTree, pbrMaterial } from "../../lib/materials";
+import { useSession } from "../../events/store";
 import { TrendChart } from "../ui/TrendChart";
 import { partColor } from "./CadView";
 import { GridStage, stageObstacles } from "./GridStage";
-import { seek, setPlaying, simClock, useSimClockDriver, useSimTime } from "./simClock";
+import { SimSpeed } from "./SimSpeed";
+import { seek, setPlaying, simClock, useSimClockDriver, useSimTime, useSlowWindow } from "./simClock";
 
 const COLOR = { pass: "#2ed3ae", fail: "#ff5a5f" } as const;
 const SAMPLE_S = 0.02;
@@ -33,19 +36,23 @@ function poseAt(poses: number[][], t: number): { p: THREE.Vector3; q: THREE.Quat
   return { p, q };
 }
 
+const NO_GLOW = new THREE.Color("#000000");
+
 function Model({ url }: { url: string }) {
   const gltf = useLoader(GLTFLoader, url);
+  const tree = useSession((s) => s.cad?.tree);
   const object = useMemo(() => {
     const root = gltf.scene.clone(true);
+    const looks = materialsFromTree(tree ?? []);
     root.traverse((o) => {
       if (o instanceof THREE.Mesh) {
         const { color, opacity } = partColor((o.material as THREE.Material | undefined)?.name ?? "");
-        o.material = new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0.08, transparent: opacity < 1, opacity, depthWrite: opacity >= 1 });
+        o.material = pbrMaterial(lookFor(o, looks, null), color, opacity, NO_GLOW);
         o.castShadow = true;
       }
     });
     return root;
-  }, [gltf]);
+  }, [gltf, tree]);
   return <primitive object={object} />;
 }
 
@@ -63,6 +70,38 @@ function Arrow({ color }: { color: string }) {
       </mesh>
     </group>
   );
+}
+
+const TRAIL_S = 1.5;
+
+/** A fading line along the last 1.5 s of the top of the body. */
+function Trail({ poses, height, color }: { poses: number[][]; height: number; color: string }) {
+  const line = useMemo(() => {
+    const top = new THREE.Vector3();
+    const pos = new Float32Array(poses.length * 3);
+    poses.forEach((s, i) => {
+      top.set(0, 0, height).applyQuaternion(new THREE.Quaternion(s[5], s[6], s[7], s[4])).add(new THREE.Vector3(s[1], s[2], s[3]));
+      pos.set([top.x, top.y, top.z], i * 3);
+    });
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    const c = new THREE.Color(color);
+    const rgba = new Float32Array(poses.length * 4);
+    for (let i = 0; i < poses.length; i++) rgba.set([c.r, c.g, c.b, 0], i * 4);
+    g.setAttribute("color", new THREE.BufferAttribute(rgba, 4));
+    return new THREE.Line(g, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false }));
+  }, [poses, height, color]);
+  useEffect(() => () => line.geometry.dispose(), [line]);
+  useFrame(() => {
+    const i1 = Math.min(poses.length - 1, Math.floor(simClock.t / SAMPLE_S));
+    const i0 = Math.max(0, i1 - Math.round(TRAIL_S / SAMPLE_S));
+    const alpha = line.geometry.getAttribute("color") as THREE.BufferAttribute;
+    for (let i = i0; i <= i1; i++) alpha.setW(i, i1 > i0 ? ((i - i0) / (i1 - i0)) * 0.9 : 0);
+    if (i0 > 0) alpha.setW(i0 - 1, 0);
+    alpha.needsUpdate = true;
+    line.geometry.setDrawRange(i0, i1 - i0 + 1);
+  });
+  return <primitive object={line} />;
 }
 
 function Stage({ run }: { run: Run }) {
@@ -102,6 +141,7 @@ function Stage({ run }: { run: Run }) {
           <group position={[0, 0, -floor]} scale={0.001}>{url && <Model url={url} />}</group>
           <group ref={pushAt} position={[point[0] / 1000, point[1] / 1000, point[2] / 1000]} />
         </group>
+        {(run.poses?.length ?? 0) > 1 && <Trail poses={run.poses!} height={((run.bbox_mm?.[5] ?? 100) - floor * 1000) / 1000} color={COLOR[run.result]} />}
       </group>
       {run.mode !== "drop" && (
         <group ref={arrow} visible={false}>
@@ -208,6 +248,7 @@ export function RigidSimView() {
   const before = after ? all.filter((v) => v.n < after.n).at(-1) ?? null : null;
   const duration = Math.max(...all.map((v) => v.run.trajectory.at(-1)?.[0] ?? 0), 1);
   useSimClockDriver(duration);
+  useSlowWindow(after?.run.push_window_s ?? null);
   const { t, playing } = useSimTime(30);
   const [chartRef, chartW] = useWidth<HTMLDivElement>();
   if (!after) return null;
@@ -239,6 +280,7 @@ export function RigidSimView() {
         >
           {playing ? <Pause className="h-4 w-4" fill="currentColor" /> : <Play className="h-4 w-4 translate-x-[1px]" fill="currentColor" />}
         </button>
+        <SimSpeed />
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline justify-between text-[13px] font-semibold text-muted">
             <span>{after.run.mode === "drop" ? "Tilt while it lands" : "Tilt over time"}</span>

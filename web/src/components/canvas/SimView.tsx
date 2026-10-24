@@ -9,7 +9,8 @@ import { TrendChart } from "../ui/TrendChart";
 import { GripSimView } from "./GripSimView";
 import { RigidSimView } from "./RigidSimView";
 import { SimScene, trajectoryBounds } from "./Scenes";
-import { seek, setPlaying, useSimClockDriver, useSimTime } from "./simClock";
+import { SimSpeed } from "./SimSpeed";
+import { seek, setPlaying, useSimClockDriver, useSimTime, useSlowWindow } from "./simClock";
 
 export const RUN_COLOR = { pass: "#2ed3ae", fail: "#ff5a5f" } as const;
 
@@ -51,6 +52,7 @@ function HoverSimView() {
   const before = after ? all.find((v) => v.n === after.n - 1) ?? null : null;
   const duration = Math.max(...all.map((v) => v.run.trajectory.at(-1)?.[0] ?? 0), 1);
   useSimClockDriver(duration);
+  useSlowWindow([1.6, 1.9]);
   const { t, playing } = useSimTime(20);
   const [chartRef, chartW] = useWidth<HTMLDivElement>();
   const bounds = useMemo(() => trajectoryBounds([after, before].flatMap((v) => (v ? [v.run] : []))), [after, before]);
@@ -100,6 +102,7 @@ function HoverSimView() {
         >
           {playing ? <Pause className="h-4 w-4" fill="currentColor" /> : <Play className="h-4 w-4 translate-x-[1px]" fill="currentColor" />}
         </button>
+        <SimSpeed />
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline justify-between text-[13px] font-semibold text-muted">
             <span>Altitude over time</span>

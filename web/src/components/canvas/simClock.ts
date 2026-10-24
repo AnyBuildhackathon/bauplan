@@ -10,6 +10,11 @@ export const simClock = {
   playing: true,
   /** Pause at the end before looping, in seconds. */
   hold: 1.2,
+  /** Playback rate: 0.25, 0.5 or 1. */
+  speed: 1,
+  /** Drop to 0.25x inside `slow` (the gust or the push window, in seconds). */
+  autoSlow: true,
+  slow: null as [number, number] | null,
   listeners: new Set<Listener>(),
 };
 
@@ -26,7 +31,10 @@ function tick(now: number) {
       holdLeft -= dt;
       if (holdLeft <= 0) simClock.t = 0;
     } else {
-      simClock.t = Math.min(simClock.duration, simClock.t + dt);
+      const w = simClock.slow;
+      const inWindow = simClock.autoSlow && w && simClock.t >= w[0] - 0.15 && simClock.t <= w[1] + 0.15;
+      const rate = inWindow ? Math.min(simClock.speed, 0.25) : simClock.speed;
+      simClock.t = Math.min(simClock.duration, simClock.t + dt * rate);
       if (simClock.t >= simClock.duration) holdLeft = simClock.hold;
     }
   }
@@ -75,6 +83,23 @@ export function useSimTime(hz = 15): { t: number; playing: boolean } {
 export function setPlaying(playing: boolean) {
   simClock.playing = playing;
   if (playing && simClock.t >= simClock.duration) simClock.t = 0;
+}
+export function setSpeed(speed: number) {
+  simClock.speed = speed;
+}
+export function setAutoSlow(on: boolean) {
+  simClock.autoSlow = on;
+}
+/** The replay's event window for the automatic slow-motion; null for none. */
+export function useSlowWindow(window: number[] | null) {
+  const a = window?.[0];
+  const b = window?.[1];
+  useEffect(() => {
+    simClock.slow = a !== undefined && b !== undefined ? [a, b] : null;
+    return () => {
+      simClock.slow = null;
+    };
+  }, [a, b]);
 }
 export function seek(t: number) {
   simClock.t = Math.max(0, Math.min(simClock.duration, t));
