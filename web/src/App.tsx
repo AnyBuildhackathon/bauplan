@@ -5,6 +5,7 @@ import SidebarChat from "./components/chat/SidebarChat";
 import { TopBar } from "./components/TopBar";
 import { useBrowserTraining } from "./components/training/useBrowserTraining";
 import { useBrowserStress } from "./components/stress/useBrowserStress";
+import { ResizeHandle, usePaneWidth, useWindowWidth } from "./components/ui/ResizeHandle";
 import { DrawLayer } from "./components/overlay/DrawLayer";
 import { PointerLayer } from "./components/overlay/PointerLayer";
 import { useSource } from "./events/source";
@@ -19,6 +20,16 @@ import { TrainingView } from "./views/TrainingView";
 import { WorkbenchView } from "./views/WorkbenchView";
 
 const NOTICE_MS = 5000;
+
+// Column widths around the canvas. The canvas keeps at least CANVAS_MIN; the rest of
+// the window is shared by the icon rail, the chat and the right panel.
+const RAIL = 64;
+const CANVAS_MIN = 380;
+const WORKBENCH_GUTTERS = 72;
+const CHAT = { initial: 400, min: 320, max: 760 };
+const PANEL = { initial: 360, min: 300, max: 520 };
+
+const fit = (wanted: number, min: number, max: number) => Math.round(Math.max(min, Math.min(max, wanted)));
 
 /** Short system notices. They sit at the top under the bar, where views keep free
  * space, and fade on their own so they never cover the work for long. */
@@ -57,18 +68,45 @@ export default function App() {
   useBolzenVoice();
   useBrowserTraining();
   useBrowserStress();
+  const vw = useWindowWidth();
+  const chatPane = usePaneWidth("anybuild.chatWidth", CHAT.initial);
+  const panelPane = usePaneWidth("anybuild.panelWidth", PANEL.initial);
+  // The panel only sits on the workbench; when the window is narrow the chat gives way first.
+  const room = vw - RAIL - WORKBENCH_GUTTERS - CANVAS_MIN;
+  const hasPanel = view === "werkbank";
+  const panelWidth = hasPanel ? fit(panelPane.wanted, PANEL.min, Math.min(PANEL.max, room - CHAT.min)) : 0;
+  const chatMax = Math.min(CHAT.max, room - panelWidth);
+  const chatWidth = fit(chatPane.wanted, CHAT.min, chatMax);
+  const panel = {
+    width: panelWidth,
+    min: PANEL.min,
+    max: Math.min(PANEL.max, room - chatWidth),
+    onChange: panelPane.set,
+    onReset: panelPane.reset,
+  };
   return (
     <div className="flex h-full min-h-0">
       <IconRail />
       {(view === "werkbank" || view === "library") && (
-        <div className="h-full w-[400px] shrink-0 border-r border-line">
-          <SidebarChat />
-        </div>
+        <>
+          <div className="h-full shrink-0 border-r border-line" style={{ width: chatWidth }}>
+            <SidebarChat />
+          </div>
+          <ResizeHandle
+            width={chatWidth}
+            min={CHAT.min}
+            max={chatMax}
+            onChange={chatPane.set}
+            onReset={chatPane.reset}
+            side="before"
+            label="Resize the chat"
+          />
+        </>
       )}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <TopBar />
         <main className="min-h-0 flex-1">
-          {view === "werkbank" && <WorkbenchView />}
+          {view === "werkbank" && <WorkbenchView panel={panel} />}
           {view === "library" && <LibraryView />}
           {view === "training" && <TrainingView />}
           {view === "logbuch" && <LogbookView />}

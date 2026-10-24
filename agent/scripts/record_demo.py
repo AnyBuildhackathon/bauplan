@@ -3,12 +3,16 @@
 Runs the kickoff build, marks the review live, runs the review build, and writes:
 - web/src/events/recording.json, the events in order, with file URLs pointing at /demo/run/
 - web/public/demo/run/, a copy of every CAD part and render the events name
+- web/public/demo/voice/, Mechanic's spoken lines as ElevenLabs mp3 clips, named by `voice` on the events (scripts/demo_voice.py)
 - web/public/models/hero-drone.glb, the kickoff's drone, which the 3D view shows before any build
 - web/public/models/hero-drone.png, its studio render, the library thumbnail of the micro drone
 
 Run it again whenever the story, the catalog or the physics change:
 
     cd agent && uv run python scripts/record_demo.py
+
+ELEVENLABS_API_KEY (from the shell or agent/.env) renders clips that are not cached yet; without it the clips
+already in web/public/demo/voice/ are reused.
 """
 
 from __future__ import annotations
@@ -20,6 +24,8 @@ import os
 import re
 import shutil
 from pathlib import Path
+
+from demo_voice import attach_voice
 
 ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT.parent / "web"
@@ -35,6 +41,8 @@ async def record() -> list[dict]:
     os.environ["DEMO_PACE_S"] = "0"
     os.environ["PAI_ASK_TIMEOUT_S"] = "0"
     os.environ.pop("JAMIE_MCP_TOKEN", None)
+    # No Claude narrator in the recording: Mechanic's lines are the mascot events, which get pre-rendered clips.
+    os.environ.pop("ANTHROPIC_API_KEY", None)
     # The recording takes the headless FreeCAD path even when the FreeCAD window is open.
     os.environ["FREECAD_MCP_URL"] = "http://127.0.0.1:1"
 
@@ -57,6 +65,7 @@ async def record() -> list[dict]:
     await session.meeting_started(REVIEW, "Review 1")
     await session.start_from_meeting(REVIEW, "Review 1")
     await session.task
+    await attach_voice(recorded)
     return recorded
 
 

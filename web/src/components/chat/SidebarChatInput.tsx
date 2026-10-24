@@ -45,7 +45,7 @@ export default function SidebarChatInput({
   onSubmit,
   onVoice,
   disabled = false,
-  placeholder = "Describe what you want to build",
+  placeholder = "Describe what to build",
   size = "md",
 }: SidebarChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -213,26 +213,18 @@ export default function SidebarChatInput({
   const canSubmit = value.trim().length > 0 && !disabled;
   const hearing = listening || (handsFree && userTalking);
   const micHot = listening || handsFree;
-  const status =
-    stt === "none"
-      ? "Type and press Enter"
-      : micMode === "ptt"
-        ? "Hold space to speak"
-        : handsFree
-          ? "Hands-free · just talk"
-          : "Click the mic to talk hands-free";
 
   return (
     <div>
       <div
         className={`flex items-end gap-2 rounded-[24px] bg-card shadow-[var(--shadow-pill)] ring-1 transition ${
           micHot ? "ring-accent/50" : "ring-[#e2e2dd]"
-        } ${lg ? "min-h-[80px] py-3 pr-3 pl-6" : "min-h-[96px] pt-4 pr-3 pb-3 pl-5"}`}
+        } ${lg ? "min-h-[80px] py-3 pr-3 pl-6" : "min-h-[64px] py-3 pr-3 pl-4"}`}
       >
         {hearing ? (
           <div className="flex flex-1 items-center gap-3 self-center">
             <Waveform active bars={lg ? 11 : 7} />
-            <span className={`line-clamp-2 font-semibold ${heard ? "text-ink" : "text-accent"} ${lg ? "text-[20px]" : "text-[15px]"}`}>
+            <span className={`line-clamp-2 font-medium ${heard ? "text-ink" : "text-accent"} ${lg ? "text-[20px]" : "text-[15px]"}`}>
               {heard || (stt === "reson8" ? "Reson8 is listening…" : "Listening…")}
             </span>
           </div>
@@ -247,8 +239,8 @@ export default function SidebarChatInput({
             name="prompt"
             aria-label="Message to Mechanic"
             data-target="chat_input eingabe"
-            className={`min-w-0 flex-1 resize-none self-start bg-transparent leading-snug text-ink outline-none placeholder:text-muted ${
-              lg ? "text-[20px]" : "text-[17px]"
+            className={`min-w-0 flex-1 resize-none self-center bg-transparent font-read leading-snug text-ink outline-none placeholder:text-faint ${
+              lg ? "text-[20px]" : "text-[15px]"
             }`}
           />
         )}
@@ -256,7 +248,7 @@ export default function SidebarChatInput({
           <button
             type="button"
             onClick={onSubmit}
-            className={`flex shrink-0 items-center justify-center rounded-full bg-accent text-white transition hover:brightness-110 ${lg ? "h-12 w-12" : "h-10 w-10"}`}
+            className={`flex shrink-0 items-center justify-center rounded-full bg-accent text-white transition hover:brightness-110 ${lg ? "h-12 w-12" : "h-9 w-9"}`}
             title="Send"
           >
             <ArrowUp className={lg ? "h-5 w-5" : "h-4.5 w-4.5"} strokeWidth={2.5} />
@@ -279,17 +271,14 @@ export default function SidebarChatInput({
           }}
           className={`flex shrink-0 items-center justify-center rounded-full transition select-none ${
             micHot ? "scale-105 bg-accent text-white shadow-[0_0_0_8px_rgb(31_111_120/0.16)]" : "bg-tile text-ink-2 hover:bg-track hover:text-ink"
-          } ${lg ? "h-14 w-14" : "h-10 w-10"}`}
-          title={micMode === "ptt" ? "Hold to speak" : handsFree ? "Stop listening" : "Talk hands-free"}
+          } ${lg ? "h-14 w-14" : "h-9 w-9"}`}
+          title={stt === "none" ? "No speech recognition in this browser" : micMode === "ptt" ? "Hold to speak, or hold space" : handsFree ? "Stop listening" : "Talk hands-free"}
           aria-pressed={micMode === "handsfree" ? handsFree : undefined}
         >
-          <Mic className={lg ? "h-6 w-6" : "h-4.5 w-4.5"} strokeWidth={2} />
+          <Mic className={lg ? "h-6 w-6" : "h-4 w-4"} strokeWidth={2} />
         </button>
       </div>
-      <div className={`mt-2 flex items-center justify-between px-2 text-[13px] ${hint ? "text-agent-ink" : "text-muted"}`}>
-        <span>{hint ?? status}</span>
-        {!hint && <span>{stt === "reson8" ? "Reson8 · English" : stt === "browser" ? "Browser · English" : ""}</span>}
-      </div>
+      {hint && <p className="mt-1.5 px-2 text-[12px] text-agent-ink">{hint}</p>}
     </div>
   );
 }
