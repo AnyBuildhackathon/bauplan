@@ -64,7 +64,9 @@ An engineering task already started by Claude continues if the voice connection 
 
 Connect to `WS /api/voice/live` on the backend.
 The gateway checks the browser origin and the existing AnyBuild access token, supplied as `?access_token=...` for a gated deployment.
-It permits one voice session per shared product session.
+It permits one voice session per shared product session, and the newest one wins: a new Talk from any page ends the previous session and closes its upstream socket first.
+`POST /api/reset` (a new chat) ends the voice session too.
+A browser that sends no audio for 30 seconds is treated as gone and its session is released.
 The upstream connection uses authentication headers, never a credential in its URL.
 
 Browser messages:
@@ -82,6 +84,7 @@ Gateway messages:
 | `audio` | Base64 `data`, `sample_rate: 24000`; enqueue native PCM for playback. |
 | `interrupted` | Stop queued and playing audio immediately. |
 | `turn_complete` | The model finished the current response. |
+| `ended` | `reason`: `replaced` (a newer Talk took over) or `reset` (a new chat began); the conversation ends without an error. |
 | `error` | Generic English `message`; the conversation ends and Mechanic answers in text. Upstream error details and credentials are never forwarded. |
 
 Gemini can invoke three server-owned tools:

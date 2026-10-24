@@ -63,6 +63,8 @@ class Session:
         self.pending: list[str] = []
         # Mechanic greets once per project; a voice reconnect or a second Talk continues the conversation.
         self.greeted = False
+        # The one Gemini Live voice session (`gemini_live.LiveVoice`), or None.
+        self.live_voice = None
 
     async def bootstrap(self) -> None:
         await self._baseline()
@@ -440,6 +442,9 @@ class Session:
         return {"ok": False, "detail": "Noch kein Rahmen."}
 
     async def reset(self) -> None:
+        # A new chat ends the voice too; the next Talk starts fresh on the new project.
+        if self.live_voice is not None:
+            await self.live_voice.end("reset")
         await self._stop()
         # The chat that ends here stays in the history; the next one is a new entry.
         self.save_chat()

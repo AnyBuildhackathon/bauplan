@@ -16,6 +16,8 @@ const hear = (heard: string) => useVoiceChat.setState({ heard });
 // replace each other when the first chat line arrives, and the conversation must not end then.
 let conversation: HandsFree | null = null;
 let starting = false;
+// Only the newest socket may turn Talk off: an older one the server replaced closes later.
+let latest = 0;
 
 /** The one Talk button: turns the voice agent on (Mechanic greets, then listens hands-free). */
 export async function startVoice() {
@@ -49,6 +51,7 @@ async function startVoiceConversation(onError: (message: string) => void, onHear
     onError("Gemini Live is not configured. Type to Mechanic instead.");
     return null;
   }
+  const id = ++latest;
   let stopped = false;
   let failed = false;
   let mic: Awaited<ReturnType<typeof openMic>> | null = null;
@@ -68,7 +71,7 @@ async function startVoiceConversation(onError: (message: string) => void, onHear
     if (stopped || failed) return;
     failed = true;
     release();
-    if (!useUi.getState().handsFree) return;
+    if (id !== latest || !useUi.getState().handsFree) return;
     onError(message);
     conversation = null;
     useUi.getState().setHandsFree(false);
@@ -94,6 +97,16 @@ async function startVoiceConversation(onError: (message: string) => void, onHear
     } else if (data.type === "turn_complete") {
       useUi.getState().setUserTalking(false);
       onHeard("");
+    } else if (data.type === "ended") {
+      // A new chat or a newer Talk ended this one on purpose: Talk turns off without an error.
+      stopped = true;
+      clearTimeout(timer);
+      resolveReady(false);
+      release();
+      if (id !== latest) return;
+      conversation = null;
+      useUi.getState().setHandsFree(false);
+      if (data.reason === "replaced") onError("Talk continues in another window.");
     } else if (data.type === "error") {
       resolveReady(false);
       fail();

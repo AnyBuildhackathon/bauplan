@@ -316,3 +316,69 @@ def test_gateway_audio_tools_gemini_transcript_and_reconnect(tmp_path):
         assert upstreams[0].sent[1] == live.GREETING
         assert all(live.GREETING not in upstream.sent for upstream in upstreams[1:])
         assert "Gemini heard the user" in upstreams[1].sent[0]["setup"]["systemInstruction"]["parts"][0]["text"]
+
+
+class IdleUpstream(FakeUpstream):
+    """An upstream that stays quiet, and records when the gateway closes it."""
+
+    closed = False
+
+    async def __aexit__(self, *args):
+        self.closed = True
+        return False
+
+
+def test_new_talk_replaces_a_stale_voice_session(tmp_path):
+    upstreams = []
+
+    def connect(*args, **kwargs):
+        upstreams.append(IdleUpstream())
+        return upstreams[-1]
+
+    with (
+        patch.dict(os.environ, {"GEMINI_API_KEY": "private"}, clear=True),
+        patch.object(live, "connect", connect),
+        client(tmp_path) as c,
+    ):
+        # The first socket is never closed by its page, as after a lost tab or a new chat.
+        with c.websocket_connect("/api/voice/live") as stale:
+            assert stale.receive_json()["type"] == "ready"
+            with c.websocket_connect("/api/voice/live") as fresh:
+                assert stale.receive_json() == {"type": "ended", "reason": "replaced"}
+                assert upstreams[0].closed
+                assert fresh.receive_json()["type"] == "ready"
+                assert c.app.state.session.live_voice is not None
+        assert c.app.state.session.live_voice is None
+
+
+def test_reset_ends_the_voice_session(tmp_path):
+    from pai_agent.session import Session
+
+    with (
+        patch.dict(os.environ, {"GEMINI_API_KEY": "private"}, clear=True),
+        patch.object(live, "connect", lambda *a, **k: IdleUpstream()),
+        client(tmp_path) as c,
+    ):
+        c.app.state.session = Session()
+        c.portal.call(c.app.state.session.bootstrap)
+        with c.websocket_connect("/api/voice/live") as ws:
+            assert ws.receive_json()["type"] == "ready"
+            c.portal.call(c.app.state.session.reset)
+            assert ws.receive_json() == {"type": "ended", "reason": "reset"}
+            assert c.app.state.session.live_voice is None
+        with c.websocket_connect("/api/voice/live") as ws:
+            assert ws.receive_json()["type"] == "ready"
+
+
+def test_silent_browser_releases_the_voice_session(tmp_path):
+    with (
+        patch.dict(os.environ, {"GEMINI_API_KEY": "private"}, clear=True),
+        patch.object(live, "connect", lambda *a, **k: IdleUpstream()),
+        patch.object(live, "BROWSER_SILENCE_S", 0.2),
+        client(tmp_path) as c,
+        c.websocket_connect("/api/voice/live") as ws,
+    ):
+        assert ws.receive_json()["type"] == "ready"
+        with pytest.raises(WebSocketDisconnect):
+            ws.receive_json()
+        assert c.app.state.session.live_voice is None
