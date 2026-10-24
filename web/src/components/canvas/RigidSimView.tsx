@@ -1,7 +1,7 @@
 // Simulation tab for any assembled product: replays `sim` events of kind "rigid".
 // The real assembly model moves with the MuJoCo body pose; an arrow shows the push.
 // Before/after shows the previous run next to the selected one, on the shared playhead.
-import { Grid, OrbitControls } from "@react-three/drei";
+import { OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame, useLoader, useThree } from "@react-three/fiber";
 import { Pause, Play } from "lucide-react";
 import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -13,6 +13,7 @@ import { fmtNum } from "../../lib/format";
 import { useSelectedVersion, useVersions } from "../../lib/hooks";
 import { TrendChart } from "../ui/TrendChart";
 import { partColor } from "./CadView";
+import { GridStage, stageObstacles } from "./GridStage";
 import { seek, setPlaying, simClock, useSimClockDriver, useSimTime } from "./simClock";
 
 const COLOR = { pass: "#2ed3ae", fail: "#ff5a5f" } as const;
@@ -70,7 +71,7 @@ function Stage({ run }: { run: Run }) {
   const pushAt = useRef<THREE.Group>(null);
   const arrow = useRef<THREE.Group>(null);
   const floor = (run.floor_mm ?? 0) / 1000;
-  const size = run.bbox_mm ? Math.max(run.bbox_mm[3] - run.bbox_mm[0], run.bbox_mm[4] - run.bbox_mm[1], run.bbox_mm[5] - run.bbox_mm[2]) / 1000 : 0.15;
+  const size = productSize(run);
   const point = run.push_point_mm ?? [0, 0, 0];
   const dir = run.push_dir ?? [0, 1];
   const pushWindow = run.push_window_s ?? null;
@@ -156,28 +157,19 @@ function verdict(run: Run): string {
   return run.result === "pass" ? "stays upright" : "tips over";
 }
 
+/** Largest extent of the assembly in metres. */
+const productSize = (run: Run) => (run.bbox_mm ? Math.max(run.bbox_mm[3] - run.bbox_mm[0], run.bbox_mm[4] - run.bbox_mm[1], run.bbox_mm[5] - run.bbox_mm[2]) / 1000 : 0.15);
+
 function RigidStage({ run, label }: { run: Run; label: string }) {
   const pass = run.result === "pass";
+  const size = productSize(run);
+  const obstacles = useMemo(() => stageObstacles(size), [size]);
   return (
     <div className="relative h-full min-h-0 min-w-0">
       <Canvas dpr={[1, 2]} camera={{ fov: 32 }} gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}>
         <Frame run={run} />
-        <ambientLight intensity={0.7} />
-        <hemisphereLight args={["#ffffff", "#d9d6e8", 0.6]} />
-        <directionalLight position={[2, 4, 2]} intensity={1.6} />
-        <directionalLight position={[-3, 2, -2]} intensity={0.4} />
-        <Grid
-          args={[10, 10]}
-          cellSize={0.05}
-          cellThickness={0.8}
-          cellColor="#d9d8e2"
-          sectionSize={0.25}
-          sectionThickness={1.2}
-          sectionColor="#bdbcca"
-          fadeDistance={3}
-          fadeStrength={1.5}
-          infiniteGrid
-        />
+        <ambientLight intensity={0.3} />
+        <GridStage size={size} shadowArea={size * 6} shadowReach={size * 1.2} obstacles={obstacles} />
         <Suspense fallback={null}>
           <Stage run={run} />
         </Suspense>

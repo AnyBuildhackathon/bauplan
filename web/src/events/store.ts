@@ -126,7 +126,7 @@ export interface SessionState {
   runs: Run[];
   draws: Draw[];
   point: Pointing | null;
-  mascot: { state: MascotState; say: string; at: number };
+  mascot: { state: MascotState; say: string; voice?: string; at: number };
   bom: BomEvent | null;
   jamie: JamieEntry[];
   training: (TrainingEvent & { at: number }) | null;
@@ -411,7 +411,7 @@ export const useSession = create<SessionState>((set, get) => ({
       case "point":
         return set({ log, point: { id: nextId("point"), target: ev.target, label: ev.label, at } });
       case "mascot":
-        return set({ log, mascot: { state: ev.state, say: ev.say, at } });
+        return set({ log, mascot: { state: ev.state, say: ev.say, voice: ev.voice, at } });
       case "bom": {
         const card = { kind: "bom" as const, id: nextId("bom"), seq, at, count: ev.items.length, total: ev.total_eur };
         // Live prices replace the catalog list they were searched for, so the card updates instead of repeating.

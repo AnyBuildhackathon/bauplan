@@ -1,9 +1,11 @@
-// Mechanic speaks. The backend streams each spoken line as `say` deltas; they are cut
-// into phrases (the first one at a comma, the rest at sentence ends) so speech starts
-// while the text is still coming. With ElevenLabs each phrase is a streamed PCM request
-// that starts as soon as the phrase is complete and plays gaplessly through Web Audio;
-// otherwise the browser's speech synthesis reads the phrases. `useSpeech` exposes the
-// output level for the mascot's lip-sync. When the person starts talking (Reson8 turn
+// Mechanic speaks, always in his ElevenLabs voice and never in the system voice. The
+// backend streams each spoken line as `say` deltas; they are cut into phrases (the first
+// one at a comma, the rest at sentence ends) so speech starts while the text is still
+// coming. Each phrase is a streamed PCM request that starts as soon as the phrase is
+// complete and plays gaplessly through Web Audio. The recorded demo has no backend: its
+// lines come with pre-rendered clips (same voice and model) that play through the same
+// output. Without either, Mechanic stays silent and his text is the caption. `useSpeech`
+// exposes the output level for the mascot's lip-sync. When the person starts talking (Reson8 turn
 // start), speech pauses at once; it stops for good when they really said something, and
 // resumes when the "turn" was only Mechanic's own voice echoing into the microphone.
 import { create } from "zustand";
@@ -19,7 +21,6 @@ interface SpeechState {
 
 export const useSpeech = create<SpeechState>(() => ({ level: 0, speaking: false }));
 
-const BROWSER_TTS = typeof window !== "undefined" && "speechSynthesis" in window;
 // A line that waited too long behind others is stale by the time it is its turn.
 const STALE_MS = 8000;
 const ECHO_WINDOW_MS = 15000;
@@ -30,13 +31,15 @@ interface Phrase {
   queuedAt: number;
   /** ElevenLabs audio, requested as soon as the phrase is complete. */
   audio?: Promise<ReadableStreamDefaultReader<Uint8Array> | null>;
+  /** A pre-rendered clip of the recorded demo, decoded as soon as the phrase is queued. */
+  clip?: Promise<AudioBuffer | null>;
   /** The first phrase of the reply to a spoken turn: its first sound closes the latency measurement. */
   measure: boolean;
 }
 
 let generation = 0;
 let chain: Promise<void> = Promise.resolve();
-// Phrases queued or playing; between two browser utterances `speaking` is briefly false, this is not.
+// Phrases queued or playing; between two phrases `speaking` is briefly false, this is not.
 let pending = 0;
 let held = false;
 const spoken: { text: string; at: number }[] = [];
@@ -132,25 +135,32 @@ export function handleSay(ev: SayEvent, opts: { voiceOn: boolean; userTalking: b
   }
 }
 
-/** Mechanic says one short line (a speech bubble or a question), after what he is saying now. */
-export function speak(text: string, mode: "live" | "demo"): Promise<void> {
+/**
+ * Mechanic says one short line (a speech bubble or a question), after what he is saying now.
+ * In the recorded demo `clip` is the line's pre-rendered audio; without it (and without a live
+ * ElevenLabs voice) the line stays silent.
+ */
+export function speak(text: string, mode: "live" | "demo", clip?: string): Promise<void> {
   const line = text.replace(/\*\*/g, "").trim();
   if (!line) return chain;
-  return enqueue(line, "", mode);
+  return enqueue(line, "", mode, false, clip);
 }
 
-function enqueue(text: string, previous: string, mode: "live" | "demo" = "live", measure = false): Promise<void> {
+function enqueue(text: string, previous: string, mode: "live" | "demo" = "live", measure = false, clip?: string): Promise<void> {
   const mine = generation;
   const phrase: Phrase = { text, previous, queuedAt: Date.now(), measure };
   const eleven = voiceCapabilities().tts === "elevenlabs" && mode === "live";
+  const recorded = mode === "demo" && !!clip;
+  if (!eleven && !recorded) return chain;
   // The request starts now, so it streams while the phrases before it are still playing.
   if (eleven) phrase.audio = requestAudio(phrase);
+  else phrase.clip = loadClip(clip!);
   pending++;
   chain = chain
     .then(() => {
       if (mine !== generation || Date.now() - phrase.queuedAt > STALE_MS) return;
       remember(text);
-      return eleven ? playEleven(phrase, mine) : sayBrowser(phrase, mine);
+      return eleven ? playEleven(phrase, mine) : playClip(phrase, mine);
     })
     .catch(() => undefined)
     .finally(() => {
@@ -198,7 +208,6 @@ export function hold() {
   console.info("[voice] barge-in: paused");
   held = true;
   void audioCtx?.suspend();
-  if (BROWSER_TTS) window.speechSynthesis.pause();
 }
 
 /** Their turn was only an echo of Mechanic (or noise): carry on where he stopped. */
@@ -207,7 +216,6 @@ export function release() {
   console.info("[voice] barge-in: resumed (echo or noise)");
   held = false;
   void audioCtx?.resume();
-  if (BROWSER_TTS) window.speechSynthesis.resume();
 }
 
 /** Stops everything Mechanic is saying or about to say. */
@@ -228,10 +236,6 @@ export function stopSpeaking() {
   sources.clear();
   nextTime = 0;
   void audioCtx?.resume();
-  if (BROWSER_TTS) {
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.resume();
-  }
   endSpeaking();
 }
 
@@ -279,7 +283,7 @@ async function requestAudio(phrase: Phrase): Promise<ReadableStreamDefaultReader
 
 async function playEleven(phrase: Phrase, mine: number): Promise<void> {
   const reader = await phrase.audio;
-  if (!reader) return sayBrowser(phrase, mine);
+  if (!reader) return;
   const ctx = unlockAudio();
   const rate = voiceCapabilities().ttsSampleRate;
   let carry: Uint8Array | null = null;
@@ -324,7 +328,7 @@ async function playEleven(phrase: Phrase, mine: number): Promise<void> {
       const startsIn = Math.max(0, (at - ctx.currentTime) * 1000);
       setTimeout(() => {
         if (mine === generation) {
-          beginSpeaking("meter");
+          beginSpeaking();
           audioStarted(phrase, "elevenlabs");
         }
       }, startsIn);
@@ -335,67 +339,55 @@ async function playEleven(phrase: Phrase, mine: number): Promise<void> {
   if (left > 0) await new Promise((resolve) => setTimeout(resolve, left));
 }
 
-// --- browser speech synthesis -------------------------------------------------------
+// --- pre-rendered clips (the recorded demo) ---------------------------------------------
 
-let englishVoice: SpeechSynthesisVoice | null = null;
-
-function pickVoice(): SpeechSynthesisVoice | null {
-  if (!BROWSER_TTS) return null;
-  if (englishVoice) return englishVoice;
-  const voices = window.speechSynthesis.getVoices().filter((v) => v.lang.toLowerCase().startsWith("en"));
-  englishVoice = voices.find((v) => /daniel|alex|google us|samantha|google uk/i.test(v.name)) ?? voices[0] ?? null;
-  return englishVoice;
+async function loadClip(url: string): Promise<AudioBuffer | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    return await unlockAudio().decodeAudioData(await res.arrayBuffer());
+  } catch {
+    return null;
+  }
 }
 
-function sayBrowser(phrase: Phrase, mine: number): Promise<void> {
-  if (!BROWSER_TTS || mine !== generation) return Promise.resolve();
-  return new Promise<void>((resolve) => {
-    const utterance = new SpeechSynthesisUtterance(phrase.text);
-    utterance.lang = "en-US";
-    const voice = pickVoice();
-    if (voice) utterance.voice = voice;
-    utterance.rate = 1.08;
-    utterance.pitch = 0.9;
-    let finished = false;
-    const finish = () => {
-      if (finished) return;
-      finished = true;
-      if (mine === generation) endSpeaking();
-      resolve();
-    };
-    utterance.onstart = () => {
-      if (mine !== generation) return;
-      beginSpeaking("words");
-      audioStarted(phrase, "browser");
-    };
-    // The browser voice has no audio to measure, so each word gives the mouth a pulse.
-    utterance.onboundary = () => {
-      wordPulse = 1;
-    };
-    utterance.onend = utterance.onerror = finish;
-    window.speechSynthesis.speak(utterance);
-    // Some voices never fire onend; do not let the queue hang (a paused voice gets more time).
-    const guard = () => setTimeout(() => (held ? guard() : finish()), 1500 + phrase.text.length * 90);
-    guard();
-  });
+async function playClip(phrase: Phrase, mine: number): Promise<void> {
+  const buffer = await phrase.clip;
+  if (!buffer || mine !== generation) return;
+  const ctx = unlockAudio();
+  const source = ctx.createBufferSource();
+  source.buffer = buffer;
+  source.connect(analyser!);
+  const at = Math.max(ctx.currentTime + 0.02, nextTime);
+  source.start(at);
+  nextTime = at + buffer.duration;
+  sources.add(source);
+  source.onended = () => {
+    sources.delete(source);
+    if (sources.size === 0 && mine === generation) endSpeaking();
+  };
+  setTimeout(() => {
+    if (mine === generation) beginSpeaking();
+  }, Math.max(0, (at - ctx.currentTime) * 1000));
+  // The next clip is scheduled right after this one; wait until this one is nearly through.
+  const left = (nextTime - ctx.currentTime) * 1000 - 150;
+  if (left > 0) await new Promise((resolve) => setTimeout(resolve, left));
 }
 
 // --- output level for lip-sync ---------------------------------------------------------
 
-let meterMode: "meter" | "words" | null = null;
+let metering = false;
 let frame = 0;
-let wordPulse = 0;
 let samples: Float32Array<ArrayBuffer> | null = null;
 
-function beginSpeaking(mode: "meter" | "words") {
-  meterMode = mode;
+function beginSpeaking() {
+  metering = true;
   if (!useSpeech.getState().speaking) useSpeech.setState({ speaking: true });
   if (!frame) frame = requestAnimationFrame(tick);
 }
 
 function endSpeaking() {
-  meterMode = null;
-  wordPulse = 0;
+  metering = false;
   if (frame) cancelAnimationFrame(frame);
   frame = 0;
   useSpeech.setState({ speaking: false, level: 0 });
@@ -405,16 +397,13 @@ function tick() {
   frame = requestAnimationFrame(tick);
   let level = 0;
   if (held) level = 0;
-  else if (meterMode === "meter" && analyser) {
+  else if (metering && analyser) {
     samples ??= new Float32Array(analyser.fftSize);
     analyser.getFloatTimeDomainData(samples);
     let sum = 0;
     for (const s of samples) sum += s * s;
     // Speech RMS sits around 0.05 to 0.3; this maps it onto 0 to 1.
     level = Math.min(1, Math.sqrt(sum / samples.length) * 4);
-  } else if (meterMode === "words") {
-    wordPulse *= 0.86;
-    level = Math.min(1, 0.25 + wordPulse * 0.75) * (0.85 + Math.random() * 0.15);
   }
   const previous = useSpeech.getState().level;
   if (Math.abs(previous - level) > 0.02) useSpeech.setState({ level });

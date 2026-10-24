@@ -7,7 +7,7 @@ import { parseEvent, type QuestionEvent } from "./types";
 import { apiUrl } from "../lib/api";
 import { useUi } from "../lib/ui";
 import { loadVoiceCapabilities } from "../lib/voice";
-import { handleSay } from "../lib/speech";
+import { handleSay, unlockAudio } from "../lib/speech";
 import { recordedOmniverse } from "./omniverse";
 
 export type SourceMode = "live" | "demo";
@@ -235,6 +235,8 @@ export const useSource = create<SourceState>((set, get) => {
   };
 
   const startDemo = () => {
+    // Playing is a click (or a URL), the moment the browser lets Mechanic's recorded voice make sound.
+    unlockAudio();
     set((s) => ({ demo: { ...s.demo, started: true, playing: true } }));
     scheduleNext();
   };

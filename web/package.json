@@ -16,7 +16,6 @@
     "@mujoco/mujoco": "^3.17.0",
     "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.8.2",
-    "dompurify": "^3.4.17",
     "lucide-react": "^1.61.0",
     "motion": "^14.6.0",
     "react": "^19.2.0",

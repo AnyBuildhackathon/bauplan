@@ -20,7 +20,7 @@ Physics and aerodynamic simulators validate real-world performance against envir
 Rendering tools produce photorealistic studio visualizations for team review.
 Bill of materials calculators price orderable parts and sync purchasing tasks back into Jamie.
 Realtime speech-to-text with Reson8 enables spoken dialogue with mascot Mechanic during design reviews.
-Mechanic answers using browser speech synthesis or ElevenLabs.
+Mechanic answers with the ElevenLabs voice (pre-rendered clips in the static demo) and stays silent, showing text, without it.
 Offline fallbacks run the complete workflow when API keys are absent.
 
 ## Worked Demo Example: Drone Design
