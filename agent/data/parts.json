@@ -1,5 +1,5 @@
 {
-  "price_note": "Every unit_price_eur is a sample to verify before ordering, not a live shop price. The build is the reference micro from Mediocre Nerd, Build a Micro FPV Drone for $59 (https://www.youtube.com/watch?v=4nRgEmdwtJo); some sellers only sell multipacks, so the checkout total can differ from qty times the per-piece sample.",
+  "price_note": "Each url is the shop page for that exact part, checked reachable on 2026-10-24, with shop_price in shop_currency for shop_pack_qty pieces. unit_price_eur is the price per piece in euros at the ECB reference rates of 2026-10-23 (1 EUR = 1.1193 USD = 0.83728 GBP = 1.5665 CAD). Prices move and shipping is extra; check before ordering. The build is the reference micro from Mediocre Nerd, Build a Micro FPV Drone for $59 (https://www.youtube.com/watch?v=4nRgEmdwtJo).",
   "parts": [
     {
       "id": "generic-1103-15000kv",
@@ -17,17 +17,22 @@
       "height_mm": 13.5,
       "shaft_mm": 1.5,
       "mount_diameter_mm": 6.6,
-      "unit_price_eur": 7.5,
-      "price_is_sample": true,
+      "unit_price_eur": 8.05,
+      "price_is_sample": false,
       "shop": "AliExpress",
       "url": "https://www.aliexpress.com/item/1005009514249914.html",
       "scene_target": "motor_front_left",
-      "note": "The no-name motor from the video. 3.7 g is BetaFPV's figure for its 1103 15000KV; 50 g is a vendor's 1S full-throttle thrust on a Gemfan 1635-4 (40 mm). No efficiency is published; 2.0 g/W is an estimate for this class. The per-motor price is a sample, the AliExpress listing price was not retrievable.",
+      "note": "The no-name motor from the video, the same AliExpress listing: 4 x 1103 15000KV 1S-2S for 32.19 EUR (8.05 EUR each). 3.7 g is BetaFPV's figure for its 1103 15000KV; 50 g is a vendor's 1S full-throttle thrust on a Gemfan 1635-4 (40 mm). No efficiency is published; 2.0 g/W is an estimate for this class.",
       "aliases": [
         "1103",
         "15000kv",
         "15000"
-      ]
+      ],
+      "shop_price": 32.19,
+      "shop_currency": "EUR",
+      "shop_pack_qty": 4,
+      "in_stock": true,
+      "price_checked": "2026-10-24"
     },
     {
       "id": "gemfan-2020-4",
@@ -38,17 +43,22 @@
       "diameter_mm": 51,
       "pitch_in": 2.0,
       "blades": 4,
-      "unit_price_eur": 0.6,
-      "price_is_sample": true,
+      "unit_price_eur": 0.56,
+      "price_is_sample": false,
       "shop": "BetaFPV",
       "url": "https://betafpv.com/products/gemfan-2020-4-blade-propellers-1-5mm-shaft",
       "scene_target": "propeller_front_left",
-      "note": "0.93 g and 4 blades on a 1.5 mm shaft per BetaFPV; 2.50 USD per set of four. The pitch is listed as 1.9 or 2.0 inch depending on the shop.",
+      "note": "0.93 g and 4 blades on a 1.5 mm shaft per BetaFPV; 2.50 USD per set of four (two CW, two CCW), in stock in Transparent Black. The pitch is listed as 1.9 or 2.0 inch depending on the shop.",
       "aliases": [
         "2020",
         "gemfan 2020",
         "2 inch"
-      ]
+      ],
+      "shop_price": 2.5,
+      "shop_currency": "USD",
+      "shop_pack_qty": 4,
+      "in_stock": true,
+      "price_checked": "2026-10-24"
     },
     {
       "id": "tattu-funfly-4s-1300",
@@ -62,16 +72,21 @@
       "length_mm": 73,
       "width_mm": 35,
       "height_mm": 28.5,
-      "unit_price_eur": 21.56,
-      "price_is_sample": true,
+      "unit_price_eur": 17.5,
+      "price_is_sample": false,
       "shop": "GensTattu",
-      "url": "https://genstattu.com/ta-ff-100c-1300-4s1p.html",
+      "url": "https://www.genstattu.com/ta-ff-100c-1300-4s1p.html",
       "scene_target": "battery",
-      "note": "149.5 g and 73 x 35 x 28.5 mm per Tattu. The euro price is a sample from Baltic Drones, not a live price.",
+      "note": "149.5 g and 73 x 35 x 28.5 mm per Tattu (SKU TAA13004S10X6), 19.59 USD at Tattu's own shop.",
       "aliases": [
         "funfly",
         "4s 1300"
-      ]
+      ],
+      "shop_price": 19.59,
+      "shop_currency": "USD",
+      "shop_pack_qty": 1,
+      "in_stock": true,
+      "price_checked": "2026-10-24"
     },
     {
       "id": "tattu-rline-1s-550",
@@ -79,25 +94,30 @@
       "category": "battery",
       "bom_qty": 1,
       "mass_g": 15,
-      "mass_is_estimate": true,
+      "mass_is_estimate": false,
       "capacity_mah": 550,
       "voltage_v": 3.7,
       "cells": 1,
       "length_mm": 59,
       "width_mm": 18,
       "height_mm": 8,
-      "unit_price_eur": 6.5,
-      "price_is_sample": true,
-      "shop": "Amazon",
-      "url": "https://amzn.to/4bf5iT4",
+      "unit_price_eur": 5.36,
+      "price_is_sample": false,
+      "shop": "GensTattu",
+      "url": "https://genstattu.com/tattu-1s-550mah-75c-3-8v-hv-lipo-battery-pack-with-bt-2-0-plug-5pcs/",
       "scene_target": "battery",
-      "note": "The pack named in the video. No data sheet was retrievable: mass and size are estimated from Tattu's 1S 500 mAh R-Line (14 g, 58 x 18 x 8 mm). Check before ordering.",
+      "note": "The video's 1S 550 pack. Tattu's own shop sells its 1S 550 mAh as a 75C HV pack with BT2.0, 15 g and 66 x 15.5 x 7.5 mm, 29.99 USD for five; the R-Line 1S stops at 500 mAh (14 g, 58 x 18 x 8 mm). The mass is Tattu's 15 g; the size stays the 500 mAh R-Line's.",
       "aliases": [
         "r-line",
         "rline",
         "tattu 550",
         "550"
-      ]
+      ],
+      "shop_price": 29.99,
+      "shop_currency": "USD",
+      "shop_pack_qty": 5,
+      "in_stock": true,
+      "price_checked": "2026-10-24"
     },
     {
       "id": "betafpv-lava-1s-680",
@@ -111,17 +131,22 @@
       "length_mm": 80,
       "width_mm": 15,
       "height_mm": 6.5,
-      "unit_price_eur": 7.98,
-      "price_is_sample": true,
-      "shop": "Droon",
-      "url": "https://droon.ee/product/betafpv-lava-ii-1s-battery-680mah/?lang=en",
+      "unit_price_eur": 5.58,
+      "price_is_sample": false,
+      "shop": "BetaFPV",
+      "url": "https://betafpv.com/products/lava-ii-1s-battery",
       "scene_target": "battery",
-      "note": "16.2 g, 80 x 15 x 6.5 mm, 3.8 V LiHV, BT2.0 per the shop page. Sold as a 4-pack for 31.90 EUR; unit_price_eur is a quarter of that.",
+      "note": "16.2 g, 80 x 15 x 6.5 mm, 3.8 V LiHV, 95C, BT2.0 per BetaFPV. Variant 680mAh (4PCS) at 24.99 USD; unit_price_eur is a quarter of that.",
       "aliases": [
         "lava 680",
         "lava ii",
         "680"
-      ]
+      ],
+      "shop_price": 24.99,
+      "shop_currency": "USD",
+      "shop_pack_qty": 4,
+      "in_stock": true,
+      "price_checked": "2026-10-24"
     },
     {
       "id": "betafpv-matrix-1s-5in1-v2",
@@ -131,18 +156,23 @@
       "mass_g": 4.13,
       "cells_max": 1,
       "mount_mm": 26,
-      "unit_price_eur": 52.9,
-      "price_is_sample": true,
-      "shop": "FPV24",
-      "url": "https://www.fpv24.com/en/betafpv/betafpv-matrix-1s-flight-controller-5-in-1-v2-aio-elrs-solder-free",
+      "unit_price_eur": 49.13,
+      "price_is_sample": false,
+      "shop": "BetaFPV",
+      "url": "https://betafpv.com/products/matrix-1s-5in1-ii-brushless-flight-controller",
       "scene_target": "flight_controller",
-      "note": "4.13 g solder-free without antenna, 26 x 26 mm mount, 1S, 12 A Bluejay ESCs, ELRS receiver and a 400 mW video transmitter. The video uses it because the MEPS AIO 7A is sold out.",
+      "note": "BetaFPV now calls it Matrix 1S Brushless Flight Controller (5IN1 II); shops say 5IN1 V2. 4.1 g solder-free, 26 x 26 mm mount, 1S, 12 A ESCs, ELRS receiver and a 400 mW video transmitter, 54.99 USD in stock. The video uses it because the MEPS AIO 7A is sold out.",
       "aliases": [
         "matrix",
         "aio",
         "5in1",
         "5 in 1"
-      ]
+      ],
+      "shop_price": 54.99,
+      "shop_currency": "USD",
+      "shop_pack_qty": 1,
+      "in_stock": true,
+      "price_checked": "2026-10-24"
     },
     {
       "id": "twiglet-2in-carbon",
@@ -150,18 +180,23 @@
       "category": "frame",
       "bom_qty": 1,
       "mass_g": 5.3,
-      "unit_price_eur": 2.84,
-      "price_is_sample": true,
-      "shop": "AliExpress",
-      "url": "https://www.aliexpress.com/item/1005002340953887.html",
+      "unit_price_eur": 8.4,
+      "price_is_sample": false,
+      "shop": "Unmanned Tech",
+      "url": "https://www.unmannedtechshop.co.uk/products/twiglet-2-toothpick-frame",
       "scene_target": "frame",
-      "note": "5.3 g with a 26 x 26 mm stack mount per unmannedtechshop's Twiglet 2 listing; about 2.84 EUR each from a 4-pack. cad_frame models it in FreeCAD and replaces the mass with the carbon volume.",
+      "note": "5.3 g with a 26 x 26 mm stack mount per Unmanned Tech's Twiglet 2 listing, 7.03 GBP, sold out on 2026-10-24. cad_frame models it in FreeCAD and replaces the mass with the carbon volume.",
       "aliases": [
         "twiglet",
         "frame",
         "rahmen",
         "carbon"
-      ]
+      ],
+      "shop_price": 7.03,
+      "shop_currency": "GBP",
+      "shop_pack_qty": 1,
+      "in_stock": false,
+      "price_checked": "2026-10-24"
     },
     {
       "id": "caddx-ant",
@@ -170,18 +205,23 @@
       "bom_qty": 1,
       "mass_g": 2.0,
       "size_mm": 14,
-      "unit_price_eur": 14.9,
-      "price_is_sample": true,
-      "shop": "Flywoo",
-      "url": "https://flywoo.net/products/caddx-ant-1200tvl-1-8mm-fpv-nano-camera-14x14",
+      "unit_price_eur": 15.99,
+      "price_is_sample": false,
+      "shop": "Caddx",
+      "url": "https://www.caddxfpv.com/products/caddx-ant-analog-camera",
       "scene_target": "frame",
-      "note": "2 g, 14 x 14 mm, 1.8 mm lens per FPVFaster; 16.19 USD at Flywoo.",
+      "note": "2 g, 14 x 14 mm, 1200TVL, 1.8 mm lens; 17.90 USD at Caddx's own shop, in stock in 4:3 and 16:9.",
       "aliases": [
         "caddx",
         "ant",
         "camera",
         "kamera"
-      ]
+      ],
+      "shop_price": 17.9,
+      "shop_currency": "USD",
+      "shop_pack_qty": 1,
+      "in_stock": true,
+      "price_checked": "2026-10-24"
     },
     {
       "id": "toothpick-canopy-holder",
@@ -190,17 +230,22 @@
       "bom_qty": 1,
       "mass_g": 2.0,
       "mass_is_estimate": true,
-      "unit_price_eur": 3.5,
-      "price_is_sample": true,
-      "shop": "AliExpress",
-      "url": "https://www.aliexpress.com/item/1005007130000229.html",
+      "unit_price_eur": 3.7,
+      "price_is_sample": false,
+      "shop": "Rotorgeeks",
+      "url": "https://rotorgeeks.com/gatehunter-tpu-canopy-for-14mm-cameras",
       "scene_target": "frame",
-      "note": "The canopy and battery holder linked in the video. No listing data was retrievable; 2 g and the price are estimates.",
+      "note": "The video's AliExpress canopy listing is gone, so this is DaveC's Gatehunter TPU canopy for 14 mm cameras on whoop board spacing, 5.80 CAD, 2.6 g published. The 3D model is DLQFPV's printable toothpick canopy for the same camera (THIRD_PARTY_NOTICES.md); 2 g with the battery holder is an estimate.",
       "aliases": [
         "canopy",
         "holder",
         "halter"
-      ]
+      ],
+      "shop_price": 5.8,
+      "shop_currency": "CAD",
+      "shop_pack_qty": 1,
+      "in_stock": true,
+      "price_checked": "2026-10-24"
     },
     {
       "id": "m14-bolts",
@@ -209,17 +254,22 @@
       "bom_qty": 12,
       "mass_g": 0.025,
       "mass_is_estimate": true,
-      "unit_price_eur": 0.05,
-      "price_is_sample": true,
+      "unit_price_eur": 0.03,
+      "price_is_sample": false,
       "shop": "AliExpress",
       "url": "https://www.aliexpress.com/item/1005002364568213.html",
       "scene_target": "frame",
-      "note": "3 mm long so they stop short of the windings, as the video says. Mass and price per bolt are estimates.",
+      "note": "Black Phillips pan-head screws, M1.2 to M4, 50 per bag, 1.25 EUR for the listed size (0.03 EUR each, rounded up to the cent); pick M1.4 x 3 mm so they stop short of the windings, as the video says. Mass per bolt is an estimate.",
       "aliases": [
         "m1.4",
         "bolts",
         "schrauben"
-      ]
+      ],
+      "shop_price": 1.25,
+      "shop_currency": "EUR",
+      "shop_pack_qty": 50,
+      "in_stock": true,
+      "price_checked": "2026-10-24"
     }
   ]
 }

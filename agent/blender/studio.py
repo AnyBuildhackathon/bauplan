@@ -2,8 +2,9 @@
 
 Blender runs this with `blender -b -P studio.py -- frame.stl out.png [assembly.json]`.
 When assembly.json names a `glb`, that is the hero drone FreeCAD built (freecad/frame_build.py):
-every part at its real size, so a new battery in v2 shows up in the picture. Its frame gets a
-clear-coated carbon weave here. Without it, the frame is the STL from CAD and motors,
+every part at its real size, so a new battery in v2 shows up in the picture. It keeps the
+file's materials (the carbon weave, the anodized bells, the green board) and sits on a green
+cutting mat like the reference photo of the build. Without it, the frame is the STL from CAD and motors,
 propellers, the flight controller and the battery are placed from assembly.json (arm length,
 plate thickness, battery size in mm). Scene units are metres.
 """
@@ -33,12 +34,12 @@ def main() -> None:
     mats = _materials()
     if spec.get("glb"):
         radius, center = _hero(spec["glb"])
-        _studio(mats, view=_HERO_VIEW)
+        _cutting_mat()
         _hero_lights(radius)
-        _camera(radius, center.z, view=_HERO_VIEW, distance_k=7.0, elevation=0.46)
+        _camera(radius, center.z, view=_HERO_VIEW, distance_k=6.2, elevation=_HERO_ELEVATION)
         _render_settings(scene, png_path)
         _cycles(scene)
-        scene.view_settings.exposure = -0.35
+        scene.view_settings.exposure = 0.0
         bpy.ops.render.render(write_still=True)
         return
     if spec.get("mode") == "part":
@@ -118,23 +119,25 @@ def _materials() -> dict:
 
 # --- the hero drone from FreeCAD -------------------------------------------------------
 
-# Where the camera stands, seen from above: front right, nose towards +Y.
-_HERO_VIEW = (0.72, 0.62)
+# Where the camera stands, seen from above: in front of the nose (+Y), looking down at the
+# bench like the captain's reference photo of the build.
+_HERO_VIEW = (0.16, 0.5)
+_HERO_ELEVATION = 1.45
 
 
 def _hero(path: str):
-    """Imports the FreeCAD GLB, gives the frame its carbon weave, sets it on the floor."""
+    """Imports the FreeCAD GLB as it is (carbon weave, clear coats and all) and sets it on the floor.
+
+    Only the props change for the path tracer: real transmission instead of the browser's alpha.
+    """
 
     bpy.ops.import_scene.gltf(filepath=path)
     objects = [o for o in bpy.context.scene.objects if o.type == "MESH"]
-    carbon = _carbon()
     for obj in objects:
         for slot in obj.material_slots:
             name = slot.material.name if slot.material else ""
-            if name.split(".")[0].endswith(" carbon"):
-                slot.material = carbon
-            elif name.split(".")[0].endswith(" prop"):
-                _tint_prop(slot.material)
+            if name.split(".")[0].endswith(" prop"):
+                _clear_polycarbonate(slot.material)
     bpy.context.view_layer.update()
     corners = [o.matrix_world @ Vector(c) for o in objects for c in o.bound_box]
     low = Vector((min(c.x for c in corners), min(c.y for c in corners), min(c.z for c in corners)))
@@ -147,63 +150,88 @@ def _hero(path: str):
     return radius, center
 
 
-def _carbon():
-    """Twill-woven carbon under a clear coat: a fine checker on the object, two near-blacks."""
-
-    mat = bpy.data.materials.new("Carbon")
-    mat.use_nodes = True
-    nodes, links = mat.node_tree.nodes, mat.node_tree.links
-    bsdf = nodes.get("Principled BSDF")
-    coords = nodes.new("ShaderNodeTexCoord")
-    mapping = nodes.new("ShaderNodeMapping")
-    mapping.inputs["Rotation"].default_value = (0.0, 0.0, math.radians(45))
-    mapping.inputs["Scale"].default_value = (2400.0, 2400.0, 2400.0)
-    checker = nodes.new("ShaderNodeTexChecker")
-    checker.inputs["Color1"].default_value = (1.0, 1.0, 1.0, 1.0)
-    checker.inputs["Color2"].default_value = (0.0, 0.0, 0.0, 1.0)
-    checker.inputs["Scale"].default_value = 1.0
-    links.new(coords.outputs["Object"], mapping.inputs["Vector"])
-    links.new(mapping.outputs["Vector"], checker.inputs["Vector"])
-    # The weave shows in the highlights, not in the colour: tows alternate in roughness.
-    rough = nodes.new("ShaderNodeMapRange")
-    rough.inputs["To Min"].default_value = 0.34
-    rough.inputs["To Max"].default_value = 0.46
-    links.new(checker.outputs["Fac"], rough.inputs["Value"])
-    links.new(rough.outputs["Result"], bsdf.inputs["Roughness"])
-    tint = nodes.new("ShaderNodeMix")
-    tint.data_type = "RGBA"
-    tint.inputs["Factor"].default_value = 1.0
-    tint.inputs[6].default_value = (*_srgb("#0c0d0f"), 1.0)
-    tint.inputs[7].default_value = (*_srgb("#16171a"), 1.0)
-    links.new(checker.outputs["Fac"], tint.inputs["Factor"])
-    links.new(tint.outputs[2], bsdf.inputs["Base Color"])
-    bump = nodes.new("ShaderNodeBump")
-    bump.inputs["Strength"].default_value = 0.05
-    links.new(checker.outputs["Fac"], bump.inputs["Height"])
-    links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
-    bsdf.inputs["Metallic"].default_value = 0.1
-    for key, value in (("Coat Weight", 0.6), ("Coat Roughness", 0.1)):
-        if key in bsdf.inputs:
-            bsdf.inputs[key].default_value = value
-    return mat
-
-
-def _tint_prop(mat) -> None:
-    """Props read as tinted polycarbonate: smooth, glossy, see-through."""
+def _clear_polycarbonate(mat) -> None:
+    """Props read as clear, grey-tinted polycarbonate: smooth and glossy, see-through without
+    the lensing a solid glass blade would add (a 0.5 mm blade barely bends the light)."""
 
     if mat is None or not mat.use_nodes:
         return
     bsdf = mat.node_tree.nodes.get("Principled BSDF")
     if bsdf is None:
         return
-    for key, value in (("Roughness", 0.06), ("IOR", 1.58), ("Transmission Weight", 0.0)):
+    bsdf.inputs["Base Color"].default_value = (*_srgb("#7f8a93"), 1.0)
+    for key, value in (("Roughness", 0.05), ("IOR", 1.58), ("Transmission Weight", 0.0), ("Alpha", 0.24), ("Coat Weight", 0.0)):
         if key in bsdf.inputs:
             bsdf.inputs[key].default_value = value
-    if "Alpha" in bsdf.inputs:
-        bsdf.inputs["Alpha"].default_value = 0.4
-    # Blended sorting smears overlapping blades in EEVEE; dithering keeps them crisp.
+    alpha = bsdf.inputs.get("Alpha")
+    if alpha is not None:
+        for link in list(alpha.links):
+            mat.node_tree.links.remove(link)
     if hasattr(mat, "surface_render_method"):
         mat.surface_render_method = "DITHERED"
+
+
+def _cutting_mat() -> None:
+    """The bench from the reference photo: a green self-healing cutting mat with a 10 mm grid,
+    every fifth line a little bolder, and the mat's 45 degree guide line."""
+
+    bpy.ops.mesh.primitive_plane_add(size=1.2, location=(0, 0, 0))
+    mat_obj = bpy.context.object
+    mat_obj.name = "Cutting mat"
+    mat = bpy.data.materials.new("Cutting mat")
+    mat.use_nodes = True
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    bsdf = nodes.get("Principled BSDF")
+    bsdf.inputs["Roughness"].default_value = 0.78
+    coords = nodes.new("ShaderNodeTexCoord")
+    xyz = nodes.new("ShaderNodeSeparateXYZ")
+    links.new(coords.outputs["Object"], xyz.inputs["Vector"])
+
+    def math_node(op, a, b=None):
+        node = nodes.new("ShaderNodeMath")
+        node.operation = op
+        for index, value in enumerate((a, b)):
+            if value is None:
+                continue
+            if isinstance(value, (int, float)):
+                node.inputs[index].default_value = value
+            else:
+                links.new(value, node.inputs[index])
+        return node.outputs[0]
+
+    def grid_line(axis, pitch, width, offset):
+        # Distance to the nearest grid line, in metres, then a crisp line of that width.
+        shifted = math_node("ADD", math_node("DIVIDE", axis, pitch), 0.5 + offset)
+        dist = math_node("MULTIPLY", math_node("ABSOLUTE", math_node("SUBTRACT", math_node("FRACT", shifted), 0.5)), pitch)
+        return math_node("LESS_THAN", dist, width / 2)
+
+    x, y = xyz.outputs["X"], xyz.outputs["Y"]
+    fine = math_node("MAXIMUM", grid_line(x, 0.01, 0.0003, 0.31), grid_line(y, 0.01, 0.0003, 0.47))
+    bold = math_node("MAXIMUM", grid_line(x, 0.05, 0.0006, 0.062), grid_line(y, 0.05, 0.0006, 0.094))
+    diagonal = math_node("LESS_THAN", math_node("ABSOLUTE", math_node("MULTIPLY", math_node("SUBTRACT", x, math_node("ADD", y, 0.035)), 0.7071)), 0.0005)
+    lines = math_node("MAXIMUM", math_node("MAXIMUM", math_node("MULTIPLY", fine, 0.75), bold), diagonal)
+    noise = nodes.new("ShaderNodeTexNoise")
+    noise.inputs["Scale"].default_value = 900.0
+    links.new(coords.outputs["Object"], noise.inputs["Vector"])
+    mottle = nodes.new("ShaderNodeMix")
+    mottle.data_type = "RGBA"
+    mottle.inputs[6].default_value = (*_srgb("#08443c"), 1.0)
+    mottle.inputs[7].default_value = (*_srgb("#0a4d44"), 1.0)
+    links.new(noise.outputs["Fac"], mottle.inputs["Factor"])
+    paint = nodes.new("ShaderNodeMix")
+    paint.data_type = "RGBA"
+    links.new(lines, paint.inputs["Factor"])
+    links.new(mottle.outputs[2], paint.inputs[6])
+    paint.inputs[7].default_value = (*_srgb("#8fb5ad"), 1.0)
+    links.new(paint.outputs[2], bsdf.inputs["Base Color"])
+    mat_obj.data.materials.append(mat)
+
+    world = bpy.data.worlds.new("Workshop")
+    bpy.context.scene.world = world
+    world.use_nodes = True
+    background = world.node_tree.nodes.get("Background")
+    background.inputs["Color"].default_value = (*_srgb("#f1efe9"), 1.0)
+    background.inputs["Strength"].default_value = 0.12
 
 
 def _cycles(scene) -> None:
@@ -233,14 +261,15 @@ def _cycles(scene) -> None:
 
 
 def _hero_lights(radius: float) -> None:
-    """Big soft key, cool fill, two hard-ish rims that draw the duct rims and the carbon edge."""
+    """Workshop light like the reference photo: a big overhead panel behind the camera, so the
+    clear-coated carbon mirrors the dark room and reads black, a desk lamp from the left that
+    casts the drone's shadow, and a rim from behind that draws the edges."""
 
     s = radius / 0.06
-    _area("Key", (0.32 * s, 0.05 * s, 0.42 * s), 9.0 * s * s, 0.32 * s, color=(1.0, 0.97, 0.93), target=(0, 0, 0.012 * s))
-    _area("Fill", (0.1 * s, 0.42 * s, 0.16 * s), 2.2 * s * s, 0.45 * s, color=(0.9, 0.94, 1.0), target=(0, 0, 0.012 * s))
-    _area("Rim", (-0.34 * s, -0.22 * s, 0.24 * s), 7.0 * s * s, 0.16 * s, target=(0, 0, 0.012 * s))
-    _area("Rim2", (0.12 * s, -0.4 * s, 0.18 * s), 4.0 * s * s, 0.14 * s, color=(1.0, 0.86, 0.74), target=(0, 0, 0.012 * s))
-    _area("Top", (0.0, 0.0, 0.62 * s), 2.4 * s * s, 0.6 * s, target=(0, 0, 0))
+    _area("Ceiling", (-0.1 * s, 0.42 * s, 0.7 * s), 14.0 * s * s, 0.6 * s, color=(1.0, 0.98, 0.95), target=(0, 0, 0))
+    _area("Lamp", (-0.42 * s, -0.06 * s, 0.36 * s), 9.0 * s * s, 0.12 * s, color=(1.0, 0.95, 0.88), target=(0, 0, 0.01 * s))
+    _area("Fill", (0.45 * s, 0.3 * s, 0.3 * s), 3.0 * s * s, 0.4 * s, color=(0.94, 0.97, 1.0), target=(0, 0, 0.01 * s))
+    _area("Rim", (0.3 * s, -0.38 * s, 0.2 * s), 4.0 * s * s, 0.14 * s, target=(0, 0, 0.012 * s))
 
 
 # --- parts -------------------------------------------------------------------------
