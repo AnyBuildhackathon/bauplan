@@ -10,7 +10,7 @@ import { useUi } from "../lib/ui";
 
 type Filter = "all" | "reference" | "project";
 
-/** The recorded demo has no backend, so it shows the two code references with their renders. */
+/** The recorded demo has no backend, so it shows the code references and the registry builds with their renders. */
 const RECORDED: ReferenceBuild[] = [
   {
     id: "micro-drone",
@@ -38,6 +38,31 @@ const RECORDED: ReferenceBuild[] = [
     thumbnail_url: "/models/robot-gripper.png",
     saved_at: null,
   },
+  ...(
+    [
+      ["bike-mount", "Handlebar phone and light mount", "Two-part PETG bar clamp with a TPU shim for 22.2 to 31.8 mm bars, a phone tray on top and an M5 lug for a front light.", 4, 2, 5],
+      ["desk-fan", "USB desk fan", "80 mm USB fan on a printed neck and a 150 mm base; 280 g, takes a light bump.", 3, 2, 6],
+      ["desk-lamp", "USB-C desk lamp", "1 W LED in a printed shade on a 200 mm arm, weighted base, USB-C in and a rocker switch.", 4, 6, 6],
+      ["pet-feeder", "Automatic pet feeder", "1.3 l printed hopper over an auger turned by a 28BYJ-48 stepper, timed by an ESP32 on USB power; stays upright with a full hopper.", 3, 3, 6],
+      ["phone-stand", "Desk phone stand", "Two PETG parts and four rubber feet; holds a 200 g phone at 65 degrees and takes a tap on the screen.", 2, 1, 6],
+      ["plant-waterer", "Plant-watering robot", "1 litre tank, 5 V pump, capacitive soil sensor and an ESP32 on one 18650; runs about a month, stable with a full tank.", 3, 7, 6],
+    ] as const
+  ).map(
+    ([id, name, summary, printed, bought, requirements]): ReferenceBuild => ({
+      id,
+      name,
+      summary,
+      kind: "reference",
+      source: "registry",
+      product: "generic",
+      printed,
+      bought,
+      requirements,
+      // Copies of agent/data/references/<id>/thumbnail.png, since the static demo has no backend.
+      thumbnail_url: `/models/library/${id}.png`,
+      saved_at: null,
+    }),
+  ),
 ];
 
 const SOURCE_LABEL: Record<ReferenceBuild["source"], string> = { code: "Example", registry: "Reference", saved: "Saved" };
