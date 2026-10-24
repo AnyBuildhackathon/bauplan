@@ -31,6 +31,13 @@ def _fmt(value: float, unit: str) -> str:
     return f"{value:.{digits}f}" + ("" if unit in {"x", "deg", "deg_c"} else " ") + UNIT_LABEL.get(unit, unit)
 
 
+def product_cost(state, fallback: float | None) -> float | None:
+    """One price for the product: the bill of materials once it exists (it carries the live
+    shop prices), else the assembly's catalog estimate."""
+
+    return float(state.bom["total_eur"]) if state.bom else fallback
+
+
 def _value_for(state, requirement: dict) -> float | None:
     """The number a requirement is judged on, in the requirement's own unit."""
 
@@ -40,7 +47,7 @@ def _value_for(state, requirement: dict) -> float | None:
         totals = state.checks.get("totals")
         if not totals:
             return None
-        return {"mass": totals["mass_g"], "cost": totals["cost_eur"], "size": totals["largest_mm"]}[check]
+        return {"mass": totals["mass_g"], "cost": product_cost(state, totals["cost_eur"]), "size": totals["largest_mm"]}[check]
     if check == "tip_over":
         tip = state.checks.get("tip_over")
         return None if not tip else tip["force_n"] if unit == "n" else tip["angle_deg"]
@@ -124,7 +131,7 @@ def metric_cards(state) -> list[dict]:
     cards = []
     for check, key, label, unit, value in (
         ("mass", "mass_g", "Mass", "g", (totals or {}).get("mass_g", built.get("product_mass_g"))),
-        ("cost", "cost_eur", "Cost", "eur", (totals or {}).get("cost_eur", built.get("cost_eur"))),
+        ("cost", "cost_eur", "Cost", "eur", product_cost(state, (totals or {}).get("cost_eur", built.get("cost_eur")))),
     ):
         requirement = next((r for r in state.requirements if r.get("check") == check), None)
         limit = ""

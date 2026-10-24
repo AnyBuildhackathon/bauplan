@@ -69,7 +69,7 @@ The repository is structured into five main directories:
   - `web/src/components/chat/`: Mechanic sidebar chat with audio controls and speech recognition.
   - `web/src/components/timeline/`: Jamie meeting timeline showing kickoff and review milestones.
   - `web/src/components/canvas/`: 3D canvas tabs for model visualization, CAD views, and simulation.
-  - `web/src/components/panels/`: Compact requirement checklist and four primary metrics.
+  - `web/src/components/panels/`: Shared source pieces (Jamie mark, quote citation); requirements and results are cards in the chat.
   - `web/src/views/`: Primary views including workbench, logbook, and training tabs.
 - `desktop/`: Tauri 2 native desktop application wrapper.
   - `desktop/src-tauri/`: Tauri Rust backend configuration and window lifecycle handlers.
@@ -150,13 +150,12 @@ cd agent && uv run python scripts/smoke_sse.py
 
 The frontend accepts URL parameters to control playback and view states:
 
-- `?demo`: Plays the recorded mock session from static fixtures without requiring a backend.
+- `?demo`: Plays the recorded mock session from static fixtures without requiring a backend; playback starts on load and the UI shows no playback controls.
 - `?live`: Forces connection to the live backend server.
 - `?mute`: Disables audio synthesis playback on initial load.
 - `?speed=N`: Multiplies playback speed in demo mode (for example `?speed=2`).
 - `?seek=MARKER`: Jumps directly to a named event marker in demo playback.
 - `?end`: Renders the final completed state immediately in demo mode.
-- `?autoplay`: Starts demo playback automatically upon page load.
 - `?view=werkbank|training|logbuch`: Sets the active main view.
 - `?tab=modell|cad|simulation`: Selects the initial 3D canvas tab.
 - `?bom`: Opens the Bill of Materials drawer on startup.
@@ -260,7 +259,7 @@ Never commit `.env` files or secret keys to the repository.
 - The captain owns visual styling and design polish; agents must not make visual design changes beyond what their task requires.
 - Visual styling follows the Bevel design system with rounded card surfaces, subtle borders, and soft drop shadows.
 - Maintain high projector readability on stage using dark ink text variants (`--color-agent-ink`, `--color-ok-ink`, `--color-fail-ink`) and tabular numbers.
-- Keep the display uncluttered with essentials only: chat on the left, at most three canvas tabs (`Model`, `CAD`, `Simulation`), a thin Jamie timeline, and one compact panel with requirement checks and four key numbers.
+- Keep the display uncluttered with essentials only: chat on the left, at most three canvas tabs (`Model`, `CAD`, `Simulation`), a thin Jamie timeline, and the requirement checks and three key numbers as cards in the chat.
 
 ## Planned Next Work
 

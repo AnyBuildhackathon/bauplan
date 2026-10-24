@@ -338,6 +338,7 @@ async def cad_part(ctx: Ctx, args: dict) -> dict:
             "last_error": error if fallback else None,
         }
         state.assembly_stale = True
+        state.bom = None
     state.cad_builds += 1
     n = state.cad_builds
     session = state.session_id
