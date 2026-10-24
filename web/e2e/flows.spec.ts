@@ -11,7 +11,7 @@ test("drone reference: Library, Rebuild, v1 with every check met", async ({ page
   await expect(page.locator('[data-target="library_rebuild"]')).toBeEnabled();
   await page.locator('[data-target="library_rebuild"]').dispatchEvent("click");
   // The mock rebuild takes about 30 s on a loaded machine, as long as the default expect timeout.
-  await expect(timeline(page)).toContainText("v1", { timeout: 60_000 });
+  await expect(page.getByText("Version 1 ·", { exact: false }).first()).toBeAttached({ timeout: 60_000 });
   await expect(page.locator('[data-target~="requirements"]')).toContainText(/(\d+) of \1 met/);
   await expect(bomButton(page)).toContainText("€");
   await idle(page);
@@ -23,7 +23,7 @@ test("drone reference: Library, Rebuild, v1 with every check met", async ({ page
 
 test("review: Start and End on the timeline rebuild v2, the question closes by its default", async ({ page }) => {
   // Continues the bench of the drone test; a fresh page replays the backlog.
-  await page.goto("/?mute");
+  await page.goto("/?mute&view=logbuch");
   await expect(timeline(page)).toContainText("v1");
   await page.locator('[data-target="meeting_end"]').dispatchEvent("click");
   await expect(page.locator('[data-target="meeting_end"]')).toHaveText("End");
@@ -31,6 +31,7 @@ test("review: Start and End on the timeline rebuild v2, the question closes by i
   // The flight-time question opens and closes on its own after PAI_ASK_TIMEOUT_S.
   await expect(timeline(page)).toContainText("v2", { timeout: 45_000 });
   await idle(page);
+  await page.getByRole("button", { name: "Workbench", exact: true }).dispatchEvent("click");
   // v2 only builds after the question closed; its card stays in the chat with the default marked.
   await expect(page.locator('[data-target~="question"]').first()).toBeAttached();
 });

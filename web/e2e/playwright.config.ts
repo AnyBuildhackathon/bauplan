@@ -44,7 +44,8 @@ export default defineConfig({
         PORT: backendPort,
         DEMO_PACE_S: "0",
         PAI_ASK_TIMEOUT_S: "2",
-        ...(live ? {} : { PAI_FORCE_MOCK: "1" }),
+        // A busy host can spend minutes in Blender; mock UI checks use its existing still fallback.
+        ...(live ? {} : { PAI_FORCE_MOCK: "1", PAI_WARM: "0", FREECAD_GUI: "off", PAI_TIMEOUT_BLENDER_RENDER: "15" }),
       },
       reuseExistingServer: false,
       timeout: 120_000,

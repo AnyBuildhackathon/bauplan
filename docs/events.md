@@ -218,6 +218,38 @@ It is HTTP 409 when another client holds the job or it is over, and 404 for a jo
 `GET /api/health` returns `{"ok": true, "mode": "mock"|"claude", "busy": bool, "access": "open"|"required"}`; `busy` is true while a run is in flight, which the end-to-end tests and agent/scripts/profile_build.py wait on.
 The dashboard calls it on start: when the backend answers it opens with an empty bench (after the access code, when `access` is `required`); without a backend it shows "Live backend offline, try again shortly" and retries.
 
+### Partner status and Director mode
+
+`GET /api/status` returns `{"partners": [{"id", "label", "state", "detail"}], "isaac": {"host", "gpu", "state", "detail", "last_run"}}`.
+It requires the same access session as other API routes and never returns keys, tokens or private-key paths.
+Partner ids are `claude`, `jamie`, `reson8`, `elevenlabs`, `gemini`, `freecad`, `blender` and `isaac`.
+`state` is `live`, `offline` or `mock`; `detail` explains the provider and its fallback in English.
+For remote APIs, `live` means credentials are configured and the integration is enabled, not that authentication or quota has been verified.
+Status checks make no billable API calls.
+Claude is `mock` when disabled or forced into mock mode; Jamie is `mock` without its MCP token.
+Missing speech keys are `offline`, with browser recognition or text replies as the fallback.
+FreeCAD and Blender report local availability; observed tool errors and CAD fallback to CadQuery override availability until a later successful result or session reset.
+ElevenLabs and Gemini Live report independently, so either voice engine can be chosen in Settings without implying the other is connected.
+Gemini availability follows the existing Studio key or Vertex project and `gcloud` configuration.
+The frontend polls every 15 seconds and marks unavailable status responses offline.
+
+The Isaac chip opens the Omniverse tab, including on an empty bench, and reports `Connected` with the GPU name only after a successful read-only SSH `nvidia-smi` probe.
+The probe uses the existing `ISAAC_SSH_*` / `RUNPOD_SSH_*` configuration and the job's noninteractive `accept-new` host policy, with a disposable known-hosts sink so polling never changes the user's SSH files.
+It times out after five seconds and caches its result for 15 seconds.
+No configured host, rejected SSH authentication or a failed GPU query reports `offline`.
+`isaac.last_run` is `null` before the first job, otherwise `{job_id, mode, status, source, stage, detail}` from the latest Omniverse event; absent fields are `null`.
+The Omniverse connection header shows host, GPU, status and last run; existing SSE `omniverse` events update its live export, upload, execute and download progress.
+Running Isaac jobs requires a connected GPU and the supported drone reference.
+
+Director mode is a browser preference, enabled by default and toggled in Settings.
+Running `teile` or `cad` steps and CAD artifacts select CAD; running `simulation` steps and simulation results select Simulation; rendering selects the Model render view.
+Live Omniverse job events select Omniverse; recorded GPU fallbacks do not take over the canvas.
+A `version` event selects the 3D Model and compares it with the previous version of the same product when available.
+Manual canvas tab clicks pause Director for 30 seconds, then apply the latest pending activity even if no additional event arrives.
+A `tab` URL parameter gets the same initial grace period.
+Director preserves browsing in other main views and uses a short canvas fade that respects reduced-motion preferences.
+The top bar contains partner status and Settings; Jamie meetings and their controls remain in the Logbook.
+
 ### Access
 
 With `ANYBUILD_ACCESS_CODE` set on the backend, every route except `GET /api/health` and `POST /api/access` (including `GET /api/events`, the voice routes and `/files/`) needs a session, else HTTP 401 with `{"detail": "...", "access": "required"}`.
