@@ -8,6 +8,7 @@ import { MascotHead } from "../mascot/Mascot";
 import { Segmented } from "../ui/primitives";
 import { assetUrl } from "../../lib/api";
 import { CadScene, CadView } from "./CadView";
+import { CompareView } from "./CompareView";
 import { RenderGallery } from "./RenderGallery";
 import { ModelScene } from "./Scenes";
 import { SimView } from "./SimView";
@@ -68,6 +69,7 @@ export function CanvasCard() {
   const setTab = useUi((s) => s.setTab);
   const look = useUi((s) => s.look);
   const setLook = useUi((s) => s.setLook);
+  const compare = useUi((s) => s.compare);
   const runs = useSession((s) => s.runs.length);
   const cad = useSession((s) => s.cad);
   const renders = useSession((s) => s.renders.length);
@@ -138,7 +140,7 @@ export function CanvasCard() {
             ]}
           />
         )}
-        {tab === "modell" && (
+        {tab === "modell" && !compare && (
           <Segmented<ModelLook>
             size="sm"
             className="absolute top-3 right-3 z-10 bg-white/90 shadow-[var(--shadow-pill)] backdrop-blur"
@@ -159,11 +161,12 @@ export function CanvasCard() {
             ]}
           />
         )}
-        {tab === "modell" && (showRender ? <RenderGallery /> : product === "drone" ? <ModelScene look="modell" /> : <PartModel />)}
+        {tab === "modell" && compare && <CompareView pair={compare} />}
+        {tab === "modell" && !compare && (showRender ? <RenderGallery /> : product === "drone" ? <ModelScene look="modell" /> : <PartModel />)}
         {tab === "cad" && <CadView />}
         {tab === "simulation" && (showTraining ? <BrowserTraining /> : <SimView />)}
         {tab === "omniverse" && supportsOmniverse && <OmniverseView />}
-        {tab !== "cad" && tab !== "omniverse" && <SpokenLine lifted={(tab === "simulation" && (runs > 0 || showTraining)) || (showRender && renders > 1)} />}
+        {tab !== "cad" && tab !== "omniverse" && !(tab === "modell" && compare) && <SpokenLine lifted={(tab === "simulation" && (runs > 0 || showTraining)) || (showRender && renders > 1)} />}
       </div>
     </div>
   );
