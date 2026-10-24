@@ -5,21 +5,17 @@ import { BenchSettings } from "./BenchSettings";
 import { MeetingTimeline } from "./timeline/MeetingTimeline";
 import { StatusDot } from "./ui/primitives";
 
+/** The app logo: Mechanic leaning on the workbench cube, cropped to his head and the cube corner so it reads at small sizes. */
 export function Logo({ size = 40 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 40 40" aria-hidden className="shrink-0">
-      <rect width="40" height="40" rx="12" fill="#1F1F1F" />
-      <path d="M13 13 27 27M27 13 13 27" stroke="#FF8A3D" strokeWidth="3" strokeLinecap="round" />
-      {[
-        [12, 12],
-        [28, 12],
-        [12, 28],
-        [28, 28],
-      ].map(([x, y]) => (
-        <circle key={`${x}${y}`} cx={x} cy={y} r="4.6" fill="#1F1F1F" stroke="#FF8A3D" strokeWidth="2.4" />
-      ))}
-      <rect x="16.5" y="16.5" width="7" height="7" rx="2" fill="#FF8A3D" />
-    </svg>
+    <img
+      src={`${import.meta.env.BASE_URL}logo-mark.webp`}
+      width={size}
+      height={size}
+      alt=""
+      draggable={false}
+      className="shrink-0 rounded-[12px] shadow-[0_0_0_1px_rgb(26_26_24_/_0.06)] select-none"
+    />
   );
 }
 
