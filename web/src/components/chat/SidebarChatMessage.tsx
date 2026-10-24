@@ -1,6 +1,6 @@
 // Adapted from core-oss (github.com/10xapp/core-oss, Apache-2.0),
 // core-web/src/components/SidebarChat/SidebarChatMessage.tsx. Modified: Bevel
-// styling, Bolzen's head on agent messages, a "gesprochen" hint on user messages,
+// styling, Inter instead of a serif, Bolzen's head on agent messages, a "gesprochen" hint on user messages,
 // and the word-by-word reveal from core-oss SidebarChat moved into the message.
 import { memo, useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
@@ -69,9 +69,9 @@ function useWordReveal(text: string, animate: boolean, onProgress?: () => void):
 function UserMessage({ content }: { content: string }) {
   const isShort = content.length <= 48 && !content.includes("\n");
   return (
-    <div className="flex flex-col items-end py-2 pl-10">
-      <div className={`bg-tile px-4 py-2.5 ${isShort ? "rounded-full" : "rounded-[20px] rounded-br-md"}`}>
-        <p className="text-[16px] leading-snug whitespace-pre-wrap text-ink">{content}</p>
+    <div className="flex flex-col items-end py-1.5 pl-10">
+      <div className={`bg-tile px-3.5 py-2 ${isShort ? "rounded-full" : "rounded-[20px] rounded-br-md"}`}>
+        <p className="font-read text-[15px] leading-normal whitespace-pre-wrap text-ink">{content}</p>
       </div>
     </div>
   );
@@ -92,10 +92,10 @@ function AssistantMessage({ content, animate, mascot, onRevealProgress }: Omit<C
   };
 
   return (
-    <div className="group relative flex items-start gap-3 py-2">
-      <MascotHead size={24} state={mascot} className="mt-1 self-start" />
+    <div className="group relative flex items-start gap-2.5 py-1.5">
+      <MascotHead size={24} state={mascot} className="mt-0.5 self-start" />
       <div className="min-w-0 flex-1">
-        <div className="font-serif text-[18px] leading-[1.55] text-ink">
+        <div className="font-read text-[15px] leading-[1.6] text-ink">
           <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdown}>
             {shown}
           </ReactMarkdown>
