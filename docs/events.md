@@ -479,7 +479,7 @@ Without an answer the default applies after `timeout_s` (`PAI_ASK_TIMEOUT_S`, de
 ### agent
 
 The orchestrator and the sub-agents it delegates to, one card per agent, sent again whenever it reports.
-`id` is stable for one agent run, `role` is `orchestrator`, `cad` (writes one part's FreeCAD script), `parts`, `checks` or `pricing`, `label` its name ("Orchestrator", "CAD agent", "Parts agent", "Analysis agent", "Pricing agent").
+`id` is stable for one agent run, `role` is `orchestrator`, `cad` (writes one part's FreeCAD script), `parts`, `checks`, `pricing` or `optimizer` (one design optimizer variant, "Variant agent A"), `label` its name ("Orchestrator", "CAD agent", "Parts agent", "Analysis agent", "Pricing agent").
 `model` and `model_label` (`claude-sonnet-5-5`, "Sonnet 5.5"), `effort`, `task` (the job in one line), `status` (`running`, `done` or `error`), `rounds` (model calls so far), `input_tokens`, `output_tokens`, `cache_read_tokens`, `cost_usd` (from the published per-token prices) and `summary` (what it does now, or its report when done).
 The mock path sends none.
 

@@ -35,7 +35,8 @@ function Chart({ ev, busy, onPick, hover, setHover }: { ev: OptimizeEvent; busy:
   const base = ev.baseline!;
   const points = [...ev.variants, base];
   const sx = scale(points.map((p) => p[x]));
-  const sy = scale(points.map((p) => p[y]));
+  const limit = ev.keep[y === "flight_time_min" ? "min_flight_time_min" : y === "arm_stiffness" ? "min_arm_stiffness" : ""];
+  const sy = scale([...points.map((p) => p[y]), ...(limit !== undefined ? [limit] : [])]);
   const prices = ev.variants.map((v) => v[color]);
   const lo = Math.min(...prices);
   const hi = Math.max(...prices);
@@ -44,7 +45,6 @@ function Chart({ ev, busy, onPick, hover, setHover }: { ev: OptimizeEvent; busy:
   // Cheaper is lighter teal, dearer is full accent.
   const fill = (v: OptimizeVariant) => `color-mix(in srgb, var(--color-accent) ${hi > lo ? Math.round(45 + ((v[color] - lo) / (hi - lo)) * 55) : 75}%, var(--color-accent-soft))`;
   const front = ev.variants.filter((v) => v.pareto).sort((a, b) => a[x] - b[x]);
-  const limit = ev.keep[y === "flight_time_min" ? "min_flight_time_min" : y === "arm_stiffness" ? "min_arm_stiffness" : ""];
   const canPick = !ev.applied && !busy;
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="mt-2 w-full" role="img" aria-label={`${AXIS[y].label} against ${AXIS[x].label} for ${ev.variants.length} variants`}>

@@ -461,7 +461,7 @@ export interface TaskItem {
 export interface AgentRunEvent {
   type: "agent";
   id: string;
-  role: "orchestrator" | "cad" | "parts" | "checks" | "pricing";
+  role: "orchestrator" | "cad" | "parts" | "checks" | "pricing" | "optimizer";
   label: string;
   model: string;
   model_label: string;
@@ -622,6 +622,7 @@ const EVENT_TYPES = new Set<AgentEvent["type"]>([
   "agent",
   "say",
   "explain",
+  "optimize",
   "reset",
   "replayed",
 ]);

@@ -346,7 +346,7 @@ export function JamieGroupRenderer({ items }: { items: Extract<ChatItem, { kind:
   );
 }
 
-const AGENT_ICON = { orchestrator: Network, cad: DraftingCompass, parts: Package, checks: Gauge, pricing: Receipt } as const;
+const AGENT_ICON = { orchestrator: Network, cad: DraftingCompass, parts: Package, checks: Gauge, pricing: Receipt, optimizer: Boxes } as const;
 
 const fmtTokens = (n: number) => (n >= 1000 ? `${fmtNum(n / 1000, n >= 10000 ? 0 : 1)}k` : fmtNum(n));
 

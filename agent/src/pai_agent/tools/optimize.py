@@ -506,7 +506,9 @@ async def apply_variant(ctx: Ctx, opt_id: str | None, letter: str | None) -> dic
         if not str(item["key"]).startswith("req:")
     )
     await ctx.emit({"type": "mascot", "state": "freut_sich", "say": "v" + str(result["version"]) + " is on the bench."})
-    await ctx.chat("agent", "v" + str(result["version"]) + " is the optimizer's pick: " + (changes or result["summary"]) + ".")
+    flipped = [item["label"] for item in result["diff"] if str(item["key"]).startswith("req:") and item["after"] == "fail"]
+    note = " Honest trade: “" + "”, “".join(flipped) + "” no longer passes." if flipped else ""
+    await ctx.chat("agent", "v" + str(result["version"]) + " is the optimizer's pick: " + (changes or result["summary"]) + "." + note)
     return result
 
 
