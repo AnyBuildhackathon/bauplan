@@ -166,6 +166,7 @@ export interface TrainingEvent {
   reward: number;
   curve: [number, number][];
   video_url: string | null;
+  gains?: FirmwareGains;
 }
 
 export interface OmniverseEvent {
@@ -368,6 +369,29 @@ export interface BuildGuideEvent {
   steps: BuildGuideStep[];
   total_minutes: number;
 }
+export interface WiringRow {
+  component: string;
+  connects_to: string;
+  pin: string;
+  wire: string;
+  note: string;
+}
+export type FirmwareGains = Record<"roll" | "pitch" | "yaw", { p: number; i: number; d: number; f: number }>;
+/** Firmware for the built product: a Betaflight CLI file or an Arduino sketch, plus the wiring table. */
+export interface FirmwareEvent {
+  type: "firmware";
+  kind: "betaflight" | "arduino";
+  product: string;
+  filename: string;
+  url: string;
+  /** The whole file, so the download also works in the static demo. */
+  content: string;
+  gains: FirmwareGains | null;
+  gains_source: "training" | "defaults" | "none";
+  explanation: string;
+  wiring: WiringRow[];
+}
+
 export type AgentEvent =
   | StepEvent
   | ChatEvent
@@ -391,6 +415,7 @@ export type AgentEvent =
   | TasksEvent
   | ProductEvent
   | BuildGuideEvent
+  | FirmwareEvent
   | AgentRunEvent
   | ResetEvent
   | ReplayedEvent;
@@ -418,6 +443,7 @@ const EVENT_TYPES = new Set<AgentEvent["type"]>([
   "tasks",
   "product",
   "build_guide",
+  "firmware",
   "agent",
   "reset",
   "replayed",

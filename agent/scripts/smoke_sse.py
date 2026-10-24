@@ -154,6 +154,13 @@ def _assert_story(events: list[dict]) -> None:
         raise SystemExit("Build guide missing for v1 and v2: " + str([guide["version"] for guide in guides]))
     if not any(second["parts"]["battery"] in step["items"] for step in guides[1]["steps"]):
         raise SystemExit("The v2 build guide does not name the v2 battery: " + second["parts"]["battery"])
+    firmware = [event for event in events if event.get("type") == "firmware"]
+    if len(firmware) != 2 or firmware[-1]["kind"] != "betaflight" or not firmware[-1]["content"].rstrip().endswith("save"):
+        raise SystemExit("Firmware per version missing: " + str([event.get("filename") for event in firmware]))
+    wired = " ".join(row["component"] + " " + row["connects_to"] for row in firmware[-1]["wiring"])
+    electrical = [second["parts"][category] for category in ("motor", "battery", "flight_controller")]
+    if not all(name in wired for name in electrical):
+        raise SystemExit("Wiring does not match the parts: " + str(electrical))
     parts = {}
     warnings = 0
     for event in events:

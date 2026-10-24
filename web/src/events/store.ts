@@ -8,6 +8,7 @@ import {
   type BuildGuideEvent,
   type CadEvent,
   type DrawEvent,
+  type FirmwareEvent,
   type RenderEvent,
   type MascotState,
   type MeetingEvent,
@@ -144,6 +145,7 @@ export interface SessionState {
   agents: Record<string, AgentRunEvent & { at: number }>;
   /** The product this session builds: empty on a fresh bench, set by a `product` event or by the first drone event. */
   product: ProductEvent["id"];
+  firmware: FirmwareEvent | null;
   productLabel: string;
   /** Step-by-step build guide for the latest bill of materials. */
   buildGuide: BuildGuideEvent | null;
@@ -211,6 +213,7 @@ const TOOL_ALIASES: Record<string, string> = {
   physics_calc: "Physics",
   bom_build: "BOM",
   build_guide: "Build guide",
+  firmware: "Firmware",
   version_commit: "Version",
   ask_user: "Question",
 };
@@ -275,6 +278,7 @@ function emptyState() {
     partsByName: {} as Record<string, PartEvent>,
     questions: {} as Record<string, QuestionEvent>,
     tasks: null as TasksEvent | null,
+    firmware: null as FirmwareEvent | null,
     agents: {} as SessionState["agents"],
     product: "" as ProductEvent["id"],
     productLabel: "Any product",
@@ -480,10 +484,13 @@ export const useSession = create<SessionState>((set, get) => ({
           renders: [],
           parts: {},
           versions: [],
+          firmware: null,
         });
       }
       case "build_guide":
         return set({ log, buildGuide: ev });
+      case "firmware":
+        return set({ log, firmware: ev });
       case "training": {
         const prev = s.training;
         let chat = s.chat;

@@ -140,6 +140,7 @@ async def _build_tail(ctx: Ctx, meeting_id: str, label: str) -> dict:
     await ctx.step("stueckliste", "running")
     await _need(ctx, "bom_build", {})
     await _need(ctx, "build_guide", {"steps": mock_steps(ctx)})
+    await _need(ctx, "firmware", {})
     tasks = await _need(ctx, "jamie_create_tasks", {"meeting_id": meeting_id})
     version = await _need(ctx, "version_commit", {"meeting_id": meeting_id})
     await ctx.step("stueckliste", "done")

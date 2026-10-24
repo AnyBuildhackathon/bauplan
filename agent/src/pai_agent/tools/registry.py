@@ -16,6 +16,7 @@ from pai_agent.tools.product import assemble, cad_update, part_pick, product_spe
 from pai_agent.tools.reference import reference_load
 from pai_agent.agents import delegate
 from pai_agent.tools.gripper import catalog_search, grip_calc, product_brief, simulate_grip
+from pai_agent.tools.firmware import firmware
 from pai_agent.tools.isaac import isaac_lab_status, isaac_lab_train, isaac_sim_render, isaac_test, isaac_train, ssh_setting
 from pai_agent.tools.usd import product_usd
 from pai_agent.jamie_client import live_enabled
@@ -72,6 +73,7 @@ TOOLS = {
     "blender_render": blender_render,
     "bom_build": bom_build,
     "build_guide": build_guide,
+    "firmware": firmware,
     "jamie_create_tasks": jamie_create_tasks,
     "ui_point_at": ui_point_at,
     "ui_draw": ui_draw,
@@ -552,6 +554,16 @@ SCHEMAS = [
         "input_schema": {"type": "object", "properties": {}},
     },
     BUILD_GUIDE_SCHEMA,
+    {
+        "name": "firmware",
+        "description": "Generates the firmware and wiring table from the chosen parts: a Betaflight CLI configuration for a drone (motor order, rates, trained PID gains, else defaults), an Arduino sketch for a servo product. Call it after bom_build. explanation is your one or two sentences for the team; the file itself comes from a fixed template.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "explanation": {"type": "string"},
+            },
+        },
+    },
     {
         "name": "jamie_create_tasks",
         "description": "Creates one order or print task per bill-of-materials line, with a person and a due date on the meeting. Unchanged parts keep their task. Replaced parts are closed.",
