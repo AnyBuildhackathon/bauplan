@@ -22,6 +22,8 @@ export interface Display {
 
 interface UiState {
   view: View;
+  /** The logo brought back the start screen; it holds the chat length then, and a new chat line leaves it. */
+  landing: number | null;
   tab: CanvasTab;
   /** Follow engineering activity unless a person has taken the tabs for 30 seconds. */
   director: boolean;
@@ -79,6 +81,8 @@ interface UiState {
   setChatExpanded: (on: boolean) => void;
   setDisplay: (patch: Partial<Display>) => void;
   setView: (view: View) => void;
+  /** The logo: back to the start screen without losing the current project. */
+  showLanding: (chatLength: number) => void;
   /** The community project to show selected when the Community view opens next. */
   communityFocus: string | null;
   openCommunity: (id: string | null) => void;
@@ -163,6 +167,7 @@ function initialTab(): CanvasTab {
 
 export const useUi = create<UiState>((set) => ({
   view: initialView(),
+  landing: null,
   tab: initialTab(),
   director: storedDirector(),
   directorPausedUntil: params().has("tab") ? Date.now() + 30_000 : 0,
@@ -224,7 +229,8 @@ export const useUi = create<UiState>((set) => ({
       return { display };
     }),
   stt: "SpeechRecognition" in window || "webkitSpeechRecognition" in window ? "browser" : "none",
-  setView: (view) => set({ view, chatExpanded: false }),
+  setView: (view) => set({ view, chatExpanded: false, landing: null }),
+  showLanding: (landing) => set({ view: "werkbank", chatExpanded: false, landing }),
   communityFocus: null,
   openCommunity: (communityFocus) => set({ view: "community", communityFocus, chatExpanded: false }),
   setTab: (tab) => set({ tab }),
