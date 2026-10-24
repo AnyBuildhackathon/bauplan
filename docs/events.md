@@ -126,7 +126,7 @@ It is HTTP 409 when another client holds the job or it is over, and 404 for a jo
 `POST /api/stress/{job_id}/progress` with `{"client", "status": "running"|"done"|"failed", "results": [{i, metrics, trajectory}], "error"}` from the claiming client hands finished worlds to the backend, which scores them and publishes the `stress` events; `metrics` are the drone episode's `crashed`, `drift_m`, `low_z_m`, and `tail_z_m`, and `trajectory` is `[[t, x, y, z], ...]` at 20 Hz.
 `GET /api/training/browser` returns `{"ok": true, "job": {...}}` with the latest browser job of the session in the `training` event shape without `type`, or `job: null`.
 
-`GET /api/health` returns `{"ok": true, "mode": "mock"|"claude"}`.
+`GET /api/health` returns `{"ok": true, "mode": "mock"|"claude", "busy": bool}`; `busy` is true while a run is in flight, which the end-to-end tests and agent/scripts/profile_build.py wait on.
 The dashboard calls it on start: when the backend answers it opens in live mode with an empty bench, and only without a backend (or with `?demo`) does it play the recording, with a notice saying so.
 
 `GET /files/{bucket}/{name}` serves one file.
@@ -186,6 +186,10 @@ The tool pill still shows `offline`.
 `name` is the tool name from the list below.
 `status` is `connected`, `running`, `ok`, `error`, or `offline`.
 `detail` is a short English line.
+The final event of a call (any status but `running`) carries `ms`, the tool's wall time in milliseconds.
+`timed_out: true` marks a tool stopped by its time limit (agent/src/pai_agent/timeouts.py); `status` is then `error` (Blender: `offline` with the recorded still) and `detail` names the tool and the limit, the same line the agent says in the chat.
+`cached: true` marks a FreeCAD part reused from agent/runs/cache/ because the script, parameters and material were identical.
+A `cad` event's `source` is `cadquery` when FreeCAD was missing or stuck and CadQuery built the part's envelope as a plain block.
 
 ### requirement
 

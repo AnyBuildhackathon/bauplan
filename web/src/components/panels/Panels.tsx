@@ -48,7 +48,7 @@ function RequirementRow({ r, open, onToggle }: { r: RequirementEvent; open: bool
   const state = r.met === true ? "ok" : r.met === false ? "fail" : "open";
   const by = [r.speaker, r.meeting_title, r.time].filter(Boolean).join(" · ");
   return (
-    <li data-target={`requirement:${r.id} ${r.id}`}>
+    <li data-target={`requirement:${r.id} ${r.id}`} data-state={state}>
       <button
         type="button"
         onClick={onToggle}
