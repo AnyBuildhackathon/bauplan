@@ -90,6 +90,33 @@ function euler(qw: number, qx: number, qy: number, qz: number) {
   return { roll, pitch, yaw };
 }
 
+// Betaflight 4.4 rate-loop defaults for a 1S whoop, and the trained rate damping they correspond to.
+const BETAFLIGHT_DEFAULT = { roll: { p: 45, i: 80 }, pitch: { p: 47, i: 84 } };
+const REFERENCE_KD_ATT = 12;
+const sig = (v: number) => Number(v.toPrecision(4));
+
+/**
+ * Flat cascaded gains with the attitude terms in N m/rad and N m s/rad (times the inertia), plus
+ * Betaflight roll and pitch P and I: the defaults scaled by the trained rate damping, 0.5x to 2x.
+ * The Betaflight numbers are a starting point for the bench, not a measured tune.
+ */
+function exportGains(params: Params, spec: DroneSpec): Record<string, unknown> {
+  const { ixx } = dims(spec);
+  const k = clamp((params.kd_att ?? REFERENCE_KD_ATT) / REFERENCE_KD_ATT, 0.5, 2);
+  const axis = (d: { p: number; i: number }) => ({ p: Math.round(d.p * k), i: Math.round(d.i * k) });
+  return {
+    kp_z: sig(params.kp_z),
+    ki_z: sig(params.ki_z ?? 0),
+    kd_z: sig(params.kd_z),
+    kp_xy: sig(params.kp_xy),
+    kd_xy: sig(params.kd_xy),
+    kp_att: sig(params.kp_att * ixx),
+    kd_att: sig(params.kd_att * ixx),
+    roll: axis(BETAFLIGHT_DEFAULT.roll),
+    pitch: axis(BETAFLIGHT_DEFAULT.pitch),
+  };
+}
+
 function episode(params: Params, p: Perturbation, spec: DroneSpec): Episode {
   // The controller only knows the nominal build; a perturbation changes the plant, not what it assumes.
   const { d, mass: m, ixx: ix, izz: iz } = dims(spec);
@@ -216,6 +243,7 @@ export const droneProduct: TrainingProduct<DroneSpec> = {
   frameSize: 7,
   frameHz: 20,
   buildMjcf,
+  exportGains,
   // A payload 15 % over what the controller assumes, so the altitude integral earns its keep.
   trainingPerturbation: (generation) => ({ seed: 1000 * (generation + 1) + 1, mass_scale: 1.15 }),
   episode,

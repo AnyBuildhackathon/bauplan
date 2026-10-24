@@ -113,6 +113,7 @@ def _event(job: dict, status: str) -> dict:
         "best_params": job["best_params"],
         "best_metrics": job["best_metrics"],
         **({"error": job["error"]} if job.get("error") else {}),
+        **({"gains": job["gains"]} if job.get("gains") else {}),
     }
 
 
@@ -137,6 +138,7 @@ async def train_in_browser(ctx: Ctx, args: dict) -> dict:
         "best_metrics": None,
         "seen": 0.0,
         "error": None,
+        "gains": None,
         "claimed": asyncio.Event(),
         "finished": asyncio.Event(),
         "bus": ctx.bus,
@@ -173,6 +175,10 @@ async def train_in_browser(ctx: Ctx, args: dict) -> dict:
         message = "The browser run failed."
         return {"ok": False, "error": message, "detail": message, "job_id": job["id"]}
     metrics = job["best_metrics"] or {}
+    if job["gains"]:
+        # The stress test reads `trained_gains`, the firmware `controller_gains`; both take this one object.
+        ctx.state.trained_gains = job["gains"]
+        ctx.state.controller_gains = job["gains"]
     detail = f"{job['step']:,} rollouts · score {job['curve'][-1][1]:.1f}" if job["curve"] else f"{job['step']:,} rollouts"
     return {
         "ok": True,
@@ -183,6 +189,7 @@ async def train_in_browser(ctx: Ctx, args: dict) -> dict:
         "best_score": job["curve"][-1][1] if job["curve"] else 0,
         "best_params": job["best_params"],
         "best_metrics": metrics,
+        "gains": job["gains"],
         "curve": job["curve"],
     }
 
@@ -212,6 +219,8 @@ class ProgressIn(BaseModel):
     best_score: float | None = None
     best_params: dict[str, float] | None = None
     best_metrics: dict[str, float | bool] | None = None
+    # Final gains for other modules: numbers, or one level of named numbers (roll: {p, i}).
+    gains: dict[str, int | float | dict[str, int | float]] | None = None
     error: str | None = None
 
 
@@ -253,6 +262,8 @@ async def progress(job_id: str, body: ProgressIn, request: Request) -> dict:
         job["best_params"] = {key: round(float(value), 5) for key, value in body.best_params.items()}
     if body.best_metrics is not None:
         job["best_metrics"] = body.best_metrics
+    if body.gains is not None and body.status == "done":
+        job["gains"] = body.gains
     job["status"] = body.status
     if body.error:
         job["error"] = body.error[:200]
@@ -301,4 +312,8 @@ async def run_mock_training(ctx: Ctx) -> None:
     if error_cm is not None and tilt is not None:
         summary += f" It holds position within {float(error_cm):.1f} cm RMS and tilts at most {float(tilt):.0f}°."
     await call_tool(ctx, "mascot_say", {"state": "freut_sich", "say": "Trained. The best controller holds its spot."})
+    exported = result.get("gains") or {}
+    roll, pitch = exported.get("roll"), exported.get("pitch")
+    if isinstance(roll, dict) and isinstance(pitch, dict):
+        summary += f" For the firmware: Betaflight roll P/I {roll.get('p')}/{roll.get('i')}, pitch {pitch.get('p')}/{pitch.get('i')}."
     await ctx.chat("agent", summary + (" Gains: " + gains + "." if gains else ""))

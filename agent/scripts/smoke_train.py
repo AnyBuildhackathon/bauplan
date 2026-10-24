@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PORT = os.environ.get("SMOKE_PORT", "8109")
 BASE = "http://127.0.0.1:" + PORT
 GAINS = {"kp_z": 16.5, "ki_z": 10.3, "kd_z": 5.2, "kp_xy": 9.9, "kd_xy": 4.4, "kp_att": 118.0, "kd_att": 13.5}
+EXPORTED = {**GAINS, "kp_att": 0.001406, "kd_att": 0.0001607, "roll": {"p": 51, "i": 90}, "pitch": {"p": 53, "i": 95}}
 METRICS = {"rms_error_cm": 2.9, "max_tilt_deg": 12.9, "survived_s": 10.0, "crashed": False, "held": True}
 
 
@@ -59,13 +60,17 @@ def _trained() -> None:
     _expect_status(409, "/api/training/" + job_id + "/progress", {"client": "tab-b", "status": "running"})
     for generation, score in ((1, 31.9), (2, 43.3)):
         _post("/api/training/" + job_id + "/progress", {"client": "tab-a", "status": "running", "step": 64 * generation, "generation": generation, "best_score": score, "best_params": GAINS, "best_metrics": METRICS})
-    _post("/api/training/" + job_id + "/progress", {"client": "tab-a", "status": "done", "step": 1024, "generation": 16, "best_score": 78.2, "best_params": GAINS, "best_metrics": METRICS})
+    _post("/api/training/" + job_id + "/progress", {"client": "tab-a", "status": "done", "step": 1024, "generation": 16, "best_score": 78.2, "best_params": GAINS, "best_metrics": METRICS, "gains": EXPORTED})
     _expect_status(409, "/api/training/" + job_id + "/progress", {"client": "tab-a", "status": "running"})
     events = _wait_events(lambda evs: any(e.get("type") == "chat" and "1,024 simulations" in e.get("text", "") for e in evs))
+    if not any("Betaflight roll P/I 51/90" in e.get("text", "") for e in events if e.get("type") == "chat"):
+        raise SystemExit("The summary does not hand the firmware gains over.")
     training = [e for e in events if e.get("type") == "training" and e.get("job_id") == job_id]
     if [e["status"] for e in training] != ["queued", "running", "running", "done"]:
         raise SystemExit("Training events out of order: " + str([e["status"] for e in training]))
     final = training[-1]
+    if any("gains" in e for e in training[:-1]) or final.get("gains") != EXPORTED:
+        raise SystemExit("Only the done event should carry the exported gains: " + json.dumps(final.get("gains")))
     if final["best_params"] != GAINS or final["curve"] != [[64, 31.9], [128, 43.3], [1024, 78.2]] or final["step"] != 1024 or final["reward"] != 78.2:
         raise SystemExit("Final training event is wrong: " + json.dumps(final))
     steps = [e["status"] for e in events if e.get("type") == "step" and e.get("id") == "training"]
@@ -75,7 +80,7 @@ def _trained() -> None:
     if not tool or tool[-1]["status"] != "ok":
         raise SystemExit("train_in_browser did not end ok: " + str(tool[-1:]))
     latest = _get("/api/training/browser")["job"]
-    if latest["status"] != "done" or latest["best_params"] != GAINS:
+    if latest["status"] != "done" or latest["best_params"] != GAINS or latest.get("gains") != EXPORTED:
         raise SystemExit("GET /api/training/browser misses the gains: " + json.dumps(latest))
 
 

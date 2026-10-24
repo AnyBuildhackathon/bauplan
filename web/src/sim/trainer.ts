@@ -124,7 +124,9 @@ export function abandonTraining(jobId: string, error: string) {
 
 /** Marks a job that another tab claimed: this tab only shows the shared curve. */
 export function watchElsewhere(jobId: string) {
-  if (useTrainer.getState().jobId === jobId) return;
+  const s = useTrainer.getState();
+  // A tab that lost the claim still holds the job id with status "claiming".
+  if (s.jobId === jobId && s.status !== "claiming") return;
   useTrainer.setState({ ...initial, jobId, status: "elsewhere" });
 }
 
@@ -213,6 +215,7 @@ export async function runBrowserTraining(jobId: string, fallback: { productId: s
       best_score: best?.score ?? 0,
       best_params: best ? roundParams(best.params) : null,
       best_metrics: best?.metrics ?? null,
+      gains: best ? product.exportGains(best.params, spec) : null,
     });
   } catch (err) {
     if (ctl.signal.aborted) return;

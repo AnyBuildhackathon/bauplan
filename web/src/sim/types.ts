@@ -81,6 +81,11 @@ export interface TrainingProduct<Spec = unknown> {
   frameSize: number;
   frameHz: number;
   buildMjcf(spec: Spec): string;
+  /**
+   * The trained parameters as other modules read them (the `gains` field of the final `training` event):
+   * physical units for the stress test, and the firmware's shape where the product has one.
+   */
+  exportGains(params: Params, spec: Spec): Record<string, unknown>;
   /** The scenario every candidate of one generation runs (common random numbers). */
   trainingPerturbation(generation: number): Perturbation;
   episode(params: Params, perturbation: Perturbation, spec: Spec): Episode;

@@ -17,10 +17,7 @@ export const useSimPane = create<{ pane: "hover" | "training"; setPane: (pane: "
 
 /** The latest `training` event when it comes from a browser run, else null. */
 export function useBrowserTrainingEvent(): BrowserTrainingEvent | null {
-  return useSession((s) => {
-    const t = s.training as BrowserTrainingEvent | null;
-    return t && t.source === "browser" ? t : null;
-  });
+  return useSession((s) => s.browserTraining as BrowserTrainingEvent | null);
 }
 
 /** A queued job older than this is backlog from before this tab connected; it is not started again. */
@@ -51,9 +48,9 @@ export function useBrowserTraining() {
         watchElsewhere(t.job_id);
       }
     };
-    handle(useSession.getState().training as BrowserTrainingEvent | null);
+    handle(useSession.getState().browserTraining as BrowserTrainingEvent | null);
     return useSession.subscribe((s, prev) => {
-      if (s.training !== prev.training) handle(s.training as BrowserTrainingEvent | null);
+      if (s.browserTraining !== prev.browserTraining) handle(s.browserTraining as BrowserTrainingEvent | null);
     });
   }, []);
 }
