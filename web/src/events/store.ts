@@ -10,6 +10,7 @@ import {
   type CadEvent,
   type DrawEvent,
   type FirmwareEvent,
+  type ElectronicsEvent,
   type RenderEvent,
   type MascotState,
   type MeetingEvent,
@@ -157,6 +158,7 @@ export interface SessionState {
   /** The product this session builds: empty on a fresh bench, set by a `product` event or by the first drone event. */
   product: ProductEvent["id"];
   firmware: FirmwareEvent | null;
+  electronics: ElectronicsEvent | null;
   productLabel: string;
   /** The hand sketch this build started from, if any. */
   sketch: SketchEvent | null;
@@ -236,6 +238,7 @@ const TOOL_ALIASES: Record<string, string> = {
   bom_build: "BOM",
   build_guide: "Build guide",
   firmware: "Firmware",
+  electronics_plan: "Electronics",
   version_commit: "Version",
   ask_user: "Question",
 };
@@ -304,6 +307,7 @@ function emptyState() {
     questions: {} as Record<string, QuestionEvent>,
     tasks: null as TasksEvent | null,
     firmware: null as FirmwareEvent | null,
+    electronics: null as ElectronicsEvent | null,
     agents: {} as SessionState["agents"],
     product: "" as ProductEvent["id"],
     productLabel: "Any product",
@@ -524,6 +528,7 @@ export const useSession = create<SessionState>((set, get) => ({
           parts: {},
           versions: [],
           firmware: null,
+          electronics: null,
         });
       }
       case "stress": {
@@ -542,6 +547,8 @@ export const useSession = create<SessionState>((set, get) => ({
       }
       case "firmware":
         return set({ log, firmware: ev });
+      case "electronics":
+        return set({ log, electronics: ev });
       case "training": {
         // Browser training is narrated by its tool card and Bolzen, not the Isaac Lab card.
         if ((ev as { source?: string }).source === "browser") return set({ log, browserTraining: { ...ev, at } });

@@ -526,6 +526,63 @@ export interface FirmwareEvent {
   wiring: WiringRow[];
 }
 
+export interface ElectronicsBlock {
+  id: string;
+  name: string;
+  role: "supply" | "connector" | "switch" | "regulator" | "controller" | "driver" | "inline" | "load" | "sensor";
+  col: number;
+  row: number;
+  voltage_v: number | null;
+  rating: string;
+  qty: number;
+}
+export interface ElectronicsWire {
+  id: string;
+  from: string;
+  to: string;
+  from_pin: string;
+  to_pin: string;
+  kind: "power" | "phase" | "signal";
+  voltage_v: number | null;
+  current_a: number | null;
+  color: "3v3" | "1s" | "5v" | "high" | "phase" | "signal" | "power";
+  label: string;
+}
+export interface ElectronicsLoad {
+  name: string;
+  voltage_v: number;
+  power_w: number;
+  duty: number;
+  peak_w: number;
+  average_w: number;
+  current_a: number;
+}
+/** Wiring diagram and power budget from the chosen parts (`electronics_plan`). */
+export interface ElectronicsEvent {
+  type: "electronics";
+  product: string;
+  ok: boolean;
+  summary: string;
+  explanation?: string;
+  blocks: ElectronicsBlock[];
+  wires: ElectronicsWire[];
+  budget: {
+    supply: string;
+    supply_voltage_v: number;
+    supply_limit_a: number;
+    average_a: number;
+    peak_a: number;
+    average_w: number;
+    peak_w: number;
+    headroom: number;
+    runtime_h?: number;
+    loads: ElectronicsLoad[];
+  };
+  warnings: { part: string; text: string; severity: "fail" | "warn" }[];
+  gaps: string[];
+  wiring: WiringRow[];
+}
+
 /**
  * Mechanic's spoken line, streamed live: `delta` pieces while the fast model writes it,
  * then `done` with the whole `text`. `kind` is `reply` (an answer to the person) or
@@ -584,6 +641,7 @@ export type AgentEvent =
   | RemixEvent
   | BuildGuideEvent
   | FirmwareEvent
+  | ElectronicsEvent
   | AgentRunEvent
   | SayEvent
   | ExplainEvent
@@ -618,6 +676,7 @@ const EVENT_TYPES = new Set<AgentEvent["type"]>([
   "remix",
   "build_guide",
   "firmware",
+  "electronics",
   "agent",
   "say",
   "explain",
