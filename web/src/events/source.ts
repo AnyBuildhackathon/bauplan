@@ -10,6 +10,21 @@ import { loadVoiceCapabilities } from "../lib/voice";
 import { recordedOmniverse } from "./omniverse";
 
 export type SourceMode = "live" | "demo";
+
+/** A library item a build can start from (GET /api/library): a reference build or a saved project. */
+export interface ReferenceBuild {
+  id: string;
+  name: string;
+  summary: string;
+  kind: "reference" | "project";
+  source: "code" | "registry" | "saved";
+  product: string;
+  printed: number;
+  bought: number;
+  requirements: number | null;
+  thumbnail_url: string | null;
+  saved_at: string | null;
+}
 export type LiveStatus = "idle" | "connecting" | "open" | "error";
 
 interface DemoState {
@@ -23,6 +38,11 @@ interface DemoState {
 interface SourceState {
   mode: SourceMode;
   live: LiveStatus;
+  /** What the live backend runs: Claude with a key, or the scripted mock without one. */
+  backend: "claude" | "mock" | null;
+  references: ReferenceBuild[];
+  /** Starts a fresh build from a reference; the chat then changes it. */
+  startReference: (id: string) => Promise<void>;
   demo: DemoState;
   notice: string | null;
   setMode: (mode: SourceMode) => void;
@@ -47,24 +67,7 @@ interface SourceState {
   dismissNotice: () => void;
 }
 
-const MODE_KEY = "anybuild.source";
 const SPEEDS = [1, 2, 4];
-
-function storedMode(): SourceMode | null {
-  try {
-    const v = localStorage.getItem(MODE_KEY);
-    return v === "live" || v === "demo" ? v : null;
-  } catch {
-    return null;
-  }
-}
-function storeMode(mode: SourceMode) {
-  try {
-    localStorage.setItem(MODE_KEY, mode);
-  } catch {
-    // Private windows may refuse storage; the mode just will not be remembered.
-  }
-}
 
 /** The option a spoken or typed answer names: "fifteen", "15", or "yes" for the suggestion. */
 export function matchAnswer(text: string, q: QuestionEvent): string | null {
@@ -110,6 +113,8 @@ function openLive(onStatus: (s: LiveStatus) => void) {
     // EventSource reconnects on its own too; each new connection starts with a backlog.
     replaying = true;
     onStatus("open");
+    void probeBackend().then((backend) => useSource.setState({ backend }));
+    void loadReferences().then((references) => useSource.setState({ references }));
     void loadVoiceCapabilities().then((caps) => useUi.setState({ stt: caps.stt }));
   };
   es.onerror = () => {
@@ -132,6 +137,33 @@ function closeLive() {
   retry = null;
   eventSource?.close();
   eventSource = null;
+}
+
+/** GET /api/health: "claude" or "mock" when the backend answers, else null. */
+async function probeBackend(timeoutMs = 2500): Promise<"claude" | "mock" | null> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(apiUrl("/api/health"), { signal: controller.signal });
+    if (!res.ok) return null;
+    const body = (await res.json()) as { mode?: string };
+    return body.mode === "claude" ? "claude" : "mock";
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function loadReferences(): Promise<ReferenceBuild[]> {
+  try {
+    const res = await fetch(apiUrl("/api/library"));
+    if (!res.ok) return [];
+    const body = (await res.json()) as { items?: ReferenceBuild[] };
+    return body.items ?? [];
+  } catch {
+    return [];
+  }
 }
 
 // --- demo replay -------------------------------------------------------------
@@ -184,6 +216,8 @@ export const useSource = create<SourceState>((set, get) => {
   return {
     mode: "live",
     live: "idle",
+    backend: null,
+    references: [],
     demo: { playing: false, started: false, speed: 1, index: 0, total: fixture.length },
     notice: null,
 
@@ -191,7 +225,6 @@ export const useSource = create<SourceState>((set, get) => {
       clearTimer();
       closeLive();
       useSession.getState().reset();
-      storeMode(mode);
       set({
         mode,
         live: "idle",
@@ -288,6 +321,20 @@ export const useSource = create<SourceState>((set, get) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
       } catch (err) {
         set({ notice: `Backend unreachable (${err instanceof Error ? err.message : "error"}). Is agent/ running on port 8100?` });
+      }
+    },
+
+    startReference: async (id) => {
+      if (get().mode === "demo") return;
+      try {
+        const res = await fetch(apiUrl(`/api/library/${encodeURIComponent(id)}/open`), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: "{}",
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      } catch (err) {
+        set({ notice: `The reference did not start (${err instanceof Error ? err.message : "error"}).` });
       }
     },
 
@@ -400,7 +447,10 @@ export const useSource = create<SourceState>((set, get) => {
   };
 });
 
-/** Picks the start mode: URL (?demo / ?live) wins, then the remembered choice, else Live. */
+/**
+ * Picks the start mode: the URL (?demo / ?live) wins; otherwise the live backend when it
+ * answers, with an empty bench. The recording only plays without a backend, and says so.
+ */
 export function initSource() {
   const params = new URLSearchParams(window.location.search);
   const source = useSource.getState();
@@ -408,7 +458,17 @@ export function initSource() {
   if (speed) source.setSpeed(speed);
 
   const urlMode: SourceMode | null = params.has("live") ? "live" : params.has("demo") ? "demo" : null;
-  source.setMode(urlMode ?? storedMode() ?? "live");
+  if (urlMode) {
+    source.setMode(urlMode);
+  } else {
+    source.setMode("live");
+    void probeBackend().then((backend) => {
+      if (backend) return useSource.setState({ backend });
+      if (useSource.getState().live === "open" || useSource.getState().demo.started) return;
+      useSource.getState().setMode("demo");
+      useSource.setState({ notice: "No backend running: this is the recorded demo, not a live build." });
+    });
+  }
 
   if (useSource.getState().mode === "demo") {
     const seek = params.get("seek");

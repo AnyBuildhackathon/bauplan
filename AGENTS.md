@@ -215,7 +215,7 @@ Existing shell variables take precedence over `agent/.env`.
 Never commit `.env` files or secret keys to the repository.
 
 - `ANTHROPIC_API_KEY`: Activates live Claude tool execution; when unset, the mock story runs.
-- `ANTHROPIC_MODEL`: Specifies the Claude model identifier; defaults to `claude-sonnet-5-5`.
+- `ANTHROPIC_MODEL`: Specifies the orchestrator's Claude model identifier when `PAI_ORCHESTRATOR_MODEL` is unset; defaults to `claude-opus-5-5`.
 - `PAI_FORCE_MOCK`: Set to `1` to force mock story execution even when an API key is present.
 - `DEMO_PACE_S`: Introduces pause delays between steps in seconds; defaults to `0`.
 - `PORT`: Configures the backend HTTP listening port; defaults to `8100`.

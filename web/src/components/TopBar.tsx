@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { BookOpen, Dumbbell, Ellipsis, FastForward, LayoutDashboard, Pause, Play, RotateCcw, SkipForward } from "lucide-react";
+import { useSession } from "../events/store";
 import { useSource } from "../events/source";
 import { useUi, type View } from "../lib/ui";
+import { BenchSettings } from "./BenchSettings";
 import { MeetingTimeline } from "./timeline/MeetingTimeline";
 import { Segmented, StatusDot } from "./ui/primitives";
 
@@ -27,6 +29,7 @@ function SourceControls() {
   const mode = useSource((s) => s.mode);
   const live = useSource((s) => s.live);
   const demo = useSource((s) => s.demo);
+  const backend = useSource((s) => s.backend);
   const { setMode, play, pause, restart, setSpeed, skipToEnd } = useSource.getState();
   const resetUi = useUi((s) => s.resetUi);
   const ended = demo.index >= demo.total;
@@ -50,7 +53,7 @@ function SourceControls() {
               </>
             ),
           },
-          { value: "demo", label: "Demo" },
+          { value: "demo", label: "Recorded demo" },
         ]}
       />
       {mode === "demo" ? (
@@ -62,7 +65,7 @@ function SourceControls() {
             title={demo.playing ? "Pause" : "Play"}
           >
             {demo.playing ? <Pause className="h-3.5 w-3.5" fill="currentColor" /> : <Play className="h-3.5 w-3.5" fill="currentColor" />}
-            {demo.playing ? "Pause" : ended ? "Again" : demo.started ? "Resume" : "Play"}
+            {demo.playing ? "Pause" : ended ? "Replay" : demo.started ? "Resume" : "Play recording"}
           </button>
           <button
             type="button"
@@ -88,8 +91,8 @@ function SourceControls() {
           </button>
         </div>
       ) : (
-        <span className={`text-[13px] font-semibold ${live === "open" ? "text-ok-ink" : live === "connecting" ? "text-agent-ink" : "text-fail-ink"}`}>
-          {live === "open" ? "Backend connected" : live === "connecting" ? "connecting…" : "Backend offline"}
+        <span className={`text-[13px] font-semibold ${live !== "open" ? (live === "connecting" ? "text-agent-ink" : "text-fail-ink") : backend === "mock" ? "text-agent-ink" : "text-ok-ink"}`}>
+          {live === "open" ? (backend === "mock" ? "Mock run · no API key" : "Claude live") : live === "connecting" ? "connecting …" : "Backend offline"}
         </span>
       )}
     </div>
@@ -150,19 +153,22 @@ function MoreMenu() {
 
 export function TopBar() {
   const setView = useUi((s) => s.setView);
+  const productLabel = useSession((s) => s.productLabel);
+  const mode = useSource((s) => s.mode);
   return (
     <header className="flex h-[72px] shrink-0 items-center gap-5 px-5">
       <button type="button" onClick={() => setView("werkbank")} className="flex shrink-0 items-center gap-3 text-left">
         <Logo />
         <div className="leading-tight">
           <div className="text-[19px] font-bold tracking-[-0.01em]">AnyBuild</div>
-          <div className="text-[13px] font-medium text-muted">Drone</div>
+          <div className="max-w-[180px] truncate text-[13px] font-medium text-muted">{productLabel}</div>
         </div>
       </button>
       <div className="flex min-w-0 flex-1 justify-center">
         <MeetingTimeline />
       </div>
       <SourceControls />
+      {mode === "live" && <BenchSettings />}
       <MoreMenu />
     </header>
   );

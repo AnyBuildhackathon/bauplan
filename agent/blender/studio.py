@@ -130,7 +130,9 @@ def _part(parts, fallback):
     objects = []
     for index, part in enumerate(parts):
         color = part.get("color")
-        material = _principled("Teil" + str(index), _srgb(color), roughness=0.42, coat=0.15) if color else fallback
+        # #rrggbbaa marks a see-through body, such as the phone a stand holds.
+        alpha = int(color.lstrip("#")[6:8], 16) / 255.0 if color and len(color.lstrip("#")) == 8 else 1.0
+        material = _principled("Teil" + str(index), _srgb(color), roughness=0.42, coat=0.15, alpha=max(alpha, 0.3)) if color else fallback
         objects.append(_frame(part["stl"], material))
     # _frame drops each object onto the floor on its own; put them back together first.
     for obj in objects:
@@ -143,7 +145,8 @@ def _part(parts, fallback):
         obj.location.x -= center.x
         obj.location.y -= center.y
         obj.location.z -= low.z
-    return max(high.x - low.x, high.y - low.y, high.z - low.z) * 0.7, high.z - low.z
+    # The frame is landscape: a tall product needs more room than a flat one of the same size.
+    return max(max(high.x - low.x, high.y - low.y) * 0.7, (high.z - low.z) * 0.9), high.z - low.z
 
 
 def _bevel(obj, width: float) -> None:

@@ -1,4 +1,4 @@
-"""Session state for one drone build."""
+"""Session state for one build: the drone, the gripper, or any product from a spec."""
 
 from __future__ import annotations
 
@@ -35,7 +35,15 @@ class BuildState:
     templates_ready: bool = False
     last_read_live: bool = False
     complaints: list[dict] = field(default_factory=list)
-    # Which product this session builds (drone or gripper), and the last generated CAD part.
+    # Which product this session builds (drone, gripper or generic), and the last generated CAD part.
     product: str = "drone"
     part: dict | None = None
     brief: dict = field(default_factory=dict)
+    # Any other product: its validated spec, the printed parts built per spec part id, the bought
+    # parts picked per spec part id, the assembled model and the check results by check key.
+    spec: dict | None = None
+    built: dict[str, dict] = field(default_factory=dict)
+    picked: dict[str, dict] = field(default_factory=dict)
+    assembly: dict | None = None
+    assembly_stale: bool = True
+    checks: dict[str, dict] = field(default_factory=dict)

@@ -26,12 +26,52 @@ If the development server needs explicit host and port arguments:
 cd web && npm run dev -- --port 5180 --host 127.0.0.1
 ```
 
+## Any Product
+
+AnyBuild builds whatever physical product you describe, not just the drone.
+Type a request into the chat, for example:
+
+```text
+Design a phone stand for my desk that holds my phone for video calls. It must not tip when I tap the screen and the parts should cost under 6 euros.
+```
+
+Claude drives the whole bench through tool use:
+
+1. `product_spec`: Claude writes the spec (function, requirements each with the check that judges it and a limit, and every printed part, bought part and external load); `agent/src/pai_agent/spec.py` validates it and answers all problems at once until it is right.
+2. `cad_part` per printed part: Claude writes the FreeCAD script, `freecadcmd` builds it headless and sandboxed, and the geometry is checked against the part's envelope; failed scripts go back to Claude with the error, and after three failures a plain block stands in, clearly marked, so a live build never ends without geometry.
+3. `part_pick` per bought part: catalog parts from `agent/data/catalogs/` (hobby electronics, motors, fans, pumps, batteries, servos, hardware, plus the drone and gripper catalogs), or an honest estimate marked as such; live shop prices plug in through `pai_agent.pricing.register_provider`.
+4. `assemble`: one model with mass, cost, centre of mass, size and footprint, and warnings for parts that float.
+5. The checks, each pass or fail against the requirements: `check_totals` (mass, cost, size), `check_tip_over` (centre of mass and tip angle or tipping push), `check_deflection` (beam estimate for arms, shelves and clips), `check_torque` (motor or servo sufficiency), `check_runtime` (battery life), and `simulate_assembly` (a MuJoCo push or drop test of the whole assembly, replayed with the real model in the Simulation tab).
+6. On a fail Claude changes a parameter with `cad_update` (rebuild, reassemble and rerun every check) or swaps a part, and says why.
+7. `blender_render` and `bom_build`.
+
+The empty bench offers two starts that run the same flow.
+"From a reference" loads a known product with all its real parts from the registry in `agent/data/references/`, rebuilt and rechecked through the same tools (no key needed), and then you change it in the chat, for example "make it hold a 480 g tablet", and live Claude reworks it.
+"From scratch" takes any description.
+The library (`GET /api/library`, `POST /api/library/{id}/open`, see `docs/events.md`) lists the micro FPV drone first and the robot gripper second, both built by their own code, then the reference builds and the projects users saved with `POST /api/library`: each is one `reference.json` with the spec, the picks and the checks, one FreeCAD script per printed part, and a studio render as thumbnail.
+
+### Orchestrator and sub-agents
+
+Claude works like a lead engineer with a small team.
+The orchestrator (Claude Opus 5.5 by default, effort `high`, configurable up to `max`) plans the build, writes the spec, decides the fixes and reviews every report.
+It delegates bounded jobs to sub-agents on a smaller model (Claude Sonnet 5.5 by default), each with only the tools its job needs: the CAD agent writes one part's FreeCAD script (several parts run side by side), the parts agent picks the bought parts, the analysis agent runs the checks and the MuJoCo test, and the pricing agent builds and prices the bill of materials.
+Every agent shows up as its own card in the chat with model, effort, job, status, tokens and cost.
+The models, the effort levels and delegation are set with `PAI_ORCHESTRATOR_MODEL`, `PAI_ORCHESTRATOR_EFFORT`, `PAI_SUBAGENT_MODEL`, `PAI_SUBAGENT_EFFORT` and `PAI_DELEGATION`, or at runtime with the sliders button in the top bar (`/api/settings`).
+
+The dashboard renders any product from the spec and the check results: requirement rows with the measured value, four key-number cards, the assembly tree and per-part sliders in the CAD tab (moving one reruns the checks without a model call), the before/after MuJoCo replay, and a bill of materials with sample, estimated and live prices marked.
+The drone and the gripper keep their own flows as special cases.
+The math behind each check is in `agent/src/pai_agent/analysis.py` and `agent/src/pai_agent/rigid_sim.py`, the wire format in `docs/events.md`.
+
+With a backend running, the dashboard opens in live mode with an empty bench; the top bar says whether Claude is live or the backend runs the scripted mock because `ANTHROPIC_API_KEY` is missing.
+The recorded drone run plays only with `?demo` or when no backend answers, and says so.
+
 ## Mock Mode
 
 Without `ANTHROPIC_API_KEY`, mock mode walks through the entire story using the same tools that Claude calls.
 The kickoff meeting builds version 1: specifications from Jamie, warning about the FunFly 4S, a flight simulation pushed to the ground by a downdraft gust in MuJoCo, battery swap to the Lava 1S 550, frame in FreeCAD, studio render in Blender, bill of materials, order tasks, and attaching the version to the meeting.
 The review meeting builds version 2: mascot Mechanic asks clarifying questions when contradictions occur, resolves "last week's motor" via Jamie, swaps the motor and battery, and writes the difference back as a note.
 Sending an additional prompt in the same session does not trigger a rebuild.
+A prompt asking for a phone stand plays the generic story through the same tools Claude uses: spec, two printed PETG parts from the phone stand reference build (`agent/data/references/phone-stand/`), rubber feet from the catalog, a tip-over check and MuJoCo push test that fail with a 60 mm base, the fix to a 110 mm base with every check passing, the Blender render and the bill of materials.
 `POST /api/reset` resets the session to start over.
 Setting `PAI_FORCE_MOCK=1` forces mock mode even when an Anthropic API key is configured.
 
@@ -140,7 +180,12 @@ Shell variables override values in `.env`.
 | Variable | Description |
 | --- | --- |
 | `ANTHROPIC_API_KEY` | Leave empty for mock mode, never committing secrets to the repository. |
-| `ANTHROPIC_MODEL` | Claude model identifier defaulting to `claude-sonnet-5-5`. |
+| `ANTHROPIC_MODEL` | Orchestrator model when `PAI_ORCHESTRATOR_MODEL` is unset, defaulting to `claude-opus-5-5`. |
+| `PAI_ORCHESTRATOR_MODEL` | Model of the orchestrator, defaulting to `ANTHROPIC_MODEL` or `claude-opus-5-5`. |
+| `PAI_ORCHESTRATOR_EFFORT` | Orchestrator effort (`low`, `medium`, `high`, `xhigh`, `max`), defaulting to `high`. |
+| `PAI_SUBAGENT_MODEL` | Model of the sub-agents (CAD scripts, parts, checks, pricing), defaulting to `claude-sonnet-5-5`. |
+| `PAI_SUBAGENT_EFFORT` | Sub-agent effort, defaulting to `medium`. |
+| `PAI_DELEGATION` | Set to `0` to let the orchestrator pick parts and run checks itself instead of delegating. |
 | `PAI_FORCE_MOCK` | Set to `1` to force mock mode execution. |
 | `DEMO_PACE_S` | Pause delay between agent workflow steps in seconds, defaulting to `0`. |
 | `PORT` | Backend HTTP port, defaulting to `8100`. |

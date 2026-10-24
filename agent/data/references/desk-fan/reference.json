@@ -1,0 +1,231 @@
+{
+  "id": "desk-fan",
+  "name": "USB desk fan",
+  "summary": "80 mm USB fan on a printed neck and a 150 mm base; 280 g, takes a light bump.",
+  "spec": {
+    "name": "USB Desk Fan",
+    "function": "A small USB-powered 80 mm desk fan on a wide, low base with a short neck. It blows toward the front (-Y) and stays upright when bumped.",
+    "quote": "Design a small USB desk fan that stands stable on my desk. It should weigh under 300 g with the fan, cost under 25 euros, and not tip over when I bump it.",
+    "assemblies": [],
+    "parts": [
+      {
+        "id": "base",
+        "name": "Base",
+        "kind": "printed",
+        "qty": 1,
+        "assembly": null,
+        "description": "Round flat disc base, 150 mm diameter, 5 mm thick, bottom on Z=0, centred on X=Y=0. A 16 mm diameter blind socket 4 mm deep in the centre of the top face for the neck. Four shallow 8 mm diameter, 1 mm deep rubber-foot recesses on the underside at 60 mm radius.",
+        "size_mm": [
+          150.0,
+          150.0,
+          5.0
+        ],
+        "position_mm": null,
+        "rotation_deg": null,
+        "material": "PETG",
+        "params": {
+          "diameter_mm": 150.0,
+          "thickness_mm": 5.0,
+          "socket_mm": 16.0
+        }
+      },
+      {
+        "id": "neck",
+        "name": "Neck",
+        "kind": "printed",
+        "qty": 1,
+        "assembly": null,
+        "description": "Vertical round tube, 16 mm outer diameter, 8 mm inner diameter for the USB cable, 91 mm tall, standing in the base socket. Runs from Z=5 to Z=96, centred on X=Y=0.",
+        "size_mm": [
+          16.0,
+          16.0,
+          91.0
+        ],
+        "position_mm": null,
+        "rotation_deg": null,
+        "material": "PETG",
+        "params": {
+          "outer_diameter_mm": 16.0,
+          "inner_diameter_mm": 8.0,
+          "height_mm": 91.0
+        }
+      },
+      {
+        "id": "bracket",
+        "name": "Fan bracket",
+        "kind": "printed",
+        "qty": 1,
+        "assembly": null,
+        "description": "Square open frame that holds an 80x80x25 mm fan with its airflow along Y: 86 mm wide, 86 mm tall, 28 mm deep, 3 mm walls, open at front and back, with a 16 mm socket on the underside for the neck. Centred at X=0, Y=0, Z=140, spanning Z=97 to Z=183.",
+        "size_mm": [
+          86.0,
+          28.0,
+          86.0
+        ],
+        "position_mm": null,
+        "rotation_deg": null,
+        "material": "PETG",
+        "params": {
+          "width_mm": 86.0,
+          "height_mm": 86.0,
+          "depth_mm": 28.0,
+          "wall_mm": 3.0
+        }
+      },
+      {
+        "id": "fan",
+        "name": "80 mm USB fan",
+        "kind": "bought",
+        "qty": 1,
+        "assembly": null,
+        "description": "5 V 80x80x25 mm fan inside the bracket, blowing toward -Y",
+        "size_mm": [
+          80.0,
+          25.0,
+          80.0
+        ],
+        "position_mm": [
+          0.0,
+          0.0,
+          140.0
+        ],
+        "rotation_deg": null,
+        "mass_g": null,
+        "category": "fan",
+        "query": "80mm 5V USB fan"
+      },
+      {
+        "id": "cable",
+        "name": "USB cable with switch",
+        "kind": "bought",
+        "qty": 1,
+        "assembly": null,
+        "description": "USB cable coiled on the base top at the back",
+        "size_mm": [
+          30.0,
+          20.0,
+          6.0
+        ],
+        "position_mm": [
+          0.0,
+          40.0,
+          8.0
+        ],
+        "rotation_deg": null,
+        "mass_g": null,
+        "category": "power",
+        "query": "USB-C cable and 5 V 2 A wall adapter"
+      }
+    ],
+    "requirements": [
+      {
+        "id": "r_mass",
+        "text": "Weighs under 300 g with the fan",
+        "check": "mass",
+        "quote": "It should weigh under 300 g with the fan",
+        "max": 300.0,
+        "unit": "g"
+      },
+      {
+        "id": "r_cost",
+        "text": "Costs under 25 euros",
+        "check": "cost",
+        "quote": "cost under 25 euros",
+        "max": 25.0,
+        "unit": "eur"
+      },
+      {
+        "id": "r_tip",
+        "text": "Tips only beyond 20 degrees",
+        "check": "tip_over",
+        "quote": "not tip over when I bump it",
+        "min": 20.0,
+        "unit": "deg"
+      },
+      {
+        "id": "r_push",
+        "text": "Settles within 5 degrees after a 0.75 N bump at the top (agreed with user, lowered from 2 N)",
+        "check": "stability",
+        "quote": "not tip over when I bump it",
+        "max": 5.0,
+        "unit": "deg"
+      },
+      {
+        "id": "r_neck",
+        "text": "Neck bends less than 3 mm under the fan load",
+        "check": "deflection",
+        "quote": "",
+        "max": 3.0,
+        "unit": "mm",
+        "part_id": "neck"
+      },
+      {
+        "id": "r_print",
+        "text": "All printed parts are printable",
+        "check": "printable",
+        "quote": ""
+      }
+    ]
+  },
+  "scripts": {
+    "base": {
+      "file": "base.py",
+      "generated": true
+    },
+    "neck": {
+      "file": "neck.py",
+      "generated": true
+    },
+    "bracket": {
+      "file": "bracket.py",
+      "generated": true
+    }
+  },
+  "picks": {
+    "fan": {
+      "estimate": {
+        "name": "80 mm 5 V USB fan 80x80x25",
+        "mass_g": 55.0,
+        "unit_price_eur": 5.5,
+        "shop": "estimate",
+        "url": "",
+        "note": "No catalog part fits; mass and price are estimates.",
+        "voltage_v": 5,
+        "power_w": 1.5
+      },
+      "reason": "Catalog only has 120 mm (110 g) and 40 mm fans; an 80 mm fan keeps the build light and compact, price is an estimate."
+    },
+    "cable": {
+      "select_id": "usb-c-cable",
+      "reason": "Supplies 5 V power for the 1.5 W fan."
+    }
+  },
+  "checks": [
+    {
+      "tool": "check_totals",
+      "args": {}
+    },
+    {
+      "tool": "check_tip_over",
+      "args": {}
+    },
+    {
+      "tool": "check_deflection",
+      "args": {
+        "part_id": "neck",
+        "span_mm": 91,
+        "width_mm": 16,
+        "thickness_mm": 16,
+        "load_n": 2,
+        "support": "cantilever"
+      }
+    },
+    {
+      "tool": "simulate_assembly",
+      "args": {
+        "mode": "push",
+        "force_n": 0.75
+      }
+    }
+  ]
+}
