@@ -8,6 +8,7 @@ from pai_agent.scene import DRAW_KINDS, MASCOT_STATES, PART_CATEGORIES, TARGETS
 from pai_agent.freecad_run import find_freecadcmd
 from pai_agent.tools.blender import blender_render, find_blender
 from pai_agent.tools.bom import bom_build
+from pai_agent.tools.build_guide import SCHEMA as BUILD_GUIDE_SCHEMA, build_guide
 from pai_agent.tools.cad import cad_frame
 from pai_agent.tools.cad_part import cad_part
 from pai_agent.tools.gripper import catalog_search, grip_calc, product_brief, simulate_grip
@@ -54,6 +55,7 @@ TOOLS = {
     "product_usd": product_usd,
     "blender_render": blender_render,
     "bom_build": bom_build,
+    "build_guide": build_guide,
     "jamie_create_tasks": jamie_create_tasks,
     "ui_point_at": ui_point_at,
     "ui_draw": ui_draw,
@@ -299,6 +301,7 @@ SCHEMAS = [
         "description": "Builds the bill of materials from the chosen parts, including the STL path.",
         "input_schema": {"type": "object", "properties": {}},
     },
+    BUILD_GUIDE_SCHEMA,
     {
         "name": "jamie_create_tasks",
         "description": "Creates one order or print task per bill-of-materials line, with a person and a due date on the meeting. Unchanged parts keep their task. Replaced parts are closed.",

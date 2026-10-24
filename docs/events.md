@@ -242,6 +242,15 @@ The order tasks, one per part, published whole after every change.
 Each item is `{id, title, assignee, due, done, part_category}`; `due` reads like `27 Oct`.
 A rebuild keeps the tasks of unchanged parts with their `done` state and closes the tasks of replaced parts.
 
+### build_guide
+
+The step-by-step build guide for the current bill of materials, published whole after `bom_build`.
+`version` is the version the guide belongs to, `total_minutes` the sum of the steps.
+`steps` is a list of `{n, title, instructions, parts, tools, minutes, items}`, numbered from 1.
+`parts` are scene part names from the list below; the web explodes the model and highlights them for that step.
+`items` are the bill-of-materials names of those parts, filled in by the backend.
+Together the steps cover every scene part.
+
 ### point
 
 `target` is a scene name.
@@ -308,6 +317,7 @@ The open FreeCAD window builds first when its RPC answers; on an error or a step
 CadQuery writes the same STL, STEP, and GLB when FreeCAD is missing or the script fails.
 `blender_render` runs `blender -b -P` on the current STL.
 `jamie_requirements` reads the `Hardware-Anforderungen` fields first.
+`build_guide` comes after `bom_build` and takes `steps` as in the `build_guide` event, without `items`; a step number out of order, an unknown part, or a scene part no step installs is an error that names it.
 
 ## Mock story
 
@@ -316,6 +326,7 @@ The agent reads the kickoff, finds the 22000KV from last week's flight test and 
 It tries the FunFly anyway: the MuJoCo gust pushes it to the floor, the swap to the Lava 1S 550 passes.
 A 28 mm arm lets the 40 mm propellers touch, so the frame becomes 36 mm.
 v1 is 36.7 g, 11.7 min, 68.95 €.
+Each build writes the same eight-step `build_guide` with the parts it chose.
 The review "Review 1" asks for 15 minutes and says last week's motor was too loud.
 Mechanic asks which flight time counts, resolves "last week's motor" to the 22000KV from the flight test, swaps to the quieter 18000KV and a 1S 1100 mAh pack.
 v2 is 49.3 g, 15.6 min, 72.36 €, and the difference goes back to the review as a note.

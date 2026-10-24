@@ -149,6 +149,11 @@ def _assert_story(events: list[dict]) -> None:
     weight = round(sum(item["weight_g"] * item["qty"] for item in bom["items"]), 1)
     if abs(weight - second["weight_g"]) > 0.15:
         raise SystemExit("Gewicht der Stückliste weicht ab: " + str(weight))
+    guides = [event for event in events if event.get("type") == "build_guide"]
+    if [guide["version"] for guide in guides] != [1, 2] or not all(guide["steps"] for guide in guides):
+        raise SystemExit("Build guide missing for v1 and v2: " + str([guide["version"] for guide in guides]))
+    if not any("18000KV" in name for step in guides[1]["steps"] for name in step["items"]):
+        raise SystemExit("The v2 build guide does not name the new motor.")
     parts = {}
     warnings = 0
     for event in events:

@@ -11,6 +11,7 @@ import math
 from pai_agent.context import Ctx, de
 from pai_agent.env import pace_seconds
 from pai_agent.meetings import fmt_number, short_date
+from pai_agent.tools.build_guide import mock_steps
 from pai_agent.tools.registry import call_tool
 
 _UNITS = {"Minuten": "min", "minutes": "min"}
@@ -106,6 +107,7 @@ async def _build_tail(ctx: Ctx, meeting_id: str, label: str) -> dict:
     await _beat()
     await ctx.step("stueckliste", "running")
     await _need(ctx, "bom_build", {})
+    await _need(ctx, "build_guide", {"steps": mock_steps(ctx)})
     tasks = await _need(ctx, "jamie_create_tasks", {"meeting_id": meeting_id})
     version = await _need(ctx, "version_commit", {"meeting_id": meeting_id})
     await ctx.step("stueckliste", "done")
