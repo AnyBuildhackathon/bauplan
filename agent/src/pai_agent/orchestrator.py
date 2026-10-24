@@ -15,6 +15,7 @@ from pai_agent.mock_gripper import run_gripper_mock, wants_gripper
 from pai_agent.mock_lamp import run_lamp_mock, wants_lamp
 from pai_agent.mock_product import run_product_mock, wants_product
 from pai_agent.mock_story import run_mock, run_mock_followup, run_review
+from pai_agent.run_control import RunStopped
 from pai_agent.scene import STEPS
 from pai_agent.tools.browser_train import run_mock_training
 from pai_agent.tools.optimize import run_optimize_mock, run_pick_mock, wants_optimize, wants_pick
@@ -346,8 +347,45 @@ async def _run_claude(ctx: Ctx, text: str, messages: list[dict]) -> None:
     ctx.lead_id = lead.id
     try:
         await _lead_loop(ctx, lead, delegation, messages)
+    except RunStopped:
+        _close_stopped(messages)
+        await lead.emit("done", "stopped by the user after " + str(lead.rounds) + " round(s)")
+        raise
     finally:
         ctx.lead_id = None
+
+
+_STOPPED = {"ok": False, "error": "The user stopped the run before this tool ran."}
+
+
+def _results(tool_uses: list, outcomes: list[dict]) -> list[dict]:
+    """One tool_result per tool_use; a tool without an outcome was stopped before it ran."""
+
+    return [
+        {
+            "type": "tool_result",
+            "tool_use_id": block.id,
+            "content": json.dumps(result, ensure_ascii=False, default=str),
+            "is_error": result.get("ok") is False,
+        }
+        for block, result in zip(tool_uses, [*outcomes, *[_STOPPED] * (len(tool_uses) - len(outcomes))])
+    ]
+
+
+def _close_stopped(messages: list[dict]) -> None:
+    """Leaves the conversation valid after Stop, so the next message continues it.
+
+    Every tool_use gets a tool_result (the stopped ones say so), and a short assistant turn records the stop.
+    """
+
+    last = messages[-1] if messages else None
+    if last and last["role"] == "assistant" and isinstance(last["content"], list):
+        uses = [block for block in last["content"] if isinstance(block, dict) and block.get("type") == "tool_use"]
+        if uses:
+            note = json.dumps(_STOPPED)
+            messages.append({"role": "user", "content": [{"type": "tool_result", "tool_use_id": block["id"], "content": note, "is_error": True} for block in uses]})
+    if messages and messages[-1]["role"] == "user":
+        messages.append({"role": "assistant", "content": "The user stopped this run here; what was built so far stays."})
 
 
 async def _lead_loop(ctx: Ctx, lead, delegation: bool, messages: list[dict]) -> None:
@@ -355,6 +393,7 @@ async def _lead_loop(ctx: Ctx, lead, delegation: bool, messages: list[dict]) -> 
 
     await lead.emit("running", "plans the build")
     for _round in range(40):
+        await ctx.checkpoint()
         try:
             response = await asyncio.wait_for(
                 asyncio.to_thread(
@@ -396,25 +435,28 @@ async def _lead_loop(ctx: Ctx, lead, delegation: bool, messages: list[dict]) -> 
         doing = ", ".join(block.name for block in tool_uses)[:120]
         if len(tool_uses) > 1 and all(block.name in _PARALLEL for block in tool_uses):
             await lead.use(tool_uses[0].name, doing)
-            outcomes = await asyncio.gather(*(call_tool(ctx, block.name, block.input if isinstance(block.input, dict) else {}) for block in tool_uses))
+            outcomes = await asyncio.gather(
+                *(call_tool(ctx, block.name, block.input if isinstance(block.input, dict) else {}) for block in tool_uses),
+                return_exceptions=True,
+            )
+            # They pass the same checkpoint together; one Stop stops them all.
+            for outcome in outcomes:
+                if isinstance(outcome, BaseException):
+                    raise outcome
             for block, outcome in zip(tool_uses, outcomes):
                 lead.called(block.name, outcome)
         else:
             outcomes = []
-            for block in tool_uses:
-                await lead.use(block.name, doing)
-                outcomes.append(await call_tool(ctx, block.name, block.input if isinstance(block.input, dict) else {}))
-                lead.called(block.name, outcomes[-1])
-        results = [
-            {
-                "type": "tool_result",
-                "tool_use_id": block.id,
-                "content": json.dumps(result, ensure_ascii=False, default=str),
-                "is_error": result.get("ok") is False,
-            }
-            for block, result in zip(tool_uses, outcomes)
-        ]
-        messages.append({"role": "user", "content": results})
+            try:
+                for block in tool_uses:
+                    await lead.use(block.name, doing)
+                    outcomes.append(await call_tool(ctx, block.name, block.input if isinstance(block.input, dict) else {}))
+                    lead.called(block.name, outcomes[-1])
+            except RunStopped:
+                # The tools that ran keep their real results; the rest say they were stopped.
+                messages.append({"role": "user", "content": _results(tool_uses, outcomes)})
+                raise
+        messages.append({"role": "user", "content": _results(tool_uses, outcomes)})
         await lead.emit("running", "reads the results")
     await lead.emit("done", "stopped after 40 rounds")
     await ctx.chat("agent", "I am stopping after 40 tool rounds so the run does not hang.")

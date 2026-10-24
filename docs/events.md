@@ -24,7 +24,20 @@ A client that connects late receives the events already published, then the live
 `POST /api/reset` clears the session, the chat memory, and the event buffer, then publishes a `reset` event, a fresh tool snapshot, pending steps, and the timeline.
 Every stream starts with a `reset` event, so a client that reconnects replays onto an empty state.
 
-State-changing calls without a typed body (`/api/reset`, `/api/webhooks/jamie`, `/api/cad/params`, `/api/cad/open`, `/api/versions/{n}/restore`) need `Content-Type: application/json`, else HTTP 415, so a web page cannot fire them as a plain cross-site form post.
+State-changing calls without a typed body (`/api/reset`, `/api/run/*`, `/api/webhooks/jamie`, `/api/cad/params`, `/api/cad/open`, `/api/versions/{n}/restore`) need `Content-Type: application/json`, else HTTP 415, so a web page cannot fire them as a plain cross-site form post.
+
+### Pause and stop
+
+`POST /api/run/pause`, `POST /api/run/resume` and `POST /api/run/stop` (each with `Content-Type: application/json`, body `{}`) control the build that runs now, whatever started it: a message, a meeting, a library item, Run test or Rebuild.
+They answer `{"ok": true, "status": "..."}` with the new [run](#run) status, or HTTP 409 when nothing runs (pause, stop) or nothing is paused (resume).
+A run only ever holds or ends at a checkpoint: before each tool call and before each orchestrator or sub-agent model round.
+A tool that is running finishes first, so no file, version or chat card is left half written.
+Pause answers `pausing` and the stream sends `paused` once the run reaches its checkpoint; Resume continues the same run from there, with the same conversation, so it is a true resume and not a restart.
+Stop answers `stopping`; at the checkpoint the run ends, Mechanic says "Stopped. Everything built so far stays on the bench." and the status returns to `idle`.
+Everything already built stays: parts, CAD files, renders, test results and committed versions.
+With Claude, the conversation is closed cleanly (tool calls that did not run get a "stopped by the user" result), so the next message continues it.
+A `POST /api/prompt` while the run is `paused` (and no question is open) stops that run at its checkpoint and starts the new message from there; while it is running or pausing it answers `status: already_running` as before.
+The web shows Pause, Resume and Stop in a bar above the chat composer while a run is not `idle`.
 
 A prompt that only asks to see or operate something in the dashboard ("show me the CAD", "open the library", "pull it apart", "compare v1 and v2", "focus on the battery", "mute") is answered with `status: "ui"` and `controls`: it becomes `ui_control` calls at once, also while a build runs, and never reaches the orchestrator.
 `agent/src/pai_agent/app_control.py` matches these short commands; anything that changes the design goes to the orchestrator, which has the same tool.
@@ -292,6 +305,11 @@ The client keeps the latest event per `key`.
 
 No fields, and only on this connection: everything before it was backlog from earlier, everything after it is live.
 Apply the backlog without animations.
+
+### run
+
+`status` of the build on the bench: `running`, `pausing` (asked to pause, the current step still finishes), `paused`, `stopping` (asked to stop, the current step still finishes) or `idle`.
+Sent when a run starts and ends and on every change through [pause and stop](#pause-and-stop).
 
 ### step
 

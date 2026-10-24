@@ -15,6 +15,7 @@ from pai_agent.context import Ctx
 from pai_agent.env import claude_enabled
 from pai_agent.orchestrator import run_meeting, run_prompt, run_reference, run_remix, run_sketch
 from pai_agent.paths import SESSIONS_DIR
+from pai_agent.run_control import RunControl, RunStopped
 from pai_agent.scene import STEPS
 from pai_agent.state import BuildState
 from pai_agent.tools.jamie import forget_client, init_timeline, meeting_event, resolve_meeting, set_task_done
@@ -39,6 +40,7 @@ class Session:
         self.task: asyncio.Task | None = None
         self.question: dict | None = None
         self._answer: asyncio.Future | None = None
+        self.run = RunControl(self.bus.publish)
         # Webhooks can arrive twice (retries); one meeting-ended at a time decides what happens.
         self._meeting_lock = asyncio.Lock()
 
@@ -46,7 +48,9 @@ class Session:
         await self._baseline()
 
     def _ctx(self, auto_steps: bool) -> Ctx:
-        return Ctx(self.bus, self.state, auto_steps=auto_steps, asker=self.ask)
+        ctx = Ctx(self.bus, self.state, auto_steps=auto_steps, asker=self.ask)
+        ctx.gate = self.run.checkpoint
+        return ctx
 
     def _busy(self) -> bool:
         return self.task is not None and not self.task.done()
@@ -60,11 +64,16 @@ class Session:
             question = self.question
             if question is not None and await self._answer_from_text(text, voice, record_user=record_user):
                 return {"ok": True, "mode": mode, "status": "answered"}
-            return {"ok": True, "mode": mode, "status": "already_running"}
+            if self.run.status != "paused":
+                return {"ok": True, "mode": mode, "status": "already_running"}
+            # A message to a paused run replaces it: the run stops where it waits, the message continues.
+            assert self.task is not None
+            await self.run.stop()
+            await self.task
         ctx = self._ctx(auto_steps=claude_enabled())
         ctx.trigger = "chat"
         ctx.label = text.strip()[:80]
-        self.task = asyncio.create_task(self._run(run_prompt(ctx, text, self.messages, voice, record_user=record_user), ctx))
+        self.task = self._launch(run_prompt(ctx, text, self.messages, voice, record_user=record_user), ctx)
         return {"ok": True, "mode": mode, "status": "started"}
 
     async def _control(self, text: str, commands: list[dict], mode: str, *, record_user: bool = True) -> dict:
@@ -102,7 +111,7 @@ class Session:
 
         if runs:
             # A test or a rebuild is a run: the bench is busy until it finishes.
-            self.task = asyncio.create_task(self._run(work(), ctx))
+            self.task = self._launch(work(), ctx)
         else:
             await work()
         return {"ok": True, "mode": mode, "status": "ui", "controls": [c["control"] for c in commands]}
@@ -121,7 +130,7 @@ class Session:
         if invalid:
             return invalid
         work = run_test(ctx) if control == "run:test" else run_rebuild(ctx)
-        self.task = asyncio.create_task(self._run(work, ctx))
+        self.task = self._launch(work, ctx)
         return {"ok": True, "status": "started"}
 
     async def start_reference(self, ref_id: str) -> dict:
@@ -137,7 +146,7 @@ class Session:
         from pai_agent.references import name_of
 
         ctx.label = "Library: " + name_of(ref_id)
-        self.task = asyncio.create_task(self._run(run_reference(ctx, ref_id, self.messages), ctx))
+        self.task = self._launch(run_reference(ctx, ref_id, self.messages), ctx)
         return {"ok": True, "mode": mode, "status": "started", "reference": ref_id}
 
     async def restore_version(self, n: int) -> dict:
@@ -157,7 +166,7 @@ class Session:
             version = await restore(ctx, n)
             await ctx.chat("agent", "v" + str(version["n"]) + " is v" + str(n) + " again: " + version["summary"] + ".")
 
-        self.task = asyncio.create_task(self._run(work(), ctx))
+        self.task = self._launch(work(), ctx)
         return {"ok": True, "mode": mode, "status": "started", "restoring": n}
 
     async def apply_variant(self, opt_id: str, variant: str) -> dict:
@@ -173,7 +182,7 @@ class Session:
             return {"ok": False, "missing": True, "error": "No variant " + variant + " in optimizer run " + opt_id + "."}
         ctx = self._ctx(auto_steps=True)
         await self.bus.publish({"type": "chat", "role": "user", "text": "Build variant " + variant + "."})
-        self.task = asyncio.create_task(self._run(apply_variant(ctx, opt_id, variant), ctx))
+        self.task = self._launch(apply_variant(ctx, opt_id, variant), ctx)
         return {"ok": True, "mode": mode, "status": "started", "variant": variant}
 
     async def start_sketch(self, data: bytes, note: str) -> dict:
@@ -190,7 +199,7 @@ class Session:
         event = sketch_event(self.state, name, "reading", note=note)
         await self.bus.publish(event)
         ctx = self._ctx(auto_steps=claude_enabled())
-        self.task = asyncio.create_task(self._run(run_sketch(ctx, name, note, self.messages), ctx))
+        self.task = self._launch(run_sketch(ctx, name, note, self.messages), ctx)
         return {"ok": True, "mode": mode, "status": "started", "sketch": name, "url": event["url"]}
 
     async def start_remix(self, entry: dict) -> dict:
@@ -202,7 +211,7 @@ class Session:
         if self.state.started:
             await self.reset()
         ctx = self._ctx(auto_steps=False)
-        self.task = asyncio.create_task(self._run(run_remix(ctx, entry), ctx))
+        self.task = self._launch(run_remix(ctx, entry), ctx)
         return {"ok": True, "mode": mode, "status": "started", "remix": entry["id"]}
 
     def publish(self, title: str, description: str, author: str) -> dict:
@@ -249,7 +258,7 @@ class Session:
             await self.bus.publish(meeting_event(meta))
             ctx = self._ctx(auto_steps=claude_enabled())
             ctx.trigger = "meeting"
-            self.task = asyncio.create_task(self._run(run_meeting(ctx, meta, self.messages), ctx))
+            self.task = self._launch(run_meeting(ctx, meta, self.messages), ctx)
             return {"ok": True, "mode": mode, "status": "started", "meeting_id": meta["id"], "kind": meta["kind"]}
 
     async def ask(self, question: dict) -> str:
@@ -425,15 +434,45 @@ class Session:
             assert self.task is not None
             self.task.cancel()
 
+    async def pause(self) -> dict:
+        """Pauses the run at its next checkpoint; the tool that runs now finishes first."""
+
+        if not self._busy() or not await self.run.pause():
+            return {"ok": False, "error": "Nothing is running.", "status": self.run.status}
+        return {"ok": True, "status": self.run.status}
+
+    async def resume(self) -> dict:
+        if not self._busy() or not await self.run.resume():
+            return {"ok": False, "error": "No paused run.", "status": self.run.status}
+        return {"ok": True, "status": self.run.status}
+
+    async def stop(self) -> dict:
+        """Ends the run at its next checkpoint and keeps everything built so far."""
+
+        if not self._busy() or not await self.run.stop():
+            return {"ok": False, "error": "Nothing is running.", "status": self.run.status}
+        return {"ok": True, "status": self.run.status}
+
+    def _launch(self, work, ctx: Ctx) -> asyncio.Task:
+        # Running from the moment the task exists, so a Pause right after the start is not lost.
+        self.run.status = "running"
+        return asyncio.create_task(self._run(work, ctx))
+
     async def _run(self, work, ctx: Ctx) -> None:
+        await self.run.started()
         try:
             await work
         except asyncio.CancelledError:
             raise
+        except RunStopped:
+            await ctx.chat("agent", "Stopped. Everything built so far stays on the bench. Tell me what to do next.")
+            await ctx.emit({"type": "mascot", "state": "ruhig", "say": "Stopped. Your move."})
         except Exception as exc:
             log.exception("run failed")
             await ctx.chat("agent", "The run stopped: " + str(exc))
             await ctx.emit({"type": "mascot", "state": "besorgt", "say": "Something went wrong in the run."})
+        finally:
+            await self.run.finished()
 
     async def _baseline(self) -> None:
         # Every stream starts with this marker, so a client that reconnects or misses a reset starts clean.

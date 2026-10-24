@@ -8,6 +8,7 @@ import time
 from pai_agent.context import Ctx
 from pai_agent.timeouts import limit, timed_out
 from pai_agent.requirements import refresh_requirements
+from pai_agent.run_control import RunStopped
 from pai_agent.scene import CONTROLS, DRAW_KINDS, MASCOT_STATES, PART_CATEGORIES, TARGETS
 from pai_agent.freecad_run import find_freecadcmd
 from pai_agent.tools.blender import blender_render, find_blender, recorded_still
@@ -899,6 +900,8 @@ async def call_tool(ctx: Ctx, name: str, args: dict | None) -> dict:
         message = "Unknown tool: " + name
         await ctx.emit({"type": "tool", "name": name, "status": "error", "detail": message})
         return {"ok": False, "error": message}
+    # Pause and Stop take effect here, between tool calls, never inside one.
+    await ctx.checkpoint()
     await ctx.emit(
         {"type": "tool", "name": name, "status": "running", "detail": _running_detail(name, payload)}
     )
@@ -910,6 +913,10 @@ async def call_tool(ctx: Ctx, name: str, args: dict | None) -> dict:
 
         call = commit_with_snapshot(ctx, function, payload) if name == "version_commit" else function(ctx, payload)
         result = await asyncio.wait_for(call, seconds)
+    except RunStopped:
+        # A tool that runs tools (delegate) was stopped inside: its card ends too.
+        await ctx.emit({"type": "tool", "name": name, "status": "error", "detail": "Stopped by the user"})
+        raise
     except TimeoutError:
         # A stuck tool ends here with a message the room can read, not a frozen run.
         message = timed_out(name, seconds or 0)

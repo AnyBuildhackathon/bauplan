@@ -65,6 +65,8 @@ interface SourceState {
   meetingWebhook: (event: "started" | "ended", meeting: { id: string; title: string }) => Promise<void>;
   /** Answers Bolzen's question (a contradiction between meetings) with one of its options. */
   answerQuestion: (id: string, answerId: string) => Promise<void>;
+  /** Pauses, resumes or stops the build that runs now; it takes effect between tool calls. */
+  controlRun: (action: "pause" | "resume" | "stop") => Promise<void>;
   dismissNotice: () => void;
 }
 
@@ -391,6 +393,15 @@ export const useSource = create<SourceState>((set, get) => {
         await ensureOk(res);
       } catch (err) {
         notify(failure("Jamie event did not arrive", err));
+      }
+    },
+
+    controlRun: async (action) => {
+      try {
+        const res = await apiFetch(`/api/run/${action}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+        await ensureOk(res);
+      } catch (err) {
+        notify(failure(action === "stop" ? "Stop did not arrive" : action === "pause" ? "Pause did not arrive" : "Resume did not arrive", err));
       }
     },
 

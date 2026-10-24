@@ -19,6 +19,7 @@ import uuid
 
 from pai_agent import settings
 from pai_agent.context import Ctx
+from pai_agent.run_control import RunStopped
 
 log = logging.getLogger(__name__)
 
@@ -182,6 +183,7 @@ async def run_subagent(ctx: Ctx, role: str, task: str) -> dict:
     report = ""
     try:
         for _round in range(MAX_ROUNDS):
+            await ctx.checkpoint()
             response = await asyncio.to_thread(
                 create_message,
                 run.model,
@@ -218,6 +220,9 @@ async def run_subagent(ctx: Ctx, role: str, task: str) -> dict:
             messages.append({"role": "user", "content": results})
         else:
             report = (report + " " if report else "") + "Stopped after " + str(MAX_ROUNDS) + " rounds."
+    except RunStopped:
+        await run.emit("done", "stopped by the user")
+        raise
     except Exception as exc:
         log.exception("sub-agent failed")
         await run.emit("error", str(exc)[:160])

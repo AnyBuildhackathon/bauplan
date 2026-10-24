@@ -16,6 +16,12 @@ class Ctx:
         self.asker = asker
         # The orchestrator run in progress; the sub-agents it delegates to name it as their parent.
         self.lead_id: str | None = None
+        # Waits while the run is paused and raises RunStopped after Stop; set by the session.
+        self.gate = None
+
+    async def checkpoint(self) -> None:
+        if self.gate is not None:
+            await self.gate()
 
     async def emit(self, event: dict) -> None:
         await self.bus.publish(event)

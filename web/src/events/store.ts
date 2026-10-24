@@ -22,6 +22,7 @@ import {
   type SketchEvent,
   type QuestionEvent,
   type RemixEvent,
+  type RunStatus,
   type SafetyEvent,
   type TasksEvent,
   type VersionEvent,
@@ -213,6 +214,7 @@ export interface SessionState {
   sketch: SketchEvent | null;
   /** The community project this bench was opened from, or null. */
   remixedFrom: Omit<RemixEvent, "type"> | null;
+  run: RunStatus;
   /** Stress tests by run number, latest event of each. */
   stress: Record<number, StressEvent & { seq: number; at: number }>;
   /** Step-by-step build guide for the latest bill of materials. */
@@ -369,6 +371,7 @@ function emptyState() {
     productLabel: "Any product",
     sketch: null as SketchEvent | null,
     remixedFrom: null as SessionState["remixedFrom"],
+    run: "idle" as RunStatus,
     stress: {} as SessionState["stress"],
     buildGuide: null as BuildGuideEvent | null,
     printPlan: null as PrintEvent | null,
@@ -570,6 +573,8 @@ export const useSession = create<SessionState>((set, get) => ({
         return set({ log, tasks: ev });
       case "remix":
         return set({ log, remixedFrom: { id: ev.id, title: ev.title, author: ev.author } });
+      case "run":
+        return set({ log, run: ev.status });
       case "agent": {
         // One card per agent, updated in place as it reports tokens, cost and its result.
         const known = !!s.agents[ev.id];
