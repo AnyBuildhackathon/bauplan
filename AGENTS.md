@@ -226,7 +226,7 @@ Never commit `.env` files or secret keys to the repository.
 - `RESON8_LANGUAGE`: Language code for Reson8 speech-to-text; defaults to `de`.
 - `ELEVENLABS_API_KEY`: API key for Mechanic speech generation through ElevenLabs.
 - `ELEVENLABS_VOICE_ID`: Custom voice identifier for ElevenLabs audio output.
-- `ELEVENLABS_MODEL`: Model identifier for ElevenLabs voice generation; defaults to `eleven_multilingual_v2`.
+- `ELEVENLABS_MODEL`: Model identifier for ElevenLabs voice generation; defaults to `eleven_flash_v2_5`.
 - `FREECAD_GUI`: Determines FreeCAD execution mode (`auto` connects to open window, `launch` starts app, `off` forces headless).
 - `FREECAD_MCP_URL`: Target URL of the FreeCAD MCP RPC server; defaults to `http://127.0.0.1:9875`.
 - `PAI_ASK_TIMEOUT_S`: Seconds Mechanic waits for question input before adopting default option; defaults to `20`.

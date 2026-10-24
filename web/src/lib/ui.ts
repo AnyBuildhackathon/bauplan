@@ -6,6 +6,7 @@ export type View = "werkbank" | "library" | "training" | "logbuch";
 export type CanvasTab = "modell" | "cad" | "simulation" | "omniverse";
 export type ModelLook = "3d" | "render";
 export type ConceptStatus = "verstanden" | "gesehen";
+export type MicMode = "handsfree" | "ptt";
 
 /** What the dashboard shows beyond the essentials. Off by default, remembered per browser. */
 export interface Display {
@@ -27,8 +28,15 @@ interface UiState {
   bomOpen: boolean;
   lessonStep: StepId | null;
   concepts: Record<string, ConceptStatus>;
+  /** Push-to-talk is held down. */
   listening: boolean;
-  /** Bolzen reads his lines aloud. Remembered per browser. */
+  /** Hands-free: the mic listens for turns and the button toggles it; push-to-talk is the fallback. Remembered per browser. */
+  micMode: MicMode;
+  /** The hands-free conversation is running. */
+  handsFree: boolean;
+  /** The person is in the middle of a spoken turn, so Mechanic keeps quiet. */
+  userTalking: boolean;
+  /** Mechanic reads his lines aloud. Remembered per browser. */
   voiceOn: boolean;
   /** Who listens to the microphone: Reson8, the browser, or nobody. */
   stt: "reson8" | "browser" | "none";
@@ -44,6 +52,9 @@ interface UiState {
   closeLesson: () => void;
   markConcept: (id: string, status: ConceptStatus) => void;
   setListening: (on: boolean) => void;
+  setMicMode: (mode: MicMode) => void;
+  setHandsFree: (on: boolean) => void;
+  setUserTalking: (on: boolean) => void;
   setVoiceOn: (on: boolean) => void;
   resetUi: () => void;
 }
@@ -61,6 +72,16 @@ function storedDisplay(): Display {
     return raw ? { ...DISPLAY_DEFAULT, ...(JSON.parse(raw) as Partial<Display>) } : DISPLAY_DEFAULT;
   } catch {
     return DISPLAY_DEFAULT;
+  }
+}
+
+const MIC_KEY = "anybuild.mic";
+
+function storedMicMode(): MicMode {
+  try {
+    return localStorage.getItem(MIC_KEY) === "ptt" ? "ptt" : "handsfree";
+  } catch {
+    return "handsfree";
   }
 }
 
@@ -97,6 +118,9 @@ export const useUi = create<UiState>((set) => ({
   lessonStep: initialLesson(),
   concepts: {},
   listening: false,
+  micMode: storedMicMode(),
+  handsFree: false,
+  userTalking: false,
   voiceOn: storedVoice(),
   display: storedDisplay(),
   setDisplay: (patch) =>
@@ -121,6 +145,16 @@ export const useUi = create<UiState>((set) => ({
   closeLesson: () => set({ lessonStep: null }),
   markConcept: (id, status) => set((s) => ({ concepts: { ...s.concepts, [id]: status } })),
   setListening: (listening) => set({ listening }),
+  setMicMode: (micMode) => {
+    try {
+      localStorage.setItem(MIC_KEY, micMode);
+    } catch {
+      // Private windows may refuse storage; the choice lasts for this page.
+    }
+    set({ micMode });
+  },
+  setHandsFree: (handsFree) => set(handsFree ? { handsFree } : { handsFree, userTalking: false }),
+  setUserTalking: (userTalking) => set({ userTalking }),
   setVoiceOn: (voiceOn) => {
     try {
       localStorage.setItem(VOICE_KEY, voiceOn ? "on" : "off");

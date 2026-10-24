@@ -50,9 +50,14 @@ For the gripper, `grip_calc` then runs again, so a longer finger shows up as a l
 The response is `{"ok": true, "path": "frame.FCStd"}` when the app launches, or `{"ok": false, "detail": "..."}` when there is no part or no FreeCAD app.
 It prefers `frame.FCStd`, then STEP, then STL.
 
-`GET /api/voice` returns `{"stt": "reson8"|"browser", "tts": "elevenlabs"|"browser", "realtime_url": "...", "language": "en"}`.
+`GET /api/voice` returns `{"stt": "reson8"|"browser", "tts": "elevenlabs"|"browser", "realtime_url": "...", "turns_url": "...", "language": "en", "phrases": [...], "custom_model_id": null, "tts_sample_rate": 24000, "narrator": true}`.
+`turns_url` is Reson8's Turns endpoint for hands-free listening, `realtime_url` its Realtime endpoint for push-to-talk.
+`phrases` bias Reson8 toward our vocabulary (the `phrases` query parameter); a `custom_model_id` from `RESON8_CUSTOM_MODEL_ID` replaces them.
+`narrator` is `true` when `ANTHROPIC_API_KEY` is set: the backend then writes Mechanic's spoken lines as `say` events and the client does not read `mascot` lines aloud.
 `POST /api/voice/token` returns `{"access_token": "...", "expires_in": 600}`, a short-lived Reson8 token for the browser's WebSocket (subprotocols `["bearer", token]`), or HTTP 503 without `RESON8_API_KEY`.
-`POST /api/voice/speak` with `{"text": "..."}` returns `audio/mpeg` from ElevenLabs, or HTTP 503 without `ELEVENLABS_API_KEY`.
+`POST /api/voice/speak` with `{"text": "...", "previous_text": "..."}` streams ElevenLabs speech for one phrase as raw 16-bit little-endian mono PCM (`audio/pcm`, sample rate in `X-Sample-Rate`, 24000), or HTTP 503 without `ELEVENLABS_API_KEY`.
+`previous_text` is the phrase spoken just before, so one reply keeps a continuous intonation.
+`POST /api/voice/warm` opens the backend's Claude and ElevenLabs connections ahead of a reply; the client calls it when a spoken turn starts, and repeated calls within 20 seconds do nothing.
 
 ### Library
 
@@ -119,6 +124,15 @@ Unknown extra fields should be ignored.
 
 No fields.
 The first event of every stream and of every server reset: drop all session state.
+
+### say
+
+Mechanic's spoken line, live only: it is never kept in the backlog, so a reconnect does not replay it.
+`id` names the line, `kind` is `reply` (the fast answer to a prompt) or `update` (a build milestone).
+While the line is written, events carry `delta` (the next piece of text) and `done: false`.
+The last event has `done: true` and the whole `text`; `cancelled: true` means a newer prompt replaced the reply mid-way.
+A reply is also published as a normal agent `chat` event once it is done; updates are only spoken.
+Updates follow `sim`, `cad`, `version` and failed `step` events of a running build, never slider changes, and wait until the reply is finished.
 
 ### replayed
 

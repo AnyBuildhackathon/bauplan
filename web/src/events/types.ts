@@ -442,6 +442,21 @@ export interface FirmwareEvent {
   wiring: WiringRow[];
 }
 
+/**
+ * Mechanic's spoken line, streamed live: `delta` pieces while the fast model writes it,
+ * then `done` with the whole `text`. `kind` is `reply` (an answer to the person) or
+ * `update` (a build milestone). Never replayed on reconnect.
+ */
+export interface SayEvent {
+  type: "say";
+  id: string;
+  kind: "reply" | "update";
+  delta?: string;
+  text?: string;
+  done: boolean;
+  cancelled?: boolean;
+}
+
 export type AgentEvent =
   | StepEvent
   | ChatEvent
@@ -468,6 +483,7 @@ export type AgentEvent =
   | BuildGuideEvent
   | FirmwareEvent
   | AgentRunEvent
+  | SayEvent
   | ResetEvent
   | ReplayedEvent;
 
@@ -497,6 +513,7 @@ const EVENT_TYPES = new Set<AgentEvent["type"]>([
   "build_guide",
   "firmware",
   "agent",
+  "say",
   "reset",
   "replayed",
 ]);

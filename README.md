@@ -168,12 +168,41 @@ cd agent && uv run python scripts/smoke_cad_part.py
 
 ## Voice Integration
 
-In the chat interface, press and hold the spacebar or microphone button to speak with mascot Mechanic and answer clarification questions.
-With `RESON8_API_KEY`, [Reson8](https://docs.reson8.dev) transcribes speech in real time: the backend vends a short-lived token (`POST /api/voice/token`) and the browser streams 16 kHz PCM audio to `wss://api.reson8.dev/v1/speech-to-text/realtime`.
-The API key stays securely on the backend.
-Without an API key, the browser uses its native Web Speech recognition, falling back to text typing.
-Mechanic speaks responses using the browser speech synthesis engine, or via ElevenLabs when `ELEVENLABS_API_KEY` is provided.
+Talking to Mechanic is hands-free: click the microphone once and just talk, no button to hold.
+The voice loop is built to answer within about a second of the moment you stop speaking.
+
+```text
+mic ─16 kHz PCM─▶ Reson8 Turns ──turn_start──▶ Mechanic pauses (barge-in)
+                       │
+                       └──turn_end + text──▶ POST /api/prompt ─┬─▶ orchestrator (tools, CAD, simulation)
+                                                               └─▶ Claude Haiku: 1-2 spoken sentences
+                                                                      │ `say` deltas over SSE
+                                                                      ▼
+                                       browser cuts phrases ─▶ POST /api/voice/speak ─▶ ElevenLabs Flash (PCM stream) ─▶ Web Audio
+```
+
+- **Listening.** With `RESON8_API_KEY`, the browser streams 16 kHz PCM to the [Reson8](https://docs.reson8.dev) Turns endpoint (`wss://api.reson8.dev/v1/speech-to-text/turns`) with a short-lived token from `POST /api/voice/token`; the API key never leaves the backend.
+  Reson8 decides when a turn has ended from acoustics and meaning, not silence alone, so a thinking pause does not cut you off.
+  Its turn-end candidates appear live in the composer, and the final turn is sent at once.
+  A phrase list biases recognition toward our vocabulary (Mechanic, Twiglet, Caddx, 1103, KV, Gemfan, MuJoCo, Isaac Sim and more, see `PHRASES` in `agent/src/pai_agent/voice.py`); `RESON8_CUSTOM_MODEL_ID` uses a Reson8 custom model instead.
+- **Answering.** Every prompt starts the orchestrator and, in parallel, a fast spoken reply from Claude Haiku (`claude-haiku-5-5`, thinking off) that acknowledges the request and says what happens next.
+  The reply streams token by token as `say` events, and later milestones (a CAD part, a simulation result, a finished version) get one short spoken sentence each.
+  These sentences come only from the facts in the milestone event, with a fixed sentence as the fallback.
+- **Speaking.** The browser cuts the streamed text into phrases (the first at a comma, the rest at sentence ends) and requests each one from ElevenLabs Flash v2.5 as a PCM stream the moment it is complete, so speech starts while Haiku is still writing.
+  Phrases play gaplessly through Web Audio, and each request passes the sentence before it so the intonation stays continuous.
+  The voice is the stock ElevenLabs voice "Roger" (`CwhRBWXzGAHq8TQ4Fs17`, a confident, laid-back American male); override it with `ELEVENLABS_VOICE_ID`.
+- **Barge-in.** When Reson8 reports a new turn while Mechanic talks, playback pauses instantly; it stops for good once real words arrive, and resumes if the turn was only Mechanic's own voice echoing into the microphone.
+- **Lip-sync.** `useSpeech` in `web/src/lib/speech.ts` exposes `level` (0 to 1, every animation frame) and `speaking` for the mascot animation.
+  With ElevenLabs the level is measured from the audio; the browser voice gives a pulse per spoken word.
+
+Push-to-talk stays as the fallback: turn on "Push-to-talk" in the Settings panel, then hold the microphone button or the space bar, with Reson8's Realtime endpoint.
+Without `RESON8_API_KEY`, the browser's own Web Speech recognition does the same, and typing always works.
+Without `ELEVENLABS_API_KEY`, the browser's speech synthesis reads the same phrases.
+Without `ANTHROPIC_API_KEY`, there is no fast reply and Mechanic reads his speech bubble aloud instead.
 The speaker button in the chat header mutes audio output; loading with `?mute` starts muted.
+The browser console logs `[voice] end of turn → first audio … ms` for every spoken turn, and `window.__voiceLatency` keeps the list.
+Measured on 2026-10-24 with a recorded question through a fake microphone, from Reson8's turn end to Mechanic's first sound with ElevenLabs: 960 ms, 997 ms and 1010 ms in one run, and 1646 ms (first turn after a backend start), 1256 ms, 1101 ms and 972 ms in another.
+Haiku's first token takes about 0.6 to 0.8 s of that, ElevenLabs Flash about 0.2 s.
 
 ## Environment Variables
 
@@ -190,6 +219,7 @@ Shell variables override values in `.env`.
 | `PAI_SUBAGENT_MODEL` | Model of the sub-agents (CAD scripts, parts, checks, pricing), defaulting to `claude-sonnet-5-5`. |
 | `PAI_SUBAGENT_EFFORT` | Sub-agent effort, defaulting to `medium`. |
 | `PAI_DELEGATION` | Set to `0` to let the orchestrator pick parts and run checks itself instead of delegating. |
+| `ANTHROPIC_VOICE_MODEL` | Fast Claude model for Mechanic's spoken replies, defaulting to `claude-haiku-5-5`. |
 | `PAI_FORCE_MOCK` | Set to `1` to force mock mode execution. |
 | `DEMO_PACE_S` | Pause delay between agent workflow steps in seconds, defaulting to `0`. |
 | `PORT` | Backend HTTP port, defaulting to `8100`. |
@@ -198,8 +228,10 @@ Shell variables override values in `.env`.
 | `JAMIE_WEBHOOK_SECRET` | Secret token verified against `X-Jamie-Secret` header or `?secret=` when tunneling requests. |
 | `RESON8_API_KEY` | Reson8 API key for speech-to-text, leaving empty for browser speech recognition. |
 | `RESON8_LANGUAGE` | Language code for Reson8 speech-to-text, defaulting to `en`. |
+| `RESON8_CUSTOM_MODEL_ID` | Optional Reson8 custom model used instead of the built-in phrase list. |
 | `ELEVENLABS_API_KEY` | ElevenLabs API key for Mechanic speech synthesis, leaving empty for browser speech synthesis. |
-| `ELEVENLABS_VOICE_ID` | Optional English voice identifier for ElevenLabs audio generation. |
+| `ELEVENLABS_VOICE_ID` | ElevenLabs voice, defaulting to the stock voice "Roger" (`CwhRBWXzGAHq8TQ4Fs17`). |
+| `ELEVENLABS_MODEL` | ElevenLabs model, defaulting to `eleven_flash_v2_5` for low latency. |
 | `FREECAD_GUI` | FreeCAD execution mode defaulting to `auto` (`auto` builds in open window, `launch` starts app, `off` forces headless). |
 | `FREECAD_MCP_URL` | FreeCAD MCP RPC server URL defaulting to `http://127.0.0.1:9875`. |
 | `PAI_ASK_TIMEOUT_S` | Seconds Mechanic waits for question response before choosing default option, defaulting to `20`. |

@@ -7,6 +7,7 @@ import { parseEvent, type QuestionEvent } from "./types";
 import { apiUrl } from "../lib/api";
 import { useUi } from "../lib/ui";
 import { loadVoiceCapabilities } from "../lib/voice";
+import { handleSay } from "../lib/speech";
 import { recordedOmniverse } from "./omniverse";
 
 export type SourceMode = "live" | "demo";
@@ -127,6 +128,11 @@ function openLive(onStatus: (s: LiveStatus) => void) {
     if (!ev) return;
     if (ev.type === "replayed") {
       replaying = false;
+      return;
+    }
+    if (ev.type === "say") {
+      const ui = useUi.getState();
+      if (!replaying) handleSay(ev, { voiceOn: ui.voiceOn, userTalking: ui.userTalking });
       return;
     }
     useSession.getState().apply(ev, { instant: replaying });

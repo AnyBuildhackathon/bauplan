@@ -321,7 +321,8 @@ export const useSession = create<SessionState>((set, get) => ({
   apply: (ev, opts) => {
     // The server starts every stream, and every reset, with this marker; a reconnect replays from it.
     if (ev.type === "reset") return set(emptyState());
-    if (ev.type === "replayed") return;
+    // Spoken lines go straight to the speaker (lib/speech.ts); they are not session state.
+    if (ev.type === "replayed" || ev.type === "say") return;
     const at = opts?.instant ? Date.now() - INSTANT_AGE_MS : Date.now();
     const seq = ++seqCounter;
     // The drone flow (Jamie kickoff, recordings) sends no product event; its own events name it.
