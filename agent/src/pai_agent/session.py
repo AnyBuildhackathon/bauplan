@@ -9,14 +9,13 @@ import re
 import uuid
 from pathlib import Path
 
-from pai_agent.app_control import describe, match_commands
+from pai_agent.app_control import match_commands
 from pai_agent.bus import EventBus
 from pai_agent.context import Ctx
 from pai_agent.env import claude_enabled
 from pai_agent.orchestrator import run_meeting, run_prompt, run_reference, run_remix, run_sketch
 from pai_agent.paths import SESSIONS_DIR
 from pai_agent.scene import STEPS
-from pai_agent.speech import Voice
 from pai_agent.state import BuildState
 from pai_agent.tools.jamie import forget_client, init_timeline, meeting_event, resolve_meeting, set_task_done
 from pai_agent.tools.registry import emit_connections
@@ -42,9 +41,6 @@ class Session:
         self._answer: asyncio.Future | None = None
         # Webhooks can arrive twice (retries); one meeting-ended at a time decides what happens.
         self._meeting_lock = asyncio.Lock()
-        # Mechanic answers out loud right away while the orchestrator works, and speaks again at milestones.
-        self.voice = Voice(self.bus, busy=self._busy)
-        self.bus.observer = self.voice.observe
 
     async def bootstrap(self) -> None:
         await self._baseline()
@@ -63,11 +59,8 @@ class Session:
         if self._busy():
             question = self.question
             if question is not None and await self._answer_from_text(text, voice, record_user=record_user):
-                self.voice.reply(text, self.state, "answered", question)
                 return {"ok": True, "mode": mode, "status": "answered"}
-            self.voice.reply(text, self.state, "already_running")
             return {"ok": True, "mode": mode, "status": "already_running"}
-        self.voice.reply(text, self.state, "started")
         ctx = self._ctx(auto_steps=claude_enabled())
         ctx.trigger = "chat"
         ctx.label = text.strip()[:80]
@@ -90,17 +83,14 @@ class Session:
             if review is not None and self.state.versions and not self._busy():
                 # "Rebuild" with a review on the timeline ends that review, as its End button does.
                 await self.bus.publish(ui_event("run:review", {"say": "Ending the review, rebuilding."}))
-                self.voice.reply(text, self.state, "ui", detail="ending the review and building the next version")
                 result = await self.start_from_meeting(review["id"], review["title"])
                 return {**result, "status": "ui"}
         runs = [c for c in commands if c["control"].startswith("run:")]
         if runs and self._busy():
-            self.voice.reply(text, self.state, "already_running")
             if not claude_enabled():
                 await self.bus.publish({"type": "chat", "role": "agent", "text": "I am still building. Ask again once this run is done."})
             return {"ok": True, "mode": mode, "status": "already_running"}
         ctx = self._ctx(auto_steps=False)
-        self.voice.reply(text, self.state, "ui", detail=describe(commands))
 
         async def work() -> None:
             for args in commands:
@@ -424,7 +414,6 @@ class Session:
         self.task = None
         self.question = None
         self._answer = None
-        self.voice.cancel()
         forget_client(self.state.session_id)
         self.state = _new_state()
         self.messages.clear()
@@ -432,7 +421,6 @@ class Session:
         await self._baseline()
 
     async def shutdown(self) -> None:
-        self.voice.cancel()
         if self._busy():
             assert self.task is not None
             self.task.cancel()

@@ -677,15 +677,6 @@ export interface ExplainEvent {
   /** Asked for by a live event, so it shows as a chat card; a "Why?" click shows it in place. */
   chat?: boolean;
 }
-export interface SayEvent {
-  type: "say";
-  id: string;
-  kind: "reply" | "update";
-  delta?: string;
-  text?: string;
-  done: boolean;
-  cancelled?: boolean;
-}
 
 export type AgentEvent =
   | UiEvent
@@ -719,7 +710,6 @@ export type AgentEvent =
   | ElectronicsEvent
   | SafetyEvent
   | AgentRunEvent
-  | SayEvent
   | ExplainEvent
   | OptimizeEvent
   | ResetEvent
@@ -757,7 +747,6 @@ const EVENT_TYPES = new Set<AgentEvent["type"]>([
   "electronics",
   "safety",
   "agent",
-  "say",
   "explain",
   "optimize",
   "reset",

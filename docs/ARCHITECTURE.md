@@ -24,7 +24,7 @@ flowchart LR
         SES[Session<br/>one bench, build state, versions]
         ORC[Orchestrator<br/>Claude Opus 5.5]
         SUB[Sub-agents<br/>Claude Sonnet 5.5]
-        VOX[Voice reply<br/>Claude Haiku 5.5]
+        GLV[Gemini Live gateway<br/>WS /api/voice/live]
         REG[Tool registry<br/>51 tools]
         BUS[Event bus<br/>SSE fan-out]
     end
@@ -37,7 +37,7 @@ flowchart LR
         IS[Isaac Sim and Isaac Lab<br/>GPU host over SSH]
         JM[Jamie MCP]
         R8[Reson8 STT]
-        EL[ElevenLabs TTS]
+        GL[Gemini Live<br/>Vertex gemini-3.8-live]
         WS[Claude web search<br/>live shop prices]
     end
 
@@ -59,10 +59,10 @@ flowchart LR
     REG --> JM
     REG --> WS
     REG --> BUS
-    VOX --> BUS
+    GLV <--> GL
     BUS -- "GET /api/events (SSE)" --> UI
     UI -- "token" --> R8
-    UI -- "POST /api/voice/speak" --> EL
+    UI <-- "PCM WebSocket" --> GLV
     BT -- "claim and progress" --> API
 ```
 
@@ -74,7 +74,7 @@ flowchart LR
 | Sub-agents | `agent/src/pai_agent/agents.py` | Bounded jobs on a smaller model: CAD scripts, parts, checks, pricing. |
 | Tool registry | `agent/src/pai_agent/tools/registry.py` | One schema list and one dispatch for Claude and the mock, with per-tool timeouts (`timeouts.py`). |
 | Event bus | `agent/src/pai_agent/bus.py` | In-memory fan-out; a late subscriber gets the backlog, then a `replayed` marker, then live events. |
-| Voice | `agent/src/pai_agent/speech.py`, `voice.py` | Fast spoken replies from Claude Haiku as `say` events, Reson8 token vending and ElevenLabs streaming. |
+| Voice | `agent/src/pai_agent/gemini_live.py`, `voice.py` | The Gemini Live gateway (Mechanic's only voice) and Reson8 token vending. |
 | Engineering core | `spec.py`, `analysis.py`, `analysis_more.py`, `rigid_sim.py`, `grip_sim.py`, `assembly.py` | Spec validation, closed-form checks, MuJoCo rigid-body tests and the assembly model. |
 | CAD runners | `freecad_run.py`, `cad_script.py`, `agent/freecad/` | FreeCAD in the open window over `freecad-mcp`, headless `freecadcmd` in a sandbox, CadQuery as the last fallback. |
 | Rendering | `agent/blender/studio.py`, `tools/blender.py` | Headless Blender studio renders of the assembled GLB. |
@@ -90,11 +90,10 @@ flowchart LR
 1. A request arrives as `POST /api/prompt` (typed or spoken), `POST /api/sketch` (photo), `POST /api/library/{id}/open` (reference), `POST /api/community/{id}/remix` (remix) or `POST /api/webhooks/jamie` (a meeting ended).
 2. `app_control.py` answers pure dashboard commands ("show me the CAD", "pull it apart") at once with `ui_control` calls, without a model call.
 3. Everything else starts a run in the session; the HTTP call returns immediately with `status: started`.
-4. In parallel, Claude Haiku streams a one or two sentence spoken acknowledgement as `say` events, so Mechanic answers within about a second.
-5. The orchestrator writes one short sentence per step, then calls tools; every tool result is also published as events (`tool`, `cad`, `sim`, `requirement`, `metrics`, `bom`, and more).
-6. When a check fails, the orchestrator changes a parameter with `cad_update` or swaps a part, and every check that ran before runs again.
-7. The run ends with a render, a bill of materials, and for meeting-driven builds a version attached to the meeting with the difference written back to Jamie.
-8. The dashboard never polls: it renders whatever the event stream says, so a reconnecting client replays the backlog onto an empty state.
+4. The orchestrator writes one short sentence per step, then calls tools; every tool result is also published as events (`tool`, `cad`, `sim`, `requirement`, `metrics`, `bom`, and more).
+5. When a check fails, the orchestrator changes a parameter with `cad_update` or swaps a part, and every check that ran before runs again.
+6. The run ends with a render, a bill of materials, and for meeting-driven builds a version attached to the meeting with the difference written back to Jamie.
+7. The dashboard never polls: it renders whatever the event stream says, so a reconnecting client replays the backlog onto an empty state.
 
 ```mermaid
 sequenceDiagram
@@ -141,7 +140,7 @@ With delegation on, `part_pick`, `simulate_assembly` and the `check_*` tools bel
 Known gap: `check_power`, `check_thermal` and `check_rollover` are in `DELEGATED` but not in the analysis agent's tool list, so with delegation on neither agent can call them; `PAI_DELEGATION=0` makes them available to the orchestrator.
 Every agent streams as an `agent` event with role, model, effort, job, status, rounds, tokens and cost, and shows up as its own card in the chat.
 Models, effort and delegation are set with `PAI_ORCHESTRATOR_MODEL`, `PAI_ORCHESTRATOR_EFFORT`, `PAI_SUBAGENT_MODEL`, `PAI_SUBAGENT_EFFORT` and `PAI_DELEGATION`, or at runtime from the settings button in the top bar (`/api/settings`).
-A third, fast model (Claude Haiku 5.5, `ANTHROPIC_VOICE_MODEL`) only writes the spoken lines and the learning-mode explanations, and it may only use numbers that are in the facts it was given.
+A third, fast model (Claude Haiku 5.5, `ANTHROPIC_VOICE_MODEL`) only writes the learning-mode explanations, and it may only use numbers that are in the facts it was given.
 
 ### Honesty rules
 
@@ -248,42 +247,33 @@ Without a GLB (the CadQuery fallback) the studio places simple parts around the 
 
 ## Voice loop
 
-Gemini Live is the default hands-free engine when configured.
+Gemini Live is Mechanic's only voice; without it Mechanic answers in text.
 The backend proxies native audio through Vertex AI with gcloud user OAuth or AI Studio with a server-only key.
 Gemini calls Claude for engineering and the existing app controls for navigation; Reson8 independently transcribes the same microphone stream for the chat and logbook.
-Gemini output shares the existing Web Audio lip-sync path.
+Gemini output plays through Web Audio and drives the mascot's lip-sync.
+Mechanic speaks only inside a voice conversation the person started with **Talk** in the chat input: he answers them, plus at most one short line when a build finishes, and never narrates build progress.
 See [realtime voice](GEMINI_LIVE.md) for configuration, protocol, transcript ownership and measured latency.
 
-The existing loop below remains available through Settings and starts automatically when Gemini fails.
-
 ```text
-mic -16 kHz PCM-> Reson8 Turns --turn_start--> Mechanic pauses (barge-in)
-                       |
-                       +--turn_end + text--> POST /api/prompt -+-> orchestrator (tools, CAD, simulation)
-                                                               +-> Claude Haiku: 1-2 spoken sentences
-                                                                      | `say` deltas over SSE
-                                                                      v
-                                       browser cuts phrases -> POST /api/voice/speak -> ElevenLabs Turbo (PCM stream) -> Web Audio
+mic -16 kHz PCM-+-> WS /api/voice/live -> Gemini Live (gemini-3.8-live, Fenrir) -> 24 kHz PCM -> Web Audio + lip-sync
+                |                              +-> engineer / control_app / product_state -> Claude and the dashboard
+                +-> Reson8 Turns -> chat transcript and logbook (never speaks, never starts a build)
 ```
 
 - **Listening:** with `RESON8_API_KEY`, the browser streams 16 kHz PCM to the Reson8 Turns endpoint with a short-lived token from `POST /api/voice/token`; the API key never leaves the backend.
   Reson8 decides when a turn ended from acoustics and meaning, so a thinking pause does not cut the speaker off, and a phrase list biases recognition toward the domain vocabulary (`PHRASES` in `voice.py`).
-- **Answering:** every prompt starts the orchestrator and, in parallel, a fast spoken reply from Claude Haiku; later milestones (a CAD part, a test result, a new version) get one short spoken sentence each, built only from the facts in that event.
-- **Speaking:** the browser cuts the streamed text into phrases (the first at a comma, the rest at sentence ends) and requests each from ElevenLabs Turbo v2.5 as a PCM stream as soon as it is complete, so speech starts while Haiku is still writing.
-  Phrases play gaplessly through Web Audio, and each request passes the sentence before it so the intonation stays continuous; the voice is the stock ElevenLabs voice "Roger" with stability 0.4, similarity boost 0.8 and style 0.45.
+- **Speaking:** only Gemini Live speaks, natively, with the prebuilt voice `Fenrir` (`GEMINI_LIVE_VOICE` overrides it); chat lines, mascot bubbles and questions are never read aloud.
 - **Persona:** Mechanic is self-assured and witty, may swear mildly when it fits, never at the person, and stays honest: no claimed pass, price or number that a tool did not produce.
 - **Lip-sync:** `useSpeech` in `web/src/lib/speech.ts` measures the audio level every frame and drives the mascot's mouth while Mechanic speaks.
-- **Barge-in:** when Reson8 reports a new turn while Mechanic talks, playback pauses at once and resumes if the turn was only an echo.
-- Measured end of turn to first audio was about 1 second (960 to 1010 ms in one run on 2026-10-24).
-- Fallbacks: without Reson8 the browser's Web Speech recognition listens, push-to-talk is available in settings, and without ElevenLabs Mechanic stays silent and shows text.
+- **Barge-in:** Gemini's voice detection interrupts Mechanic the moment the person talks.
+- Fallbacks: without Reson8 the browser's Web Speech recognition listens, push-to-talk dictates a prompt from settings, and without Gemini Live Mechanic stays silent and shows text.
 
 ## Event stream
 
 The backend publishes every state change as one JSON object on `GET /api/events`.
 Every stream starts with `reset`, then the backlog, then a `replayed` marker, then live events, with `: keepalive` comments every 15 seconds.
 The web store (`web/src/events/store.ts`) folds events into UI state.
-`say` events are live-only and never replayed.
-The 34 event types and their payloads are listed in [API.md](API.md#server-sent-events) and specified in [events.md](events.md#sse-events).
+The 33 event types and their payloads are listed in [API.md](API.md#server-sent-events) and specified in [events.md](events.md#sse-events).
 
 ## Mock mode and fallbacks
 
@@ -294,7 +284,7 @@ Every external dependency has a fallback, so the full workflow runs on a laptop 
 | `ANTHROPIC_API_KEY` | Scripted mock stories (`mock_story.py`, `mock_product.py`, `mock_gripper.py`, `mock_categories.py`) call the same tools with the same events. |
 | `JAMIE_MCP_TOKEN` | Fixture meetings in `agent/data/meetings/` and the local outbox `jamie_outbox.json`. |
 | `RESON8_API_KEY` | Browser Web Speech recognition; typing always works. |
-| `ELEVENLABS_API_KEY` | Mechanic stays silent and shows text. |
+| Gemini Live (`GOOGLE_CLOUD_PROJECT` with gcloud, or `GEMINI_API_KEY`) | Mechanic stays silent and shows text; the microphone still dictates. |
 | FreeCAD window | Headless `freecadcmd`, then CadQuery. |
 | Blender | The recorded still `agent/runs/fallback/render.png`. |
 | GPU host for Isaac | A recorded, clearly labelled result. |

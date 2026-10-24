@@ -63,15 +63,12 @@ For the gripper, `grip_calc` then runs again, so a longer finger shows up as a l
 The response is `{"ok": true, "path": "frame.FCStd"}` when the app launches, or `{"ok": false, "detail": "..."}` when there is no part or no FreeCAD app.
 It prefers `frame.FCStd`, then STEP, then STL.
 
-`GET /api/voice` returns `{"stt": "reson8"|"browser", "tts": "elevenlabs"|"none", "realtime_url": "...", "turns_url": "...", "language": "en", "phrases": [...], "custom_model_id": null, "tts_sample_rate": 24000, "narrator": true}`.
+`GET /api/voice` returns `{"gemini_live": true, "stt": "reson8"|"browser", "realtime_url": "...", "turns_url": "...", "language": "en", "phrases": [...], "custom_model_id": null}`.
+`gemini_live` says whether Mechanic's only voice, Gemini Live (`WS /api/voice/live`, see [GEMINI_LIVE.md](GEMINI_LIVE.md)), is configured.
 `turns_url` is Reson8's Turns endpoint for hands-free listening, `realtime_url` its Realtime endpoint for push-to-talk.
 `phrases` bias Reson8 toward our vocabulary (the `phrases` query parameter); a `custom_model_id` from `RESON8_CUSTOM_MODEL_ID` replaces them.
-`narrator` is `true` when `ANTHROPIC_API_KEY` is set: the backend then writes Mechanic's spoken lines as `say` events and the client does not read `mascot` lines aloud.
-Without ElevenLabs (`"tts": "none"`) Mechanic is silent and his text is the caption; the system voice is never used.
+Mechanic never reads chat, `mascot` or `question` lines aloud; without Gemini Live he is silent and his text is the caption, and the system voice is never used.
 `POST /api/voice/token` returns `{"access_token": "...", "expires_in": 600}`, a short-lived Reson8 token for the browser's WebSocket (subprotocols `["bearer", token]`), or HTTP 503 without `RESON8_API_KEY`.
-`POST /api/voice/speak` with `{"text": "...", "previous_text": "..."}` streams ElevenLabs speech for one phrase as raw 16-bit little-endian mono PCM (`audio/pcm`, sample rate in `X-Sample-Rate`, 24000), or HTTP 503 without `ELEVENLABS_API_KEY`.
-`previous_text` is the phrase spoken just before, so one reply keeps a continuous intonation.
-`POST /api/voice/warm` opens the backend's Claude and ElevenLabs connections ahead of a reply; the client calls it when a spoken turn starts, and repeated calls within 20 seconds do nothing.
 
 ### Library
 
@@ -222,14 +219,14 @@ The dashboard calls it on start: when the backend answers it opens with an empty
 
 `GET /api/status` returns `{"partners": [{"id", "label", "state", "detail"}], "isaac": {"host", "gpu", "state", "detail", "last_run"}}`.
 It requires the same access session as other API routes and never returns keys, tokens or private-key paths.
-Partner ids are `claude`, `jamie`, `reson8`, `elevenlabs`, `gemini`, `freecad`, `blender` and `isaac`.
+Partner ids are `claude`, `jamie`, `reson8`, `gemini`, `freecad`, `blender` and `isaac`.
 `state` is `live`, `offline` or `mock`; `detail` explains the provider and its fallback in English.
 For remote APIs, `live` means credentials are configured and the integration is enabled, not that authentication or quota has been verified.
 Status checks make no billable API calls.
 Claude is `mock` when disabled or forced into mock mode; Jamie is `mock` without its MCP token.
 Missing speech keys are `offline`, with browser recognition or text replies as the fallback.
 FreeCAD and Blender report local availability; observed tool errors and CAD fallback to CadQuery override availability until a later successful result or session reset.
-ElevenLabs and Gemini Live report independently, so either voice engine can be chosen in Settings without implying the other is connected.
+Gemini Live is Mechanic's only voice; without it Mechanic replies with text.
 Gemini availability follows the existing Studio key or Vertex project and `gcloud` configuration.
 The frontend polls every 15 seconds and marks unavailable status responses offline.
 
@@ -285,15 +282,6 @@ Unknown extra fields should be ignored.
 No fields.
 The first event of every stream and of every server reset: drop all session state.
 
-### say
-
-Mechanic's spoken line, live only: it is never kept in the backlog, so a reconnect does not replay it.
-`id` names the line, `kind` is `reply` (the fast answer to a prompt) or `update` (a build milestone).
-While the line is written, events carry `delta` (the next piece of text) and `done: false`.
-The last event has `done: true` and the whole `text`; `cancelled: true` means a newer prompt replaced the reply mid-way.
-Every finished line, reply or update, is also published as an agent `chat` event with `voice: true`, so the conversation stays readable in the chat.
-Updates follow `sim`, `cad`, `version` and failed `step` events of a running build, never slider changes, and wait until the reply is finished.
-
 ### explain
 
 One decision explained, the `POST /api/explain` answer without `ok`, plus `chat`.
@@ -321,7 +309,7 @@ The tool pill still shows `offline`.
 
 `role` is `user` or `agent`.
 `text` is the utterance.
-`voice: true` marks a spoken line: a user turn heard by Reson8 or the browser, or a line Mechanic said aloud (a `say` reply or update).
+`voice: true` marks a spoken line: a user turn heard by Reson8 or the browser, or a line Mechanic said aloud in a Gemini Live conversation.
 
 ### tool
 

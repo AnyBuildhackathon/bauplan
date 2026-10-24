@@ -31,15 +31,15 @@ class PartnerStatusTests(unittest.TestCase):
     def test_independent_fallbacks_without_credentials(self):
         rows = self.rows()
         self.assertEqual({key: row["state"] for key, row in rows.items()}, {
-            "claude": "mock", "jamie": "mock", "reson8": "offline", "elevenlabs": "offline",
+            "claude": "mock", "jamie": "mock", "reson8": "offline",
             "gemini": "offline", "freecad": "offline", "blender": "offline",
         })
 
     def test_configured_apis_and_forced_mock_never_expose_secrets(self):
-        keys = {name: "secret-status-test" for name in ("ANTHROPIC_API_KEY", "JAMIE_MCP_TOKEN", "RESON8_API_KEY", "ELEVENLABS_API_KEY", "GEMINI_API_KEY")}
+        keys = {name: "secret-status-test" for name in ("ANTHROPIC_API_KEY", "JAMIE_MCP_TOKEN", "RESON8_API_KEY", "GEMINI_API_KEY")}
         with patch.dict(os.environ, keys):
             rows = self.rows()
-            self.assertTrue(all(rows[key]["state"] == "live" for key in ("claude", "jamie", "reson8", "elevenlabs", "gemini")))
+            self.assertTrue(all(rows[key]["state"] == "live" for key in ("claude", "jamie", "reson8", "gemini")))
             self.assertNotIn("secret-status-test", json.dumps(rows))
             self.assertIn("authentication and quota", rows["claude"]["detail"])
             with patch.dict(os.environ, {"PAI_FORCE_MOCK": "1"}):
@@ -65,7 +65,7 @@ class PartnerStatusTests(unittest.TestCase):
             response = client.get("/api/status")
             self.assertEqual(response.status_code, 200)
             body = response.json()
-            self.assertEqual(len(body["partners"]), 8)
+            self.assertEqual(len(body["partners"]), 7)
             self.assertEqual(body["isaac"]["last_run"]["stage"], "execute")
             self.assertEqual(body["isaac"]["gpu"], "NVIDIA A40")
             with patch.dict(os.environ, {"ANYBUILD_ACCESS_CODE": "test-code"}):

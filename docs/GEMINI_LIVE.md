@@ -20,8 +20,9 @@ cd agent && uv run physical-ai-agent
 The backend obtains a bearer token with `gcloud auth print-access-token --quiet` for every new session.
 Gcloud refreshes its user credential as needed; an Application Default Credentials file is not required.
 Neither the token nor a permanent API key reaches the browser.
-The verified Vertex model is `gemini-live-2.5-flash-native-audio` in `us-central1`, using the male prebuilt voice `Charon`.
-Set `GEMINI_LIVE_MODEL` to override the model when another model is available in your project.
+The Vertex default is `gemini-3.8-live` in `us-central1`, the newest Live model the project lists, using the energetic, confident prebuilt voice `Fenrir`.
+On 2026-10-24 a Vertex session with it connected and answered with native spoken audio in `Fenrir`.
+Set `GEMINI_LIVE_MODEL` to override the model (for example `gemini-live-2.5-flash-native-audio`) and `GEMINI_LIVE_VOICE` to pick another prebuilt voice.
 
 AI Studio is an alternative:
 
@@ -34,18 +35,19 @@ cd agent && uv run physical-ai-agent
 The AI Studio default is `gemini-3.8-live`, selected from the authenticated models list on 2026-10-24.
 AI Studio prepaid credits and Google Cloud credits are separate; an exhausted AI Studio key cannot use Cloud credits through the AI Studio endpoint.
 When `GOOGLE_CLOUD_PROJECT` is set, Vertex is selected by default; otherwise the backend uses AI Studio.
-The browser selects Gemini Live by default when its backend configuration is available.
+Gemini Live is Mechanic's only speaking voice; there is no other voice engine and no voice setting.
 Availability reports configured credentials, not an assurance of remaining quota or project access.
-A saved **Settings > Voice engine** choice overrides that default.
-Push-to-talk continues to use the existing transcript and ElevenLabs loop; Gemini Live is the hands-free engine.
+Mechanic speaks only inside a voice conversation the person started, to answer them, plus at most one short line when a build it started finishes; build progress stays text in the chat.
+Press **Talk** in the chat input to start the conversation; the button turns into **End**, a status line says the conversation is live, and pressing **End** stops it.
+Push-to-talk (Settings) only dictates a prompt; Mechanic answers it in text.
 
 ## Audio and transcripts
 
 One microphone capture produces 16 kHz, mono, signed 16-bit PCM chunks.
 The browser sends each chunk to both the backend Gemini gateway and Reson8 Turns.
 Gemini's automatic voice detection controls conversation and barge-in.
-Gemini's 24 kHz PCM response uses the existing Web Audio output and the same lip-sync analyser as ElevenLabs.
-The mute button silences playback while preserving transcription.
+Gemini's 24 kHz PCM response plays through Web Audio, and its level drives the mascot's lip-sync.
+The header mute button silences playback while preserving transcription.
 
 Reson8's final turn text is recorded without sending another engineering prompt.
 Gemini's output transcription records Mechanic's spoken reply.
@@ -54,9 +56,7 @@ Both sides enter the existing `chat` SSE stream and logbook archive.
 The backend also appends completed turns to the session's `voice_conversation.jsonl` file.
 The logbook lets the user choose a timeline meeting and send the displayed conversation through the existing Jamie adapter, which retains its offline outbox fallback.
 
-If Gemini fails, times out, or closes the session, the microphone switches automatically to the existing Reson8/browser + Haiku + ElevenLabs loop.
-The session suppresses the Haiku narrator while Gemini is connected so the two voices cannot talk over each other.
-Disconnecting Gemini restores the narrator.
+If Gemini is not configured, fails, times out, or closes the session, Mechanic does not switch to another voice: the microphone keeps dictating through Reson8 or the browser, and Mechanic answers in text captions.
 An engineering task already started by Claude continues if the voice connection ends or Gemini cancels its pending tool response.
 
 ## WebSocket protocol
@@ -97,10 +97,10 @@ The meeting must exist on the timeline, and note text is limited to 24,000 chara
 
 ## Validation and latency
 
-Backend gateway, authentication, tool routing, transcript and narrator tests:
+Backend gateway, authentication, tool routing, voice and transcript tests:
 
 ```bash
-cd agent && uv run --with pytest pytest tests/test_gemini_live.py tests/test_speech.py tests/test_app_control.py tests/test_access.py -q
+cd agent && uv run --with pytest pytest tests/test_gemini_live.py tests/test_app_control.py tests/test_access.py -q
 cd web && npm run build
 ```
 
@@ -115,7 +115,7 @@ This includes network transit and Gemini's automatic endpoint detection; browser
 | 2 | 1,163 ms |
 | 3 | 1,119 ms |
 
-These measurements used Vertex `gemini-live-2.5-flash-native-audio`, `us-central1`, with `Charon`.
+These measurements used the earlier default, Vertex `gemini-live-2.5-flash-native-audio`, `us-central1`, with `Charon`.
 They measure a short conversational response, not a CAD build or simulation duration.
 
 Provider documentation: [Vertex native audio guide](https://cloud.google.com/blog/topics/developers-practitioners/how-to-use-gemini-live-api-native-audio-in-vertex-ai), [Live WebSocket protocol](https://ai.google.dev/api/live), [gcloud access token command](https://cloud.google.com/sdk/gcloud/reference/auth/print-access-token).

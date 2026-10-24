@@ -14,7 +14,6 @@ from starlette.websockets import WebSocketDisconnect
 
 from pai_agent import gemini_live as live
 from pai_agent.bus import EventBus
-from pai_agent.speech import Voice
 from pai_agent.state import BuildState
 
 
@@ -25,7 +24,6 @@ def session(tmp_path):
         bus=EventBus(),
         question=None,
         _busy=lambda: False,
-        voice=SimpleNamespace(realtime=False, cancel=lambda: None),
         task=None,
     )
 
@@ -74,7 +72,7 @@ def test_vertex_auth_uses_refreshed_gcloud_token_per_connection():
                 assert headers == {"Authorization": "Bearer private-oauth-token"}
                 assert (
                     model
-                    == "projects/project-123/locations/us-central1/publishers/google/models/gemini-live-2.5-flash-native-audio"
+                    == "projects/project-123/locations/us-central1/publishers/google/models/gemini-3.8-live"
                 )
             assert spawn.await_count == 2
             assert spawn.call_args.args == (
@@ -140,17 +138,13 @@ def test_engineer_waits_for_result_without_duplicating_user(tmp_path):
     asyncio.run(run())
 
 
-def test_live_suppresses_legacy_narrator():
-    voice = Voice(EventBus(), busy=lambda: True)
-    voice.realtime = True
-    with (
-        patch("pai_agent.speech.enabled", return_value=True),
-        patch.object(voice, "_speak") as speak,
-    ):
-        voice.reply("Hi", BuildState("test", Path("/tmp")), "started")
-        voice.observe({"type": "sim", "result": "pass"})
-        speak.assert_not_called()
-        assert not voice._pending
+def test_voice_defaults_to_fenrir_and_env_overrides():
+    with patch.dict(os.environ, {}, clear=True):
+        assert live.voice() == "Fenrir"
+        voice_config = live.setup(session(Path("/tmp")))["setup"]["generationConfig"]
+        assert voice_config["speechConfig"]["voiceConfig"]["prebuiltVoiceConfig"] == {"voiceName": "Fenrir"}
+    with patch.dict(os.environ, {"GEMINI_LIVE_VOICE": "Puck"}, clear=True):
+        assert live.voice() == "Puck"
 
 
 def client(tmp_path):
@@ -200,7 +194,6 @@ def test_upstream_errors_are_redacted_and_fallback_releases_session(tmp_path):
             assert message["type"] == "error"
             assert "private" not in json.dumps(message)
         assert not c.app.state.session.live_voice
-        assert not c.app.state.session.voice.realtime
 
 
 def test_note_uses_existing_jamie_adapter(tmp_path):
