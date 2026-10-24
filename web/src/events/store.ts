@@ -21,6 +21,7 @@ import {
   type SketchEvent,
   type QuestionEvent,
   type RemixEvent,
+  type SafetyEvent,
   type TasksEvent,
   type VersionEvent,
   type RequirementEvent,
@@ -139,7 +140,8 @@ export type ChatItem =
   | { kind: "agent"; id: string; seq: number; at: number; agentId: string }
   | { kind: "stress"; id: string; seq: number; at: number; run: number }
   | { kind: "print"; id: string; seq: number; at: number; plan: PrintEvent }
-  | { kind: "explain"; id: string; seq: number; at: number; key: string };
+  | { kind: "explain"; id: string; seq: number; at: number; key: string }
+  | { kind: "safety"; id: string; seq: number; at: number; safety: SafetyEvent };
 
 export interface Run extends SimEvent {
   seq: number;
@@ -284,6 +286,7 @@ const TOOL_ALIASES: Record<string, string> = {
   build_guide: "Build guide",
   print_prep: "Print plan",
   firmware: "Firmware",
+  safety_check: "Safety",
   version_commit: "Version",
   ask_user: "Question",
 };
@@ -311,6 +314,7 @@ const SILENT_TOOLS = new Set([
   "product_brief",
   "delegate",
   "stress_test",
+  "safety_check",
 ]);
 
 /** Tool names from the backend may differ in case or spacing ("isaac_lab", "Isaac Lab"). */
@@ -606,6 +610,8 @@ export const useSession = create<SessionState>((set, get) => ({
       }
       case "firmware":
         return set({ log, firmware: ev });
+      case "safety":
+        return set({ log, chat: [...s.chat, { kind: "safety", id: nextId("safety"), seq, at, safety: ev }] });
       case "training": {
         // Browser training is narrated by its tool card and Bolzen, not the Isaac Lab card.
         if ((ev as { source?: string }).source === "browser") return set({ log, browserTraining: { ...ev, at } });
