@@ -59,6 +59,10 @@ class Session:
         self.run = RunControl(self.bus.publish)
         # Webhooks can arrive twice (retries); one meeting-ended at a time decides what happens.
         self._meeting_lock = asyncio.Lock()
+        # What the person sent while a run was busy: the run reads it next round, or it starts the next run.
+        self.pending: list[str] = []
+        # Mechanic greets once per project; a voice reconnect or a second Talk continues the conversation.
+        self.greeted = False
 
     async def bootstrap(self) -> None:
         await self._baseline()
@@ -66,6 +70,7 @@ class Session:
     def _ctx(self, auto_steps: bool) -> Ctx:
         ctx = Ctx(self.bus, self.state, auto_steps=auto_steps, asker=self.ask)
         ctx.gate = self.run.checkpoint
+        ctx.pending = self.pending
         return ctx
 
     def _busy(self) -> bool:
@@ -80,12 +85,18 @@ class Session:
             question = self.question
             if question is not None and await self._answer_from_text(text, voice, record_user=record_user):
                 return {"ok": True, "mode": mode, "status": "answered"}
-            if self.run.status != "paused":
-                return {"ok": True, "mode": mode, "status": "already_running"}
-            # A message to a paused run replaces it: the run stops where it waits, the message continues.
-            assert self.task is not None
-            await self.run.stop()
-            await self.task
+            if self.run.status == "paused":
+                # A message to a paused run replaces it: the run stops where it waits, the message continues.
+                assert self.task is not None
+                await self.run.stop()
+                await self.task
+            else:
+                # Never dropped: the run reads it with its next tool results, or it starts the next run.
+                if record_user:
+                    await self.bus.publish({"type": "chat", "role": "user", "text": text, **({"voice": True} if voice else {})})
+                    await self.bus.publish({"type": "chat", "role": "agent", "text": "Got it. I finish the current step, then take that on."})
+                self.pending.append(text.strip())
+                return {"ok": True, "mode": mode, "status": "queued"}
         ctx = self._ctx(auto_steps=claude_enabled())
         ctx.trigger = "chat"
         ctx.label = text.strip()[:80]
@@ -479,6 +490,8 @@ class Session:
         self.task = None
         self.question = None
         self._answer = None
+        self.pending.clear()
+        self.greeted = False
 
     async def shutdown(self) -> None:
         if self._busy():
@@ -517,6 +530,8 @@ class Session:
         except asyncio.CancelledError:
             raise
         except RunStopped:
+            # Stop means stop: what was waiting for this run is not started after it.
+            self.pending.clear()
             await ctx.chat("agent", "Stopped. Everything built so far stays on the bench. Tell me what to do next.")
             await ctx.emit({"type": "mascot", "state": "ruhig", "say": "Stopped. Your move."})
         except Exception as exc:
@@ -526,6 +541,14 @@ class Session:
         finally:
             await self.run.finished()
         self.save_chat()
+        if self.pending:
+            # Messages that came in while this run was busy start the next one, also after a failure.
+            text = "\n".join(self.pending)
+            self.pending.clear()
+            follow = self._ctx(auto_steps=claude_enabled())
+            follow.trigger = "chat"
+            follow.label = text[:80]
+            self.task = self._launch(run_prompt(follow, text, self.messages, record_user=False), follow)
 
     async def _baseline(self) -> None:
         # Every stream starts with this marker, so a client that reconnects or misses a reset starts clean.

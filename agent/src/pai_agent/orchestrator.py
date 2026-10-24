@@ -48,7 +48,6 @@ from pai_agent.scene import STEPS
 from pai_agent.tools.browser_train import run_mock_training
 from pai_agent.tools.optimize import run_optimize_mock, run_pick_mock, wants_optimize, wants_pick
 from pai_agent.tools.registry import DELEGATED, SCHEMAS, call_tool
-from pai_agent.timeouts import model_timeout
 from pai_agent.tools.stress import run_stress_mock, wants_stress
 from pai_agent.tools.ui import control_list
 
@@ -371,8 +370,10 @@ async def _run_claude(ctx: Ctx, text: str, messages: list[dict]) -> None:
         from pai_agent.references import build_context
 
         text = build_context(ctx.state) + text
-    messages.append({"role": "user", "content": text})
+    _add_request(messages, text)
     ctx.lead_id = lead.id
+    # The first planning round takes a while; the person sees at once that Mechanic is on it.
+    await ctx.emit({"type": "mascot", "state": "denkt", "say": "On it, thinking it through."})
     try:
         await _lead_loop(ctx, lead, delegation, messages)
     except RunStopped:
@@ -416,31 +417,53 @@ def _close_stopped(messages: list[dict]) -> None:
         messages.append({"role": "assistant", "content": "The user stopped this run here; what was built so far stays."})
 
 
+def _add_request(messages: list[dict], text: str) -> None:
+    """Adds the request so the history stays valid after a run that failed or was stopped midway."""
+
+    last = messages[-1] if messages else None
+    if last and last["role"] == "assistant":
+        # Tool calls that never got their results (the run stopped) are answered as stopped.
+        stopped = [
+            {"type": "tool_result", "tool_use_id": block["id"], "content": "Stopped before it finished.", "is_error": True}
+            for block in last["content"]
+            if isinstance(block, dict) and block.get("type") == "tool_use"
+        ]
+        if stopped:
+            messages.append({"role": "user", "content": stopped})
+            last = messages[-1]
+    if last and last["role"] == "user":
+        # The request after a failed round joins the unanswered turn instead of a second user turn.
+        content = last["content"]
+        last["content"] = (content if isinstance(content, list) else [{"type": "text", "text": content}]) + [{"type": "text", "text": text}]
+        return
+    messages.append({"role": "user", "content": text})
+
+
 async def _lead_loop(ctx: Ctx, lead, delegation: bool, messages: list[dict]) -> None:
-    from pai_agent.agents import create_message
+    from pai_agent.agents import stream_round
+
+    async def say(text: str) -> None:
+        # Each text block reaches the chat as soon as it is written, not when the round ends.
+        if text.strip():
+            await ctx.chat("agent", text.strip())
 
     await lead.emit("running", "plans the build")
     for _round in range(40):
         await ctx.checkpoint()
         try:
-            response = await asyncio.wait_for(
-                asyncio.to_thread(
-                    create_message,
-                    lead.model,
-                    lead.effort,
-                    max_tokens=16000,
-                    system=_system(delegation),
-                    tools=_tools(delegation),
-                    messages=messages,
-                ),
-                model_timeout(),
+            response = await stream_round(
+                lead.model,
+                lead.effort,
+                say,
+                max_tokens=16000,
+                system=_system(delegation),
+                tools=_tools(delegation),
+                messages=messages,
             )
         except Exception as exc:
             log.exception("anthropic call failed")
-            if isinstance(exc, TimeoutError):
-                exc = TimeoutError(f"no answer within {model_timeout():g} s (PAI_MODEL_TIMEOUT_S), the run stops here")
             await lead.emit("error", str(exc)[:160])
-            await ctx.chat("agent", "The model request failed: " + str(exc))
+            await ctx.chat("agent", "The model request failed: " + str(exc) + ". Send your request again.")
             await call_tool(
                 ctx,
                 "mascot_say",
@@ -449,12 +472,7 @@ async def _lead_loop(ctx: Ctx, lead, delegation: bool, messages: list[dict]) -> 
             return
         lead.count(response)
         blocks = list(response.content)
-        tool_uses = []
-        for block in blocks:
-            if getattr(block, "type", None) == "text" and str(block.text).strip():
-                await ctx.chat("agent", str(block.text).strip())
-            elif getattr(block, "type", None) == "tool_use":
-                tool_uses.append(block)
+        tool_uses = [block for block in blocks if getattr(block, "type", None) == "tool_use"]
         # Thinking blocks go back unchanged, the model reads them on the next round.
         messages.append({"role": "assistant", "content": [_dump(block) for block in blocks]})
         if not tool_uses:
@@ -484,7 +502,9 @@ async def _lead_loop(ctx: Ctx, lead, delegation: bool, messages: list[dict]) -> 
                 # The tools that ran keep their real results; the rest say they were stopped.
                 messages.append({"role": "user", "content": _results(tool_uses, outcomes)})
                 raise
-        messages.append({"role": "user", "content": _results(tool_uses, outcomes)})
+        # What the person said while these tools ran reaches the model with their results.
+        heard = [{"type": "text", "text": "The person said while you worked: " + text} for text in ctx.take_pending()]
+        messages.append({"role": "user", "content": _results(tool_uses, outcomes) + heard})
         await lead.emit("running", "reads the results")
     await lead.emit("done", "stopped after 40 rounds")
     await ctx.chat("agent", "I am stopping after 40 tool rounds so the run does not hang.")

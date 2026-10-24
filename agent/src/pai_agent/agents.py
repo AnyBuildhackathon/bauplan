@@ -16,6 +16,7 @@ import json
 import logging
 import time
 import uuid
+from contextlib import suppress
 
 from pai_agent import settings
 from pai_agent.context import Ctx
@@ -154,6 +155,61 @@ def create_message(model: str, effort: str, **kwargs):
     """One Messages call with adaptive thinking and the chosen effort."""
 
     return _client().messages.create(model=model, thinking={"type": "adaptive"}, output_config={"effort": effort}, **kwargs)
+
+
+def stream_message(model: str, effort: str, on_event, on_text, **kwargs):
+    """The same call, streamed: on_event fires for every event, on_text with each text block as soon as it is written."""
+
+    with _client().messages.stream(model=model, thinking={"type": "adaptive"}, output_config={"effort": effort}, **kwargs) as stream:
+        on_event(stream)
+        for event in stream:
+            on_event(stream)
+            if event.type == "content_block_stop" and getattr(event.content_block, "type", None) == "text":
+                on_text(str(event.content_block.text))
+        return stream.get_final_message()
+
+
+async def stream_round(model: str, effort: str, on_text, **kwargs):
+    """One streamed model round; on_text gets each text block as soon as it is written.
+
+    A slow answer that keeps streaming is never cut: the round stops only when the stream is
+    silent for PAI_MODEL_TIMEOUT_S, or when it runs longer than PAI_MODEL_ROUND_MAX_S in all.
+    """
+
+    from pai_agent.timeouts import model_timeout, round_limit
+
+    loop = asyncio.get_running_loop()
+    texts: asyncio.Queue[str] = asyncio.Queue()
+    seen: dict = {"at": time.monotonic(), "stream": None}
+
+    def on_event(stream) -> None:
+        seen["stream"] = stream
+        seen["at"] = time.monotonic()
+
+    def on_block(text: str) -> None:
+        loop.call_soon_threadsafe(texts.put_nowait, text)
+
+    work = asyncio.ensure_future(asyncio.to_thread(stream_message, model, effort, on_event, on_block, **kwargs))
+    started = time.monotonic()
+    try:
+        while True:
+            await asyncio.wait({work}, timeout=0.25)
+            while not texts.empty():
+                await on_text(texts.get_nowait())
+            if work.done():
+                return work.result()
+            now = time.monotonic()
+            if now - seen["at"] > model_timeout():
+                raise TimeoutError(f"no progress for {model_timeout():g} s (PAI_MODEL_TIMEOUT_S), the run stops here")
+            if now - started > round_limit():
+                raise TimeoutError(f"no answer within {round_limit():g} s (PAI_MODEL_ROUND_MAX_S), the run stops here")
+    finally:
+        if not work.done():
+            # Closing the stream ends the thread's read; its error is expected and dropped.
+            work.add_done_callback(lambda f: f.cancelled() or f.exception())
+            if seen["stream"] is not None:
+                with suppress(Exception):
+                    seen["stream"].close()
 
 
 def _dump(block: object) -> dict:
