@@ -22,7 +22,10 @@ export interface ChatEvent {
   text: string;
   /** A spoken line: the person's turn heard by Reson8 or the browser, or what Mechanic said aloud. */
   voice?: boolean;
+  /** Who transcribed a spoken user turn. */
+  transcriber?: Transcriber;
 }
+export type Transcriber = "reson8" | "browser" | "gemini";
 export interface ToolEvent {
   type: "tool";
   name: string;
@@ -677,15 +680,6 @@ export interface ExplainEvent {
   /** Asked for by a live event, so it shows as a chat card; a "Why?" click shows it in place. */
   chat?: boolean;
 }
-export interface SayEvent {
-  type: "say";
-  id: string;
-  kind: "reply" | "update";
-  delta?: string;
-  text?: string;
-  done: boolean;
-  cancelled?: boolean;
-}
 
 export type AgentEvent =
   | UiEvent
@@ -719,7 +713,6 @@ export type AgentEvent =
   | ElectronicsEvent
   | SafetyEvent
   | AgentRunEvent
-  | SayEvent
   | ExplainEvent
   | OptimizeEvent
   | ResetEvent
@@ -757,7 +750,6 @@ const EVENT_TYPES = new Set<AgentEvent["type"]>([
   "electronics",
   "safety",
   "agent",
-  "say",
   "explain",
   "optimize",
   "reset",

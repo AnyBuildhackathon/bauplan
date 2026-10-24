@@ -57,12 +57,6 @@ class ControlIn(BaseModel):
     control: str
 
 
-class SpeakIn(BaseModel):
-    text: str
-    # The sentence spoken just before, so one reply keeps a continuous intonation.
-    previous_text: str = ""
-
-
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
     load_env()
@@ -218,32 +212,6 @@ async def voice_token() -> dict:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=502, detail="Reson8 is unreachable") from exc
-
-
-@app.post("/api/voice/warm")
-async def voice_warm(request: Request) -> dict:
-    await request.app.state.session.voice.warm()
-    return {"ok": True}
-
-
-@app.post("/api/voice/speak")
-async def voice_speak(body: SpeakIn) -> StreamingResponse:
-    from pai_agent.voice import TTS_SAMPLE_RATE, VoiceError, elevenlabs_stream
-
-    text = body.text.strip()
-    if not text:
-        raise HTTPException(status_code=400, detail="text is required")
-    try:
-        chunks = await elevenlabs_stream(text, body.previous_text.strip())
-    except VoiceError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail="ElevenLabs is unreachable") from exc
-    return StreamingResponse(
-        chunks,
-        media_type="audio/pcm",
-        headers={"X-Sample-Rate": str(TTS_SAMPLE_RATE), "Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-    )
 
 
 @app.get("/api/artifacts/frame.stl")

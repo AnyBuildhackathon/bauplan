@@ -76,10 +76,8 @@ It has no OpenAPI page; FastAPI's generated docs are turned off on purpose for t
 
 | Method | Path | Purpose | Limit | Spec |
 | --- | --- | --- | --- | --- |
-| `GET` | `/api/voice` | Capabilities: `gemini_live` availability, STT (`reson8` or `browser`), TTS (`elevenlabs` or `none`), Reson8 endpoints, language, phrase list, sample rate. | | [HTTP](events.md#http) |
+| `GET` | `/api/voice` | Capabilities: `gemini_live` availability (Mechanic's only voice), STT (`reson8` or `browser`), Reson8 endpoints, language, phrase list. | | [HTTP](events.md#http) |
 | `POST` | `/api/voice/token` | A short-lived Reson8 token for the browser's WebSocket; 503 without `RESON8_API_KEY`. | stt | [HTTP](events.md#http) |
-| `POST` | `/api/voice/speak` | Stream ElevenLabs speech for one phrase as raw 16-bit PCM (`X-Sample-Rate: 24000`); 503 without `ELEVENLABS_API_KEY`. | speech | [HTTP](events.md#http) |
-| `POST` | `/api/voice/warm` | Open the Claude and ElevenLabs connections ahead of a reply. | | [HTTP](events.md#http) |
 | `WS` | `/api/voice/live` | Server-proxied Gemini Live audio and engineering tool calls; Vertex OAuth or AI Studio, with credentials kept on the backend. | One active session | [Realtime voice](GEMINI_LIVE.md#websocket-protocol) |
 | `POST` | `/api/voice/note` | Send a displayed conversation to a selected Jamie meeting, with offline outbox fallback. | | [Realtime voice](GEMINI_LIVE.md#websocket-protocol) |
 
@@ -115,7 +113,6 @@ Each event has a `type`; every stream begins with `reset`, then the backlog, the
 | `replayed` | Everything before it on this connection was backlog. | [replayed](events.md#replayed) |
 | `step` | A workflow step changed status (`meeting`, `teile` parts, `cad`, `render`, `simulation`, `training`, `stueckliste` bill of materials). | [step](events.md#step) |
 | `chat` | A user or agent utterance. | [chat](events.md#chat) |
-| `say` | Mechanic's spoken line as it streams; live only, never replayed. | [say](events.md#say) |
 | `tool` | A tool's connection or run status (`connected`, `running`, `ok`, `error`, `offline`). | [tool](events.md#tool) |
 | `agent` | The orchestrator or a sub-agent: role, model, effort, job, status, tokens and cost. | [agent](events.md#agent) |
 | `product` | Which product the bench holds (`drone`, `gripper` or a spec slug). | [product](events.md#product) |

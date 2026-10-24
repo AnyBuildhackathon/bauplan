@@ -8,19 +8,14 @@ import { apiFetch } from "./api";
 import { stopSpeaking } from "./speech";
 
 export type SttMode = "reson8" | "browser" | "none";
-export type TtsMode = "elevenlabs" | "none";
 
 interface Capabilities {
   stt: SttMode;
-  tts: TtsMode;
   realtimeUrl: string;
   turnsUrl: string;
   language: string;
   phrases: string[];
   customModelId: string | null;
-  ttsSampleRate: number;
-  /** The backend writes Mechanic's spoken lines (`say` events), so the speech bubble is not read aloud. */
-  narrator: boolean;
   geminiLive: boolean;
 }
 
@@ -28,14 +23,11 @@ const BROWSER_STT = typeof window !== "undefined" && ("SpeechRecognition" in win
 
 let caps: Capabilities = {
   stt: BROWSER_STT ? "browser" : "none",
-  tts: "none",
   realtimeUrl: "wss://api.reson8.dev/v1/speech-to-text/realtime",
   turnsUrl: "wss://api.reson8.dev/v1/speech-to-text/turns",
   language: "en",
   phrases: [],
   customModelId: null,
-  ttsSampleRate: 24000,
-  narrator: false,
   geminiLive: false,
 };
 
@@ -47,14 +39,11 @@ export async function loadVoiceCapabilities(): Promise<Capabilities> {
       const body = await res.json();
       caps = {
         stt: body.stt === "reson8" ? "reson8" : BROWSER_STT ? "browser" : "none",
-        tts: body.tts === "elevenlabs" ? "elevenlabs" : "none",
         realtimeUrl: body.realtime_url || caps.realtimeUrl,
         turnsUrl: body.turns_url || caps.turnsUrl,
         language: body.language || "en",
         phrases: Array.isArray(body.phrases) ? body.phrases.filter((p: unknown) => typeof p === "string") : [],
         customModelId: typeof body.custom_model_id === "string" ? body.custom_model_id : null,
-        ttsSampleRate: Number(body.tts_sample_rate) || 24000,
-        narrator: body.narrator === true,
         geminiLive: body.gemini_live === true,
       };
     }
