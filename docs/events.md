@@ -313,7 +313,7 @@ A finished build, attached to the meeting it came from.
 `parts` maps each category to the part name.
 `diff` lists what changed against the previous version: `{key, label, before, after, unit}`.
 Number rows have a `unit`; part rows have `key` `part:{category}`, names in `before` and `after`, and an empty `unit`.
-`summary` is one line such as `48.4 g · 10.4 min · 115.12 €`.
+`summary` is one line such as `48.4 g · 10.4 min · 117.60 €`.
 
 ### part
 
@@ -525,11 +525,11 @@ The story arrives at the reference micro build from Mediocre Nerd's "Build a Mic
 The agent reads the kickoff (under 120 €, at least 8 minutes, under 50 g, hover, frame as STL and STEP), finds the 1103 15000KV from last week's flight test and Lea's warning about the FunFly 4S.
 It tries the FunFly anyway: the MuJoCo gust pushes it to the floor, the swap to the Tattu R-Line 1S 550 passes.
 A 34 mm arm lets the 51 mm propellers touch, so the frame becomes the Twiglet's 42.5 mm.
-v1 is 47.2 g, 8.5 min, 113.64 €.
+v1 is 47.2 g, 8.5 min, 117.38 €.
 Each build writes a `build_guide` from the same step template with the parts it chose: frame, motors, flight controller, wiring, camera and canopy, battery, motor test, propellers.
 The review "Review 1" asks for 10 minutes.
 Mechanic asks which flight time counts and swaps to the BetaFPV LAVA II 1S 680, the other pack from the video.
-v2 is 48.4 g, 10.4 min, 115.12 €, and the difference goes back to the review as a note.
+v2 is 48.4 g, 10.4 min, 117.60 €, and the difference goes back to the review as a note.
 A later prompt in the same session does not rebuild.
 A prompt with the word "stress" ("stress test it") runs `stress_test` on the current build instead; without a build Mechanic asks for the kickoff first.
 Once a build has finished, "robust" asks for it too ("how robust is it?"); a prompt that ends a review still runs the review first.

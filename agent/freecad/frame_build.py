@@ -12,12 +12,14 @@ The carbon X-frame is a unibody plate (arm_length_mm, thickness_mm, motor_spacin
 rounded arms, motor pads and lightening slots; only it is weighed, at carbon-plate density.
 Around it sit the bought parts at catalog size: motors with stator, windings, magnets and
 screws, four-blade props, the AIO on standoffs with its wiring, the canopy with the camera
-and the antenna tube, the battery holder, the strapped pack and the antennas.
+and the antenna tube, the battery holder, the strapped pack and the antennas. The canopy and
+the camera are downloaded models of the real parts (parts/, THIRD_PARTY_NOTICES.md), placed
+as they are; the rest is modelled from published dimensions.
 
 Outputs: frame.FCStd (the whole assembly), frame.step and frame.stl (the X-frame),
 drone.step (the assembly) and frame.glb, the assembly with one node per scene target from
-docs/events.md (plus canopy, camera, battery_strap and antenna), PBR materials and the
-battery size in the battery node's extras.
+docs/events.md (plus canopy, camera, battery_strap and antenna), PBR materials (a generated
+carbon weave texture on the frame) and the battery size in the battery node's extras.
 FreeCAD is Z-up in mm with the nose at +Y; the GLB is Y-up in metres with the nose at -Z.
 """
 
@@ -39,17 +41,23 @@ CORNERS = (
 
 # glTF look, CAD-tab colour, base colour, metallic, roughness, alpha, clearcoat
 MATERIALS = {
-    "carbon": ("#c9ccd3", "#0d0e10", 0.0, 0.4, 1.0, 0.6),
+    # 3K twill carbon under a clear coat; the weave comes from CARBON_TEXTURE.
+    "carbon": ("#c9ccd3", "#ffffff", 0.0, 1.0, 1.0, 1.0),
     "anodized": ("#ff9a5a", "#ff6a1c", 1.0, 0.3, 1.0, 0.0),
-    "bell": ("#7d838e", "#1b1c20", 0.85, 0.34, 1.0, 0.0),
+    # Black anodized aluminium: metallic, with a soft sheen.
+    "bell": ("#7d838e", "#1c1d21", 1.0, 0.3, 1.0, 0.0),
+    "bell_lip": ("#aeb4bd", "#b9bec6", 1.0, 0.2, 1.0, 0.0),
     "copper": ("#c98a5a", "#c27a46", 1.0, 0.32, 1.0, 0.0),
     "steel": ("#aeb4bd", "#a3a9b1", 1.0, 0.24, 1.0, 0.0),
     "magnet": ("#5c616b", "#45484f", 0.7, 0.42, 1.0, 0.0),
     "screw": ("#4a4e56", "#1d1e22", 0.9, 0.34, 1.0, 0.0),
-    "prop": ("#c9d6df", "#b8c7d2", 0.0, 0.12, 0.42, 0.0),
-    "pcb": ("#4b5563", "#111318", 0.0, 0.5, 1.0, 0.2),
+    # Injection-moulded polycarbonate, clear with a grey tint (Gemfan "clear").
+    "prop": ("#c9d6df", "#b4bec6", 0.0, 0.05, 0.34, 1.0),
+    # Green solder mask over copper, glossy.
+    "pcb": ("#3f7f55", "#1d5e34", 0.0, 0.36, 1.0, 0.7),
     "chip": ("#2f343c", "#0b0c0e", 0.0, 0.32, 1.0, 0.0),
     "gold": ("#d9b25c", "#d9ac52", 1.0, 0.22, 1.0, 0.0),
+    "smd": ("#c4a57a", "#9c7a52", 0.0, 0.45, 1.0, 0.0),
     "plastic": ("#e7e5df", "#ecebe5", 0.0, 0.55, 1.0, 0.0),
     "battery": ("#6b7280", "#202227", 0.0, 0.34, 1.0, 0.5),
     "strap": ("#3f434a", "#141518", 0.0, 0.85, 1.0, 0.0),
@@ -57,9 +65,12 @@ MATERIALS = {
     "wire_black": ("#3f434a", "#18191c", 0.0, 0.45, 1.0, 0.0),
     "wire_yellow": ("#f2c94c", "#e8a317", 0.0, 0.45, 1.0, 0.0),
     "sleeve": ("#3f434a", "#121316", 0.0, 0.55, 1.0, 0.0),
-    "tpu": ("#9aa0aa", "#141518", 0.0, 0.72, 1.0, 0.0),
+    # Black printed TPU: matte with a faint sheen.
+    "tpu": ("#9aa0aa", "#121315", 0.0, 0.62, 1.0, 0.0),
     "glass": ("#3b4a63", "#0c1424", 0.3, 0.05, 1.0, 1.0),
 }
+# Materials with a generated texture set: weave repeat in mm.
+CARBON_REPEAT_MM = 16.0
 
 DEFAULTS = {
     "arm_length_mm": 42.5,
@@ -79,16 +90,21 @@ DEFAULTS = {
 }
 
 BAY = 14.5  # half width of the plate ring around the flight controller
-BAY_HOLE = 9.0  # the lightening window under the flight controller
+BAY_HOLE = 13.4  # the lightening window under the flight controller
 ARM_ROOT = 4.8  # half width of an arm at the body
 ARM_TIP = 3.4  # half width of an arm at the motor pad
-FC_HOLE = 13.0  # standoffs at +-13 mm, the 26 mm AIO mount
+STACK_R = 13.0 * math.sqrt(2.0)  # the 26 x 26 mm AIO mount, turned 45 degrees: holes on the axes
 STANDOFF_H = 3.5
 PCB_T = 1.2
 CANOPY_WALL = 1.3
 LIP_H = 2.6  # the battery holder's side lips
 HOLDER_W = 19.0  # widest 1S pack the holder takes
-CAMERA_TILT = 22.0  # degrees up from level
+CAMERA_TILT = 10.0  # degrees up from level, as far as the canopy's cradle lets it
+
+# Downloaded models of the real parts, used as they are (see THIRD_PARTY_NOTICES.md).
+PARTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "parts")
+CANOPY_STL = "toothpick-canopy-14mm_271232.stl"  # DLQFPV, CC BY 4.0, Printables 271232
+CAMERA_STL = "caddx-ant-lite-rough-model_721095.stl"  # Youfu, CC0, Printables 721095
 
 
 def resolve(params: dict) -> dict:
@@ -217,6 +233,12 @@ def _try_fillet(shape, radius, edges):
     return shape
 
 
+def _stack_holes():
+    """The four AIO standoffs: nose, tail and both sides, where the canopy's feet sit."""
+
+    return [(0.0, STACK_R), (STACK_R, 0.0), (0.0, -STACK_R), (-STACK_R, 0.0)]
+
+
 def _motor_centers(p):
     arm = p["arm_length_mm"]
     out = []
@@ -236,9 +258,8 @@ def frame_plate(p):
     bolt = p["motor_spacing_mm"] / 2.0
     # An open bay: a rounded square ring with bosses for the standoffs.
     faces = [_rounded_rect(0, 0, 2 * BAY, 2 * BAY, 2.5)]
-    for sx in (-1, 1):
-        for sy in (-1, 1):
-            faces.append(_disk(sx * FC_HOLE, sy * FC_HOLE, 3.0))
+    for x, y in _stack_holes():
+        faces.append(_stadium((x * 0.8, y * 0.8), (x, y), 4.2))
     for _name, angle, _spin, cx, cy in _motor_centers(p):
         a = math.radians(angle)
         ux, uy = math.cos(a), math.sin(a)
@@ -267,9 +288,8 @@ def frame_plate(p):
         for k in range(3):
             b = a + math.radians(30 + k * 120)
             holes.append(_disk(cx + bolt * math.cos(b), cy + bolt * math.sin(b), 0.8))
-    for sx in (-1, 1):
-        for sy in (-1, 1):
-            holes.append(_disk(sx * FC_HOLE, sy * FC_HOLE, 1.05))
+    for x, y in _stack_holes():
+        holes.append(_disk(x, y, 1.05))
     solid = outline.extrude(_v(0, 0, t))
     cutter = _fused([h.extrude(_v(0, 0, t + 2)).translate(_v(0, 0, -1)) for h in holes])
     plate = solid.cut(cutter)
@@ -277,55 +297,34 @@ def frame_plate(p):
     return _try_fillet(plate, 0.45, top)
 
 
+def _part_mesh(name):
+    import Mesh
+
+    return Mesh.Mesh(os.path.join(PARTS_DIR, name))
+
+
 def canopy(p):
-    """The TPU hood over the flight controller: a lofted shell on the standoff nuts, open at
-    the sides so the board and its wiring show, a window for the camera and a tube for the antenna."""
+    """DLQFPV's toothpick canopy for a 14 mm camera, printed in black TPU, used as downloaded:
+    feet on the four standoff nuts, the camera cradle at the nose, the antenna tube at the tail.
+    The 5 MB scan-fine mesh is thinned for the browser; its shape does not change."""
 
-    import Part
-
-    z0 = p["canopy_z"]
-    top = z0 + 7.4
-    outer = Part.makeLoft([_rounded_rect(0, 0.5, 29.6, 31.0, 6.0).Wires[0].translated(_v(0, 0, z0)), _rounded_rect(0, 2.0, 15.0, 19.0, 5.0).Wires[0].translated(_v(0, 0, top))], True, False)
-    w = CANOPY_WALL
-    inner = Part.makeLoft(
-        [
-            _rounded_rect(0, 0.5, 29.6 - 2 * w, 31.0 - 2 * w, 5.0).Wires[0].translated(_v(0, 0, z0 - 0.1)),
-            _rounded_rect(0, 2.0, 15.0 - 2 * w, 19.0 - 2 * w, 4.0).Wires[0].translated(_v(0, 0, top - w)),
-        ],
-        True,
-        False,
-    )
-    shell = outer.cut(inner)
-    edges = [e for e in shell.Edges if abs(e.BoundBox.ZMin - top) < 1e-6 and abs(e.BoundBox.ZMax - top) < 1e-6 and e.BoundBox.XLength > 12]
-    shell = _try_fillet(shell, 1.6, edges)
-    # Side windows between the corner feet, so the board and its wiring show.
-    window = Part.makeBox(40.0, 18.0, 6.0, _v(-20.0, -8.0, z0 - 1.4))
-    window = _try_fillet(window, 2.2, [e for e in window.Edges if e.BoundBox.XLength > 30])
-    shell = shell.cut(window)
-    # The camera looks out of the nose.
-    lens = _camera_frame(p)
-    hole = _rounded_rect(0, 0, 10.0, 10.0, 2.6).extrude(_v(0, 0, 14))
-    hole.translate(_v(0, 0, -2))
-    hole.rotate(_v(0, 0, 0), _v(1, 0, 0), -90 + CAMERA_TILT)
-    hole.translate(lens)
-    shell = shell.cut(hole)
-    # The antenna tube on the tail.
-    base, tip = _antenna_line(p, 0.0), _antenna_line(p, 5.5)
-    tube = _rod(_antenna_line(p, -2.5), tip, 1.4).cut(_rod(_antenna_line(p, -3.0), _antenna_line(p, 6.0), 0.75))
-    return _fused([shell, tube])
+    mesh = _part_mesh(CANOPY_STL)
+    mesh.decimate(0.05, 0.85)
+    mesh.translate(0, 0, p["canopy_z"] - mesh.BoundBox.ZMin)
+    return mesh
 
 
 def _camera_frame(p):
-    """Where the camera's front face sits: on the nose, under the canopy roof."""
+    """Where the camera's lens tip sits: in the canopy's cradle, between its front posts."""
 
-    return _v(0, 13.6, p["canopy_z"] + 4.0)
+    return _v(0, 16.4, p["canopy_z"] + 15.0)
 
 
 def _antenna_line(p, length):
     """A point on the antenna axis: out of the canopy tail, raked back and up."""
 
-    rake = math.radians(38)
-    base = (0.0, -13.8, p["canopy_z"] + 5.0)
+    rake = math.radians(48)
+    base = (0.0, -13.0, p["canopy_z"] + 20.5)
     return (base[0], base[1] - length * math.cos(rake), base[2] + length * math.sin(rake))
 
 
@@ -373,9 +372,11 @@ def motor(p, cx, cy):
     parts.append(("copper", _fused(coils)))
 
     bell_z0 = t + 1.1
-    bell = _ring(r, r - 0.65, bell_z1 - bell_z0, cx, cy, bell_z0)
-    bell = _try_fillet(bell, 0.25, [e for e in bell.Edges if abs(e.BoundBox.ZMin - bell_z0) < 1e-6 and abs(e.BoundBox.ZMax - bell_z0) < 1e-6])
-    parts.append(("bell", bell))
+    # The bell's machined lower lip shows bare aluminium under the black anodizing.
+    lip = _ring(r, r - 0.65, 0.7, cx, cy, bell_z0)
+    lip = _try_fillet(lip, 0.25, [e for e in lip.Edges if abs(e.BoundBox.ZMin - bell_z0) < 1e-6 and abs(e.BoundBox.ZMax - bell_z0) < 1e-6])
+    parts.append(("bell_lip", lip))
+    parts.append(("bell", _ring(r, r - 0.65, bell_z1 - bell_z0 - 0.7, cx, cy, bell_z0 + 0.7)))
     parts.append(("magnet", _ring(r - 0.65, r - 1.25, bell_z1 - t - 3.0, cx, cy, t + 1.8)))
     cap = _cyl(r, cap_z1 - bell_z1, cx, cy, bell_z1)
     for n in range(5):
@@ -465,9 +466,8 @@ def flight_controller(p):
     z0 = t + STANDOFF_H
     parts = []
     standoffs, nuts, screws = [], [], []
-    for sx in (-1, 1):
-        for sy in (-1, 1):
-            x, y = sx * FC_HOLE, sy * FC_HOLE
+    for x, y in _stack_holes():
+        if True:
             hexa = Part.Face(Part.makePolygon([_v(x + 1.7 * math.cos(math.radians(60 * i)), y + 1.7 * math.sin(math.radians(60 * i)), t) for i in range(7)]))
             standoffs.append(hexa.extrude(_v(0, 0, STANDOFF_H)).cut(_cyl(0.8, STANDOFF_H + 1, x, y, t - 0.5)))
             nut = Part.Face(Part.makePolygon([_v(x + 1.5 * math.cos(math.radians(60 * i + 30)), y + 1.5 * math.sin(math.radians(60 * i + 30)), z0 + PCB_T) for i in range(7)]))
@@ -478,10 +478,11 @@ def flight_controller(p):
     parts.append(("anodized", _fused(nuts)))
     parts.append(("screw", _fused(screws)))
 
-    board = _rounded_rect(0, 0, 28.0, 28.0, 3.0)
-    for sx in (-1, 1):
-        for sy in (-1, 1):
-            board = board.cut(_disk(sx * FC_HOLE, sy * FC_HOLE, 0.85))
+    # The board sits turned 45 degrees, its corners on the standoffs.
+    board = _rounded_rect(0, 0, 30.0, 30.0, 3.4)
+    board.rotate(_v(0, 0, 0), _v(0, 0, 1), 45)
+    for x, y in _stack_holes():
+        board = board.cut(_disk(x, y, 0.85))
     parts.append(("pcb", board.extrude(_v(0, 0, PCB_T)).translate(_v(0, 0, z0))))
     top = z0 + PCB_T
     chips = [Part.makeBox(7.0, 7.0, 0.9, _v(-3.5, -3.5, top))]
@@ -492,10 +493,22 @@ def flight_controller(p):
             for k in range(2):
                 chips.append(Part.makeBox(2.6, 2.0, 0.7, _v(sx * 7.4 - 1.3 + k * 0.0, sy * (5.2 + k * 2.5) - 1.0, top)))
     parts.append(("chip", _fused(chips)))
+    # 0402 passives around the MCU, the gyro and each ESC's FETs.
+    passives = []
+    for k in range(36):
+        a = k * 2.399963  # golden angle: an even, irregular-looking scatter
+        rad = 5.0 + 6.0 * ((k * 0.618034) % 1.0)
+        x, y = rad * math.cos(a), rad * math.sin(a)
+        if abs(x) + abs(y) > 15.5 or (abs(x) > 6.0 and abs(y) > 4.0 and abs(x) < 9.8):
+            continue
+        along = (k % 2) == 0
+        passives.append(Part.makeBox(1.0 if along else 0.5, 0.5 if along else 1.0, 0.45, _v(x - (0.5 if along else 0.25), y - (0.25 if along else 0.5), top)))
+    parts.append(("smd", _fused(passives)))
     pads = []
+    for x, y in _stack_holes():
+        pads.append(_ring(1.5, 0.85, 0.06, x, y, top))
     for sx in (-1, 1):
         for sy in (-1, 1):
-            pads.append(_ring(1.5, 0.85, 0.06, sx * FC_HOLE, sy * FC_HOLE, top))
             for k in range(3):
                 off = (k - 1) * 1.25
                 a = math.atan2(sy, sx)
@@ -584,28 +597,19 @@ def battery_strap(p):
 
 
 def camera(p):
-    """A nano FPV camera in the nose, tilted up: body, lens barrel, glass, and its cable."""
+    """Youfu's model of the Caddx Ant Lite, the Ant's 14 x 14 mm twin, used as downloaded:
+    lens forward, tilted up in the canopy's cradle, and its cable to the board."""
 
-    import Part
-
+    mesh = _part_mesh(CAMERA_STL)
+    box = mesh.BoundBox
+    # The model lies along +X with the lens at XMax; move the lens tip to the origin first.
+    mesh.translate(-box.XMax, -(box.YMin + box.YMax) / 2, -(box.ZMin + box.ZMax) / 2)
+    mesh.rotate(0, 0, math.pi / 2)
+    mesh.rotate(math.radians(CAMERA_TILT), 0, 0)
     face = _camera_frame(p)
-    side = float(p["camera_mm"])
-    body = Part.makeBox(side, 10.0, side, _v(-side / 2, -10.0, -side / 2))
-    body = _try_fillet(body, 1.0, body.Edges)
-    barrel = _cyl(4.0, 4.2, 0, 0, 0, (0, 1, 0)).fuse(_cyl(4.6, 1.2, 0, 0, 0, (0, 1, 0)))
-    ring = _ring(4.05, 3.1, 0.4, 0, 0, 0)
-    ring.rotate(_v(0, 0, 0), _v(1, 0, 0), -90)
-    ring.translate(_v(0, 4.0, 0))
-    glass = Part.makeSphere(3.1, _v(0, 2.4, 0), _v(0, 1, 0), 60, 90)
-    parts = [("chip", body), ("screw", barrel.fuse(ring)), ("glass", glass)]
-    out = []
-    for material, shape in parts:
-        shape.rotate(_v(0, 0, 0), _v(1, 0, 0), CAMERA_TILT)
-        shape.translate(face)
-        out.append((material, shape))
-    cable = _rod((0.0, face.y - 7.5, face.z - 2.0), (0.0, 6.0, p["thickness_mm"] + STANDOFF_H + PCB_T + 0.4), 0.9)
-    out.append(("wire_black", cable))
-    return out
+    mesh.translate(face.x, face.y, face.z)
+    cable = _rod((0.0, face.y - 15.0, face.z - 4.0), (0.0, 6.0, p["thickness_mm"] + STANDOFF_H + PCB_T + 0.4), 0.9)
+    return [("chip", mesh), ("wire_black", cable)]
 
 
 def antenna(p):
@@ -657,12 +661,20 @@ def run_stage(doc, params, index):
         for k, (material, shape) in enumerate(antenna(p)):
             added.append(("Antenna_" + str(k), "antenna", material, shape))
     for name, node, material, shape in added:
-        feature = doc.addObject("Part::Feature", name)
-        feature.Shape = shape
+        if _is_mesh(shape):
+            feature = doc.addObject("Mesh::Feature", name)
+            feature.Mesh = shape
+        else:
+            feature = doc.addObject("Part::Feature", name)
+            feature.Shape = shape
         feature.Label2 = node + "|" + material
         _paint(feature, p, material)
     doc.recompute()
     return label
+
+
+def _is_mesh(shape):
+    return hasattr(shape, "CountFacets")
 
 
 def _paint(feature, p, material):
@@ -699,9 +711,10 @@ def export(doc, params, out_dir):
     doc.saveAs(os.path.join(out_dir, "frame.FCStd"))
     Part.export([frame], os.path.join(out_dir, "frame.step"))
     MeshPart.meshFromShape(Shape=frame.Shape, LinearDeflection=0.03, AngularDeflection=0.3, Relative=False).write(os.path.join(out_dir, "frame.stl"))
-    bodies = [o for o in doc.Objects if o.TypeId == "Part::Feature" and "|" in (o.Label2 or "")]
-    Part.export(bodies, os.path.join(out_dir, "drone.step"))
-    write_glb(p, [(o.Label2.split("|")[0], o.Label2.split("|")[1], o.Shape) for o in bodies], os.path.join(out_dir, "frame.glb"))
+    bodies = [o for o in doc.Objects if o.TypeId in ("Part::Feature", "Mesh::Feature") and "|" in (o.Label2 or "")]
+    # The downloaded parts are meshes; STEP takes the B-rep bodies, the GLB takes everything.
+    Part.export([o for o in bodies if o.TypeId == "Part::Feature"], os.path.join(out_dir, "drone.step"))
+    write_glb(p, [(o.Label2.split("|")[0], o.Label2.split("|")[1], o.Mesh if o.TypeId == "Mesh::Feature" else o.Shape) for o in bodies], os.path.join(out_dir, "frame.glb"))
     return float(frame.Shape.Volume) * DENSITY
 
 
@@ -732,16 +745,17 @@ def _to_gltf(x, y, z):
     return (x / 1000.0, z / 1000.0, -y / 1000.0)
 
 
-def _tessellate(shape, origin, tolerance):
+def _tessellate(shape, origin, tolerance, uv_mm=None):
     """Per-face meshes, so curved faces shade smooth and edges stay crisp.
 
     Vertex normals average the face's own triangles; one probe of the true surface normal
-    per face fixes the winding.
+    per face fixes the winding. With uv_mm, each face also gets texture coordinates: a planar
+    projection along its main axis, one texture repeat per uv_mm.
     """
 
     import MeshPart
 
-    positions, normals, indices = [], [], []
+    positions, normals, indices, uvs = [], [], [], []
     ox, oy, oz = origin
     for face in shape.Faces:
         curved = face.Surface.__class__.__name__ not in ("Plane", "Cylinder")
@@ -777,13 +791,132 @@ def _tessellate(shape, origin, tolerance):
             pass
         sign = -1.0 if flip else 1.0
         base = len(positions) // 3
+        surface = face.Surface if curved else None
         for point, (nx, ny, nz) in zip(points, sums):
             positions.extend(_to_gltf(point.x - ox, point.y - oy, point.z - oz))
             length = math.sqrt(nx * nx + ny * ny + nz * nz) or 1.0
-            normals.extend((sign * nx / length, sign * nz / length, -sign * ny / length))
+            nx, ny, nz = sign * nx / length, sign * ny / length, sign * nz / length
+            if surface is not None:
+                # Thin lofted blades shade badly from triangle normals; ask the true surface.
+                try:
+                    true = face.normalAt(*surface.parameter(point))
+                    if true.x * nx + true.y * ny + true.z * nz < 0:
+                        true = -true
+                    nx, ny, nz = true.x, true.y, true.z
+                except Exception:
+                    pass
+            normals.extend((nx, nz, -ny))
+        if uv_mm:
+            ax, ay, az = abs(total[0]), abs(total[1]), abs(total[2])
+            for point in points:
+                if az >= ax and az >= ay:
+                    u, v = point.x, point.y
+                elif ax >= ay:
+                    u, v = point.y, point.z
+                else:
+                    u, v = point.x, point.z
+                uvs.extend((u / uv_mm, v / uv_mm))
         for a, b, c in triangles:
             indices.extend((base + a, base + c, base + b) if flip else (base + a, base + b, base + c))
-    return positions, normals, indices
+    return positions, normals, indices, uvs
+
+
+def _append_mesh(mesh, origin, positions, normals, indices, crease=35.0):
+    """Adds a triangle mesh (a downloaded part) to the arrays: smooth across gentle bends,
+    sharp across creases steeper than `crease` degrees, so printed edges stay crisp."""
+
+    points, facets = mesh.Topology
+    ox, oy, oz = origin
+    face_normals = []
+    around = [[] for _ in points]
+    for f, (a, b, c) in enumerate(facets):
+        n = (points[b] - points[a]).cross(points[c] - points[a])
+        face_normals.append(n)
+        for i in (a, b, c):
+            around[i].append(f)
+    limit = math.cos(math.radians(crease))
+    unit = [n * (1.0 / n.Length) if n.Length > 1e-12 else n for n in face_normals]
+    seen = {}
+    for f, corner in enumerate(facets):
+        tri = []
+        for i in corner:
+            total = [0.0, 0.0, 0.0]
+            for g in around[i]:
+                if unit[f].dot(unit[g]) >= limit:
+                    n = face_normals[g]
+                    total[0] += n.x
+                    total[1] += n.y
+                    total[2] += n.z
+            length = math.sqrt(sum(v * v for v in total)) or 1.0
+            nx, ny, nz = total[0] / length, total[1] / length, total[2] / length
+            key = (i, round(nx, 2), round(ny, 2), round(nz, 2))
+            if key not in seen:
+                seen[key] = len(positions) // 3
+                pt = points[i]
+                positions.extend(_to_gltf(pt.x - ox, pt.y - oy, pt.z - oz))
+                normals.extend((nx, nz, -ny))
+            tri.append(seen[key])
+        indices.extend(tri)
+
+
+# --- generated textures ---------------------------------------------------------------------
+
+
+def _png(pixels):
+    """A PNG from an (h, w, 3) uint8 array, written with zlib only."""
+
+    import zlib
+
+    h, w, _c = pixels.shape
+    raw = b"".join(b"\x00" + pixels[y].tobytes() for y in range(h))
+
+    def chunk(kind, data):
+        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF)
+
+    return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)) + chunk(b"IDAT", zlib.compress(raw, 9)) + chunk(b"IEND", b"")
+
+
+def carbon_textures(size=512, tows=8):
+    """A 2x2 twill of 3K carbon tows: base colour, normal map and metallic-roughness, as PNGs.
+
+    Each tow is a flattened cylinder of fibres; it is brighter along its crown, rougher at
+    its edges and dips where it dives under the crossing tow. The weave shows in the sheen,
+    as on a real plate, not as a pattern in the colour.
+    """
+
+    import numpy as np
+
+    cell = size // tows
+    y, x = np.mgrid[0:size, 0:size].astype(np.float64)
+    i, j = (x // cell).astype(int), (y // cell).astype(int)
+    fx, fy = (x % cell) / cell, (y % cell) / cell
+    warp = ((i - j) % 4) < 2  # warp tows (along v) lie on top here
+    across = np.where(warp, fx, fy)  # 0..1 across the tow on top
+    along = np.where(warp, fy, fx)  # 0..1 along it
+    crown = np.sin(np.pi * across)
+    dive = np.clip(np.sin(np.pi * along) * 1.6, 0.0, 1.0)
+    rng = np.random.default_rng(7)
+    fibre = rng.normal(0.0, 1.0, size)
+    fibre = np.convolve(fibre, np.ones(3) / 3, mode="same")
+    strands = np.where(warp, fibre[x.astype(int)], fibre[y.astype(int)])
+    height = crown * (0.55 + 0.45 * dive) + 0.04 * strands
+    light = 0.018 + 0.03 * crown * dive + 0.004 * strands
+    base = np.clip(np.stack([light * 0.95, light, light * 1.08], axis=-1), 0, 1)
+    gy, gx = np.gradient(height)
+    strength = 2.4
+    n = np.stack([-gx * strength, gy * strength, np.ones_like(gx)], axis=-1)
+    n /= np.linalg.norm(n, axis=-1, keepdims=True)
+    rough = 0.3 + 0.22 * (1.0 - crown) + 0.08 * (1.0 - dive)
+    mr = np.stack([np.zeros_like(rough), rough, np.full_like(rough, 0.05)], axis=-1)
+
+    def srgb(c):
+        c = np.clip(c, 0, 1)
+        return np.where(c <= 0.0031308, c * 12.92, 1.055 * np.power(c, 1 / 2.4) - 0.055)
+
+    def as_u8(a):
+        return (np.clip(a, 0, 1) * 255 + 0.5).astype(np.uint8)
+
+    return {"base": _png(as_u8(srgb(base))), "normal": _png(as_u8(n * 0.5 + 0.5)), "mr": _png(as_u8(mr))}
 
 
 def write_glb(p, bodies, path, tolerance=0.06):
@@ -795,35 +928,53 @@ def write_glb(p, bodies, path, tolerance=0.06):
     for node, material, shape in bodies:
         groups.setdefault(node, {}).setdefault(material, []).append(shape)
 
+    blob = bytearray()
+    views, accessors, meshes, nodes = [], [], [], []
+    images, textures = [], []
+
+    def add_view(data, target=None):
+        while len(blob) % 4:
+            blob.append(0)
+        view = {"buffer": 0, "byteOffset": len(blob), "byteLength": len(data)}
+        if target:
+            view["target"] = target
+        views.append(view)
+        blob.extend(data)
+        return len(views) - 1
+
+    def add_texture(png, name):
+        images.append({"name": name, "mimeType": "image/png", "bufferView": add_view(png)})
+        textures.append({"sampler": 0, "source": len(images) - 1})
+        return len(textures) - 1
+
     materials, material_index = [], {}
-    clearcoat = False
+    extensions = set()
     for node in order:
         for material in groups.get(node, {}):
             if material in material_index:
                 continue
             cad, base, metal, rough, alpha, coat = _material_color(p, material)
             rgb = [_linear(int(base[i : i + 2], 16) / 255.0) for i in (1, 3, 5)]
-            entry = {
-                "name": "pai:" + cad + " " + material,
-                "pbrMetallicRoughness": {"baseColorFactor": rgb + [alpha], "metallicFactor": metal, "roughnessFactor": rough},
-            }
+            pbr = {"baseColorFactor": rgb + [alpha], "metallicFactor": metal, "roughnessFactor": rough}
+            entry = {"name": "pai:" + cad + " " + material, "pbrMetallicRoughness": pbr}
+            ext = {}
+            if material == "carbon":
+                maps = carbon_textures()
+                pbr["baseColorTexture"] = {"index": add_texture(maps["base"], "carbon weave")}
+                pbr["metallicRoughnessTexture"] = {"index": add_texture(maps["mr"], "carbon roughness")}
+                entry["normalTexture"] = {"index": add_texture(maps["normal"], "carbon normal"), "scale": 1.0}
             if alpha < 1.0:
                 entry["alphaMode"] = "BLEND"
+                entry["doubleSided"] = True
+            if material == "prop":
+                ext["KHR_materials_ior"] = {"ior": 1.58}
             if coat:
-                entry["extensions"] = {"KHR_materials_clearcoat": {"clearcoatFactor": coat, "clearcoatRoughnessFactor": 0.12}}
-                clearcoat = True
+                ext["KHR_materials_clearcoat"] = {"clearcoatFactor": coat, "clearcoatRoughnessFactor": 0.06 if material == "carbon" else 0.12}
+            if ext:
+                entry["extensions"] = ext
+                extensions.update(ext)
             material_index[material] = len(materials)
             materials.append(entry)
-
-    blob = bytearray()
-    views, accessors, meshes, nodes = [], [], [], []
-
-    def add_view(data, target):
-        while len(blob) % 4:
-            blob.append(0)
-        views.append({"buffer": 0, "byteOffset": len(blob), "byteLength": len(data), "target": target})
-        blob.extend(data)
-        return len(views) - 1
 
     node_index = {}
     for node in order:
@@ -832,8 +983,17 @@ def write_glb(p, bodies, path, tolerance=0.06):
         origin = origins[node]
         primitives = []
         for material, shapes in groups[node].items():
-            shape = shapes[0] if len(shapes) == 1 else _compound(shapes)
-            positions, normals, indices = _tessellate(shape, origin, tolerance)
+            solids = [s for s in shapes if not _is_mesh(s)]
+            textured = "baseColorTexture" in materials[material_index[material]]["pbrMetallicRoughness"]
+            # Clear props show every facet in their reflections; they get a finer mesh.
+            fine = tolerance / 3.0 if material == "prop" else tolerance
+            positions, normals, indices, uvs = [], [], [], []
+            if solids:
+                shape = solids[0] if len(solids) == 1 else _compound(solids)
+                positions, normals, indices, uvs = _tessellate(shape, origin, fine, CARBON_REPEAT_MM if textured else None)
+            for mesh in (s for s in shapes if _is_mesh(s)):
+                _append_mesh(mesh, origin, positions, normals, indices)
+                uvs = []
             if not indices:
                 continue
             count = len(positions) // 3
@@ -843,11 +1003,15 @@ def write_glb(p, bodies, path, tolerance=0.06):
             pos_acc = len(accessors) - 1
             nrm_view = add_view(struct.pack("<%df" % len(normals), *normals), 34962)
             accessors.append({"bufferView": nrm_view, "componentType": 5126, "count": count, "type": "VEC3"})
-            nrm_acc = len(accessors) - 1
+            attributes = {"POSITION": pos_acc, "NORMAL": len(accessors) - 1}
+            if uvs:
+                uv_view = add_view(struct.pack("<%df" % len(uvs), *uvs), 34962)
+                accessors.append({"bufferView": uv_view, "componentType": 5126, "count": count, "type": "VEC2"})
+                attributes["TEXCOORD_0"] = len(accessors) - 1
             wide = count > 65535
             idx_view = add_view(struct.pack(("<%dI" if wide else "<%dH") % len(indices), *indices), 34963)
             accessors.append({"bufferView": idx_view, "componentType": 5125 if wide else 5123, "count": len(indices), "type": "SCALAR"})
-            primitives.append({"attributes": {"POSITION": pos_acc, "NORMAL": nrm_acc}, "indices": len(accessors) - 1, "material": material_index[material]})
+            primitives.append({"attributes": attributes, "indices": len(accessors) - 1, "material": material_index[material]})
         if not primitives:
             continue
         meshes.append({"name": node, "primitives": primitives})
@@ -881,8 +1045,12 @@ def write_glb(p, bodies, path, tolerance=0.06):
         "bufferViews": views,
         "buffers": [{"byteLength": len(blob)}],
     }
-    if clearcoat:
-        gltf["extensionsUsed"] = ["KHR_materials_clearcoat"]
+    if images:
+        gltf["images"] = images
+        gltf["textures"] = textures
+        gltf["samplers"] = [{"magFilter": 9729, "minFilter": 9987, "wrapS": 10497, "wrapT": 10497}]
+    if extensions:
+        gltf["extensionsUsed"] = sorted(extensions)
     payload = json.dumps(gltf, separators=(",", ":")).encode("utf-8")
     while len(payload) % 4:
         payload += b" "

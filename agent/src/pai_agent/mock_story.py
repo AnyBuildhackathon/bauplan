@@ -268,7 +268,7 @@ async def run_mock(ctx: Ctx, meeting_id: str = "") -> None:
         + version["detail"].split(" · ", 1)[-1]
         + ". Jamie has a note, the tags drohne and drohne-v1 and "
         + str(version["tasks"]["task_count"])
-        + " order tasks for Lea and Ben. Prices are samples; check them before ordering.",
+        + " order tasks for Lea and Ben. Shop prices are from 2026-10-24; check them before ordering.",
     )
     ctx.state.finished = True
 
