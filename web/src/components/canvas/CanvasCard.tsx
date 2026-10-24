@@ -61,7 +61,7 @@ function PartModel() {
       </div>
     );
   }
-  return <CadScene url={url} zUp />;
+  return <CadScene url={url} zUp stage />;
 }
 
 export function CanvasCard() {
@@ -91,7 +91,7 @@ export function CanvasCard() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex shrink-0 items-end gap-6 border-b border-line" role="tablist">
+      <div className="flex shrink-0 items-end gap-5 overflow-x-auto border-b border-line [scrollbar-width:none]" role="tablist">
         {tabs.map((t) => {
           const active = t.value === tab;
           return (
@@ -102,7 +102,7 @@ export function CanvasCard() {
               aria-selected={active}
               data-target={`tab:${t.value}`}
               onClick={() => setTab(t.value)}
-              className={`-mb-px flex items-center gap-2 border-b-2 px-0.5 pb-3 text-[16px] transition ${
+              className={`-mb-px flex shrink-0 items-center gap-2 border-b-2 px-0.5 pb-3 text-[15px] whitespace-nowrap transition ${
                 active ? "border-ink font-semibold text-ink" : "border-transparent font-medium text-muted hover:text-ink"
               }`}
             >

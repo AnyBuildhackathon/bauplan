@@ -1,13 +1,14 @@
 @import "tailwindcss";
 
 /* AnyBuild look as tokens: an off-white, airy, almost borderless reading surface.
-   Mechanic's answers and the Jamie quotes use the serif; everything else stays plain.
+   Inter Tight carries the interface; Mechanic's answers and the Jamie quotes use Inter,
+   the same family with more room, so long text reads calmly at a small size.
    Colors carry meaning: agent (orange) = what the agent is doing right now, ok (green)
    = passed or met, fail (red) = failed, accent (teal) = send and source citations.
    The *-ink variants are darker text shades that stay readable on a projector. */
 @theme {
   --font-sans: "Inter Tight", "Inter Tight Fallback", -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
-  --font-serif: "Newsreader", "Iowan Old Style", Georgia, serif;
+  --font-read: "Inter", "Inter Tight", -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
   --font-hand: "Caveat", "Bradley Hand", cursive;
 
   --color-page: #fafaf8;
