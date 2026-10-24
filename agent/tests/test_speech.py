@@ -50,6 +50,13 @@ class MilestoneTest(unittest.TestCase):
         self.assertIsNone(speech.milestone({"type": "step", "id": "cad", "status": "done"}))
         self.assertEqual(speech.milestone({"type": "step", "label": "CAD", "status": "failed"})["step"], "CAD")
 
+    def test_fresh_bench_names_no_product(self):
+        state = BuildState(session_id="t", directory=Path("/tmp"))
+        prompt = speech._reply_prompt("Design a phone stand", state, "started", None, [])
+        self.assertNotIn("drone", prompt)
+        state.started = True
+        self.assertIn("Product: drone", speech._reply_prompt("Make it lighter", state, "started", None, []))
+
     def test_fallback_lines(self):
         self.assertEqual(speech.fallback_line([{"milestone": "simulation", "result": "pass"}]), "The simulation passed.")
         self.assertEqual(speech.fallback_line([{"milestone": "version finished", "version": 2, "summary": "49.3 g · 15.6 min"}]), "Version 2 is done: 49.3 g, 15.6 min.")
@@ -79,6 +86,7 @@ class VoiceTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(says[-1]["text"], "On it, building now.")
         # Spoken pieces are live only; the finished reply is kept as a chat line.
         self.assertEqual([e["type"] for e in self.bus.events], ["chat"])
+        self.assertEqual(self.bus.events[-1], {"type": "chat", "role": "agent", "text": "On it, building now.", "voice": True})
         self.assertEqual(self.voice._client.messages.calls[0]["thinking"], {"type": "disabled"})
 
     async def test_updates_only_while_building(self):
@@ -94,6 +102,9 @@ class VoiceTest(unittest.IsolatedAsyncioTestCase):
         # Milestones that land together become one sentence.
         self.assertEqual(len(done), 1)
         self.assertEqual(done[0]["kind"], "update")
+        # The spoken update is also written into the chat, once.
+        spoken = [e for e in self.bus.events if e["type"] == "chat" and e.get("voice")]
+        self.assertEqual([e["text"] for e in spoken], ["The simulation passed."])
 
     async def test_model_failure_falls_back(self):
         class Broken:

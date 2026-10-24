@@ -25,6 +25,8 @@ from pai_agent.tools.stress import router as stress_router
 
 class PromptIn(BaseModel):
     text: str
+    # The text is a spoken turn (Reson8 or the browser), not typed.
+    voice: bool = False
 
 
 class SketchIn(BaseModel):
@@ -130,7 +132,7 @@ async def prompt(body: PromptIn, request: Request) -> dict:
     text = body.text.strip()
     if not text:
         raise HTTPException(status_code=400, detail="text is required")
-    return await request.app.state.session.start(text)
+    return await request.app.state.session.start(text, voice=body.voice)
 
 
 @app.post("/api/sketch")

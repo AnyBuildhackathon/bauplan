@@ -20,6 +20,8 @@ export interface ChatEvent {
   type: "chat";
   role: "user" | "agent";
   text: string;
+  /** A spoken line: the person's turn heard by Reson8 or the browser, or what Mechanic said aloud. */
+  voice?: boolean;
 }
 export interface ToolEvent {
   type: "tool";

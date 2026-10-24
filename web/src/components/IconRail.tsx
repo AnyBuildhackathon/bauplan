@@ -4,8 +4,7 @@ import { BookOpen, Box, Dumbbell, LayoutGrid, Plus, Users } from "lucide-react";
 import { useSession } from "../events/store";
 import { useSource } from "../events/source";
 import { useUi, type View } from "../lib/ui";
-import { MascotHead } from "./mascot/Mascot";
-import { Logo } from "./TopBar";
+import { MascotLive } from "./mascot/Mascot";
 
 const VIEWS: { value: View; label: string; icon: typeof Box; control: string }[] = [
   { value: "werkbank", label: "Workbench", icon: Box, control: "view:workbench" },
@@ -57,8 +56,9 @@ export function IconRail() {
   return (
     <nav className="flex h-full w-16 shrink-0 flex-col items-center justify-between bg-page-2 py-4" aria-label="AnyBuild">
       <div className="flex flex-col items-center gap-1.5">
+        {/* Mechanic once, alive, at the top of the rail; it leads back to the workbench. */}
         <button type="button" onClick={() => setView("werkbank")} title="AnyBuild" aria-label="AnyBuild" className="mb-4">
-          <Logo size={38} />
+          <MascotLive state={mascot.state} size={52} crop="head" className="rounded-[16px] shadow-[0_0_0_1px_rgb(26_26_24_/_0.06)]" />
         </button>
         <RailButton
           label="New project"
@@ -77,7 +77,6 @@ export function IconRail() {
           </RailButton>
         ))}
       </div>
-      <MascotHead size={44} state={mascot.state} className="h-10 w-10 rounded-full bg-track" />
     </nav>
   );
 }

@@ -111,7 +111,10 @@ _SITUATION = {
 
 
 def _reply_prompt(text: str, state: BuildState, status: str, question: dict | None, history: list[dict], detail: str = "") -> str:
-    lines = ["Situation: " + _SITUATION[status].format(detail=detail), f"Product: {state.product}", f"Versions built: {len(state.versions)}"]
+    # A fresh bench still carries the default product; naming it would make Mechanic talk
+    # about a drone when the person asked for something else.
+    product = state.product if state.started else "none yet, the bench is empty: build what the message asks for"
+    lines = ["Situation: " + _SITUATION[status].format(detail=detail), f"Product: {product}", f"Versions built: {len(state.versions)}"]
     if state.metrics:
         lines.append("Latest numbers: " + json.dumps(state.metrics, ensure_ascii=False))
     if question:
@@ -200,7 +203,7 @@ class Voice:
         return self._client
 
     async def _speak(self, kind: str, system: str, prompt: str, timeout: float, fallback: str) -> None:
-        """Streams one line as `say` deltas (live only), then its full text; a reply also lands in the chat."""
+        """Streams one line as `say` deltas (live only), then its full text, which also lands in the chat."""
 
         self._count += 1
         say_id = kind[0] + str(self._count)
@@ -233,5 +236,6 @@ class Voice:
                 await send(fallback)
         line = text.strip()
         await self.bus.publish({"type": "say", "id": say_id, "kind": kind, "text": line, "done": True}, keep=False)
-        if kind == "reply" and line:
-            await self.bus.publish({"type": "chat", "role": "agent", "text": line})
+        if line:
+            # What Mechanic said aloud stays readable in the chat, marked as spoken.
+            await self.bus.publish({"type": "chat", "role": "agent", "text": line, "voice": True})
