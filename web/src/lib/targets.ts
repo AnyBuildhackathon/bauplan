@@ -105,11 +105,28 @@ function domSpot(raw: string): ScreenSpot | null {
   };
 }
 
+/** A dashboard control Mechanic operates, tagged `data-control` (lib/pilot.ts). */
+function controlSpot(id: string): ScreenSpot | null {
+  for (const el of document.querySelectorAll<HTMLElement>(`[data-control~="${CSS.escape(id)}"]`)) {
+    const rect = el.getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0) continue;
+    return {
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2,
+      r: Math.max(18, Math.min(rect.width, rect.height) / 2 + 6),
+      clip: null,
+      kind: "ui",
+    };
+  }
+  return null;
+}
+
 /** Current screen position of a target, or null when it is not on screen right now. */
 export function resolveTarget(raw: string): ScreenSpot | null {
-  const key = partKey(raw);
-  if (key) {
-    const spot = anchors.get(key);
+  if (raw.startsWith("control:")) return controlSpot(raw.slice(8));
+  // Drone parts by canonical key, any other product's parts by their normalised name or id.
+  for (const key of [partKey(raw), normaliseName(raw)]) {
+    const spot = key ? anchors.get(key) : undefined;
     if (spot && spot.visible) return { x: spot.x, y: spot.y, r: spot.r, clip: spot.clip, kind: "part" };
   }
   return domSpot(raw);

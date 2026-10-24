@@ -11,6 +11,7 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { useSession } from "../../events/store";
 import { assetUrl } from "../../lib/api";
 import { useAnchor } from "./anchors";
+import { ExplodeLayer, useExplodeHover, type PieceSpec } from "./explode";
 
 /** The kickoff build, written by agent/scripts/record_demo.py. */
 export const DEFAULT_DRONE_URL = `${import.meta.env.BASE_URL}models/hero-drone.glb`;
@@ -20,6 +21,23 @@ const CORNERS = ["front_left", "front_right", "rear_left", "rear_right"] as cons
 const SPIN: Record<(typeof CORNERS)[number], 1 | -1> = { front_left: -1, front_right: 1, rear_left: 1, rear_right: -1 };
 const NODES = ["frame", "canopy", "camera", "flight_controller", "battery", "battery_strap", "antenna", ...CORNERS.flatMap((c) => [`motor_${c}`, `propeller_${c}`])];
 const AGENT = new THREE.Color("#ff8a3d");
+
+/** Hover names and the few pills an exploded drone shows (one per kind of part). */
+const PIECES: Record<string, { name: string; label: string }> = {
+  frame: { name: "Frame", label: "Frame" },
+  canopy: { name: "Canopy", label: "Canopy" },
+  camera: { name: "FPV camera", label: "" },
+  flight_controller: { name: "Flight controller", label: "Flight controller" },
+  battery: { name: "Battery", label: "Battery" },
+  battery_strap: { name: "Battery strap", label: "" },
+  antenna: { name: "Receiver antenna", label: "Antenna" },
+  ...Object.fromEntries(
+    CORNERS.flatMap((c, i) => [
+      [`motor_${c}`, { name: `Motor ${c.replace("_", " ")}`, label: i === 0 ? "Motors ×4" : "" }],
+      [`propeller_${c}`, { name: `Propeller ${c.replace("_", " ")}`, label: i === 0 ? "Propellers ×4" : "" }],
+    ]),
+  ),
+};
 
 /** The drone GLB to show: the latest FreeCAD build, else the recorded one. */
 export function useDroneUrl(): string {
@@ -35,6 +53,8 @@ export interface HeroDroneProps {
   highlight: Set<string>;
   /** Propeller speed in rad/s. */
   spin?: number;
+  /** The Model tab: parts follow the explode slider and answer hover. */
+  explodable?: boolean;
 }
 
 interface Part {
@@ -66,7 +86,7 @@ export function HeroDrone(props: HeroDroneProps) {
   return <Drone {...props} source={gltf.scene} />;
 }
 
-function Drone({ source, battery, highlight, spin = 0 }: HeroDroneProps & { source: THREE.Group }) {
+function Drone({ source, battery, highlight, spin = 0, explodable = false }: HeroDroneProps & { source: THREE.Group }) {
   const { root, parts, baked } = useMemo(() => {
     const root = source.clone(true);
     const parts = new Map<string, Part>();
@@ -131,6 +151,12 @@ function Drone({ source, battery, highlight, spin = 0 }: HeroDroneProps & { sour
     // The battery anchor follows the scaled pack.
   }, [root, parts, scale]);
 
+  const specs = useMemo<PieceSpec[]>(
+    () => [...parts].map(([key, part]) => ({ node: part.node, key, isBase: key === "frame", ...(PIECES[key] ?? { name: key, label: "" }) })),
+    [parts],
+  );
+  const hovered = useExplodeHover((s) => (explodable ? s.key : null));
+
   const hl = (k: string) => highlight.has(k);
   const glow: [string[], boolean][] = [
     [["frame", "canopy"], hl("frame")],
@@ -148,6 +174,7 @@ function Drone({ source, battery, highlight, spin = 0 }: HeroDroneProps & { sour
         for (const m of parts.get(name)?.materials ?? []) m.emissiveIntensity += (target - m.emissiveIntensity) * 0.15;
       }
     }
+    for (const m of (hovered && parts.get(hovered)?.materials) || []) m.emissiveIntensity = 0.3;
     if (!spin) return;
     for (const c of CORNERS) {
       const prop = parts.get(`propeller_${c}`)?.node;
@@ -157,7 +184,13 @@ function Drone({ source, battery, highlight, spin = 0 }: HeroDroneProps & { sour
 
   return (
     <group>
-      <primitive object={root} />
+      {explodable ? (
+        <ExplodeLayer root={root} specs={specs}>
+          <primitive object={root} />
+        </ExplodeLayer>
+      ) : (
+        <primitive object={root} />
+      )}
       {anchors.map((a) => (
         <Anchor key={a.name} name={a.name} radius={a.radius} position={a.center} />
       ))}

@@ -38,7 +38,8 @@ _REPLY = (
 Behind your voice, your build pipeline does the engineering with real tools (Jamie meetings, a parts catalog, FreeCAD, MuJoCo, Blender) and has just received the person's message.
 Speak as one agent, "I"; never mention a builder, a pipeline or another agent.
 Answer in one or two short sentences, at most 35 words in total. Start with a short phrase of two to five words and a comma or full stop, so it can be spoken right away.
-Acknowledge what they want and say what happens next, following the situation line. Never invent numbers, results or part names that are not in the state below; you report those later."""
+Acknowledge what they want and say what happens next, following the situation line. Never invent numbers, results or part names that are not in the state below; you report those later.
+You also operate the dashboard with a pointer: the 3D model, CAD and simulation tabs, the bill of materials, the build guide, the library, the logbook, version compare, the settings, an explode slider that pulls every part apart, a camera focus on one part, and rerunning the test or rebuilding. Short requests such as "show me the CAD", "pull it apart" or "compare v1 and v2" do that at once, even during a build."""
 )
 
 _UPDATE = (
@@ -105,11 +106,12 @@ _SITUATION = {
     "started": "You are starting on this now.",
     "already_running": "You are still busy with the current run and did not take this message. Say so and ask them to repeat it once the run is done.",
     "answered": "The message answers your open question. Confirm the choice in a few words.",
+    "ui": "You are operating the dashboard for them right now with your pointer: {detail}. Say what they are about to see in a few words; do not describe the build.",
 }
 
 
-def _reply_prompt(text: str, state: BuildState, status: str, question: dict | None, history: list[dict]) -> str:
-    lines = ["Situation: " + _SITUATION[status], f"Product: {state.product}", f"Versions built: {len(state.versions)}"]
+def _reply_prompt(text: str, state: BuildState, status: str, question: dict | None, history: list[dict], detail: str = "") -> str:
+    lines = ["Situation: " + _SITUATION[status].format(detail=detail), f"Product: {state.product}", f"Versions built: {len(state.versions)}"]
     if state.metrics:
         lines.append("Latest numbers: " + json.dumps(state.metrics, ensure_ascii=False))
     if question:
@@ -132,7 +134,7 @@ class Voice:
         self._count = 0
         self._warmed = -_WARM_EVERY_S
 
-    def reply(self, text: str, state: BuildState, status: str, question: dict | None = None) -> None:
+    def reply(self, text: str, state: BuildState, status: str, question: dict | None = None, detail: str = "") -> None:
         if not enabled():
             return
         if self._reply is not None and not self._reply.done():
@@ -143,7 +145,7 @@ class Voice:
             for e in self.bus.events
             if e.get("type") == "chat" and str(e.get("text", "")).strip() != text
         ][-6:]
-        prompt = _reply_prompt(text, state, status, question, history)
+        prompt = _reply_prompt(text, state, status, question, history, detail)
         self._reply = asyncio.create_task(self._speak("reply", _REPLY, prompt, _REPLY_TIMEOUT_S, ""))
 
     def observe(self, event: dict) -> None:

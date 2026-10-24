@@ -7,11 +7,11 @@ import { useUi, type View } from "../lib/ui";
 import { MascotHead } from "./mascot/Mascot";
 import { Logo } from "./TopBar";
 
-const VIEWS: { value: View; label: string; icon: typeof Box }[] = [
-  { value: "werkbank", label: "Workbench", icon: Box },
-  { value: "library", label: "Library", icon: LayoutGrid },
-  { value: "training", label: "Training", icon: Dumbbell },
-  { value: "logbuch", label: "Logbook", icon: BookOpen },
+const VIEWS: { value: View; label: string; icon: typeof Box; control: string }[] = [
+  { value: "werkbank", label: "Workbench", icon: Box, control: "view:workbench" },
+  { value: "library", label: "Library", icon: LayoutGrid, control: "view:library" },
+  { value: "training", label: "Training", icon: Dumbbell, control: "view:training" },
+  { value: "logbuch", label: "Logbook", icon: BookOpen, control: "view:logbook" },
 ];
 
 function RailButton({
@@ -19,12 +19,14 @@ function RailButton({
   active = false,
   onClick,
   target,
+  control,
   children,
 }: {
   label: string;
   active?: boolean;
   onClick: () => void;
   target?: string;
+  control?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -35,6 +37,7 @@ function RailButton({
       aria-label={label}
       aria-current={active ? "page" : undefined}
       data-target={target}
+      data-control={control}
       className={`flex h-11 w-11 items-center justify-center rounded-[12px] transition ${
         active ? "bg-track text-ink" : "text-ink-2 hover:bg-tile hover:text-ink"
       }`}
@@ -68,7 +71,7 @@ export function IconRail() {
           <Plus className="h-5 w-5" strokeWidth={1.8} />
         </RailButton>
         {VIEWS.map((v) => (
-          <RailButton key={v.value} label={v.label} active={view === v.value} onClick={() => setView(v.value)} target={`nav:${v.value}`}>
+          <RailButton key={v.value} label={v.label} active={view === v.value} onClick={() => setView(v.value)} target={`nav:${v.value}`} control={v.control}>
             <v.icon className="h-5 w-5" strokeWidth={1.8} />
           </RailButton>
         ))}

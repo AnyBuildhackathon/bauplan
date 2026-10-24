@@ -10,9 +10,14 @@ interface AnchorEntry {
   radius: number;
 }
 
-type AnchorMap = Map<string, AnchorEntry>;
+export type AnchorMap = Map<string, AnchorEntry>;
 
 const AnchorContext = createContext<AnchorMap | null>(null);
+
+/** The scene's anchor map, for parts that register anchors themselves (the explode view). */
+export function useAnchorMap(): AnchorMap | null {
+  return useContext(AnchorContext);
+}
 
 export function useAnchor(name: string, radius: number) {
   const map = useContext(AnchorContext);

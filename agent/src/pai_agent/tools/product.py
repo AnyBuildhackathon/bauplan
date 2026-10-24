@@ -351,8 +351,31 @@ async def _emit_assembly(ctx: Ctx) -> None:
                 "generated": any(info["generated"] for info in state.built.values()),
             },
             "assembly": True,
+            "bodies": _bodies(state),
         }
     )
+
+
+def _bodies(state) -> list[dict]:
+    """One row per GLB node: which spec part it is, its assembly group and its mass, for the explode view."""
+
+    parts = {part["id"]: part for part in state.spec["parts"]}
+    rows = []
+    for body in state.assembly.get("bodies", []):
+        if not body.get("stl"):
+            continue
+        part = parts.get(body["part_id"], {})
+        rows.append(
+            {
+                "name": body["name"],
+                "part_id": body["part_id"],
+                "part_name": part.get("name", body["name"]),
+                "kind": body["kind"],
+                "group": part.get("assembly") or None,
+                "mass_g": round(float(body.get("mass_g") or 0.0), 1),
+            }
+        )
+    return rows
 
 
 async def assemble(ctx: Ctx, args: dict) -> dict:

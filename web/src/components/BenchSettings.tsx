@@ -10,11 +10,11 @@ import { useSource } from "../events/source";
 import { apiUrl } from "../lib/api";
 import { useUi, type Display } from "../lib/ui";
 
-const DISPLAY: { key: keyof Display; label: string; hint: string }[] = [
-  { key: "agents", label: "Show agent steps and costs", hint: "Orchestrator and sub-agents in the chat" },
-  { key: "tools", label: "Show tool details", hint: "FreeCAD, Blender, MuJoCo cards" },
-  { key: "jamie", label: "Show Jamie activity", hint: "Tags, notes and tasks written to Jamie" },
-  { key: "allMetrics", label: "Show all metrics", hint: "Thrust to weight and the rest" },
+const DISPLAY: { key: keyof Display; label: string; hint: string; control?: string }[] = [
+  { key: "agents", label: "Show agent steps and costs", hint: "Orchestrator and sub-agents in the chat", control: "setting:agents" },
+  { key: "tools", label: "Show tool details", hint: "FreeCAD, Blender, MuJoCo cards", control: "setting:tools" },
+  { key: "jamie", label: "Show Jamie activity", hint: "Tags, notes and tasks written to Jamie", control: "setting:jamie" },
+  { key: "allMetrics", label: "Show all metrics", hint: "Thrust to weight and the rest", control: "setting:all_metrics" },
   { key: "learning", label: "Learning mode", hint: "Mechanic explains each decision with the physics; the logbook shows what you learned" },
 ];
 
@@ -24,9 +24,9 @@ const SPEECH: Record<"reson8" | "browser" | "none", string> = {
   none: "No speech recognition in this browser. Type instead.",
 };
 
-function Toggle({ label, hint, on, onChange }: { label: string; hint?: string; on: boolean; onChange: (on: boolean) => void }) {
+function Toggle({ label, hint, on, onChange, control }: { label: string; hint?: string; on: boolean; onChange: (on: boolean) => void; control?: string }) {
   return (
-    <button type="button" role="switch" aria-checked={on} onClick={() => onChange(!on)} className="flex w-full items-center gap-3 py-1.5 text-left">
+    <button type="button" role="switch" aria-checked={on} onClick={() => onChange(!on)} data-control={control} className="flex w-full items-center gap-3 py-1.5 text-left">
       <span className="min-w-0 flex-1">
         <span className="block text-[14px] font-semibold text-ink">{label}</span>
         {hint && <span className="block text-[12px] text-muted">{hint}</span>}
@@ -68,7 +68,9 @@ function Select({ label, value, options, onChange }: { label: string; value: str
 }
 
 export function BenchSettings() {
-  const [open, setOpen] = useState(false);
+  // Global, so Mechanic can open the panel too (lib/pilot.ts).
+  const open = useUi((s) => s.settingsOpen);
+  const setOpen = useUi((s) => s.setSettingsOpen);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [error, setError] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
@@ -85,11 +87,12 @@ export function BenchSettings() {
   useEffect(() => {
     if (!open) return;
     const close = (e: PointerEvent) => {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+      // A synthetic press from the pointer is no outside click.
+      if (e.isTrusted && !ref.current?.contains(e.target as Node)) setOpen(false);
     };
     window.addEventListener("pointerdown", close);
     return () => window.removeEventListener("pointerdown", close);
-  }, [open]);
+  }, [open, setOpen]);
   useEffect(() => {
     if (!open || !live) return;
     fetch(apiUrl("/api/settings"))
@@ -124,6 +127,7 @@ export function BenchSettings() {
         title="Settings"
         aria-label="Settings"
         data-target="settings"
+        data-control="panel:settings panel:settings:close"
       >
         <SlidersHorizontal className="h-4.5 w-4.5" />
       </button>
@@ -131,10 +135,11 @@ export function BenchSettings() {
         <div className="scroll-soft absolute top-12 right-0 z-[90] max-h-[calc(100vh-90px)] w-[340px] animate-rise overflow-y-auto rounded-[20px] bg-card p-4 shadow-[var(--shadow-float)]">
           <h3 className="eyebrow mb-1">Show</h3>
           {DISPLAY.map((d) => (
-            <Toggle key={d.key} label={d.label} hint={d.hint} on={display[d.key]} onChange={(on) => setDisplay({ [d.key]: on })} />
+            <Toggle key={d.key} control={d.control} label={d.label} hint={d.hint} on={display[d.key]} onChange={(on) => setDisplay({ [d.key]: on })} />
           ))}
           <h3 className="eyebrow mt-3 mb-1 border-t border-line pt-3">Voice</h3>
           <Toggle
+            control="setting:push_to_talk"
             label="Push-to-talk"
             hint={micMode === "ptt" ? "Hold the mic or space while you speak" : "Off: click the mic once and just talk"}
             on={micMode === "ptt"}

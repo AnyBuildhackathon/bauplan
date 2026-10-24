@@ -5,7 +5,7 @@
 // interrupts Mechanic), push-to-talk as the fallback (hold the button or the space
 // bar); speech goes to Reson8 or the browser (lib/voice.ts).
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowUp, Mic } from "lucide-react";
+import { ArrowUp, Mic, MousePointer2 } from "lucide-react";
 import { useUi } from "../../lib/ui";
 import { hold, isEcho, isSpeaking, markTurnEnd, release, stopSpeaking, unlockAudio, warmUp } from "../../lib/speech";
 import { startHandsFree, startListening as listen, type HandsFree, type Listener } from "../../lib/voice";
@@ -284,6 +284,7 @@ export default function SidebarChatInput({
           </button>
         )}
         {sketches && !hearing && <SketchButton onPick={(file) => onSketchChange?.(file)} onError={flash} large={lg} />}
+        <ClickyToggle size={lg ? "lg" : "sm"} />
         <button
           type="button"
           data-target="mic reson8_mic"
@@ -310,5 +311,25 @@ export default function SidebarChatInput({
       </div>
       {hint && <p className="mt-1.5 px-2 text-[12px] text-agent-ink">{hint}</p>}
     </div>
+  );
+}
+
+/** HeyClicky: Mechanic's pointer flies to what he shows and presses the controls he operates. */
+function ClickyToggle({ size }: { size: "sm" | "lg" }) {
+  const clicky = useUi((s) => s.clicky);
+  const setClicky = useUi((s) => s.setClicky);
+  return (
+    <button
+      type="button"
+      onClick={() => setClicky(!clicky)}
+      aria-pressed={clicky}
+      aria-label="HeyClicky pointer"
+      title={clicky ? "HeyClicky on: Mechanic points and operates the app" : "HeyClicky off: actions happen without the pointer"}
+      className={`flex shrink-0 items-center justify-center rounded-full transition ${
+        clicky ? "bg-agent-soft text-agent-ink hover:brightness-95" : "bg-tile text-faint hover:bg-track hover:text-ink-2"
+      } ${size === "lg" ? "h-14 w-14" : "h-10 w-10"}`}
+    >
+      <MousePointer2 className={size === "lg" ? "h-5.5 w-5.5" : "h-4.5 w-4.5"} strokeWidth={2} fill={clicky ? "currentColor" : "none"} />
+    </button>
   );
 }

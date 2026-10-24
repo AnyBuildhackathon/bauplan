@@ -201,6 +201,7 @@ export function BuildPanel() {
         onClick={() => setBomOpen(true)}
         disabled={!bom}
         data-target="bom stueckliste nav:stueckliste"
+        data-control="panel:bom"
         className="group mt-4 flex w-full shrink-0 items-center gap-3 rounded-[14px] bg-page-2 px-4 py-3 text-left transition hover:bg-tile disabled:cursor-default disabled:opacity-60"
       >
         <span className="min-w-0 flex-1">

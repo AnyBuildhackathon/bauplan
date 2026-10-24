@@ -19,6 +19,7 @@ from pai_agent.tools.browser_train import run_mock_training
 from pai_agent.tools.registry import DELEGATED, SCHEMAS, call_tool
 from pai_agent.timeouts import model_timeout
 from pai_agent.tools.stress import run_stress_mock, wants_stress
+from pai_agent.tools.ui import control_list
 
 log = logging.getLogger(__name__)
 
@@ -35,6 +36,10 @@ Respond in English, also when the user speaks another language.
 Never mention file paths or URLs; the dashboard shows the files.
 Call mascot_say when you explain something; state is ruhig, denkt, erklaert, freut_sich or besorgt.
 When a tool returns an error, read it and call the tool again with corrected arguments.
+You can operate the dashboard with ui_control: the audience sees your pointer fly to the real control and press it.
+When someone asks to see, open, compare or pull something apart, use it instead of describing the screen, and use it to show what you explain
+(open the CAD tab after a CAD build, the Simulation tab after a test, explode to show the parts, compare after a new version). The controls:
+{controls}
 
 Any product (the default; a phone stand, a desk fan, a plant-watering robot, a bike light mount, an enclosure):
 1. product_spec with the full spec: function, requirements each with the check that judges it and a limit, and every part
@@ -272,7 +277,7 @@ _PARALLEL = {"cad_part"}
 
 
 def _system(delegation: bool) -> list[dict]:
-    text = _SYSTEM + (_DELEGATION if delegation else "")
+    text = _SYSTEM.replace("{controls}", control_list()) + (_DELEGATION if delegation else "")
     # The prompt and the tool list are the same every round; caching them keeps rounds fast.
     return [{"type": "text", "text": text, "cache_control": {"type": "ephemeral"}}]
 

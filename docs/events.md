@@ -7,7 +7,7 @@ This file is the only copy of the wire format.
 ## HTTP
 
 `POST /api/prompt` with `{"text": "..."}` starts or continues the one local session.
-The response is `{"ok": true, "mode": "mock"|"claude", "status": "started"|"already_running"}`.
+The response is `{"ok": true, "mode": "mock"|"claude", "status": "started"|"already_running"|"answered"|"ui"}`.
 `mode` is `mock` when `ANTHROPIC_API_KEY` is empty or `PAI_FORCE_MOCK` is `1`.
 
 `POST /api/sketch` with `{"image_base64": "...", "media_type": "image/png", "note": "..."}` starts a new product from a photo of a hand sketch, on a fresh bench.
@@ -25,6 +25,13 @@ A client that connects late receives the events already published, then the live
 Every stream starts with a `reset` event, so a client that reconnects replays onto an empty state.
 
 State-changing calls without a typed body (`/api/reset`, `/api/webhooks/jamie`, `/api/cad/params`, `/api/cad/open`, `/api/versions/{n}/restore`) need `Content-Type: application/json`, else HTTP 415, so a web page cannot fire them as a plain cross-site form post.
+
+A prompt that only asks to see or operate something in the dashboard ("show me the CAD", "open the library", "pull it apart", "compare v1 and v2", "focus on the battery", "mute") is answered with `status: "ui"` and `controls`: it becomes `ui_control` calls at once, also while a build runs, and never reaches the orchestrator.
+`agent/src/pai_agent/app_control.py` matches these short commands; anything that changes the design goes to the orchestrator, which has the same tool.
+"Rebuild" with a planned or live review on the timeline ends that review, like its End button; a test or a rebuild requested during a build answers `already_running`.
+
+`POST /api/control` with `{"control": "run:test"}` or `{"control": "run:rebuild"}` is a person pressing Run test (Simulation tab) or Rebuild and recheck (CAD tab): the product's MuJoCo test, or the CAD built again from the current numbers with the numbers and the test rerun.
+It answers `{"ok": true, "status": "started"}`, or `ok: false` with `error` while a build runs or before anything is built.
 
 `POST /api/webhooks/jamie` accepts a JSON body with `event` (or `type`), `meeting_id`, and `title`.
 `meeting.started` marks that meeting `live` on the timeline and builds nothing.
@@ -102,8 +109,6 @@ The response is like `POST /api/prompt`, with `reference`: `{"ok": true, "mode":
 `GET /api/library/{id}/thumbnail` returns the PNG, HTTP 404 without one.
 
 `POST /api/library` with `{"id": "...", "name": "...", "summary": "..."}` (all optional) saves the current product build as a project with its latest render as thumbnail and answers `{"ok": true, "item": {...}}`; HTTP 400 when there is no finished product build or the id is taken by a reference, 409 while Mechanic is building.
-
-With `"kind": "reference"` the same call promotes the build into the registry (`agent/data/references/{id}/`, with its scripts, picks, checks and render), so it can be committed; that needs `PAI_ADMIN=1` in the backend environment and answers HTTP 403 without it.
 
 ### Versions
 
@@ -302,6 +307,7 @@ A `pai:#rrggbbaa` material is see-through with that alpha, used for external loa
 A whole product built from a spec sends `assembly: true`.
 Its tree is the product with one node per assembly and one per part (`(bought)` and `(load)` mark bought parts and loads, each label ends in its mass and material or its catalog name).
 Its `params` are every printed part's sliders as `{part_id}.{param}`, each with a `label` such as `Base plate · depth`.
+`bodies` has one row per GLB node, `{name, part_id, part_name, kind, group, mass_g}`, where `name` is the node name, `group` the spec assembly id or `null`, and `mass_g` the body's mass (the explode view groups and labels the parts with it).
 `glb_url` and `stl_url` are `assembly.glb` (all bodies, bought parts and loads as blocks) and `assembly.stl` (printed bodies), `step_url` is `null` (each part has its own STEP), `script_url` is `assembly-scripts.py` with every part's script, and `part` sums the printed parts.
 
 ### render
@@ -425,6 +431,15 @@ Together the steps cover every scene part.
 The pointer flies to that exact name.
 It does not guess from a screenshot.
 
+### ui
+
+Mechanic operates a dashboard control: `{id, control, say}` plus, depending on the control, `open` (panels, `true` opens and `false` closes), `value` (`explode` 0 to 100, `setting:*` true or false), `part` (`focus`) and `versions` (`panel:compare`, two version numbers).
+The dashboard flies the pointer to the element with that `data-control`, presses it with `say` in the bubble, then acts; a control behind another one (a setting inside the settings panel, the build guide inside the bill of materials, a tab while the library is open) is pressed open on the way.
+`run:test` and `run:rebuild` only show the button; the backend runs them right after.
+`run:review` points at the timeline's End button while a "rebuild" ends that review.
+With HeyClicky off (the pointer button in the chat composer, on by default) the action happens without the pointer, and `point` events are not shown either.
+Only fresh events act; a replayed backlog changes nothing.
+
 ### training
 
 `status` is `queued`, `running`, `done`, `failed`, or `offline`.
@@ -525,9 +540,28 @@ UI:
 - `viewport`
 - `chat`
 
+## Dashboard controls
+
+The `control` values of `ui_control` and the `ui` event, each the `data-control` of a real on-screen element:
+
+- `tab:model`, `tab:cad`, `tab:simulation`, `tab:omniverse` (drone only)
+- `view:workbench`, `view:library`, `view:training`, `view:logbook`
+- `panel:bom`, `panel:guide`, `panel:compare`, `panel:settings`
+- `setting:agents`, `setting:tools`, `setting:jamie`, `setting:all_metrics`, `setting:push_to_talk`, `setting:voice`
+- `explode`, the slider in the corner of the Model tab
+- `focus`, the 3D camera turns to `part` (a scene target, or a spec part's id or name)
+- `run:test`, `run:rebuild`
+- `library:{id}`, one library item
+
+`agent/src/pai_agent/scene.py` holds the list with a description each; the orchestrator's prompt and the voice model's prompt carry it.
+Closing buttons are tagged `{control}:close`, and `look:3d` is the 3D switch of the Model tab.
+
 ## Tools
 
-`jamie_templates`, `jamie_requirements`, `jamie_search`, `jamie_meeting`, `requirements_accept`, `ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `stress_test`, `cad_frame`, `cad_part`, `product_brief`, `product_spec`, `sketch_to_spec`, `reference_load`, `delegate`, `part_pick`, `assemble`, `cad_update`, `check_totals`, `check_tip_over`, `check_deflection`, `check_torque`, `check_runtime`, `check_power`, `check_thermal`, `check_rollover`, `simulate_assembly`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `blender_render`, `bom_build`, `build_guide`, `firmware`, `jamie_create_tasks`, `version_commit`, `ui_point_at`, `ui_draw`, `mascot_say`, `train_in_browser`.
+`jamie_templates`, `jamie_requirements`, `jamie_search`, `jamie_meeting`, `requirements_accept`, `ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `stress_test`, `cad_frame`, `cad_part`, `product_brief`, `product_spec`, `sketch_to_spec`, `reference_load`, `delegate`, `part_pick`, `assemble`, `cad_update`, `check_totals`, `check_tip_over`, `check_deflection`, `check_torque`, `check_runtime`, `check_power`, `check_thermal`, `check_rollover`, `simulate_assembly`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `blender_render`, `bom_build`, `build_guide`, `firmware`, `jamie_create_tasks`, `version_commit`, `ui_point_at`, `ui_draw`, `ui_control`, `mascot_say`, `train_in_browser`.
+
+`ui_control` takes `control` (see Dashboard controls) and, as the control needs, `open`, `value`, `part`, `versions` and `say` (the bubble, a default otherwise).
+It checks the control against the build (no bill of materials yet, fewer than two versions, Omniverse for a non-drone product) and answers an error the model can act on; `run:test` and `run:rebuild` wait for the run and return its result.
 
 ### Any product
 

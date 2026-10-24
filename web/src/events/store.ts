@@ -29,6 +29,7 @@ import {
   type ToolStatus,
   type TrainingEvent,
   type OmniverseEvent,
+  type UiEvent,
 } from "./types";
 
 export const STEP_LABELS: Record<StepId, string> = {
@@ -164,6 +165,8 @@ export interface SessionState {
   buildGuide: BuildGuideEvent | null;
   /** Learning-mode explanations by key, the latest of each. */
   explains: Record<string, ExplainEvent>;
+  /** The newest dashboard control Mechanic operates (lib/pilot.ts plays it). */
+  ui: (UiEvent & { at: number }) | null;
   /** Reduces one contract event. `instant` marks events replayed in bulk (seek), so nothing animates for them. */
   apply: (ev: AgentEvent, opts?: { instant?: boolean }) => void;
   addLocalUserMessage: (text: string) => void;
@@ -242,6 +245,7 @@ const SILENT_TOOLS = new Set([
   "ui_point_at",
   "ui_draw",
   "mascot_say",
+  "ui_control",
   "ask_user",
   "version_commit",
   "requirements_accept",
@@ -304,6 +308,7 @@ function emptyState() {
     stress: {} as SessionState["stress"],
     buildGuide: null as BuildGuideEvent | null,
     explains: {} as Record<string, ExplainEvent>,
+    ui: null as SessionState["ui"],
   };
 }
 
@@ -546,6 +551,8 @@ export const useSession = create<SessionState>((set, get) => ({
       }
       case "omniverse":
         return set({ log, omniverse: ev });
+      case "ui":
+        return set({ log, ui: { ...ev, at } });
     }
   },
 

@@ -119,6 +119,7 @@ export function MeetingTimeline() {
               <button
                 type="button"
                 data-target="meeting_end"
+                data-control="run:review"
                 onClick={() => void meetingWebhook(m.status === "live" ? "ended" : "started", m)}
                 className={`ml-1.5 h-7 shrink-0 rounded-full px-3 text-[12px] font-bold transition ${
                   m.status === "live" ? "bg-fail text-white hover:brightness-110" : "bg-card text-ink-2 shadow-[var(--shadow-pill)] hover:bg-page-2"
@@ -135,6 +136,7 @@ export function MeetingTimeline() {
         <button
           type="button"
           data-target="versions"
+          data-control="panel:compare"
           onClick={() => setVersionsOpen(true)}
           className="ml-3 inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-card px-3 text-[13px] font-bold text-ink-2 shadow-[var(--shadow-pill)] transition hover:bg-page-2"
           title="Version history"

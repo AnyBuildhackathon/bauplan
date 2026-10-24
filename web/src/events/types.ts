@@ -307,6 +307,27 @@ export interface CadEvent {
   };
   /** true for a whole assembled product: `part` then sums its printed parts. */
   assembly?: boolean;
+  /** An assembled product: one row per GLB node, with its spec part, assembly group and mass. */
+  bodies?: CadBody[];
+}
+export interface CadBody {
+  name: string;
+  part_id: string;
+  part_name: string;
+  kind: "printed" | "bought" | "external";
+  group: string | null;
+  mass_g: number;
+}
+/** Mechanic operates a dashboard control: the pointer flies to `[data-control~=control]`, then it acts. */
+export interface UiEvent {
+  type: "ui";
+  id: string;
+  control: string;
+  say: string;
+  open?: boolean;
+  value?: number | boolean;
+  part?: string;
+  versions?: [number, number] | null;
 }
 /** One Blender render. */
 export interface RenderEvent {
@@ -528,6 +549,7 @@ export interface SayEvent {
 }
 
 export type AgentEvent =
+  | UiEvent
   | StepEvent
   | ChatEvent
   | ToolEvent
@@ -560,6 +582,7 @@ export type AgentEvent =
   | ReplayedEvent;
 
 const EVENT_TYPES = new Set<AgentEvent["type"]>([
+  "ui",
   "step",
   "chat",
   "tool",

@@ -203,7 +203,7 @@ export function BomDrawer() {
             <BuildGuideButton />
             <ExportMenu bom={bom} onOrder={() => setOrdering(true)} />
           </div>
-          <button type="button" onClick={() => setOpen(false)} className="rounded-full p-2.5 text-muted hover:bg-card" aria-label="Close">
+          <button type="button" onClick={() => setOpen(false)} data-control="panel:bom:close" className="rounded-full p-2.5 text-muted hover:bg-card" aria-label="Close">
             <X className="h-5 w-5" />
           </button>
         </div>

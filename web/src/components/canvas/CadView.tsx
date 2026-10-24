@@ -3,7 +3,7 @@
 // the view), a small image of the real FreeCAD view and "In FreeCAD öffnen".
 import { OrbitControls } from "@react-three/drei";
 import { Canvas, useLoader, useThree } from "@react-three/fiber";
-import { ChevronRight, Download, ExternalLink, FileCode2, Layers, X } from "lucide-react";
+import { ChevronRight, Download, ExternalLink, FileCode2, Layers, RefreshCw, X } from "lucide-react";
 import { Component, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
@@ -16,8 +16,10 @@ import { useHighlight } from "../../lib/hooks";
 import { lookFor, materialKey, materialsFromTree, pbrMaterial } from "../../lib/materials";
 import { isLive } from "../../lib/motion";
 import { useAssemblyFlyIn } from "./AssemblyMotion";
+import { normaliseName } from "../../lib/targets";
 import { AnchorScope, useAnchor } from "./anchors";
 import { GridStage, usePrefersReducedMotion } from "./GridStage";
+import { ExplodeCamera, ExplodeLayer, type PieceSpec } from "./explode";
 
 export const CAD_SOURCE_LABEL = { freecad: "FreeCAD", cadquery: "CadQuery" } as const;
 
@@ -54,7 +56,11 @@ export function partColor(name: string): { color: string; opacity: number } {
   return hex.length === 9 ? { color: hex.slice(0, 7), opacity: parseInt(hex.slice(7), 16) / 255 } : { color: hex, opacity: 1 };
 }
 
-function Part({ url, zUp, onSize, edged, still }: { url: string; zUp: boolean; onSize?: (size: number) => void; edged: boolean; still: boolean }) {
+/** "finger_left" or "Base_plate" (GLTFLoader turns spaces into underscores) as a label. */
+const prettyName = (raw: string) => raw.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
+
+function Part({ url, zUp, onSize, edged, still, explodable = false }: { url: string; zUp: boolean; onSize?: (size: number) => void; edged: boolean; still: boolean; explodable?: boolean }) {
+  const bodies = useSession((s) => s.cad?.bodies);
   const gltf = useLoader(GLTFLoader, url);
   const cad = useSession((s) => s.cad);
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
@@ -132,17 +138,34 @@ function Part({ url, zUp, onSize, edged, still }: { url: string; zUp: boolean; o
     }
   }, [camera, center, radius, partSize, staged, size.width, size.height, controls]);
 
+  // One piece per GLB node; an assembled product names its spec part and group per node.
+  const specs = useMemo<PieceSpec[]>(() => {
+    if (!explodable) return [];
+    return object.children.map((node) => {
+      const body = bodies?.find((b) => normaliseName(b.name) === normaliseName(node.name));
+      const name = body?.part_name ?? prettyName(node.name);
+      const label = body && body.name !== body.part_name ? prettyName(body.name) : name;
+      return { node, key: node.name, label, name: label, group: body?.group ?? null, load: body?.kind === "external", aliases: body ? [body.part_id, body.part_name] : [] };
+    });
+  }, [object, bodies, explodable]);
+
   const anchor = useAnchor("frame", radius * 0.8);
   return (
     <>
-      <primitive object={object} />
+      {explodable && specs.length > 1 ? (
+        <ExplodeLayer root={object} specs={specs} glow>
+          <primitive object={object} />
+        </ExplodeLayer>
+      ) : (
+        <primitive object={object} />
+      )}
       <group ref={anchor} position={center} />
     </>
   );
 }
 
 /** The generated part in 3D; with `stage` it stands on the grid stage (Model tab), otherwise on plain paper (CAD tab). */
-export function CadScene({ url, zUp = false, stage = false }: { url: string; zUp?: boolean; stage?: boolean }) {
+export function CadScene({ url, zUp = false, stage = false, explodable = false }: { url: string; zUp?: boolean; stage?: boolean; explodable?: boolean }) {
   const [size, setSize] = useState<number | null>(null);
   const still = usePrefersReducedMotion();
   return (
@@ -158,9 +181,10 @@ export function CadScene({ url, zUp = false, stage = false }: { url: string; zUp
         )}
         {stage && size !== null && <GridStage size={size} shadowArea={size * 3} shadowReach={size * 0.8} />}
         <Suspense fallback={null}>
-          <Part url={url} zUp={zUp} onSize={stage ? setSize : undefined} edged={!stage} still={still} />
+          <Part url={url} zUp={zUp} onSize={stage ? setSize : undefined} edged={!stage} still={still} explodable={explodable} />
         </Suspense>
         <OrbitControls makeDefault enablePan={false} autoRotate={!still} autoRotateSpeed={0.5} maxPolarAngle={stage ? Math.PI / 2.08 : Math.PI} />
+        {explodable && <ExplodeCamera />}
       </AnchorScope>
     </Canvas>
   );
@@ -301,7 +325,7 @@ function PartFacts({ part, assembly }: { part: NonNullable<CadEvent["part"]>; as
 export function CadView() {
   const cad = useSession((s) => s.cad);
   const cadStep = useSession((s) => s.steps.cad.status);
-  const { setCadParams, openInFreecad } = useSource.getState();
+  const { setCadParams, openInFreecad, pressControl } = useSource.getState();
   const [values, setValues] = useState<Record<string, number>>({});
   const [pending, setPending] = useState<string | null>(null);
   const [showScript, setShowScript] = useState(false);
@@ -418,6 +442,14 @@ export function CadView() {
           </div>
             </>
           )}
+          <button
+            type="button"
+            onClick={() => void pressControl("run:rebuild")}
+            data-control="run:rebuild"
+            className="mt-2.5 flex h-10 w-full items-center justify-center gap-2 rounded-full bg-tile text-[14px] font-semibold text-ink shadow-[var(--shadow-pill)] hover:bg-track"
+          >
+            <RefreshCw className="h-4 w-4" /> Rebuild and recheck
+          </button>
           <button
             type="button"
             onClick={() => void openInFreecad()}
