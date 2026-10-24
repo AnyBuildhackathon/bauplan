@@ -75,16 +75,19 @@ def _spec(quote: str) -> dict:
     }
 
 
-async def run_product_mock(ctx: Ctx, text: str) -> None:
+async def run_product_mock(ctx: Ctx, text: str, sketch: bool = False) -> None:
     await _beat()
     await ctx.step("meeting", "running")
-    await _say(
-        ctx,
-        "denkt",
-        "A phone stand. First the spec.",
-        "A phone stand for the desk. I write the spec first: what it must do, every part, and the check that judges each requirement.",
-    )
-    await _need(ctx, "product_spec", _spec(text.strip()))
+    if sketch:
+        await _read_sketch(ctx, text)
+    else:
+        await _say(
+            ctx,
+            "denkt",
+            "A phone stand. First the spec.",
+            "A phone stand for the desk. I write the spec first: what it must do, every part, and the check that judges each requirement.",
+        )
+        await _need(ctx, "product_spec", _spec(text.strip()))
     await _need(ctx, "ui_point_at", {"target": "requirements", "label": "Checks from your request"})
 
     await _beat()
@@ -160,3 +163,17 @@ async def run_product_mock(ctx: Ctx, text: str) -> None:
         f"Done. Two PETG parts and four rubber feet, {totals['mass_g']:.0f} g and {bom['total_eur']:.2f} € in parts. "
         "Drag the sliders in the CAD tab and FreeCAD rebuilds it, then every check runs again.",
     )
+
+
+async def _read_sketch(ctx: Ctx, text: str) -> None:
+    """The sketch replaces the typed request: the recorded vision reading becomes the spec."""
+
+    await _say(
+        ctx,
+        "denkt",
+        "A sketch. Let me read it.",
+        "Offline: reading the sample sketch. Without a Claude key I use the recorded reading of the phone stand, whatever the photo shows.",
+    )
+    result = await _need(ctx, "sketch_to_spec", {"note": text.strip()})
+    await _say(ctx, "erklaert", "Phone stand, base 60 mm deep.", result["summary"])
+    await _need(ctx, "product_spec", result["spec"])

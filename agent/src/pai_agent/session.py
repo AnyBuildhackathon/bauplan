@@ -12,7 +12,7 @@ from pathlib import Path
 from pai_agent.bus import EventBus
 from pai_agent.context import Ctx
 from pai_agent.env import claude_enabled
-from pai_agent.orchestrator import run_meeting, run_prompt, run_reference
+from pai_agent.orchestrator import run_meeting, run_prompt, run_reference, run_sketch
 from pai_agent.paths import SESSIONS_DIR
 from pai_agent.scene import STEPS
 from pai_agent.speech import Voice
@@ -79,6 +79,23 @@ class Session:
         ctx = self._ctx(auto_steps=False)
         self.task = asyncio.create_task(self._run(run_reference(ctx, ref_id), ctx))
         return {"ok": True, "mode": mode, "status": "started", "reference": ref_id}
+
+    async def start_sketch(self, data: bytes, note: str) -> dict:
+        """A photo of a hand sketch starts a new product on a fresh bench. Raises ValueError for a bad photo."""
+
+        from pai_agent.tools.sketch import sketch_event, store_sketch
+
+        mode = "claude" if claude_enabled() else "mock"
+        if self._busy():
+            return {"ok": False, "mode": mode, "status": "already_running", "busy": True}
+        if self.state.started:
+            await self.reset()
+        name = store_sketch(self.state, data)
+        event = sketch_event(self.state, name, "reading", note=note)
+        await self.bus.publish(event)
+        ctx = self._ctx(auto_steps=claude_enabled())
+        self.task = asyncio.create_task(self._run(run_sketch(ctx, name, note, self.messages), ctx))
+        return {"ok": True, "mode": mode, "status": "started", "sketch": name, "url": event["url"]}
 
     def save_reference(self, ref_id: str | None, name: str | None, summary: str) -> dict:
         from pai_agent.references import save_reference
