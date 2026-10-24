@@ -47,6 +47,12 @@ function group(chat: ChatItem[]): Row[] {
   return rows;
 }
 
+/** Starting points that show AnyBuild builds more than the drone. */
+const EXAMPLES = [
+  { label: "Drone", prompt: "Build the small drone from the kickoff." },
+  { label: "Robot gripper", prompt: "Design a robot gripper for our arm that picks up a 200 g soda can, 66 mm wide. Keep it under 150 g and 30 €." },
+];
+
 export default function SidebarChat() {
   const allChat = useSession((s) => s.chat);
   // A Jamie tool call and its Jamie action card describe the same thing; keep the action card.
@@ -161,6 +167,19 @@ export default function SidebarChat() {
             <MascotBust state="ruhig" size={150} />
             <p className="text-[17px] font-semibold text-ink-2">„Na? Was bauen wir heute?“</p>
             <p className="text-[15px] text-muted">Sag es, tipp es, oder starte die Demo oben rechts.</p>
+            <div className="mt-1 flex flex-wrap justify-center gap-2">
+              {EXAMPLES.map((example) => (
+                <button
+                  key={example.label}
+                  type="button"
+                  onClick={() => void sendPrompt(example.prompt)}
+                  data-target={`example:${example.label}`}
+                  className="h-9 rounded-full bg-tile px-4 text-[14px] font-semibold text-ink-2 transition hover:bg-track"
+                >
+                  {example.label}
+                </button>
+              ))}
+            </div>
           </div>
         ) : (
           <div

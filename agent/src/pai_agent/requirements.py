@@ -10,6 +10,8 @@ from pai_agent.state import BuildState
 def met_for(state: BuildState, requirement: dict) -> bool | None:
     requirement_id = requirement["id"]
     metrics = state.metrics
+    if state.product == "gripper":
+        return _gripper_met(state, requirement)
     if requirement_id == "budget":
         if "price_eur" not in metrics:
             return None
@@ -33,6 +35,26 @@ def met_for(state: BuildState, requirement: dict) -> bool | None:
         if not state.stl_path:
             return None
         return (REPO_ROOT / state.stl_path).is_file()
+    return None
+
+
+def _gripper_met(state: BuildState, requirement: dict) -> bool | None:
+    requirement_id = requirement["id"]
+    metrics = state.metrics
+    if requirement_id == "payload":
+        return None if state.last_sim is None else state.last_sim["result"] == "pass"
+    if requirement_id == "opening":
+        if not state.part:
+            return None
+        opening = float(state.part["params"].get("jaw_opening_mm", 0))
+        return opening > float(state.brief.get("object_width_mm", 0))
+    if requirement_id in {"weight", "budget"}:
+        key = "weight_g" if requirement_id == "weight" else "price_eur"
+        if key not in metrics:
+            return None
+        return bool(metrics[key] <= float(requirement["max"]))
+    if requirement_id == "printable":
+        return None if not state.stl_path else (REPO_ROOT / state.stl_path).is_file()
     return None
 
 

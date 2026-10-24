@@ -12,6 +12,7 @@ import {
   type MetricsEvent,
   type PartEvent,
   type PartWarning,
+  type ProductEvent,
   type QuestionEvent,
   type TasksEvent,
   type VersionEvent,
@@ -134,6 +135,8 @@ export interface SessionState {
   partsByName: Record<string, PartEvent>;
   questions: Record<string, QuestionEvent>;
   tasks: TasksEvent | null;
+  /** The product this session builds; the drone until a `product` event says otherwise. */
+  product: ProductEvent["id"];
   /** Reduces one contract event. `instant` marks events replayed in bulk (seek), so nothing animates for them. */
   apply: (ev: AgentEvent, opts?: { instant?: boolean }) => void;
   addLocalUserMessage: (text: string) => void;
@@ -171,6 +174,11 @@ const TOOL_ALIASES: Record<string, string> = {
   jamie_templates: "Jamie",
   jamie_note: "Jamie",
   cad_frame: "FreeCAD",
+  cad_part: "FreeCAD",
+  simulate_grip: "MuJoCo",
+  catalog_search: "Teile",
+  grip_calc: "Physik",
+  product_brief: "Brief",
   simulate_drone: "MuJoCo",
   blender_render: "Blender",
   isaac_sim_render: "Isaac Sim",
@@ -201,6 +209,8 @@ const SILENT_TOOLS = new Set([
   "jamie_create_tasks",
   "bom_build",
   "physics_calc",
+  "grip_calc",
+  "product_brief",
 ]);
 
 /** Tool names from the backend may differ in case or spacing ("isaac_lab", "Isaac Lab"). */
@@ -239,6 +249,7 @@ function emptyState() {
     partsByName: {} as Record<string, PartEvent>,
     questions: {} as Record<string, QuestionEvent>,
     tasks: null as TasksEvent | null,
+    product: "drone" as ProductEvent["id"],
   };
 }
 
@@ -398,6 +409,23 @@ export const useSession = create<SessionState>((set, get) => ({
       }
       case "tasks":
         return set({ log, tasks: ev });
+      case "product": {
+        if (ev.id === s.product) return set({ log });
+        // A new product starts its own build: drop the other product's numbers, parts and runs.
+        return set({
+          log,
+          product: ev.id,
+          requirements: [],
+          metrics: null,
+          runs: [],
+          draws: [],
+          bom: null,
+          cad: null,
+          renders: [],
+          parts: {},
+          versions: [],
+        });
+      }
       case "training": {
         const prev = s.training;
         let chat = s.chat;

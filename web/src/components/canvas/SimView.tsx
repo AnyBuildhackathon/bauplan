@@ -6,6 +6,7 @@ import type { Run } from "../../events/store";
 import { fmtNum } from "../../lib/format";
 import { useSelectedVersion, useVersions } from "../../lib/hooks";
 import { TrendChart } from "../ui/TrendChart";
+import { GripSimView } from "./GripSimView";
 import { SimScene, trajectoryBounds } from "./Scenes";
 import { seek, setPlaying, useSimClockDriver, useSimTime } from "./simClock";
 
@@ -38,6 +39,11 @@ function useWidth<T extends HTMLElement>() {
 }
 
 export function SimView() {
+  const grip = useSelectedVersion()?.run.kind === "grip";
+  return grip ? <GripSimView /> : <HoverSimView />;
+}
+
+function HoverSimView() {
   const all = useVersions();
   const after = useSelectedVersion();
   const before = after ? all.find((v) => v.n === after.n - 1) ?? null : null;

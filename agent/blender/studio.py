@@ -29,6 +29,14 @@ def main() -> None:
     scene.unit_settings.scale_length = 1.0
 
     mats = _materials()
+    if spec.get("mode") == "part":
+        radius, height = _part(spec["parts"], mats["frame"])
+        _studio(mats)
+        _lights()
+        _camera(radius, height / 2)
+        _render_settings(scene, png_path)
+        bpy.ops.render.render(write_still=True)
+        return
     frame = _frame(stl_path, mats["frame"])
     top = spec["thickness_mm"] * MM
     arm = spec["arm_mm"] * MM
@@ -114,6 +122,28 @@ def _frame(path: str, material):
     _bevel(obj, 0.0003)
     obj.data.materials.append(material)
     return obj
+
+
+def _part(parts, fallback):
+    """Any generated part: each STL with its own color, centred on the floor. Returns the camera radius."""
+
+    objects = []
+    for index, part in enumerate(parts):
+        color = part.get("color")
+        material = _principled("Teil" + str(index), _srgb(color), roughness=0.42, coat=0.15) if color else fallback
+        objects.append(_frame(part["stl"], material))
+    # _frame drops each object onto the floor on its own; put them back together first.
+    for obj in objects:
+        obj.location.z = 0
+    corners = [obj.matrix_world @ Vector(c) for obj in objects for c in obj.bound_box]
+    low = Vector((min(c.x for c in corners), min(c.y for c in corners), min(c.z for c in corners)))
+    high = Vector((max(c.x for c in corners), max(c.y for c in corners), max(c.z for c in corners)))
+    center = (low + high) / 2
+    for obj in objects:
+        obj.location.x -= center.x
+        obj.location.y -= center.y
+        obj.location.z -= low.z
+    return max(high.x - low.x, high.y - low.y, high.z - low.z) * 0.7, high.z - low.z
 
 
 def _bevel(obj, width: float) -> None:
@@ -238,7 +268,7 @@ def _lights() -> None:
     _area("Top", (0.0, 0.0, 0.6), 1.5, 0.7)
 
 
-def _camera(radius: float) -> None:
+def _camera(radius: float, target_z: float = 0.011) -> None:
     data = bpy.data.cameras.new("Kamera")
     data.lens = 85
     data.dof.use_dof = True
@@ -247,7 +277,7 @@ def _camera(radius: float) -> None:
     bpy.context.collection.objects.link(obj)
     distance = radius * 6.9
     obj.location = (distance * 0.55, -distance * 0.6, distance * 0.58)
-    target = Vector((0, 0, 0.011))
+    target = Vector((0, 0, target_z))
     obj.rotation_euler = (target - obj.location).to_track_quat("-Z", "Y").to_euler()
     data.dof.focus_distance = (target - obj.location).length
     bpy.context.scene.camera = obj

@@ -44,6 +44,16 @@ def _assembly(state) -> dict:
     return spec
 
 
+def _part_spec(state) -> dict:
+    """A generated part: every printed and bought piece with its own color."""
+
+    directory = Path(state.directory)
+    return {
+        "mode": "part",
+        "parts": [{"stl": str(directory / part["stl"]), "color": part.get("color"), "name": part["name"]} for part in state.part["parts"]],
+    }
+
+
 def _render(binary: str, stl: Path, png: Path, spec: dict) -> None:
     png.parent.mkdir(parents=True, exist_ok=True)
     spec_path = png.with_suffix(".json")
@@ -72,7 +82,8 @@ async def blender_render(ctx: Ctx, args: dict) -> dict:
     png = Path(ctx.state.directory) / name
     if binary is not None:
         try:
-            await asyncio.to_thread(_render, binary, stl, png, _assembly(ctx.state))
+            spec = _part_spec(ctx.state) if ctx.state.product != "drone" and ctx.state.part else _assembly(ctx.state)
+            await asyncio.to_thread(_render, binary, stl, png, spec)
         except (OSError, TimeoutError, RuntimeError, subprocess.SubprocessError):
             binary = None
     if binary is not None and png.is_file():

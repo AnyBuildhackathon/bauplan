@@ -42,6 +42,9 @@ The body is either `{"name": "arm_length_mm", "value": 30}` or a flat object `{"
 Missing names keep the last value, or the defaults 36 mm, 2 mm, and 6.6 mm.
 A value outside the limits is HTTP 400 and does not emit `cad`; while Bolzen is building it is HTTP 409.
 
+When the newest CAD build is a generated part (`cad_part`), the same call reruns that part's script with the new value, no model call needed, and any name from its `params` works within its slider limits.
+For the gripper, `grip_calc` then runs again, so a longer finger shows up as a lower finger force.
+
 `POST /api/cad/open` opens the current part in the FreeCAD app.
 The response is `{"ok": true, "path": "frame.FCStd"}` when the app launches, or `{"ok": false, "detail": "..."}` when there is no part or no FreeCAD app.
 It prefers `frame.FCStd`, then STEP, then STL.
@@ -119,6 +122,17 @@ Without the template, the requirements array is used, and only then sentences in
 Numbers are already rounded.
 `price_eur` is a sample total to verify, not a live checkout.
 
+For a product other than the drone the event carries `cards` instead of the drone numbers, and the panel shows those.
+Each card is `{key, label, value, unit, digits, limit, ok}`: `limit` is the line under the number (such as `min. 2 ×`), `ok` says whether it meets its requirement.
+The gripper sends `weight_g`, `price_eur`, `grip_force_n`, `safety_factor`, and the cards Grip safety, Finger force, Weight and Price.
+
+### product
+
+`id` is `drone` or `gripper`, `label` is the display name.
+Sent by `product_brief`.
+When the product changes, the client drops the other product's requirements, numbers, parts, runs, CAD, renders and bill of materials.
+Without this event the session is the drone.
+
 ### sim
 
 `run` is `1` for the heavy pack and `2` after the swap in the mock story.
@@ -127,6 +141,11 @@ Numbers are already rounded.
 `trajectory` is `[[t, x, y, z], ...]` in seconds and meters.
 The test climbs to 0.5 m; from 1.6 s to 1.9 s a downdraft of 35 % of the weight pushes on it.
 It passes when the drone never drops below 0.2 m after the gust and holds 0.35 m or more over the last half second.
+
+`kind` is `grip` for the gripper test (absent for the drone).
+Then `trajectory` z is how far the object has risen, `hand` is `[[t, z], ...]` for the hand, and the event also carries `object_width_mm`, `payload_g`, `force_n` (per finger) and `slip_mm`.
+The pads squeeze with the finger force, the hand lifts 15 cm from 0.4 s to 1.4 s, holds, and shakes ±1.5 cm at 2.5 Hz from 2.0 s to 2.8 s.
+It passes when the object never lags the hand by more than 10 mm.
 
 ### cad
 
@@ -138,6 +157,12 @@ The mock frame is `Rahmen` with `Nabe`, `Arme`, and `Motorauflagen`.
 `glb_url`, `stl_url`, and `step_url` are `/files/{session}/{file}` paths.
 `view_png_url` is `/files/{session}/view.png` when the frame was built in the open FreeCAD window (freecad-mcp on `127.0.0.1:9875`), otherwise `null`.
 While the window builds, `tool` events for `cad_frame` stay `running` and carry the step in `detail`, such as `FreeCAD: Arm 2 of 4`.
+
+A part from `cad_part` adds `script_url` (`/files/{session}/part-{name}.py`, the FreeCAD script that built it) and `part`, `{name, material, mass_g, bbox_mm, attempts, generated}`.
+`bbox_mm` is `[xmin, ymin, zmin, xmax, ymax, zmax]`, `attempts` counts script runs including failed ones, `generated` is `true` when Claude wrote the script and `false` for a library template.
+Its tree is the part with one child per body, `(bought)` marking reference parts such as the servo.
+Its GLB has one node per body; a material named `pai:#rrggbb` carries that body's color.
+Generated parts are Z-up, like FreeCAD.
 
 ### render
 
@@ -263,7 +288,19 @@ UI:
 
 ## Tools
 
-`jamie_templates`, `jamie_requirements`, `jamie_search`, `jamie_meeting`, `requirements_accept`, `ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `cad_frame`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `blender_render`, `bom_build`, `jamie_create_tasks`, `version_commit`, `ui_point_at`, `ui_draw`, `mascot_say`.
+`jamie_templates`, `jamie_requirements`, `jamie_search`, `jamie_meeting`, `requirements_accept`, `ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `cad_frame`, `cad_part`, `product_brief`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `blender_render`, `bom_build`, `jamie_create_tasks`, `version_commit`, `ui_point_at`, `ui_draw`, `mascot_say`.
+
+`cad_part` builds any part from `name`, `description`, `params` (mm, they become the CAD sliders), `material` (`PLA`, `PETG`, `ABS`, `ASA`, `NYLON`, `TPU`, `ALUMINIUM`, `STEEL`), and optionally `script` or `template` (`gripper`).
+Without a script Claude writes FreeCAD Python for the description; when FreeCAD reports an error, the script and the error go back to Claude for a fix, up to three attempts.
+The script sees `Part`, `App`, `Vector`, `math` and `P` (the params) and sets `shape` or `parts = {name: solid}`, optionally `colors`, `materials` and `reference` (shown, not printed).
+It is checked statically (only `FreeCAD`, `Part` and `math` imports, no file access, no dunder attributes), then runs in `freecadcmd` in a fresh temp directory with a scrubbed environment and a 60 s timeout; on macOS `sandbox-exec` also denies network access and writes outside that directory.
+The result has `mass_g` (printed bodies, from each body's material density), `volume_mm3`, `bbox_mm`, per-body `parts` and the `attempts`.
+Without `ANTHROPIC_API_KEY` only templates and passed scripts build.
+
+`product_brief` picks `drone` or `gripper`; for the gripper it takes `object_mass_g`, `object_width_mm`, `max_weight_g`, `budget_eur` and `quote` and emits the requirements `payload`, `opening`, `weight`, `budget` and `printable`.
+`catalog_search` reads `agent/data/catalogs/gripper.json` (`servo`, `pads`, `hardware`, `driver`).
+`grip_calc` gives the finger force `0.7 × stall torque / (2 × lever)`, where the lever runs from the gear axis to the pad centre, the holding force `2 × μ × F`, and the safety factor against the object weight; 2× is the requirement.
+`simulate_grip` runs the MuJoCo grip test above.
 
 `cad_frame` arguments are `arm_length_mm` (center to motor shaft), `thickness_mm`, and `motor_spacing_mm` (bolt-circle diameter of the motor screws).
 The 1102 mount is 6.6 mm.
@@ -285,4 +322,8 @@ Bolzen asks which flight time counts, resolves "last week's motor" to the 22000K
 v2 is 49.3 g, 15.6 min, 72.36 €, and the difference goes back to the review as a note.
 A later prompt in the same session does not rebuild.
 Reset starts the story over.
-The dashboard's `?demo` replays exactly this run from `web/src/events/recording.json`, written by `agent/scripts/record_demo.py`.
+A prompt that asks for a gripper (`gripper`, `claw`, `end effector`) plays the gripper story instead.
+Bolzen turns the request into checks, tries the 2.49 € SG90 first: 1.1 N per finger is a safety of 0.9×, and in MuJoCo the can slides out when the arm lifts.
+The swap to the MG996R gives 6.0 N per finger and passes with 0.4 mm slip.
+FreeCAD builds the gripper headless from the library template with the servo pocket sized for the MG996R (58 g PLA), Blender renders it, and the bill of materials comes to 18.65 € and 128 g.
+The dashboard's `?demo` replays exactly the drone run from `web/src/events/recording.json`, written by `agent/scripts/record_demo.py`.

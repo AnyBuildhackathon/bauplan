@@ -106,3 +106,82 @@ def write_solid_png(path: Path, width: int, height: int, rgb: tuple[int, int, in
     png += chunk(b"IDAT", zlib.compress(raw, 9))
     png += chunk(b"IEND", b"")
     path.write_bytes(png)
+
+
+def stls_to_glb(parts: list[tuple[str, Path, str | None]], glb_path: Path) -> None:
+    """Several named STLs into one GLB, one node per part, with an optional hex color each.
+
+    A material named `pai:<hex>` tells the CAD view to keep that color instead of its neutral grey.
+    """
+
+    positions = b""
+    indices = b""
+    views: list[dict] = []
+    accessors: list[dict] = []
+    meshes: list[dict] = []
+    materials: list[dict] = []
+    nodes: list[dict] = []
+    for name, path, color in parts:
+        vertices = read_stl_vertices(path)
+        if len(vertices) < 3:
+            continue
+        pos = b"".join(struct.pack("<fff", *vertex) for vertex in vertices)
+        idx = b"".join(struct.pack("<I", index) for index in range(len(vertices)))
+        views.append({"buffer": 0, "byteOffset": len(positions), "byteLength": len(pos), "target": 34962})
+        positions += pos
+        views.append({"buffer": 0, "byteOffset": len(indices), "byteLength": len(idx), "target": 34963, "_indices": True})
+        indices += idx
+        xs, ys, zs = zip(*vertices)
+        accessors.append(
+            {
+                "bufferView": len(views) - 2,
+                "componentType": 5126,
+                "count": len(vertices),
+                "type": "VEC3",
+                "min": [min(xs), min(ys), min(zs)],
+                "max": [max(xs), max(ys), max(zs)],
+            }
+        )
+        accessors.append({"bufferView": len(views) - 1, "componentType": 5125, "count": len(vertices), "type": "SCALAR"})
+        primitive = {"attributes": {"POSITION": len(accessors) - 2}, "indices": len(accessors) - 1}
+        if color:
+            rgb = _hex_rgb(color)
+            if rgb is not None:
+                materials.append({"name": "pai:" + color, "pbrMetallicRoughness": {"baseColorFactor": [*rgb, 1.0], "roughnessFactor": 0.6}})
+                primitive["material"] = len(materials) - 1
+        meshes.append({"name": name, "primitives": [primitive]})
+        nodes.append({"name": name, "mesh": len(meshes) - 1})
+    if not nodes:
+        raise ValueError("No part has triangles.")
+    # Index views follow all position bytes in the one buffer.
+    for view in views:
+        if view.pop("_indices", False):
+            view["byteOffset"] += len(positions)
+    document = {
+        "asset": {"version": "2.0"},
+        "scene": 0,
+        "scenes": [{"nodes": list(range(len(nodes)))}],
+        "nodes": nodes,
+        "meshes": meshes,
+        "buffers": [{"byteLength": len(positions) + len(indices)}],
+        "bufferViews": views,
+        "accessors": accessors,
+    }
+    if materials:
+        document["materials"] = materials
+    payload = json.dumps(document, separators=(",", ":")).encode("utf-8")
+    payload += b" " * ((4 - len(payload) % 4) % 4)
+    binary = positions + indices
+    binary += b"\x00" * ((4 - len(binary) % 4) % 4)
+    chunks = _chunk(b"JSON", payload) + _chunk(b"BIN\x00", binary)
+    glb_path.write_bytes(b"glTF" + struct.pack("<II", 2, 12 + len(chunks)) + chunks)
+
+
+def _hex_rgb(color: str) -> tuple[float, float, float] | None:
+    value = color.strip().lstrip("#")
+    if len(value) != 6:
+        return None
+    try:
+        return tuple(int(value[i : i + 2], 16) / 255.0 for i in (0, 2, 4))  # type: ignore[return-value]
+    except ValueError:
+        return None

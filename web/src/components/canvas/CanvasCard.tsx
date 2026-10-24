@@ -6,7 +6,8 @@ import { useSession } from "../../events/store";
 import { useUi, type CanvasTab, type ModelLook } from "../../lib/ui";
 import { MascotHead } from "../mascot/Mascot";
 import { Segmented } from "../ui/primitives";
-import { CadView } from "./CadView";
+import { assetUrl } from "../../lib/api";
+import { CadScene, CadView } from "./CadView";
 import { RenderGallery } from "./RenderGallery";
 import { ModelScene } from "./Scenes";
 import { SimView } from "./SimView";
@@ -41,6 +42,23 @@ function SpokenLine({ lifted }: { lifted: boolean }) {
   );
 }
 
+/** Any product other than the drone: its generated CAD assembly is the model. */
+function PartModel() {
+  const cad = useSession((s) => s.cad);
+  const running = useSession((s) => s.steps.cad.status === "running");
+  const url = assetUrl(cad?.glb_url ?? null);
+  if (!url) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-2 px-8 text-center">
+        <Box className="h-8 w-8 text-faint" />
+        <p className="text-[18px] font-semibold text-ink-2">{running ? "FreeCAD is building the part …" : "No model yet"}</p>
+        <p className="max-w-sm text-[15px] text-muted">The assembly shows up here once FreeCAD has built it.</p>
+      </div>
+    );
+  }
+  return <CadScene url={url} zUp />;
+}
+
 export function CanvasCard() {
   const tab = useUi((s) => s.tab);
   const setTab = useUi((s) => s.setTab);
@@ -49,6 +67,7 @@ export function CanvasCard() {
   const runs = useSession((s) => s.runs.length);
   const cad = useSession((s) => s.cad);
   const renders = useSession((s) => s.renders.length);
+  const product = useSession((s) => s.product);
   const badges: Partial<Record<CanvasTab, boolean>> = { cad: !!cad, simulation: runs > 0 };
   const showRender = tab === "modell" && look === "render";
 
@@ -101,7 +120,7 @@ export function CanvasCard() {
         }`}
         data-target="canvas viewport"
       >
-        {tab === "modell" && (showRender ? <RenderGallery /> : <ModelScene look="modell" />)}
+        {tab === "modell" && (showRender ? <RenderGallery /> : product === "drone" ? <ModelScene look="modell" /> : <PartModel />)}
         {tab === "cad" && <CadView />}
         {tab === "simulation" && <SimView />}
         {tab !== "cad" && <SpokenLine lifted={(tab === "simulation" && runs > 0) || (showRender && renders > 1)} />}
