@@ -9,12 +9,12 @@ import { ArrowDown, CornerDownRight, ImagePlus, RotateCcw, Volume2, VolumeX } fr
 import { currentStep, useSession } from "../../events/store";
 import { useSource } from "../../events/source";
 import { useUi, type Display } from "../../lib/ui";
-import { MASCOT_LABEL, MascotBust, MascotHead } from "../mascot/Mascot";
+import { MASCOT_LABEL, MascotLive } from "../mascot/Mascot";
 import type { ChatItem } from "../../events/store";
 import ContentPartsRenderer, { JamieGroupRenderer, ProgressLineRenderer, ToolGroupRenderer } from "./ContentPartsRenderer";
 import ChatMessage from "./SidebarChatMessage";
 import SidebarChatInput from "./SidebarChatInput";
-import { SketchDropZone } from "./SketchDrop";
+import { useSketchDrop } from "./SketchDrop";
 
 const FRESH_MS = 2500;
 
@@ -102,7 +102,7 @@ export default function SidebarChat() {
 
   const [input, setInput] = useState("");
   const [sketch, setSketch] = useState<File | null>(null);
-  const sketchError = (text: string) => useSource.setState({ notice: text });
+  const drop = useSketchDrop(live, setSketch, (text) => useSource.setState({ notice: text }));
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const stickToBottom = useRef(true);
@@ -152,201 +152,200 @@ export default function SidebarChat() {
     mascot.state === "freut_sich" ? "text-ok-ink" : mascot.state === "besorgt" ? "text-fail-ink" : "text-agent-ink";
 
   return (
-    <SketchDropZone enabled={live} onPick={setSketch} onError={sketchError}>
-      <div className="flex h-full min-h-0 flex-col overflow-hidden bg-page" data-target="chat">
-        {/* Header */}
-        <div className="mx-6 flex h-[60px] shrink-0 items-center gap-3 border-b border-line">
-          <div data-target="mascot bolzen" className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-tile">
-            <MascotHead size={44} state={mascot.state} className="h-10 w-10" />
-          </div>
-          <div className="min-w-0 flex-1 leading-tight">
-            <div className="truncate text-[16px] font-semibold text-ink">{productLabel || "Mechanic"}</div>
-            <div className={`truncate text-[13px] font-medium ${stateTone}`}>
-              Mechanic · {MASCOT_LABEL[mascot.state]}
-              {working && <span className="text-muted"> · {step.label}</span>}
-            </div>
-          </div>
-          <button
-            onClick={() => setVoiceOn(!voiceOn)}
-            className={`rounded-full p-2 transition-colors hover:bg-tile ${voiceOn ? "text-accent" : "text-faint hover:text-ink-2"}`}
-            title={voiceOn ? "Mechanic is speaking" : "Mechanic is muted"}
-            aria-label={voiceOn ? "Mute Mechanic" : "Let Mechanic speak"}
-            aria-pressed={voiceOn}
-          >
-            {voiceOn ? <Volume2 className="h-4.5 w-4.5" /> : <VolumeX className="h-4.5 w-4.5" />}
-          </button>
-          <button
-            onClick={() => {
-              resetUi();
-              void resetSession();
-            }}
-            className="-mr-2 rounded-full p-2 text-faint transition-colors hover:bg-tile hover:text-ink-2"
-            title="Start over"
-            aria-label="Start over"
-          >
-            <RotateCcw className="h-4.5 w-4.5" />
-          </button>
+    <div className="relative flex h-full min-h-0 flex-col overflow-hidden bg-page" data-target="chat" {...drop.handlers}>
+      {drop.overlay}
+      {/* Header */}
+      <div className="mx-6 flex h-[60px] shrink-0 items-center gap-3 border-b border-line">
+        <div data-target="mascot bolzen" className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-tile">
+          <MascotLive state={mascot.state} size={40} crop="head" />
         </div>
+        <div className="min-w-0 flex-1 leading-tight">
+          <div className="truncate text-[16px] font-semibold text-ink">{productLabel || "Mechanic"}</div>
+          <div className={`truncate text-[13px] font-medium ${stateTone}`}>
+            Mechanic · {MASCOT_LABEL[mascot.state]}
+            {working && <span className="text-muted"> · {step.label}</span>}
+          </div>
+        </div>
+        <button
+          onClick={() => setVoiceOn(!voiceOn)}
+          className={`rounded-full p-2 transition-colors hover:bg-tile ${voiceOn ? "text-accent" : "text-faint hover:text-ink-2"}`}
+          title={voiceOn ? "Mechanic is speaking" : "Mechanic is muted"}
+          aria-label={voiceOn ? "Mute Mechanic" : "Let Mechanic speak"}
+          aria-pressed={voiceOn}
+        >
+          {voiceOn ? <Volume2 className="h-4.5 w-4.5" /> : <VolumeX className="h-4.5 w-4.5" />}
+        </button>
+        <button
+          onClick={() => {
+            resetUi();
+            void resetSession();
+          }}
+          className="-mr-2 rounded-full p-2 text-faint transition-colors hover:bg-tile hover:text-ink-2"
+          title="Start over"
+          aria-label="Start over"
+        >
+          <RotateCcw className="h-4.5 w-4.5" />
+        </button>
+      </div>
 
-        {/* Content */}
-        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-          {isEmpty ? (
-            <div className="flex flex-1 flex-col items-center justify-center gap-3 px-8 text-center">
-              <MascotBust state="ruhig" size={150} />
-              <p className="text-[17px] font-semibold text-ink-2">“So. What are we building?”</p>
-              {!live ? (
-                <>
-                  <p className="text-[15px] text-muted">This is the recorded drone run, not a live build. Start the backend to build any product.</p>
-                  <button
-                    type="button"
-                    onClick={() => useSource.getState().play()}
-                    className="mt-1 h-9 rounded-full bg-ink px-4 text-[14px] font-semibold text-white transition hover:bg-[#333]"
-                  >
-                    Play the recording
-                  </button>
-                </>
-              ) : (
-                <p className="text-[15px] text-muted">Start from a reference build and change it, or describe any product from scratch.</p>
-              )}
-              {references.length > 0 && (
-                <div className="mt-1 w-full">
-                  <p className="eyebrow mb-1.5">From a reference</p>
-                  <div className="flex flex-wrap justify-center gap-2">
-                    {references.map((ref) => (
-                      <button
-                        key={ref.id}
-                        type="button"
-                        onClick={() => void startReference(ref.id)}
-                        title={ref.summary}
-                        data-target={`reference:${ref.id}`}
-                        className="h-9 rounded-full bg-accent-soft px-4 text-[14px] font-semibold text-accent transition hover:brightness-95"
-                      >
-                        {ref.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {live && <p className="eyebrow mt-2 -mb-1.5">From scratch</p>}
-              <div className={`mt-1 flex-wrap justify-center gap-2 ${live ? "flex" : "hidden"}`}>
-                {EXAMPLES.map((example) => (
-                  <button
-                    key={example.label}
-                    type="button"
-                    onClick={() => void sendPrompt(example.prompt)}
-                    data-target={`example:${example.label}`}
-                    className="h-9 rounded-full bg-tile px-4 text-[14px] font-semibold text-ink-2 transition hover:bg-track"
-                  >
-                    {example.label}
-                  </button>
-                ))}
+      {/* Content */}
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+        {isEmpty ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 px-8 text-center">
+            <MascotLive state={mascot.state} size={200} className="rounded-[32px]" />
+            <p className="text-[17px] font-semibold text-ink-2">“So. What are we building?”</p>
+            {!live ? (
+              <>
+                <p className="text-[15px] text-muted">This is the recorded drone run, not a live build. Start the backend to build any product.</p>
                 <button
                   type="button"
-                  onClick={() => void sendSampleSketch()}
-                  data-target="example:sketch"
-                  title="Build from a photo of a hand-drawn phone stand"
-                  className="flex h-9 items-center gap-1.5 rounded-full bg-tile px-4 text-[14px] font-semibold text-ink-2 transition hover:bg-track"
+                  onClick={() => useSource.getState().play()}
+                  className="mt-1 h-9 rounded-full bg-ink px-4 text-[14px] font-semibold text-white transition hover:bg-[#333]"
                 >
-                  <ImagePlus className="h-4 w-4" />
-                  Phone stand sketch
+                  Play the recording
                 </button>
-              </div>
-            </div>
-          ) : (
-            <div
-              ref={scrollContainerRef}
-              className="scroll-soft flex-1 overflow-y-auto px-6 [mask-image:linear-gradient(to_bottom,transparent,black_28px)]"
-            >
-              <div className="space-y-2 pt-4 pb-4">
-                <AnimatePresence initial={false}>
-                  {rows.map((item) => (
-                    <motion.div
-                      key={item.id}
-                      initial={Date.now() - item.at < FRESH_MS ? { opacity: 0, y: 8 } : false}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.25, ease: [0.2, 0.8, 0.2, 1] }}
+              </>
+            ) : (
+              <p className="text-[15px] text-muted">Start from a reference build and change it, or describe any product from scratch.</p>
+            )}
+            {references.length > 0 && (
+              <div className="mt-1 w-full">
+                <p className="eyebrow mb-1.5">From a reference</p>
+                <div className="flex flex-wrap justify-center gap-2">
+                  {references.map((ref) => (
+                    <button
+                      key={ref.id}
+                      type="button"
+                      onClick={() => void startReference(ref.id)}
+                      title={ref.summary}
+                      data-target={`reference:${ref.id}`}
+                      className="h-9 rounded-full bg-accent-soft px-4 text-[14px] font-semibold text-accent transition hover:brightness-95"
                     >
-                      {item.kind === "progress" ? (
-                        <ProgressLineRenderer items={item.items} />
-                      ) : item.kind === "jamieGroup" ? (
-                        <div className="py-0.5">
-                          <JamieGroupRenderer items={item.items} />
-                        </div>
-                      ) : item.kind === "toolGroup" ? (
-                        <div className="py-0.5">
-                          <ToolGroupRenderer items={item.items} />
-                        </div>
-                      ) : item.kind === "msg" ? (
-                        <ChatMessage
-                          role={item.role}
-                          content={item.text}
-                          animate={item.role === "agent" && Date.now() - item.at < FRESH_MS}
-                          mascot={mascot.state}
-                          onRevealProgress={onRevealProgress}
-                        />
-                      ) : (
-                        <div className="py-0.5">
-                          <ContentPartsRenderer item={item} />
-                        </div>
-                      )}
-                    </motion.div>
+                      {ref.name}
+                    </button>
                   ))}
-                </AnimatePresence>
+                </div>
               </div>
-            </div>
-          )}
-
-          {/* Scroll to bottom button */}
-          {showScrollButton && !isEmpty && (
-            <button
-              onClick={() => scrollToBottom()}
-              className="absolute bottom-[150px] left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-card text-muted shadow-[var(--shadow-pill)] transition-colors hover:text-ink"
-              aria-label="Scroll to bottom"
-            >
-              <ArrowDown className="h-4 w-4" />
-            </button>
-          )}
-
-          {/* Follow-up suggestions */}
-          {!isEmpty && !working && live && (
-            <div className="shrink-0 px-6 pb-1" data-target="follow_ups">
-              {(FOLLOW_UPS[product ?? ""] ?? FOLLOW_UPS.default).map((text) => (
+            )}
+            {live && <p className="eyebrow mt-2 -mb-1.5">From scratch</p>}
+            <div className={`mt-1 flex-wrap justify-center gap-2 ${live ? "flex" : "hidden"}`}>
+              {EXAMPLES.map((example) => (
                 <button
-                  key={text}
+                  key={example.label}
                   type="button"
-                  onClick={() => {
-                    stickToBottom.current = true;
-                    void sendPrompt(text);
-                  }}
-                  className="flex w-full items-center gap-3 border-t border-line py-2.5 text-left text-[16px] text-ink-2 transition hover:text-ink"
+                  onClick={() => void sendPrompt(example.prompt)}
+                  data-target={`example:${example.label}`}
+                  className="h-9 rounded-full bg-tile px-4 text-[14px] font-semibold text-ink-2 transition hover:bg-track"
                 >
-                  <CornerDownRight className="h-4 w-4 shrink-0 text-faint" />
-                  {text}
+                  {example.label}
                 </button>
               ))}
+              <button
+                type="button"
+                onClick={() => void sendSampleSketch()}
+                data-target="example:sketch"
+                title="Build from a photo of a hand-drawn phone stand"
+                className="flex h-9 items-center gap-1.5 rounded-full bg-tile px-4 text-[14px] font-semibold text-ink-2 transition hover:bg-track"
+              >
+                <ImagePlus className="h-4 w-4" />
+                Phone stand sketch
+              </button>
             </div>
-          )}
-
-          {/* Input */}
-          <div className="shrink-0 px-6 pt-2 pb-4">
-            <SidebarChatInput
-              value={input}
-              onChange={setInput}
-              onSubmit={send}
-              sketch={sketch}
-              onSketchChange={live ? setSketch : undefined}
-              onSendSketch={(image, note) => {
-                stickToBottom.current = true;
-                void sendSketch(image, note);
-              }}
-              onVoice={(text) => {
-                stickToBottom.current = true;
-                void sendPrompt(text);
-              }}
-            />
           </div>
+        ) : (
+          <div
+            ref={scrollContainerRef}
+            className="scroll-soft flex-1 overflow-y-auto px-6 [mask-image:linear-gradient(to_bottom,transparent,black_28px)]"
+          >
+            <div className="space-y-2 pt-4 pb-4">
+              <AnimatePresence initial={false}>
+                {rows.map((item) => (
+                  <motion.div
+                    key={item.id}
+                    initial={Date.now() - item.at < FRESH_MS ? { opacity: 0, y: 8 } : false}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.25, ease: [0.2, 0.8, 0.2, 1] }}
+                  >
+                    {item.kind === "progress" ? (
+                      <ProgressLineRenderer items={item.items} />
+                    ) : item.kind === "jamieGroup" ? (
+                      <div className="py-0.5">
+                        <JamieGroupRenderer items={item.items} />
+                      </div>
+                    ) : item.kind === "toolGroup" ? (
+                      <div className="py-0.5">
+                        <ToolGroupRenderer items={item.items} />
+                      </div>
+                    ) : item.kind === "msg" ? (
+                      <ChatMessage
+                        role={item.role}
+                        content={item.text}
+                        animate={item.role === "agent" && Date.now() - item.at < FRESH_MS}
+                        mascot={mascot.state}
+                        onRevealProgress={onRevealProgress}
+                      />
+                    ) : (
+                      <div className="py-0.5">
+                        <ContentPartsRenderer item={item} />
+                      </div>
+                    )}
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+          </div>
+        )}
+
+        {/* Scroll to bottom button */}
+        {showScrollButton && !isEmpty && (
+          <button
+            onClick={() => scrollToBottom()}
+            className="absolute bottom-[150px] left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-card text-muted shadow-[var(--shadow-pill)] transition-colors hover:text-ink"
+            aria-label="Scroll to bottom"
+          >
+            <ArrowDown className="h-4 w-4" />
+          </button>
+        )}
+
+        {/* Follow-up suggestions */}
+        {!isEmpty && !working && live && (
+          <div className="shrink-0 px-6 pb-1" data-target="follow_ups">
+            {(FOLLOW_UPS[product ?? ""] ?? FOLLOW_UPS.default).map((text) => (
+              <button
+                key={text}
+                type="button"
+                onClick={() => {
+                  stickToBottom.current = true;
+                  void sendPrompt(text);
+                }}
+                className="flex w-full items-center gap-3 border-t border-line py-2.5 text-left text-[16px] text-ink-2 transition hover:text-ink"
+              >
+                <CornerDownRight className="h-4 w-4 shrink-0 text-faint" />
+                {text}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Input */}
+        <div className="shrink-0 px-6 pt-2 pb-4">
+          <SidebarChatInput
+            value={input}
+            onChange={setInput}
+            onSubmit={send}
+            sketch={sketch}
+            onSketchChange={live ? setSketch : undefined}
+            onSendSketch={(image, note) => {
+              stickToBottom.current = true;
+              void sendSketch(image, note);
+            }}
+            onVoice={(text) => {
+              stickToBottom.current = true;
+              void sendPrompt(text);
+            }}
+          />
         </div>
       </div>
-    </SketchDropZone>
+    </div>
   );
 }

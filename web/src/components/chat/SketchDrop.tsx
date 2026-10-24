@@ -1,7 +1,7 @@
 // Sketch to build in the chat: a photo of a hand sketch comes in through the image button
 // in the composer, a drop anywhere on the chat column, or a paste into the text field.
 // It waits as a thumbnail chip until it is sent with the typed text as the note.
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ImagePlus, X } from "lucide-react";
 
 const MAX_BYTES = 8 * 1024 * 1024;
@@ -77,57 +77,43 @@ export function SketchChip({ file, onRemove }: { file: File; onRemove: () => voi
   );
 }
 
-/** The whole chat column takes a dropped sketch, with an overlay while a file hovers over it. */
-export function SketchDropZone({
-  enabled,
-  onPick,
-  onError,
-  children,
-}: {
-  enabled: boolean;
-  onPick: (file: File) => void;
-  onError: (text: string) => void;
-  children: ReactNode;
-}) {
+/** The whole chat column takes a dropped sketch: spread `handlers` on the column and render `overlay` inside it. */
+export function useSketchDrop(enabled: boolean, onPick: (file: File) => void, onError: (text: string) => void) {
   const [over, setOver] = useState(false);
   // dragenter and dragleave fire for every child; count them so the overlay does not flicker.
   const depth = useRef(0);
   const carriesFiles = (e: React.DragEvent) => enabled && Array.from(e.dataTransfer.types).includes("Files");
-  return (
-    <div
-      className="relative flex h-full min-h-0 flex-col"
-      onDragEnter={(e) => {
-        if (!carriesFiles(e)) return;
-        e.preventDefault();
-        depth.current += 1;
-        setOver(true);
-      }}
-      onDragOver={(e) => {
-        if (carriesFiles(e)) e.preventDefault();
-      }}
-      onDragLeave={(e) => {
-        if (!carriesFiles(e)) return;
-        depth.current = Math.max(0, depth.current - 1);
-        if (depth.current === 0) setOver(false);
-      }}
-      onDrop={(e) => {
-        if (!carriesFiles(e)) return;
-        e.preventDefault();
-        depth.current = 0;
-        setOver(false);
-        const picked = pickImage(e.dataTransfer.files);
-        if (picked?.file) onPick(picked.file);
-        else if (picked?.error) onError(picked.error);
-      }}
-    >
-      {children}
-      {over && (
-        <div className="pointer-events-none absolute inset-3 z-20 flex flex-col items-center justify-center gap-2 rounded-[24px] border-2 border-dashed border-accent bg-accent-soft/90 text-center backdrop-blur-sm">
-          <ImagePlus className="h-8 w-8 text-accent" />
-          <p className="text-[18px] font-semibold text-accent">Drop the sketch to build it</p>
-          <p className="text-[14px] text-ink-2">A photo of a hand drawing with its dimensions</p>
-        </div>
-      )}
+  const handlers = {
+    onDragEnter: (e: React.DragEvent) => {
+      if (!carriesFiles(e)) return;
+      e.preventDefault();
+      depth.current += 1;
+      setOver(true);
+    },
+    onDragOver: (e: React.DragEvent) => {
+      if (carriesFiles(e)) e.preventDefault();
+    },
+    onDragLeave: (e: React.DragEvent) => {
+      if (!carriesFiles(e)) return;
+      depth.current = Math.max(0, depth.current - 1);
+      if (depth.current === 0) setOver(false);
+    },
+    onDrop: (e: React.DragEvent) => {
+      if (!carriesFiles(e)) return;
+      e.preventDefault();
+      depth.current = 0;
+      setOver(false);
+      const picked = pickImage(e.dataTransfer.files);
+      if (picked?.file) onPick(picked.file);
+      else if (picked?.error) onError(picked.error);
+    },
+  };
+  const overlay = over ? (
+    <div className="pointer-events-none absolute inset-3 z-20 flex flex-col items-center justify-center gap-2 rounded-[24px] border-2 border-dashed border-accent bg-accent-soft/90 text-center backdrop-blur-sm">
+      <ImagePlus className="h-8 w-8 text-accent" />
+      <p className="text-[18px] font-semibold text-accent">Drop the sketch to build it</p>
+      <p className="text-[14px] text-ink-2">A photo of a hand drawing with its dimensions</p>
     </div>
-  );
+  ) : null;
+  return { handlers, overlay };
 }

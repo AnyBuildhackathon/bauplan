@@ -56,10 +56,12 @@ For the gripper, `grip_calc` then runs again, so a longer finger shows up as a l
 The response is `{"ok": true, "path": "frame.FCStd"}` when the app launches, or `{"ok": false, "detail": "..."}` when there is no part or no FreeCAD app.
 It prefers `frame.FCStd`, then STEP, then STL.
 
-`GET /api/voice` returns `{"stt": "reson8"|"browser", "tts": "elevenlabs"|"browser", "realtime_url": "...", "turns_url": "...", "language": "en", "phrases": [...], "custom_model_id": null, "tts_sample_rate": 24000, "narrator": true}`.
+`GET /api/voice` returns `{"stt": "reson8"|"browser", "tts": "elevenlabs"|"none", "realtime_url": "...", "turns_url": "...", "language": "en", "phrases": [...], "custom_model_id": null, "tts_sample_rate": 24000, "narrator": true}`.
 `turns_url` is Reson8's Turns endpoint for hands-free listening, `realtime_url` its Realtime endpoint for push-to-talk.
 `phrases` bias Reson8 toward our vocabulary (the `phrases` query parameter); a `custom_model_id` from `RESON8_CUSTOM_MODEL_ID` replaces them.
 `narrator` is `true` when `ANTHROPIC_API_KEY` is set: the backend then writes Mechanic's spoken lines as `say` events and the client does not read `mascot` lines aloud.
+Without ElevenLabs (`"tts": "none"`) Mechanic is silent and his text is the caption; the system voice is never used.
+The recorded demo has no backend: its `mascot` events and open `question` events carry an optional `voice` URL (`/demo/voice/<hash>.mp3`), a pre-rendered ElevenLabs clip of the `say` text or of the last sentence of the question, which the client plays when the event arrives.
 `POST /api/voice/token` returns `{"access_token": "...", "expires_in": 600}`, a short-lived Reson8 token for the browser's WebSocket (subprotocols `["bearer", token]`), or HTTP 503 without `RESON8_API_KEY`.
 `POST /api/voice/speak` with `{"text": "...", "previous_text": "..."}` streams ElevenLabs speech for one phrase as raw 16-bit little-endian mono PCM (`audio/pcm`, sample rate in `X-Sample-Rate`, 24000), or HTTP 503 without `ELEVENLABS_API_KEY`.
 `previous_text` is the phrase spoken just before, so one reply keeps a continuous intonation.

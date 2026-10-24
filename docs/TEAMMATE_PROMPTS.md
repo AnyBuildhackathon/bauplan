@@ -81,3 +81,25 @@ Task: replace the fixed sample prices with live prices and buy links found on th
 - The bill of materials shows "live" vs "catalog" per line and the total updates.
 Done when: with ANTHROPIC_API_KEY set, the bill of materials shows live prices and links; without it, the catalog prices with a "catalog" label.
 ```
+
+---
+
+## Round 2: the prompts live in the issues
+
+Each issue below holds the full, self-contained prompt (the shared block and the task block), its worktree line and its ports.
+The dependency comment on each issue lists its dependencies on the others and the suggested order.
+
+| Issue | Task | Worktree | Ports (backend/web) |
+| --- | --- | --- | --- |
+| [#4](https://github.com/AnyBuildhackathon/bauplan/issues/4) | Browser training follow-up: default vs trained stress score, local training in `?demo` | `../bauplan-train` | 8121/5201 |
+| [#28](https://github.com/AnyBuildhackathon/bauplan/issues/28) | Sketch to build | `../bauplan-sketch-to-build` | 8131/5211 |
+| [#29](https://github.com/AnyBuildhackathon/bauplan/issues/29) | Version history and side-by-side compare | `../bauplan-version-history-and-` | 8132/5212 |
+| [#30](https://github.com/AnyBuildhackathon/bauplan/issues/30) | Learning mode | `../bauplan-learning-mode` | 8133/5213 |
+| [#31](https://github.com/AnyBuildhackathon/bauplan/issues/31) | Export and order | `../bauplan-export-and-order` | 8134/5214 |
+| [#32](https://github.com/AnyBuildhackathon/bauplan/issues/32) | Stage-proof: E2E tests, timeouts, 60-second build | `../bauplan-stage-proof` | 8135/5215 |
+| [#33](https://github.com/AnyBuildhackathon/bauplan/issues/33) | Three more real reference builds | `../bauplan-three-more-real-refe` | 8136/5216 |
+| [#37](https://github.com/AnyBuildhackathon/bauplan/issues/37) | Better 3D and animations | `../bauplan-better-3d` | 8137/5217 |
+| [#38](https://github.com/AnyBuildhackathon/bauplan/issues/38) | All-rounder: more product types and analyses | `../bauplan-all-rounder` | 8138/5218 |
+
+Suggested order: start #29, #38, #37 and #30 in parallel, then #31, #33 and #4, keep #28 running in its own worktree, and merge #32 last.
+Smoke runs use their own port per session (`SMOKE_PORT=9<backend port without the leading 8>`, such as 9132 for 8132), so parallel sessions do not collide on 8101.
