@@ -9,7 +9,7 @@ import { ArrowDown, CornerDownRight, RotateCcw, Volume2, VolumeX } from "lucide-
 import { currentStep, useSession } from "../../events/store";
 import { useSource } from "../../events/source";
 import { useUi, type Display } from "../../lib/ui";
-import { MASCOT_LABEL, MascotBust, MascotHead } from "../mascot/Mascot";
+import { MASCOT_LABEL, MascotLive } from "../mascot/Mascot";
 import type { ChatItem } from "../../events/store";
 import ContentPartsRenderer, { JamieGroupRenderer, ProgressLineRenderer, ToolGroupRenderer } from "./ContentPartsRenderer";
 import ChatMessage from "./SidebarChatMessage";
@@ -151,7 +151,7 @@ export default function SidebarChat() {
       {/* Header */}
       <div className="mx-6 flex h-[60px] shrink-0 items-center gap-3 border-b border-line">
         <div data-target="mascot bolzen" className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-tile">
-          <MascotHead size={44} state={mascot.state} className="h-10 w-10" />
+          <MascotLive state={mascot.state} size={40} crop="head" />
         </div>
         <div className="min-w-0 flex-1 leading-tight">
           <div className="truncate text-[16px] font-semibold text-ink">{productLabel || "Mechanic"}</div>
@@ -186,7 +186,7 @@ export default function SidebarChat() {
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
         {isEmpty ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 px-8 text-center">
-            <MascotBust state="ruhig" size={150} />
+            <MascotLive state={mascot.state} size={200} className="rounded-[32px]" />
             <p className="text-[17px] font-semibold text-ink-2">“So. What are we building?”</p>
             {!live ? (
               <>

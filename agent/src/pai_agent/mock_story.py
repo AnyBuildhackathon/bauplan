@@ -95,7 +95,7 @@ async def _build_tail(ctx: Ctx, meeting_id: str, label: str) -> dict:
         await _say(
             ctx,
             "erklaert",
-            "The frame in FreeCAD. Compact first.",
+            "FreeCAD, compact frame first. Watch this.",
             "Now the Twiglet frame in FreeCAD: "
             + en(COMPACT_ARM_MM, 0)
             + " mm from the centre to the motor shaft, "
@@ -109,7 +109,7 @@ async def _build_tail(ctx: Ctx, meeting_id: str, label: str) -> dict:
             await _say(
                 ctx,
                 "besorgt",
-                "Too tight. The props would hit each other.",
+                "Too tight. The props would high-five. Fixing.",
                 tight["error"] + " I take the Twiglet's " + en(TWIGLET_ARM_MM, 1) + " mm arm, the 2-inch frame from the video.",
             )
         arm = TWIGLET_ARM_MM
@@ -132,7 +132,7 @@ async def _build_tail(ctx: Ctx, meeting_id: str, label: str) -> dict:
     rendered = await _need(ctx, "blender_render", {})
     await ctx.step("render", "done")
     if rendered.get("status") == "offline":
-        await _say(ctx, "ruhig", "Blender is missing here. The STEP is enough to check the frame.")
+        await _say(ctx, "ruhig", "No Blender on this machine. The STEP file proves the frame anyway.")
     else:
         await _say(ctx, "erklaert", "Blender rendered " + label + " in the studio.")
 
@@ -151,7 +151,7 @@ async def _build_tail(ctx: Ctx, meeting_id: str, label: str) -> dict:
 async def run_mock(ctx: Ctx, meeting_id: str = "") -> None:
     await _beat()
     await ctx.step("meeting", "running")
-    await _say(ctx, "denkt", "The meeting first. Otherwise we optimise blind.")
+    await _say(ctx, "denkt", "Meeting first. Guessing is for people without Jamie.")
     await _need(ctx, "jamie_templates", {})
     requirements = await _need(ctx, "jamie_requirements", {"meeting_id": meeting_id})
     kickoff_id = requirements["meeting_id"]
@@ -177,14 +177,14 @@ async def run_mock(ctx: Ctx, meeting_id: str = "") -> None:
         await _say(
             ctx,
             "denkt",
-            "No earlier notes on these parts. I check everything myself.",
+            "No earlier notes on these. Fine, I check everything myself.",
             "Jamie has no earlier meetings on the 1103s or the FunFly. Then I check every part myself.",
         )
     await ctx.step("meeting", "done")
 
     await _beat()
     await ctx.step("teile", "running")
-    await _say(ctx, "denkt", "Eight minutes sounds like a big battery. That is the trap.")
+    await _say(ctx, "denkt", "Eight minutes? Everyone grabs a big battery. That is the trap.")
     motor = _part("generic-1103-15000kv")
     await _pick(ctx, "motor", "1103", motor["id"], "Hovered cleanly in last week's flight test, " + en(float(motor["thrust_g"]), 0) + " g thrust per motor.")
     await _pick(ctx, "propeller", "2020", "gemfan-2020-4", "The 2-inch four-blade the 1103 thrust figure is measured with.")
@@ -213,7 +213,7 @@ async def run_mock(ctx: Ctx, meeting_id: str = "") -> None:
     await _say(
         ctx,
         "besorgt",
-        "The gust pushes it to the floor. The battery is the brick.",
+        "Downdraft test: failed. Spectacularly. The battery is a brick.",
         ("Lea was right: " if warned else "")
         + "at thrust-to-weight "
         + en(failed["thrust_to_weight"], 2)
@@ -235,7 +235,7 @@ async def run_mock(ctx: Ctx, meeting_id: str = "") -> None:
     await _say(
         ctx,
         "erklaert",
-        "Down from 4S. Same motors, other battery.",
+        "Dropping the 4S. Same motors, smarter battery.",
         "I only swap the battery: "
         + pack["name"]
         + ", "
@@ -255,7 +255,7 @@ async def run_mock(ctx: Ctx, meeting_id: str = "") -> None:
     if passed.get("result") != "pass":
         raise RuntimeError("The second MuJoCo run should hover: " + passed.get("summary", ""))
     await ctx.step("simulation", "done")
-    await _say(ctx, "freut_sich", "The second run holds the gust. Capacity is not free.")
+    await _say(ctx, "freut_sich", "Second run holds the gust. Told you.")
     await _need(ctx, "ui_draw", {"kind": "halo", "target": "battery", "text": "fits"})
 
     version = await _build_tail(ctx, kickoff_id, "v1")
@@ -263,7 +263,7 @@ async def run_mock(ctx: Ctx, meeting_id: str = "") -> None:
     await _say(
         ctx,
         "freut_sich",
-        "v1 is done. Note, tags and tasks are in Jamie.",
+        "Mark 1, done. Notes, tags and tasks are in Jamie.",
         "Version 1 hangs on the kickoff: "
         + version["detail"].split(" · ", 1)[-1]
         + ". Jamie has a note, the tags drohne and drohne-v1 and "
@@ -277,7 +277,7 @@ async def run_review(ctx: Ctx, meeting_id: str) -> None:
     ctx.state.finished = False
     await _beat()
     await ctx.step("meeting", "running")
-    await _say(ctx, "denkt", "The review is over. I read what changed.")
+    await _say(ctx, "denkt", "Review is over. Let me see what you changed.")
     review = await _need(ctx, "jamie_meeting", {"meeting_id": meeting_id})
     lines = []
     for change in review["changes"]:
@@ -376,9 +376,9 @@ async def run_review(ctx: Ctx, meeting_id: str) -> None:
     run = await _need(ctx, "simulate_drone", {})
     await ctx.step("simulation", "done" if run["result"] == "pass" else "failed")
     if run["result"] == "pass":
-        await _say(ctx, "freut_sich", "Longer in the air, and it still holds the gust.")
+        await _say(ctx, "freut_sich", "Longer in the air and still holds the gust. You are welcome.")
     else:
-        await _say(ctx, "besorgt", "That does not hold the gust. I look at the parts again.")
+        await _say(ctx, "besorgt", "Gust wins this round. Back to the parts.")
 
     version = await _build_tail(ctx, meeting_id, "v" + str(len(ctx.state.versions) + 1))
     changes = [item for item in version["diff"] if item["key"] in {"weight_g", "flight_time_min", "price_eur"}]
