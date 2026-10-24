@@ -24,6 +24,41 @@ def test_library_lists_the_new_reference_builds() -> None:
         assert rows[ref_id]["thumbnail_url"] == "/api/library/" + ref_id + "/thumbnail"
 
 
+@pytest.mark.parametrize(
+    ("ref_id", "checks"),
+    [
+        ("otto-biped", ["check_totals", "check_torque", "check_tip_over", "check_power", "check_runtime"]),
+        ("mearm", ["check_totals", "check_torque", "check_deflection", "check_tip_over", "check_power", "check_runtime"]),
+    ],
+)
+def test_servo_builds_buy_every_part_from_a_product_page(ref_id, checks) -> None:
+    ref = json.loads((REFERENCES_DIR / ref_id / "reference.json").read_text(encoding="utf-8"))
+    catalog = {item["id"]: item for item in catalog_items()}
+    picks = [catalog[pick["select_id"]] for pick in ref["picks"].values()]
+    assert len(picks) == 6
+    assert all(item["url"] and "search" not in item["url"] for item in picks)
+    assert [c["tool"] for c in ref["checks"]] == checks
+
+
+def test_library_lists_the_camera_builds() -> None:
+    rows = {row["id"]: row for row in list_references()}
+    for ref_id in ("face-tracking-cam", "bird-feeder-cam", "motion-camera-trap"):
+        assert rows[ref_id]["source"] == "registry"
+        assert rows[ref_id]["thumbnail_url"] == "/api/library/" + ref_id + "/thumbnail"
+
+
+def test_camera_builds_buy_from_exact_product_pages() -> None:
+    """Every part the camera builds add to the catalog links its product page, not a search."""
+
+    catalog = {item["id"]: item for item in catalog_items()}
+    for ref_id in ("face-tracking-cam", "bird-feeder-cam", "motion-camera-trap"):
+        ref = json.loads((REFERENCES_DIR / ref_id / "reference.json").read_text(encoding="utf-8"))
+        for pick in ref["picks"].values():
+            item = catalog[pick["select_id"]]
+            if item["id"].endswith("-bb") or item["id"].endswith("-u082x"):
+                assert item["url"].startswith("https://www.berrybase.de/en/") and "search" not in item["url"]
+
+
 @pytest.mark.parametrize("folder", REFERENCES, ids=lambda folder: folder.name)
 def test_reference_is_complete(folder) -> None:
     ref = json.loads((folder / "reference.json").read_text(encoding="utf-8"))

@@ -1,0 +1,319 @@
+{
+  "id": "bird-feeder-cam",
+  "name": "AI bird feeder camera",
+  "summary": "A seed tray with a perch and a weatherproof box for a Raspberry Pi 4 and the Raspberry Pi AI Camera, which names every bird that lands, on one USB-C supply.",
+  "spec": {
+    "name": "AI Bird Feeder Camera",
+    "function": "Photographs and identifies the birds at a feeder: birds land on a printed perch in front of a seed tray, the Raspberry Pi AI Camera in a closed box behind the tray runs a bird classifier on its IMX500 sensor, and the Raspberry Pi 4 saves the picture with the species and posts it over Wi-Fi, all from one USB-C supply.",
+    "quote": "Build me a bird feeder with a camera that tells me which birds visit, like the BirdBrain feeder on Hackster but with the Raspberry Pi AI Camera so the Pi doesn't have to do the AI: seed tray, a perch, a closed box for the Pi with a lens window, under 150 euros and 900 grams. A blackbird landing on the perch shouldn't bend it more than a millimetre, the box mustn't get hotter than 60 degrees inside on a 30 degree day, the supply needs 1.5 times what the Pi peaks at, and it can't tip over on the ledge.",
+    "assemblies": [],
+    "parts": [
+      {
+        "id": "tray",
+        "name": "Seed tray",
+        "kind": "printed",
+        "qty": 1,
+        "assembly": null,
+        "description": "Open tray 220 x 160 mm centred on X=Y=0 (Z 0 to 18) with 2.4 mm walls, a 3 mm floor and ten 4 mm drain holes in the front half where the seed lies.",
+        "size_mm": [
+          220.0,
+          160.0,
+          18.0
+        ],
+        "position_mm": null,
+        "rotation_deg": null,
+        "material": "PETG",
+        "params": {
+          "width_mm": 220.0,
+          "depth_mm": 160.0,
+          "lip_mm": 18.0,
+          "wall_mm": 2.4
+        }
+      },
+      {
+        "id": "perch",
+        "name": "Perch",
+        "kind": "printed",
+        "qty": 1,
+        "assembly": null,
+        "description": "Bar 10 x 8 mm spanning 170 mm between two 38 mm posts along the tray front (Y -90 to -80), with tabs over the tray lip.",
+        "size_mm": [
+          186.0,
+          14.0,
+          38.0
+        ],
+        "position_mm": null,
+        "rotation_deg": null,
+        "material": "PETG",
+        "params": {
+          "span_mm": 170.0,
+          "bar_width_mm": 10.0,
+          "bar_thickness_mm": 8.0
+        }
+      },
+      {
+        "id": "camera-box",
+        "name": "Camera box",
+        "kind": "printed",
+        "qty": 1,
+        "assembly": null,
+        "description": "Closed box 110 x 70 x 60 mm on the back of the tray floor (X -55 to 55, Y 10 to 80, Z 3 to 63) with 2.4 mm walls, an 18 mm lens window in the front wall at Z 45, 360 mm2 of vent slots high in the side walls and a USB-C cable hole in the back.",
+        "size_mm": [
+          110.0,
+          70.0,
+          60.0
+        ],
+        "position_mm": null,
+        "rotation_deg": null,
+        "material": "PETG",
+        "params": {
+          "width_mm": 110.0,
+          "depth_mm": 70.0,
+          "height_mm": 60.0,
+          "wall_mm": 2.4,
+          "vents_mm2": 360.0
+        }
+      },
+      {
+        "id": "roof",
+        "name": "Roof",
+        "kind": "printed",
+        "qty": 1,
+        "assembly": null,
+        "description": "Lid 130 x 90 x 3 mm on the camera box (Z 63 to 66) that overhangs the window and the vents, with a rim that locates it on the box walls.",
+        "size_mm": [
+          130.0,
+          90.0,
+          6.0
+        ],
+        "position_mm": null,
+        "rotation_deg": null,
+        "material": "PETG",
+        "params": {
+          "width_mm": 130.0,
+          "depth_mm": 90.0,
+          "thickness_mm": 3.0
+        }
+      },
+      {
+        "id": "pi",
+        "name": "Single-board computer",
+        "kind": "bought",
+        "qty": 1,
+        "assembly": null,
+        "description": "Reads the labels from the camera, saves the pictures and posts them",
+        "size_mm": [
+          85.0,
+          56.0,
+          17.0
+        ],
+        "position_mm": [
+          0.0,
+          46.0,
+          15.0
+        ],
+        "rotation_deg": null,
+        "mass_g": null,
+        "category": "controller",
+        "query": "Raspberry Pi 4"
+      },
+      {
+        "id": "camera",
+        "name": "AI camera",
+        "kind": "bought",
+        "qty": 1,
+        "assembly": null,
+        "description": "Behind the lens window, runs the bird classifier on the sensor",
+        "size_mm": [
+          25.0,
+          11.9,
+          24.0
+        ],
+        "position_mm": [
+          0.0,
+          19.0,
+          45.0
+        ],
+        "rotation_deg": null,
+        "mass_g": null,
+        "category": "camera",
+        "query": "Raspberry Pi AI Camera"
+      },
+      {
+        "id": "power",
+        "name": "USB-C power supply 5.1 V 3 A",
+        "kind": "bought",
+        "qty": 1,
+        "assembly": null,
+        "description": "",
+        "size_mm": null,
+        "position_mm": null,
+        "rotation_deg": null,
+        "mass_g": null,
+        "category": "power",
+        "query": "Raspberry Pi 4 USB-C power supply"
+      },
+      {
+        "id": "seed",
+        "name": "Bird seed, full tray",
+        "kind": "external",
+        "qty": 1,
+        "assembly": null,
+        "description": "About 300 g of sunflower seed in the front half of the tray",
+        "size_mm": [
+          200.0,
+          80.0,
+          10.0
+        ],
+        "position_mm": [
+          0.0,
+          -35.0,
+          8.0
+        ],
+        "rotation_deg": null,
+        "mass_g": 300.0,
+        "category": "",
+        "query": "Bird seed, full tray"
+      }
+    ],
+    "requirements": [
+      {
+        "id": "r_cost",
+        "text": "Parts under 150 euros",
+        "check": "cost",
+        "quote": "under 150 euros and 900 grams",
+        "max": 150.0,
+        "unit": "eur"
+      },
+      {
+        "id": "r_mass",
+        "text": "Weighs under 900 g without seed",
+        "check": "mass",
+        "quote": "under 150 euros and 900 grams",
+        "max": 900.0,
+        "unit": "g"
+      },
+      {
+        "id": "r_perch",
+        "text": "Perch bends at most 1 mm under a landing blackbird (2 N)",
+        "check": "deflection",
+        "quote": "A blackbird landing on the perch shouldn't bend it more than a millimetre",
+        "max": 1.0,
+        "unit": "mm"
+      },
+      {
+        "id": "r_heat",
+        "text": "Inside the camera box stays under 60 °C on a 30 °C day",
+        "check": "thermal",
+        "quote": "the box mustn't get hotter than 60 degrees inside on a 30 degree day",
+        "max": 60.0,
+        "unit": "deg_c"
+      },
+      {
+        "id": "r_power",
+        "text": "Supply gives 1.5 times the peak current",
+        "check": "power",
+        "quote": "the supply needs 1.5 times what the Pi peaks at",
+        "min": 1.5,
+        "unit": "x"
+      },
+      {
+        "id": "r_tip",
+        "text": "Tips only beyond 20 degrees with a full tray",
+        "check": "tip_over",
+        "quote": "it can't tip over on the ledge",
+        "min": 20.0,
+        "unit": "deg"
+      },
+      {
+        "id": "r_print",
+        "text": "All printed parts are printable",
+        "check": "printable",
+        "quote": ""
+      }
+    ]
+  },
+  "scripts": {
+    "tray": {
+      "file": "tray.py",
+      "generated": true
+    },
+    "perch": {
+      "file": "perch.py",
+      "generated": true
+    },
+    "camera-box": {
+      "file": "camera-box.py",
+      "generated": true
+    },
+    "roof": {
+      "file": "roof.py",
+      "generated": true
+    }
+  },
+  "picks": {
+    "pi": {
+      "select_id": "rpi4b-1gb-bb",
+      "reason": "The AI Camera does the classifying, so the cheapest Pi with a camera port and Wi-Fi is enough; the Pi Zero 2 W and Pi 5 are out of stock at Berrybase today."
+    },
+    "camera": {
+      "select_id": "rpi-ai-camera-bb",
+      "reason": "The IMX500 runs the bird model on the sensor and hands the Pi only the labels; it ships with the camera cable."
+    },
+    "power": {
+      "select_id": "rpi-psu-5v1-3a-bb",
+      "reason": "The official 15.3 W Pi 4 supply: 3 A for a 1.5 A peak."
+    }
+  },
+  "checks": [
+    {
+      "tool": "check_totals",
+      "args": {}
+    },
+    {
+      "tool": "check_deflection",
+      "args": {
+        "part_id": "perch",
+        "span_mm": 170,
+        "width_mm": 10,
+        "thickness_mm": 8,
+        "load_n": 2,
+        "support": "simple"
+      }
+    },
+    {
+      "tool": "check_thermal",
+      "args": {
+        "enclosure_part_id": "camera-box",
+        "heat_part_ids": [
+          "pi",
+          "camera"
+        ],
+        "ambient_c": 30
+      }
+    },
+    {
+      "tool": "check_power",
+      "args": {
+        "supply_part_id": "power",
+        "loads": [
+          {
+            "part_id": "pi",
+            "duty": 1.0
+          },
+          {
+            "part_id": "camera",
+            "duty": 1.0,
+            "peak_factor": 1.2
+          }
+        ]
+      }
+    },
+    {
+      "tool": "check_tip_over",
+      "args": {}
+    }
+  ],
+  "kind": "reference",
+  "saved_at": "2026-10-24T17:06:18"
+}

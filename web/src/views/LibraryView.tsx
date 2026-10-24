@@ -43,9 +43,14 @@ const RECORDED: ReferenceBuild[] = [
       ["bike-mount", "Handlebar phone and light mount", "Two-part PETG bar clamp with a TPU shim for 22.2 to 31.8 mm bars, a phone tray on top and an M5 lug for a front light.", 4, 2, 5],
       ["desk-fan", "USB desk fan", "80 mm USB fan on a printed neck and a 150 mm base; 280 g, takes a light bump.", 3, 2, 6],
       ["desk-lamp", "USB-C desk lamp", "1 W LED in a printed shade on a 200 mm arm, weighted base, USB-C in and a rocker switch.", 4, 6, 6],
+      ["mearm", "MeArm pocket robot arm", "The open-source MeArm: four SG90 servos turn, lift, reach and grip, an Arduino Nano plays back pick-and-place moves, four AA cells in a printed base.", 5, 6, 8],
+      ["otto-biped", "Otto DIY biped robot", "The open-source Otto DIY walker: four SG90 servos, an Arduino Nano and an HC-SR04 in a printed body, walks around obstacles on four AA cells.", 4, 6, 7],
       ["pet-feeder", "Automatic pet feeder", "1.3 l printed hopper over an auger turned by a 28BYJ-48 stepper, timed by an ESP32 on USB power; stays upright with a full hopper.", 3, 3, 6],
       ["phone-stand", "Desk phone stand", "Two PETG parts and four rubber feet; holds a 200 g phone at 65 degrees and takes a tap on the screen.", 2, 1, 6],
       ["plant-waterer", "Plant-watering robot", "1 litre tank, 5 V pump, capacitive soil sensor and an ESP32 on one 18650; runs about a month, stable with a full tank.", 3, 7, 6],
+      ["face-tracking-cam", "Face-tracking pan-tilt camera", "An M5Stack Timer Camera on two SG90 servos that turns to keep a face in the middle of the picture, on a weighted printed base and USB power.", 3, 4, 6],
+      ["bird-feeder-cam", "AI bird feeder camera", "A seed tray with a perch and a weatherproof box for a Raspberry Pi 4 and the Raspberry Pi AI Camera, which names every bird that lands, on one USB-C supply.", 4, 3, 7],
+      ["motion-camera-trap", "Motion camera trap", "An M5Stack Timer Camera that sleeps until a PIR sensor sees movement, then takes a photo; a month on one 18650 cell in a printed weatherproof box.", 3, 4, 5],
     ] as const
   ).map(
     ([id, name, summary, printed, bought, requirements]): ReferenceBuild => ({
