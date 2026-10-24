@@ -184,6 +184,18 @@ def _latest_render(directory: Path) -> Path | None:
     return renders[-1] if renders else None
 
 
+def _recorded_render(event: dict | None) -> Path | None:
+    """Without Blender the render event points at the recorded still in the fallback folder."""
+
+    from pai_agent.paths import FALLBACK_DIR
+
+    url = str((event or {}).get("png_url") or "")
+    if not url.startswith("/files/fallback/"):
+        return None
+    path = FALLBACK_DIR / Path(url.split("?")[0]).name
+    return path if path.is_file() else None
+
+
 def readme_md(state, missing: list[str]) -> str:
     lines = [f"# {product_name(state)}, version {version(state)}", "", "Exported from AnyBuild.", ""]
     if state.requirements:
@@ -242,7 +254,7 @@ def bundle(state, events: list[dict]) -> Path:
             file = directory / Path(str(firmware.get("filename", ""))).name
             if file.is_file():
                 archive.write(file, f"{folder}/firmware/{file.name}")
-        render = _latest_render(directory)
+        render = _latest_render(directory) or _recorded_render(_last(events, "render"))
         if render is not None:
             archive.write(render, f"{folder}/render.png")
         archive.writestr(f"{folder}/README.md", readme_md(state, missing))

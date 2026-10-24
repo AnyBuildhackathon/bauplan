@@ -14,8 +14,10 @@ import { assetUrl } from "../lib/api";
 import { fmtEur, fmtGram, fmtNum } from "../lib/format";
 import { useTargets } from "../lib/hooks";
 import { useUi } from "../lib/ui";
+import { Segmented } from "../components/ui/primitives";
 import { BuildGuideButton } from "./BuildGuide";
-import { ExportMenu, OrderView } from "./ExportMenu";
+import { ExportMenu } from "./ExportMenu";
+import { OrderView } from "./OrderView";
 
 function iconFor(name: string) {
   const n = name.toLowerCase();
@@ -188,21 +190,32 @@ export function BomDrawer() {
               {fmtGram(weight)}
             </p>
           </div>
-          <a
-            href={stlHref}
-            download={drone ? "frame.stl" : `${product}.stl`}
-            className="ml-auto inline-flex h-11 items-center gap-2 rounded-full bg-agent px-5 text-[15px] font-bold text-white shadow-[0_8px_20px_-8px_rgb(255_138_61/0.7)] hover:brightness-105"
-          >
-            <Download className="h-4.5 w-4.5" /> {drone ? "Frame STL" : "Model STL"}
-          </a>
-          <BuildGuideButton />
-          <ExportMenu bom={bom} onOrder={() => setOrdering(true)} />
+          <div className="ml-auto flex shrink-0 items-center gap-4 whitespace-nowrap">
+            <a
+              href={stlHref}
+              download={drone ? "frame.stl" : `${product}.stl`}
+              className="inline-flex h-11 items-center gap-2 rounded-full bg-agent px-5 text-[15px] font-bold text-white shadow-[0_8px_20px_-8px_rgb(255_138_61/0.7)] hover:brightness-105"
+            >
+              <Download className="h-4.5 w-4.5" /> {drone ? "Frame STL" : "Model STL"}
+            </a>
+            <BuildGuideButton />
+            <ExportMenu bom={bom} onOrder={() => setOrdering(true)} />
+          </div>
           <button type="button" onClick={() => setOpen(false)} className="rounded-full p-2.5 text-muted hover:bg-card" aria-label="Close">
             <X className="h-5 w-5" />
           </button>
         </div>
         <div className="scroll-soft min-h-0 flex-1 space-y-5 overflow-y-auto px-6 pb-6">
-          {ordering && <OrderView bom={bom} onBack={() => setOrdering(false)} />}
+          <Segmented
+            size="sm"
+            value={ordering ? "order" : "parts"}
+            onChange={(v) => setOrdering(v === "order")}
+            options={[
+              { value: "parts", label: "Parts" },
+              { value: "order", label: "Order by shop", target: "order_tab" },
+            ]}
+          />
+          {ordering && <OrderView bom={bom} />}
           <ul className={ordering ? "hidden" : "space-y-2"}>
             {bom.items.map((item) => (
               <PartRow

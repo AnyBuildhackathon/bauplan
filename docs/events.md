@@ -95,6 +95,15 @@ The response is like `POST /api/prompt`, with `reference`: `{"ok": true, "mode":
 
 `POST /api/library` with `{"id": "...", "name": "...", "summary": "..."}` (all optional) saves the current product build as a project with its latest render as thumbnail and answers `{"ok": true, "item": {...}}`; HTTP 400 when there is no finished product build or the id is taken by a reference, 409 while Mechanic is building.
 
+### Export
+
+All three answer HTTP 404 before the first `bom`.
+`GET /api/export/bom.csv` returns the current bill of materials as `anybuild-{product}-bom.csv`: UTF-8 with a byte order mark (so Excel reads it), comma separated, dot decimals, columns `name, qty, unit_price_eur, line_total_eur, weight_g, shop, url, price_source, availability, checked_at`, then a `Total` row.
+`GET /api/export/bundle.zip` writes `anybuild-{product}-v{n}.zip` into the session directory and returns it. One folder holds `cad/` (every STL and STEP of the build: the drone frame, each spec part, the gripper part, `assembly.stl` and `assembly.glb`), `scripts/` (the FreeCAD scripts), `bom.csv`, `build-guide.md` (the latest `build_guide`, else an ordered list from the bill of materials: print the printed parts, fit the bought ones, verify the checks), `firmware/` with the latest firmware file, `render.png` (the latest studio render, or the recorded still without Blender) and `README.md` (requirements with pass/fail and detail, key numbers, print settings per material, and any STL without a STEP under "Missing files").
+`GET /api/export/order` answers `{"ok": true, "shops": [{"shop", "items": [{name, qty, unit_price_eur, line_total_eur, url, price_source}], "total_eur", "live"}], "print": {"items": [{name, qty, material, mass_g}], "filament_g", "cost_eur"}, "total_eur"}`, shops by total, most expensive first; printed parts (shop `printed` or a `url` that is not an http link) go to `print`. The shop totals plus `print.cost_eur` add up to `total_eur`.
+Share in the dashboard saves a spec product with `POST /api/library` and copies `?project={id}`; the drone and the gripper share their code reference id (`micro-drone`, `robot-gripper`) without saving.
+The dashboard opens `?project={id}` by calling `POST /api/library/{id}/open` once when the backend is live, then drops the parameter from the URL; an id that is not in the library shows a notice instead.
+
 ### Settings
 
 `GET /api/settings` answers `{"ok": true, "orchestrator_model": "claude-opus-5-5", "orchestrator_effort": "high", "subagent_model": "claude-sonnet-5-5", "subagent_effort": "medium", "delegation": true, "models": [{id, label}], "efforts": ["low", "medium", "high", "xhigh", "max"]}`.
