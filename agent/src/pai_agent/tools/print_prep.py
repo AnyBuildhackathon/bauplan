@@ -312,7 +312,7 @@ def filament_line(plan: dict) -> dict:
         "weight_g": 0.0,
         "shop": "printed",
         "url": "",
-        "price_source": "slicer" if plan["source"] == "slicer" else "estimated",
+        "price_source": "estimated",
         "category": "filament",
     }
 

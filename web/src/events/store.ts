@@ -6,6 +6,7 @@ import {
   type AgentRunEvent,
   type BomEvent,
   type BuildGuideEvent,
+  type PrintEvent,
   type ExplainEvent,
   type CadEvent,
   type DrawEvent,
@@ -94,6 +95,7 @@ export type ChatItem =
   | { kind: "version"; id: string; seq: number; at: number; n: number }
   | { kind: "agent"; id: string; seq: number; at: number; agentId: string }
   | { kind: "stress"; id: string; seq: number; at: number; run: number }
+  | { kind: "print"; id: string; seq: number; at: number; plan: PrintEvent }
   | { kind: "explain"; id: string; seq: number; at: number; key: string };
 
 export interface Run extends SimEvent {
@@ -166,6 +168,8 @@ export interface SessionState {
   stress: Record<number, StressEvent & { seq: number; at: number }>;
   /** Step-by-step build guide for the latest bill of materials. */
   buildGuide: BuildGuideEvent | null;
+  /** The latest print plan: time, filament, cost and warnings per printed part. */
+  printPlan: PrintEvent | null;
   /** Learning-mode explanations by key, the latest of each. */
   explains: Record<string, ExplainEvent>;
   /** The newest dashboard control Mechanic operates (lib/pilot.ts plays it). */
@@ -235,6 +239,7 @@ const TOOL_ALIASES: Record<string, string> = {
   physics_calc: "Physics",
   bom_build: "BOM",
   build_guide: "Build guide",
+  print_prep: "Print plan",
   firmware: "Firmware",
   version_commit: "Version",
   ask_user: "Question",
@@ -311,6 +316,7 @@ function emptyState() {
     remixedFrom: null as SessionState["remixedFrom"],
     stress: {} as SessionState["stress"],
     buildGuide: null as BuildGuideEvent | null,
+    printPlan: null as PrintEvent | null,
     explains: {} as Record<string, ExplainEvent>,
     ui: null as SessionState["ui"],
   };
@@ -519,6 +525,7 @@ export const useSession = create<SessionState>((set, get) => ({
           draws: [],
           bom: null,
           buildGuide: null,
+          printPlan: null,
           cad: null,
           renders: [],
           parts: {},
@@ -534,6 +541,8 @@ export const useSession = create<SessionState>((set, get) => ({
       }
       case "build_guide":
         return set({ log, buildGuide: ev });
+      case "print":
+        return set({ log, printPlan: ev, chat: [...s.chat, { kind: "print", id: nextId("print"), seq, at, plan: ev }] });
       case "explain": {
         const explains = { ...s.explains, [ev.key]: ev };
         const known = s.chat.some((c) => c.kind === "explain" && c.key === ev.key);
