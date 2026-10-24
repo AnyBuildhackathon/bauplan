@@ -26,25 +26,19 @@ const ROSTER = [
   ["elevenlabs", "ElevenLabs"], ["gemini", "Gemini Live"], ["freecad", "FreeCAD"], ["blender", "Blender"], ["isaac", "NVIDIA Isaac"],
 ];
 
-function unavailable(recorded: boolean, detail: string): IntegrationStatus {
-  const state = recorded ? "mock" : "offline";
+function unavailable(detail: string): IntegrationStatus {
   return {
-    partners: ROSTER.map(([id, label]) => ({ id, label, state, detail })),
-    isaac: { host: null, gpu: null, state, detail, last_run: null },
+    partners: ROSTER.map(([id, label]) => ({ id, label, state: "offline", detail })),
+    isaac: { host: null, gpu: null, state: "offline", detail, last_run: null },
   };
 }
 
-export const usePartners = create<IntegrationStatus>(() => unavailable(false, "Waiting for backend status."));
+export const usePartners = create<IntegrationStatus>(() => unavailable("Waiting for backend status."));
 
 /** Mounted once in the top bar; the GPU header shares the same status and polling loop. */
 export function usePartnerStatus() {
-  const mode = useSource((s) => s.mode);
   const live = useSource((s) => s.live);
   useEffect(() => {
-    if (mode === "demo") {
-      usePartners.setState(unavailable(true, "Recorded demo playback; this is not a live partner connection."));
-      return;
-    }
     let active = true;
     let timer: ReturnType<typeof setTimeout>;
     let controller: AbortController | undefined;
@@ -57,18 +51,18 @@ export function usePartnerStatus() {
         const status = await response.json() as IntegrationStatus;
         if (active) usePartners.setState(status);
       } catch {
-        if (active) usePartners.setState(unavailable(false, "Backend status unavailable; reconnect to check this integration."));
+        if (active) usePartners.setState(unavailable("Backend status unavailable; reconnect to check this integration."));
       } finally {
         clearTimeout(deadline);
         if (active) timer = setTimeout(poll, 15_000);
       }
     };
-    usePartners.setState(unavailable(false, "Checking backend integration status."));
+    usePartners.setState(unavailable("Checking backend integration status."));
     void poll();
     return () => {
       active = false;
       clearTimeout(timer);
       controller?.abort();
     };
-  }, [mode, live]);
+  }, [live]);
 }

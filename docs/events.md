@@ -231,7 +231,7 @@ Missing speech keys are `offline`, with browser recognition or text replies as t
 FreeCAD and Blender report local availability; observed tool errors and CAD fallback to CadQuery override availability until a later successful result or session reset.
 ElevenLabs and Gemini Live report independently, so either voice engine can be chosen in Settings without implying the other is connected.
 Gemini availability follows the existing Studio key or Vertex project and `gcloud` configuration.
-The frontend polls every 15 seconds, marks unavailable status responses offline, and labels every chip `mock` during static demo playback without contacting the backend.
+The frontend polls every 15 seconds and marks unavailable status responses offline.
 
 The Isaac chip opens the Omniverse tab, including on an empty bench, and reports `Connected` with the GPU name only after a successful read-only SSH `nvidia-smi` probe.
 The probe uses the existing `ISAAC_SSH_*` / `RUNPOD_SSH_*` configuration and the job's noninteractive `accept-new` host policy, with a disposable known-hosts sink so polling never changes the user's SSH files.
