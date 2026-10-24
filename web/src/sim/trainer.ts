@@ -116,7 +116,7 @@ export function resetTrainer() {
 /** The backend gave up on this tab's job (timeout, reset): stop computing and show why. */
 export function abandonTraining(jobId: string, error: string) {
   const s = useTrainer.getState();
-  if (s.jobId !== jobId || (s.status !== "running" && s.status !== "claiming")) return;
+  if (s.jobId !== jobId || (s.status !== "running" && s.status !== "claiming" && s.status !== "failed")) return;
   abort?.abort();
   abort = null;
   useTrainer.setState({ status: "failed", error });
@@ -159,7 +159,7 @@ export async function runBrowserTraining(jobId: string, fallback: { productId: s
     post(`/api/training/${jobId}/progress`, { client: CLIENT, ...body }).then(
       (res) => {
         if (res.status === 404 && useTrainer.getState().jobId === jobId) resetTrainer();
-        else if (res.status === 409) abandonTraining(jobId, "rejected");
+        else if (res.status === 409 && useTrainer.getState().status !== "failed") abandonTraining(jobId, "rejected");
       },
       () => undefined,
     );
