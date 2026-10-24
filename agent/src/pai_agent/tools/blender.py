@@ -30,7 +30,12 @@ def find_blender() -> str | None:
 
 
 def _assembly(state) -> dict:
-    """What studio.py places around the frame STL: arm, plate, battery and propeller sizes in mm."""
+    """The hero drone GLB from FreeCAD, or what studio.py places around a bare frame STL: arm, plate,
+    battery and propeller sizes in mm."""
+
+    glb = Path(state.directory) / "frame.glb"
+    if is_drone_glb(glb):
+        return {"glb": str(glb)}
 
     battery = state.selected.get("battery") or {}
     propeller = state.selected.get("propeller") or {}
@@ -44,6 +49,21 @@ def _assembly(state) -> dict:
     return spec
 
 
+def is_drone_glb(path: Path) -> bool:
+    """True for the assembly frame_build.py writes, False for a frame-only GLB from CadQuery."""
+
+    try:
+        with path.open("rb") as handle:
+            header = handle.read(20)
+            if len(header) < 20 or header[:4] != b"glTF":
+                return False
+            length = int.from_bytes(header[12:16], "little")
+            gltf = json.loads(handle.read(length))
+    except (OSError, ValueError):
+        return False
+    return any(node.get("name") == "motor_front_left" for node in gltf.get("nodes", []))
+
+
 def _part_spec(state) -> dict:
     """A generated part: every printed and bought piece with its own color."""
 
@@ -52,6 +72,14 @@ def _part_spec(state) -> dict:
         "mode": "part",
         "parts": [{"stl": str(directory / part["stl"]), "color": part.get("color"), "name": part["name"]} for part in state.part["parts"]],
     }
+
+
+def _generic_spec(state) -> dict:
+    """Any product: every assembled body (printed parts, bought blocks, loads) with its own color."""
+
+    directory = Path(state.directory)
+    bodies = [body for body in state.assembly["bodies"] if body.get("stl")]
+    return {"mode": "part", "parts": [{"stl": str(directory / b["stl"]), "color": b.get("color"), "name": b["name"]} for b in bodies]}
 
 
 def _render(binary: str, stl: Path, png: Path, spec: dict) -> None:
@@ -82,7 +110,12 @@ async def blender_render(ctx: Ctx, args: dict) -> dict:
     png = Path(ctx.state.directory) / name
     if binary is not None:
         try:
-            spec = _part_spec(ctx.state) if ctx.state.product != "drone" and ctx.state.part else _assembly(ctx.state)
+            if ctx.state.product == "generic" and ctx.state.assembly:
+                spec = _generic_spec(ctx.state)
+            elif ctx.state.product != "drone" and ctx.state.part:
+                spec = _part_spec(ctx.state)
+            else:
+                spec = _assembly(ctx.state)
             await asyncio.to_thread(_render, binary, stl, png, spec)
         except (OSError, TimeoutError, RuntimeError, subprocess.SubprocessError):
             binary = None

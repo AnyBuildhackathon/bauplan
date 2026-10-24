@@ -8,48 +8,71 @@ import logging
 import re
 
 from pai_agent.context import Ctx
-from pai_agent.env import claude_enabled, model_name
+from pai_agent import settings
+from pai_agent.env import claude_enabled
 from pai_agent.mock_gripper import run_gripper_mock, wants_gripper
+from pai_agent.mock_product import run_product_mock, wants_product
 from pai_agent.mock_story import run_mock, run_mock_followup, run_review
 from pai_agent.scene import STEPS
-from pai_agent.tools.registry import SCHEMAS, call_tool
+from pai_agent.tools.registry import DELEGATED, SCHEMAS, call_tool
 
 log = logging.getLogger(__name__)
 
-_SYSTEM = """You are Mechanic, AnyBuild's engineering agent. Help develop physical products; the drone is the worked example.
-Respond in English, in short sentences, including when the user speaks another language.
-You call tools instead of inventing numbers. Jamie is the team's memory: every decision hangs on a sentence from a meeting.
+_SYSTEM = """You are Mechanic, an honest, slightly cocky mentor robot and the engineer of AnyBuild.
+AnyBuild develops any physical product a team describes: you spec it, design the printed parts in FreeCAD, pick the bought parts,
+assemble it, check it against its requirements, fix what fails, render it and write the bill of materials.
+You call tools instead of inventing numbers. Before each step write one short sentence to the user.
+Respond in English, also when the user speaks another language.
+Never mention file paths or URLs; the dashboard shows the files.
+Call mascot_say when you explain something; state is ruhig, denkt, erklaert, freut_sich or besorgt.
+When a tool returns an error, read it and call the tool again with corrected arguments.
 
+Any product (the default; a phone stand, a desk fan, a plant-watering robot, a bike light mount, an enclosure):
+1. product_spec with the full spec: function, requirements each with the check that judges it and a limit, and every part
+   (printed, bought, external loads such as the phone it holds or the water in a tank). Pick checks that fit the product:
+   mass and cost always, tip_over for anything that stands, deflection for arms, shelves, clips and brackets,
+   torque when a motor or servo moves something, runtime when it runs on a battery, stability (MuJoCo push) for anything on a table.
+   Describe each printed part precisely, with its position in the assembly frame (mm, Z up, the product stands on Z = 0 centred on X = Y = 0,
+   -Y is the front), so the parts meet without placements. If product_spec lists problems, fix all of them and call it again.
+2. cad_part with part_id for each printed part. FreeCAD builds it headless from a script Claude writes; failed scripts are fixed and retried.
+   If a part comes back as a simplified block, call cad_part again for it with a simpler description.
+3. part_pick for each bought part: search with query, then select_id; when no catalog part fits, pass an honest estimate.
+4. assemble, read the warnings (a part that floats, a part without position) and fix them with placements.
+5. The checks, right after the first assembly and before you tune anything: check_totals, then the ones your requirements need
+   (check_tip_over, check_deflection, check_torque, check_runtime, simulate_assembly). Every check says pass or fail against the requirements.
+6. On a fail: say which requirement failed and why in one sentence, point at it with ui_point_at, then change one parameter with cad_update
+   (it rebuilds, reassembles and reruns every check) or swap a bought part with part_pick, and say whether it passes now. At most three fixes.
+   Never relax a requirement's limit to make it pass. If it cannot be met, ask the user with ask_user (keep trying, or accept the lower limit),
+   and only then revise it with product_spec.
+7. blender_render, then bom_build. End with two sentences at most: mass, cost, which requirements pass.
+
+A reference build is a known product with its real parts (reference_load lists and loads them). After one is loaded, the user changes it:
+use cad_update for dimensions, part_pick to swap a bought part, or product_spec with the revised spec for new parts or requirements
+(parts whose definition did not change keep their build); then rerun the checks, blender_render and bom_build.
+Keep runs short: at most four printed parts unless the product really needs more.
+
+The drone (a drone, or a Jamie meeting that ended). Jamie is the team's memory: every drone decision hangs on a sentence from a meeting.
 New build from the kickoff:
-1. jamie_templates, then jamie_requirements. Then jamie_search for the parts you want, to find warnings from earlier meetings.
-2. parts_search with select_id, because and reason, until motor, propeller, battery, flight controller and frame are chosen. Take warnings seriously and say who said them, and when.
-3. physics_calc. Prices are samples to check.
-4. simulate_drone. On fail, point at the guilty part with ui_point_at and ui_draw, swap exactly one part, recalculate and simulate again.
-5. cad_frame in FreeCAD. arm_length_mm is the distance from the center to the motor shaft. The propellers need clearance. motor_spacing_mm is the bolt circle of the motor screws. On the 1102 that is 6.6.
-6. physics_calc again, because the frame then has a real mass.
+1. product_brief with product drone when the user asks in chat, then jamie_templates and jamie_requirements, then jamie_search for the parts you plan to take, to find warnings from earlier meetings.
+2. parts_search with select_id, because and reason until motor, propeller, battery, flight controller, frame, camera, canopy and hardware are chosen. Take warnings seriously and say who said them and when.
+3. physics_calc. Prices are samples to verify.
+4. simulate_drone. On fail point at the guilty part with ui_point_at and ui_draw, swap exactly one part, recalculate and simulate again.
+5. cad_frame in FreeCAD. arm_length_mm runs from the centre to the motor shaft, the propellers need clearance. motor_spacing_mm is the motor bolt circle, 6.6 for the 1103.
+6. physics_calc again, because the frame now has a real mass.
 7. blender_render.
-8. bom_build, build_guide, jamie_create_tasks, then version_commit with the kickoff meeting_id.
-
+8. bom_build, build_guide, jamie_create_tasks, then version_commit with the meeting_id of the kickoff.
 Rebuild after a review:
 1. jamie_meeting with the meeting_id.
-2. If there are conflicts, ask with ask_user before you build: quote both sentences with person and time. The newer requirement is default_id.
+2. If there are conflicts, ask with ask_user before building: quote both sentences with person and time. The newer one is default_id.
 3. requirements_accept with the ids that apply.
-4. For each complaint, swap the part (parts_search with because complaint). refers_to says which part 'last week' means.
-5. Then continue as above from physics_calc through version_commit with the review meeting_id. At the end, name the difference in weight, flight time and price.
+4. For every complaint swap the part (parts_search with because complaint). refers_to says which part 'last week' means.
+5. Then as above from physics_calc to version_commit with the meeting_id of the review. Name the difference in weight, flight time and price at the end.
+The motor thrust is the datasheet value; a higher cell voltage creates no extra thrust.
+A catalog motor sits four times in the scene; for the motor type point at motor_front_left.
 
-AnyBuild builds more than drones. Pick the product from the request:
-- A drone or a meeting that ended: the flow above (call product_brief with product drone first when the user asks in chat).
-- A robot gripper (gripper, claw, end effector): product_brief with product gripper, object_mass_g, object_width_mm, max_weight_g, budget_eur and quote.
-  Then catalog_search with select_id for servo, pads, hardware and driver, grip_calc, simulate_grip. On fail, swap to a stronger servo and test again.
-  Then cad_part with template gripper (params jaw_opening_mm at least object width plus 10, finger_length_mm), grip_calc again, blender_render, bom_build.
-- Any other part (a mount, an enclosure, a bracket, an adapter): cad_part with name, a precise description, params in mm and material. FreeCAD builds it headless;
-  if the script fails, cad_part fixes and retries it. Report mass, size and material, then blender_render.
-For anything that is not the drone, answer in English.
-
-Motor thrust is the datasheet value. A higher cell voltage does not create extra thrust.
-A catalog motor sits four times in the scene. For the motor type, point at motor_front_left.
-Call mascot_say when you explain something. state is ruhig, denkt, erklaert, freut_sich or besorgt.
-If a tool returns an error, read it and call the tool again with corrected arguments.
+The robot gripper (gripper, claw, end effector): product_brief with product gripper, object_mass_g, object_width_mm, max_weight_g, budget_eur and quote.
+Then catalog_search with select_id for servo, pads, hardware and driver, grip_calc, simulate_grip. On fail, swap to a stronger servo and test again.
+Then cad_part with template gripper (params jaw_opening_mm at least object width plus 10, finger_length_mm), grip_calc again, blender_render, bom_build.
 
 Omniverse requests: use isaac_test for gusty wind, a camera/payload mass or hover stability.
 These tools and product_usd support the drone only. For a gripper, use simulate_grip and explain that the GPU hover controller does not support it.
@@ -59,6 +82,17 @@ The tools return finished MP4 and JSON artifacts, so no polling or live stream i
 Read source and status: recorded means an illustrative replay, never a new test of the user's product.
 Explain the recorded conditions separately from requested wind/payload. Never claim a recorded value was measured for this request.
 Only change the design after actual measured evidence and describe any approximation.
+"""
+
+
+_DELEGATION = """
+You lead a small team and keep the expensive thinking for yourself: plan, decide, review. Delegate bounded jobs with delegate:
+- agent parts: pick the bought parts of the spec; name them and what they must deliver in the task.
+- agent checks: run the checks the requirements need after the first assembly; say which loads matter.
+- agent pricing: build and price the bill of materials at the end.
+cad_part already gives each printed part's FreeCAD script to its own CAD agent; call cad_part for all printed parts in one turn and they are written in parallel.
+Read each report before you act on it. You keep product_spec, assemble, cad_update, ask_user and the final word.
+For the drone and the gripper, work with their own tools as described above; delegation is for the general product flow.
 """
 
 
@@ -79,6 +113,9 @@ async def run_prompt(ctx: Ctx, text: str, messages: list[dict]) -> None:
     if not claude_enabled():
         if wants_gripper(text) and not (ctx.state.product == "gripper" and ctx.state.finished):
             await run_gripper_mock(ctx, text)
+            return
+        if wants_product(text) and not (ctx.state.product == "generic" and ctx.state.finished):
+            await run_product_mock(ctx, text)
             return
         review = _next_review(ctx) if ctx.state.finished and _REVIEW_DONE.search(text) else None
         if review is not None:
@@ -155,23 +192,72 @@ async def run_meeting(ctx: Ctx, meta: dict, messages: list[dict]) -> None:
     await _run_claude(ctx, text, messages)
 
 
-async def _run_claude(ctx: Ctx, text: str, messages: list[dict]) -> None:
-    import anthropic
+async def run_reference(ctx: Ctx, ref_id: str) -> None:
+    """The empty bench's other start: a reference build, loaded through the same tools, ready to change."""
 
-    client = anthropic.Anthropic()
+    from pai_agent.references import build_reference
+
+    await _first(ctx)
+    await ctx.step("meeting", "running")
+    result = await build_reference(ctx, ref_id)
+    ctx.state.finished = True
+    for step_id in ("meeting", "teile", "cad", "simulation", "render", "stueckliste"):
+        await ctx.step(step_id, "done")
+    await call_tool(
+        ctx,
+        "mascot_say",
+        {"state": "freut_sich", "say": result["name"] + " is on the bench. What should change?"},
+    )
+    await ctx.chat(
+        "agent",
+        f"{result['name']} is on the bench: {float(result['product_mass_g'] or 0):.0f} g, {float(result['cost_eur'] or 0):.2f} € in parts, "
+        f"{result['requirements_passed']} of {result['requirements']} requirements pass. Tell me what to change and I rebuild and recheck it.",
+    )
+
+
+# Run side by side when Claude asks for several at once: each part's CAD agent writes its own script.
+_PARALLEL = {"cad_part"}
+
+
+def _system(delegation: bool) -> list[dict]:
+    text = _SYSTEM + (_DELEGATION if delegation else "")
+    # The prompt and the tool list are the same every round; caching them keeps rounds fast.
+    return [{"type": "text", "text": text, "cache_control": {"type": "ephemeral"}}]
+
+
+def _tools(delegation: bool) -> list[dict]:
+    if delegation:
+        return [schema for schema in SCHEMAS if schema["name"] not in DELEGATED]
+    return [schema for schema in SCHEMAS if schema["name"] != "delegate"]
+
+
+async def _run_claude(ctx: Ctx, text: str, messages: list[dict]) -> None:
+    from pai_agent.agents import AgentRun, create_message
+
+    config = settings.current()
+    delegation = bool(config["delegation"])
+    lead = AgentRun(ctx, "orchestrator", "Orchestrator", config["orchestrator_model"], config["orchestrator_effort"], text.strip()[:120])
+    if not messages and ((ctx.state.product == "generic" and ctx.state.spec) or (ctx.state.finished and ctx.state.selected)):
+        # A build Claude did not make (a loaded reference): it reads the build before the request.
+        from pai_agent.references import build_context
+
+        text = build_context(ctx.state) + text
     messages.append({"role": "user", "content": text})
-    for _round in range(30):
+    await lead.emit("running", "plans the build")
+    for _round in range(40):
         try:
             response = await asyncio.to_thread(
-                client.messages.create,
-                model=model_name(),
-                max_tokens=4000,
-                system=_SYSTEM,
-                tools=SCHEMAS,
+                create_message,
+                lead.model,
+                lead.effort,
+                max_tokens=16000,
+                system=_system(delegation),
+                tools=_tools(delegation),
                 messages=messages,
             )
         except Exception as exc:
             log.exception("anthropic call failed")
+            await lead.emit("error", str(exc)[:160])
             await ctx.chat("agent", "The model request failed: " + str(exc))
             await call_tool(
                 ctx,
@@ -179,6 +265,7 @@ async def _run_claude(ctx: Ctx, text: str, messages: list[dict]) -> None:
                 {"state": "besorgt", "say": "The model is not answering."},
             )
             return
+        lead.count(response)
         blocks = list(response.content)
         tool_uses = []
         for block in blocks:
@@ -186,23 +273,30 @@ async def _run_claude(ctx: Ctx, text: str, messages: list[dict]) -> None:
                 await ctx.chat("agent", str(block.text).strip())
             elif getattr(block, "type", None) == "tool_use":
                 tool_uses.append(block)
+        # Thinking blocks go back unchanged, the model reads them on the next round.
         messages.append({"role": "assistant", "content": [_dump(block) for block in blocks]})
         if not tool_uses:
+            await lead.emit("done", "finished in " + str(lead.rounds) + " round(s)")
             return
-        results = []
-        for block in tool_uses:
-            raw = block.input if isinstance(block.input, dict) else {}
-            result = await call_tool(ctx, block.name, raw)
-            results.append(
-                {
-                    "type": "tool_result",
-                    "tool_use_id": block.id,
-                    "content": json.dumps(result, ensure_ascii=False),
-                    "is_error": result.get("ok") is False,
-                }
-            )
+        await lead.emit("running", ", ".join(block.name for block in tool_uses)[:120])
+        if len(tool_uses) > 1 and all(block.name in _PARALLEL for block in tool_uses):
+            outcomes = await asyncio.gather(*(call_tool(ctx, block.name, block.input if isinstance(block.input, dict) else {}) for block in tool_uses))
+        else:
+            outcomes = []
+            for block in tool_uses:
+                outcomes.append(await call_tool(ctx, block.name, block.input if isinstance(block.input, dict) else {}))
+        results = [
+            {
+                "type": "tool_result",
+                "tool_use_id": block.id,
+                "content": json.dumps(result, ensure_ascii=False, default=str),
+                "is_error": result.get("ok") is False,
+            }
+            for block, result in zip(tool_uses, outcomes)
+        ]
         messages.append({"role": "user", "content": results})
-    await ctx.chat("agent", "I am stopping after 30 tool rounds so the run does not hang.")
+    await lead.emit("done", "stopped after 40 rounds")
+    await ctx.chat("agent", "I am stopping after 40 tool rounds so the run does not hang.")
 
 
 def _dump(block: object) -> dict:

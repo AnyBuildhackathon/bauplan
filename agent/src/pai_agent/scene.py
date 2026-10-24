@@ -48,4 +48,7 @@ PART_CATEGORIES = (
     "battery",
     "flight_controller",
     "frame",
+    "camera",
+    "canopy",
+    "hardware",
 )

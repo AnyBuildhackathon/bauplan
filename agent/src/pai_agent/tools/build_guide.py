@@ -8,7 +8,7 @@ exploded 3D walkthrough. The mock story passes `mock_steps` through the same too
 from __future__ import annotations
 
 from pai_agent.context import Ctx
-from pai_agent.scene import PART_TARGETS
+from pai_agent.scene import PART_CATEGORIES, PART_TARGETS
 
 MAX_STEPS = 20
 MAX_MINUTES = 240
@@ -18,6 +18,7 @@ SCHEMA = {
     "description": (
         "Writes the step-by-step build guide for the drone's bill of materials. Call it after bom_build, drone only. "
         "Each step names the scene parts to highlight (parts), the tools needed and the minutes it takes. "
+        "bom_parts names bill-of-materials categories the step uses that have no scene part of their own, such as camera, canopy or hardware. "
         "Together the steps must cover every scene part. Write title and instructions in English."
     ),
     "input_schema": {
@@ -34,6 +35,7 @@ SCHEMA = {
                         "title": {"type": "string"},
                         "instructions": {"type": "string"},
                         "parts": {"type": "array", "items": {"type": "string", "enum": list(PART_TARGETS)}, "minItems": 1},
+                        "bom_parts": {"type": "array", "items": {"type": "string", "enum": list(PART_CATEGORIES)}},
                         "tools": {"type": "array", "items": {"type": "string"}},
                         "minutes": {"type": "number", "exclusiveMinimum": 0, "maximum": MAX_MINUTES},
                     },
@@ -80,6 +82,9 @@ def _validate(steps: object) -> tuple[list[dict], str | None]:
         unknown = [str(p) for p in parts if p not in PART_TARGETS]
         if unknown:
             return [], where + "unknown parts " + ", ".join(unknown) + "; use " + ", ".join(PART_TARGETS)
+        bom_parts = step.get("bom_parts", [])
+        if not isinstance(bom_parts, list) or any(c not in PART_CATEGORIES for c in bom_parts):
+            return [], where + "bom_parts must name categories from " + ", ".join(PART_CATEGORIES)
         tools = step.get("tools", [])
         if not isinstance(tools, list) or not all(isinstance(t, str) for t in tools):
             return [], where + "tools must be a list of strings"
@@ -95,6 +100,7 @@ def _validate(steps: object) -> tuple[list[dict], str | None]:
                 "title": title,
                 "instructions": instructions,
                 "parts": list(dict.fromkeys(parts)),
+                "bom_parts": list(dict.fromkeys(bom_parts)),
                 "tools": [t.strip() for t in tools if t.strip()],
                 "minutes": round(minutes, 1),
             }
@@ -119,8 +125,8 @@ async def build_guide(ctx: Ctx, args: dict) -> dict:
     for step in steps:
         # The part names come from the build, not from the model's text.
         names = []
-        for target in step["parts"]:
-            part = ctx.state.selected.get(_category(target))
+        for category in [_category(target) for target in step["parts"]] + step.pop("bom_parts"):
+            part = ctx.state.selected.get(category)
             if part and part["name"] not in names:
                 names.append(part["name"])
         step["items"] = names
@@ -139,48 +145,60 @@ def mock_steps(ctx: Ctx) -> list[dict]:
     """The guide the mock story writes, filled with the parts this build chose."""
 
     selected = ctx.state.selected
+    frame = selected["frame"]
     motor = selected["motor"]["name"]
     propeller = selected["propeller"]["name"]
     battery = selected["battery"]["name"]
     controller = selected["flight_controller"]["name"]
-    arm = ctx.state.cad_params.get("arm_length_mm") or 36
-    return [
-        {
-            "n": 1,
+    camera = selected.get("camera")
+    canopy = selected.get("canopy")
+    bolts = selected.get("hardware")
+    arm = ctx.state.cad_params.get("arm_length_mm") or 42.5
+    screws = bolts["name"] if bolts else "M1.4 × 3 mm screws"
+    hardware = ["hardware"] if bolts else []
+    if "printed" in frame["id"]:
+        first = {
             "title": "Print and clean the frame",
             "instructions": f"Print frame.stl in PLA (arms {arm:g} mm from the centre to the motor shaft). "
             "Remove the supports and clear the four motor screw holes and the hub holes.",
-            "parts": ["frame"],
             "tools": ["3D printer", "Flush cutters", "1.5 mm drill bit"],
             "minutes": 10,
-        },
+        }
+    else:
+        first = {
+            "title": "Prepare the frame",
+            "instructions": f"Unpack the {frame['name']} and check it against frame.step (arms {arm:g} mm from the centre to the motor shaft). "
+            "Sand the cut edges lightly so they cannot chafe the motor wires.",
+            "tools": ["Fine sandpaper", "Calipers"],
+            "minutes": 5,
+        }
+    steps = [
+        {**first, "parts": ["frame"]},
         {
-            "n": 2,
             "title": "Mount the front motors",
-            "instructions": f"Screw a {motor} onto each front pad with its M1.4 screws, wires pointing to the hub. "
+            "instructions": f"Screw a {motor} onto each front arm with {screws}, wires pointing to the hub. "
             "Use screws that do not touch the windings.",
             "parts": ["frame", "motor_front_left", "motor_front_right"],
-            "tools": ["1.5 mm hex driver", "M1.4 × 3 mm screws"],
+            "bom_parts": hardware,
+            "tools": ["1.5 mm hex driver"],
             "minutes": 6,
         },
         {
-            "n": 3,
             "title": "Mount the rear motors",
-            "instructions": f"Repeat on the rear pads with the other two {motor}. All four wires point to the hub.",
+            "instructions": f"Repeat on the rear arms with the other two {motor}. All four wires point to the hub.",
             "parts": ["frame", "motor_rear_left", "motor_rear_right"],
-            "tools": ["1.5 mm hex driver", "M1.4 × 3 mm screws"],
+            "bom_parts": hardware,
+            "tools": ["1.5 mm hex driver"],
             "minutes": 6,
         },
         {
-            "n": 4,
             "title": "Seat the flight controller",
-            "instructions": f"Put the soft-mount grommets in the hub and press the {controller} onto them, arrow facing forward.",
+            "instructions": f"Put the soft-mount grommets on the stack mount and press the {controller} onto them, arrow facing forward.",
             "parts": ["frame", "flight_controller"],
             "tools": ["Tweezers", "Rubber grommets"],
             "minutes": 5,
         },
         {
-            "n": 5,
             "title": "Solder the motor wires",
             "instructions": "Shorten each motor's three wires to reach its ESC pads and solder them. "
             "Front left and rear right spin one way, front right and rear left the other; swap two wires to reverse a motor.",
@@ -188,17 +206,30 @@ def mock_steps(ctx: Ctx) -> list[dict]:
             "tools": ["Soldering iron", "Solder", "Wire cutters"],
             "minutes": 15,
         },
+    ]
+    if camera:
+        holder = f" and seat it in the {canopy['name']}" if canopy else ""
+        steps.append(
+            {
+                "title": "Fit the camera",
+                "instructions": f"Solder the {camera['name']}'s three wires to the camera pads (5V, GND, video){holder}, lens facing forward.",
+                "parts": ["frame", "flight_controller"],
+                "bom_parts": ["camera", *(["canopy"] if canopy else [])],
+                "tools": ["Soldering iron", "Solder"],
+                "minutes": 8,
+            }
+        )
+    holder = f"Slide the {battery} into the battery holder on the canopy" if canopy else f"Strap the {battery} on top of the flight controller"
+    steps += [
         {
-            "n": 6,
-            "title": "Strap on the battery",
-            "instructions": f"Strap the {battery} on top of the flight controller, centred so the drone balances on the hub. "
-            "Do not plug it in yet.",
+            "title": "Fit the battery",
+            "instructions": f"{holder}, centred so the drone balances on the hub. Do not plug it in yet.",
             "parts": ["battery", "flight_controller"],
-            "tools": ["Battery strap"],
+            "bom_parts": ["canopy"] if canopy else [],
+            "tools": [] if canopy else ["Battery strap"],
             "minutes": 3,
         },
         {
-            "n": 7,
             "title": "Test the motors without propellers",
             "instructions": "Connect USB, open Betaflight, check that the controller reads level, "
             "then plug in the battery and spin each motor slowly in the motor tab to check its direction.",
@@ -207,7 +238,6 @@ def mock_steps(ctx: Ctx) -> list[dict]:
             "minutes": 8,
         },
         {
-            "n": 8,
             "title": "Fit the propellers",
             "instructions": f"Unplug the battery. Press a {propeller} onto each motor shaft, "
             "matching each propeller's direction to its motor, then check that no blade touches the frame or a neighbour.",
@@ -216,3 +246,4 @@ def mock_steps(ctx: Ctx) -> list[dict]:
             "minutes": 4,
         },
     ]
+    return [{"n": n, **step} for n, step in enumerate(steps, start=1)]

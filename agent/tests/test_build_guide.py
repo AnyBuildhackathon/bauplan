@@ -14,11 +14,14 @@ from pai_agent.tools.build_guide import build_guide, mock_steps
 from pai_agent.tools.parts import catalog
 
 CHOSEN = {
-    "motor": "betafpv-1102-22000kv",
-    "propeller": "gemfan-1635-3",
-    "battery": "betafpv-lava-1s-550",
-    "flight_controller": "betafpv-f4-1s-12a-aio-v3",
-    "frame": "printed-whoop-frame",
+    "motor": "generic-1103-15000kv",
+    "propeller": "gemfan-2020-4",
+    "battery": "tattu-rline-1s-550",
+    "flight_controller": "betafpv-matrix-1s-5in1-v2",
+    "frame": "twiglet-2in-carbon",
+    "camera": "caddx-ant",
+    "canopy": "toothpick-canopy-holder",
+    "hardware": "m14-bolts",
 }
 
 
@@ -49,7 +52,29 @@ class BuildGuideTest(unittest.TestCase):
         self.assertEqual({p for s in guide["steps"] for p in s["parts"]}, set(PART_TARGETS))
         self.assertEqual(guide["total_minutes"], sum(s["minutes"] for s in guide["steps"]))
         motors = next(s for s in guide["steps"] if "motor_front_left" in s["parts"])
-        self.assertIn("BetaFPV 1102 22000KV", motors["items"])
+        self.assertIn("1103 15000KV (no-name)", motors["items"])
+        self.assertIn("M1.4 x 3 mm motor bolts", motors["items"])
+        camera = next(s for s in guide["steps"] if s["title"] == "Fit the camera")
+        self.assertEqual(camera["items"][-2:], ["Caddx Ant 1200TVL nano camera", "Toothpick canopy and battery holder (TPU)"])
+        self.assertNotIn("bom_parts", camera)
+
+    def test_guide_without_camera_or_canopy(self):
+        ctx = _ctx()
+        for category in ("camera", "canopy", "hardware"):
+            del ctx.state.selected[category]
+        result = _run(ctx, mock_steps(ctx))
+        self.assertTrue(result["ok"], result.get("error"))
+        titles = [s["title"] for s in result["steps"]]
+        self.assertNotIn("Fit the camera", titles)
+        self.assertIn("Strap the Tattu R-Line 1S 550mAh 95C", next(s for s in result["steps"] if s["title"] == "Fit the battery")["instructions"])
+
+    def test_rejects_unknown_bom_part(self):
+        ctx = _ctx()
+        steps = copy.deepcopy(mock_steps(ctx))
+        steps[0]["bom_parts"] = ["gimbal"]
+        result = _run(ctx, steps)
+        self.assertFalse(result["ok"])
+        self.assertIn("bom_parts", result["error"])
 
     def test_needs_bill_of_materials(self):
         ctx = _ctx(with_bom=False)

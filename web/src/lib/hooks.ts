@@ -30,7 +30,8 @@ export interface Assembly {
   propDiameter: number;
 }
 
-const LAVA_550: [number, number, number] = [68, 15.5, 6.7];
+/** The kickoff's pack, the Tattu R-Line 1S 550 of the reference build. */
+const RLINE_550: [number, number, number] = [59, 18, 8];
 
 /**
  * What the 3D model draws, in metres: the frame from the CAD parameters and the
@@ -56,12 +57,12 @@ export function useAssembly(atSeq?: number | "latest"): Assembly {
       const name = versionsList.find((v) => v.n === selected)?.parts.battery;
       if (name && byName[name]) battery = byName[name];
     }
-    const size = battery?.size_mm ?? LAVA_550;
+    const size = battery?.size_mm ?? RLINE_550;
     return {
-      arm: (cad?.params.arm_length_mm?.value ?? 36) / 1000,
+      arm: (cad?.params.arm_length_mm?.value ?? 42.5) / 1000,
       thickness: (cad?.params.thickness_mm?.value ?? 2) / 1000,
       battery: [size[0] / 1000, size[1] / 1000, size[2] / 1000],
-      propDiameter: (parts.propeller?.diameter_mm ?? 40) / 1000,
+      propDiameter: (parts.propeller?.diameter_mm ?? 51) / 1000,
     };
   }, [cad, parts, byName, log, selected, versionsList, atSeq]);
 }

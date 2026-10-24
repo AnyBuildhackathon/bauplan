@@ -2,7 +2,7 @@
 // link, a "Warum?" with the Jamie quote behind it, warnings from earlier meetings,
 // and the order tasks per person that live in Jamie (ticking "bestellt" ticks them there).
 import { useEffect, useState } from "react";
-import { AlertTriangle, ArrowUpRight, Battery, Box, Cable, CircuitBoard, Cog, Download, Fan, X } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, Battery, Box, Cable, Camera, CircuitBoard, Cog, Download, Fan, Shield, Wrench, X } from "lucide-react";
 import { useSession } from "../events/store";
 import { useSource } from "../events/source";
 import type { BomItem, PartEvent, TaskItem } from "../events/types";
@@ -17,6 +17,9 @@ import { BuildGuideButton } from "./BuildGuide";
 
 function iconFor(name: string) {
   const n = name.toLowerCase();
+  if (/canopy|holder|halter/.test(n)) return Shield;
+  if (/bolt|screw|schraube/.test(n)) return Wrench;
+  if (/camera|kamera|caddx/.test(n)) return Camera;
   if (/akku|batter|lipo|li-?ion|lava|funfly/.test(n)) return Battery;
   if (/motor|kv\b|\d{4,5}kv/.test(n)) return Cog;
   if (/propeller|prop|gemfan/.test(n)) return Fan;
@@ -51,6 +54,11 @@ function PartRow({ item, part }: { item: BomItem; part: PartEvent | undefined })
             )}
           </div>
         </div>
+        {(item.price_source === "estimated" || item.price_source === "live") && item.shop !== "printed" && (
+          <span className={`shrink-0 rounded-full px-2.5 py-1 text-[12px] font-bold ${item.price_source === "live" ? "bg-ok-soft text-ok-ink" : "bg-agent-soft text-agent-ink"}`}>
+            {item.price_source === "live" ? "live price" : "estimated"}
+          </span>
+        )}
         <span className="num shrink-0 text-[19px] font-extrabold">{fmtEur(item.qty * item.unit_price_eur)}</span>
         {part && (part.why || part.reason) && (
           <button
@@ -117,6 +125,7 @@ export function BomDrawer() {
   const parts = useSession((s) => s.parts);
   const tasks = useSession((s) => s.tasks);
   const cadStl = useSession((s) => s.cad?.stl_url ?? null);
+  const product = useSession((s) => s.product);
   const targets = useTargets();
 
   useEffect(() => {
@@ -130,6 +139,7 @@ export function BomDrawer() {
   const weight = bom.items.reduce((s, i) => s + i.qty * i.weight_g, 0);
   const priceOk = meets(targets.price_eur, bom.total_eur);
   const byName = new Map(Object.values(parts).map((p) => [p.name, p]));
+  const drone = product === "drone";
   const stlHref = cadStl ? assetUrl(cadStl) ?? cadStl : href(bom.stl_path);
   const ordered = tasks?.items.filter((t) => t.done).length ?? 0;
 
@@ -151,10 +161,10 @@ export function BomDrawer() {
           </div>
           <a
             href={stlHref}
-            download="frame.stl"
+            download={drone ? "frame.stl" : `${product}.stl`}
             className="ml-auto inline-flex h-11 items-center gap-2 rounded-full bg-agent px-5 text-[15px] font-bold text-white shadow-[0_8px_20px_-8px_rgb(255_138_61/0.7)] hover:brightness-105"
           >
-            <Download className="h-4.5 w-4.5" /> Frame STL
+            <Download className="h-4.5 w-4.5" /> {drone ? "Frame STL" : "Model STL"}
           </a>
           <BuildGuideButton />
           <button type="button" onClick={() => setOpen(false)} className="rounded-full p-2.5 text-muted hover:bg-card" aria-label="Close">
@@ -164,10 +174,10 @@ export function BomDrawer() {
         <div className="scroll-soft min-h-0 flex-1 space-y-5 overflow-y-auto px-6 pb-6">
           <ul className="space-y-2">
             {bom.items.map((item) => (
-              <PartRow key={item.name} item={item} part={byName.get(item.name)} />
+              <PartRow key={item.name} item={item} part={(item.category ? parts[item.category] : undefined) ?? byName.get(item.name)} />
             ))}
           </ul>
-          <p className="text-[13px] text-faint">Prices are samples to check, not a live checkout.</p>
+          <p className="text-[13px] text-faint">Catalog prices are samples to verify, estimated prices are marked; this is not a live checkout.</p>
           {tasks && tasks.items.length > 0 && (
             <section className="card px-4 pt-4 pb-3" data-target="tasks bestellen">
               <div className="mb-1 flex items-center gap-2 px-2">
