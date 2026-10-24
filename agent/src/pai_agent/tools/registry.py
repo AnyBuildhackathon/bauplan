@@ -720,6 +720,10 @@ async def call_tool(ctx: Ctx, name: str, args: dict | None) -> dict:
         await refresh_requirements(ctx)
         if name in {"train_in_browser", "isaac_train", "isaac_lab_train"}:
             await refresh_after_training(ctx)
+        if name in {"version_commit", "bom_build"}:
+            from pai_agent.versions import after_tool
+
+            await after_tool(ctx, name, payload, result)
     return result
 
 

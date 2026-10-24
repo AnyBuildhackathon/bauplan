@@ -326,6 +326,22 @@ async def library_save(body: LibraryIn, request: Request) -> dict:
     return result
 
 
+@app.get("/api/versions")
+async def versions_list(request: Request) -> dict:
+    from pai_agent.versions import public
+
+    return {"ok": True, "versions": [public(v) for v in request.app.state.session.state.versions]}
+
+
+@app.post("/api/versions/{n}/restore")
+async def versions_restore(n: int, request: Request) -> dict:
+    _require_json(request)
+    result = await request.app.state.session.restore_version(n)
+    if result.get("ok") is False:
+        raise HTTPException(status_code=409 if result.get("busy") else 404, detail=str(result["error"]))
+    return result
+
+
 @app.get("/api/settings")
 async def settings_get() -> dict:
     from pai_agent import settings
