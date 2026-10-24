@@ -222,13 +222,13 @@ class Session:
         except ValueError as exc:
             return {"ok": False, "error": str(exc)}
 
-    def save_reference(self, ref_id: str | None, name: str | None, summary: str) -> dict:
+    def save_reference(self, ref_id: str | None, name: str | None, summary: str, kind: str = "project") -> dict:
         from pai_agent.references import save_reference
 
         if self._busy():
             return {"ok": False, "error": "Mechanic is building. Save when the build is done.", "busy": True}
         try:
-            return {"ok": True, "item": save_reference(self.state, ref_id, name, summary)}
+            return {"ok": True, "item": save_reference(self.state, ref_id, name, summary, kind)}
         except ValueError as exc:
             return {"ok": False, "error": str(exc)}
 
