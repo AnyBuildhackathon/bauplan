@@ -39,7 +39,7 @@ let caps: Capabilities = {
   geminiLive: false,
 };
 
-/** Asks the backend which voice services have keys. The demo recording plays its pre-rendered clips. */
+/** Asks the backend which voice services have keys. */
 export async function loadVoiceCapabilities(): Promise<Capabilities> {
   try {
     const res = await apiFetch("/api/voice");
@@ -59,7 +59,7 @@ export async function loadVoiceCapabilities(): Promise<Capabilities> {
       };
     }
   } catch {
-    // No backend: Mechanic speaks the recording's pre-rendered clips, or stays silent.
+    // No backend: Mechanic stays silent and his text is the caption.
   }
   return caps;
 }

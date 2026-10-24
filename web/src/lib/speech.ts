@@ -2,9 +2,8 @@
 // backend streams each spoken line as `say` deltas; they are cut into phrases (the first
 // one at a comma, the rest at sentence ends) so speech starts while the text is still
 // coming. Each phrase is a streamed PCM request that starts as soon as the phrase is
-// complete and plays gaplessly through Web Audio. The recorded demo has no backend: its
-// lines come with pre-rendered clips (same voice and model) that play through the same
-// output. Without either, Mechanic stays silent and his text is the caption. `useSpeech`
+// complete and plays gaplessly through Web Audio. Without ElevenLabs, Mechanic stays
+// silent and his text is the caption. `useSpeech`
 // exposes the output level for the mascot's lip-sync. When the person starts talking (Reson8 turn
 // start), speech pauses at once; it stops for good when they really said something, and
 // resumes when the "turn" was only Mechanic's own voice echoing into the microphone.
@@ -31,8 +30,6 @@ interface Phrase {
   queuedAt: number;
   /** ElevenLabs audio, requested as soon as the phrase is complete. */
   audio?: Promise<ReadableStreamDefaultReader<Uint8Array> | null>;
-  /** A pre-rendered clip of the recorded demo, decoded as soon as the phrase is queued. */
-  clip?: Promise<AudioBuffer | null>;
   /** The first phrase of the reply to a spoken turn: its first sound closes the latency measurement. */
   measure: boolean;
 }
@@ -129,7 +126,7 @@ export function handleSay(ev: SayEvent, opts: { voiceOn: boolean; userTalking: b
   if (!opts.voiceOn || (ev.kind === "update" && opts.userTalking)) return;
   for (const text of phrases) {
     if (line.latency && line.phrases === 0 && pendingLatency) pendingLatency.firstPhrase = performance.now();
-    enqueue(text, line.previous, "live", line.latency && line.phrases === 0);
+    enqueue(text, line.previous, line.latency && line.phrases === 0);
     line.phrases++;
     line.previous = `${line.previous} ${text}`.trim();
   }
@@ -137,30 +134,26 @@ export function handleSay(ev: SayEvent, opts: { voiceOn: boolean; userTalking: b
 
 /**
  * Mechanic says one short line (a speech bubble or a question), after what he is saying now.
- * In the recorded demo `clip` is the line's pre-rendered audio; without it (and without a live
- * ElevenLabs voice) the line stays silent.
+ * Without a live ElevenLabs voice the line stays silent.
  */
-export function speak(text: string, mode: "live" | "demo", clip?: string): Promise<void> {
+export function speak(text: string): Promise<void> {
   const line = text.replace(/\*\*/g, "").trim();
   if (!line) return chain;
-  return enqueue(line, "", mode, false, clip);
+  return enqueue(line, "");
 }
 
-function enqueue(text: string, previous: string, mode: "live" | "demo" = "live", measure = false, clip?: string): Promise<void> {
+function enqueue(text: string, previous: string, measure = false): Promise<void> {
   const mine = generation;
   const phrase: Phrase = { text, previous, queuedAt: Date.now(), measure };
-  const eleven = voiceCapabilities().tts === "elevenlabs" && mode === "live";
-  const recorded = mode === "demo" && !!clip;
-  if (!eleven && !recorded) return chain;
+  if (voiceCapabilities().tts !== "elevenlabs") return chain;
   // The request starts now, so it streams while the phrases before it are still playing.
-  if (eleven) phrase.audio = requestAudio(phrase);
-  else phrase.clip = loadClip(clip!);
+  phrase.audio = requestAudio(phrase);
   pending++;
   chain = chain
     .then(() => {
       if (mine !== generation || Date.now() - phrase.queuedAt > STALE_MS) return;
       remember(text);
-      return eleven ? playEleven(phrase, mine) : playClip(phrase, mine);
+      return playEleven(phrase, mine);
     })
     .catch(() => undefined)
     .finally(() => {
@@ -335,41 +328,6 @@ async function playEleven(phrase: Phrase, mine: number): Promise<void> {
     }
   }
   // The next phrase is scheduled right after this one; wait until this one is nearly through.
-  const left = (nextTime - ctx.currentTime) * 1000 - 150;
-  if (left > 0) await new Promise((resolve) => setTimeout(resolve, left));
-}
-
-// --- pre-rendered clips (the recorded demo) ---------------------------------------------
-
-async function loadClip(url: string): Promise<AudioBuffer | null> {
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    return await unlockAudio().decodeAudioData(await res.arrayBuffer());
-  } catch {
-    return null;
-  }
-}
-
-async function playClip(phrase: Phrase, mine: number): Promise<void> {
-  const buffer = await phrase.clip;
-  if (!buffer || mine !== generation) return;
-  const ctx = unlockAudio();
-  const source = ctx.createBufferSource();
-  source.buffer = buffer;
-  source.connect(analyser!);
-  const at = Math.max(ctx.currentTime + 0.02, nextTime);
-  source.start(at);
-  nextTime = at + buffer.duration;
-  sources.add(source);
-  source.onended = () => {
-    sources.delete(source);
-    if (sources.size === 0 && mine === generation) endSpeaking();
-  };
-  setTimeout(() => {
-    if (mine === generation) beginSpeaking();
-  }, Math.max(0, (at - ctx.currentTime) * 1000));
-  // The next clip is scheduled right after this one; wait until this one is nearly through.
   const left = (nextTime - ctx.currentTime) * 1000 - 150;
   if (left > 0) await new Promise((resolve) => setTimeout(resolve, left));
 }

@@ -311,7 +311,7 @@ export function CommunityView() {
   const [picked, setPicked] = useState<string | null>(focus);
   const [publishing, setPublishing] = useState(false);
 
-  // Fresh feed on every visit; the recorded demo reads the same seeds from a static file.
+  // Fresh feed on every visit. While the backend is offline, the same seeds come from a static file.
   useEffect(() => {
     fetch(live ? apiUrl("/api/community") : "/community/feed.json")
       .then((r) => (r.ok ? r.json() : null))

@@ -1,6 +1,6 @@
 # AnyBuild
 
-![AnyBuild: Mechanic leaning on the workbench cube](docs/assets/anybuild-social.png)
+![AnyBuild workbench cube](docs/assets/anybuild-social.png)
 
 **An engineering agent that develops physical products from your team's meetings.**
 
@@ -308,17 +308,6 @@ cd web && npm run typecheck && npm run e2e             # type check and Playwrig
 ```
 
 `E2E_LIVE=1 npm run e2e:live` runs the Playwright smoke against a backend with `ANTHROPIC_API_KEY`.
-
-### Recorded demo run
-
-The hidden `?demo` URL parameter replays a recorded mock run without a backend, for videos; the interface never links to it.
-After changing the story, catalogs or physics, re-record it:
-
-```bash
-cd agent && uv run python scripts/record_demo.py
-```
-
-This updates `web/src/events/recording.json`, copies CAD and render assets into `web/public/demo/run/`, and renders missing voice clips when `ELEVENLABS_API_KEY` is set.
 
 ## Documentation
 
