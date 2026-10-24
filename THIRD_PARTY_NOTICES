@@ -19,18 +19,9 @@ Adapted and modified files in web/:
       from core-web/src/components/SidebarChat/SidebarChatMessage.tsx
   web/src/components/chat/ContentPartsRenderer.tsx
       from core-web/src/components/Chat/ContentPartsRenderer.tsx
-  web/src/components/steps/TaskStepLog.tsx
-      from core-web/src/components/Agents/TaskStepLog.tsx
-  web/src/components/BlockEditor/Block.tsx
-  web/src/components/BlockEditor/BlockEditor.tsx
-  web/src/components/BlockEditor/SlashCommandMenu.tsx
-  web/src/components/BlockEditor/types.ts
-      from core-web/src/components/BlockEditor/
-  web/src/utils/sanitizeHtml.ts
-      from core-web/src/utils/sanitizeHtml.ts
 
 Changes: restyled to this project's Bevel design tokens, driven by the agent's
-Server-Sent Events instead of core.so's API and Supabase, German UI text, and
+Server-Sent Events instead of core.so's API and Supabase, English UI text, and
 removed features this project does not use (attachments, mentions, display
 cards, actions).
 
