@@ -46,6 +46,9 @@ const RECORDED: ReferenceBuild[] = [
       ["pet-feeder", "Automatic pet feeder", "1.3 l printed hopper over an auger turned by a 28BYJ-48 stepper, timed by an ESP32 on USB power; stays upright with a full hopper.", 3, 3, 6],
       ["phone-stand", "Desk phone stand", "Two PETG parts and four rubber feet; holds a 200 g phone at 65 degrees and takes a tap on the screen.", 2, 1, 6],
       ["plant-waterer", "Plant-watering robot", "1 litre tank, 5 V pump, capacitive soil sensor and an ESP32 on one 18650; runs about a month, stable with a full tank.", 3, 7, 6],
+      ["face-tracking-cam", "Face-tracking pan-tilt camera", "An M5Stack Timer Camera on two SG90 servos that turns to keep a face in the middle of the picture, on a weighted printed base and USB power.", 3, 4, 6],
+      ["bird-feeder-cam", "AI bird feeder camera", "A seed tray with a perch and a weatherproof box for a Raspberry Pi 4 and the Raspberry Pi AI Camera, which names every bird that lands, on one USB-C supply.", 4, 3, 7],
+      ["motion-camera-trap", "Motion camera trap", "An M5Stack Timer Camera that sleeps until a PIR sensor sees movement, then takes a photo; a month on one 18650 cell in a printed weatherproof box.", 3, 4, 5],
     ] as const
   ).map(
     ([id, name, summary, printed, bought, requirements]): ReferenceBuild => ({
