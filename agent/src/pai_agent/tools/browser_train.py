@@ -93,7 +93,7 @@ def product_spec(ctx: Ctx) -> dict:
     }
 
 
-def _event(job: dict, status: str, **extra) -> dict:
+def _event(job: dict, status: str) -> dict:
     curve = job["curve"]
     return {
         "type": "training",
@@ -112,7 +112,7 @@ def _event(job: dict, status: str, **extra) -> dict:
         "generation": job["generation"],
         "best_params": job["best_params"],
         "best_metrics": job["best_metrics"],
-        **extra,
+        **({"error": job["error"]} if job.get("error") else {}),
     }
 
 
@@ -136,6 +136,7 @@ async def train_in_browser(ctx: Ctx, args: dict) -> dict:
         "best_params": None,
         "best_metrics": None,
         "seen": 0.0,
+        "error": None,
         "claimed": asyncio.Event(),
         "finished": asyncio.Event(),
         "bus": ctx.bus,
@@ -148,7 +149,8 @@ async def train_in_browser(ctx: Ctx, args: dict) -> dict:
         await asyncio.wait_for(job["claimed"].wait(), timeout=claim_timeout())
     except TimeoutError:
         job["status"] = "failed"
-        await ctx.emit(_event(job, "failed", error="no_browser"))
+        job["error"] = "no_browser"
+        await ctx.emit(_event(job, "failed"))
         message = "No dashboard picked up the run. Open the dashboard and ask again."
         return {"ok": False, "error": message, "detail": message, "job_id": job["id"]}
     loop = asyncio.get_running_loop()
@@ -159,7 +161,8 @@ async def train_in_browser(ctx: Ctx, args: dict) -> dict:
         error = "timeout" if now >= deadline else "browser_gone" if now - job["seen"] > stall_timeout() else None
         if error:
             job["status"] = "failed"
-            await ctx.emit(_event(job, "failed", error=error))
+            job["error"] = error
+            await ctx.emit(_event(job, "failed"))
             message = "The browser run did not finish in time." if error == "timeout" else "The dashboard tab running the training went away."
             return {"ok": False, "error": message, "detail": message, "job_id": job["id"]}
         try:
@@ -251,8 +254,9 @@ async def progress(job_id: str, body: ProgressIn, request: Request) -> dict:
     if body.best_metrics is not None:
         job["best_metrics"] = body.best_metrics
     job["status"] = body.status
-    extra = {"error": body.error} if body.error else {}
-    await job["bus"].publish(_event(job, body.status, **extra))
+    if body.error:
+        job["error"] = body.error[:200]
+    await job["bus"].publish(_event(job, body.status))
     if body.status in {"done", "failed"}:
         job["finished"].set()
     return {"ok": True}

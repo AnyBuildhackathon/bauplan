@@ -5,7 +5,7 @@ import { create } from "zustand";
 import { useSession } from "../../events/store";
 import type { TrainingEvent } from "../../events/types";
 import { useUi } from "../../lib/ui";
-import { resetTrainer, runBrowserTraining, useTrainer, watchElsewhere, type BrowserTrainingFields } from "../../sim/trainer";
+import { abandonTraining, resetTrainer, runBrowserTraining, useTrainer, watchElsewhere, type BrowserTrainingFields } from "../../sim/trainer";
 
 export type BrowserTrainingEvent = TrainingEvent & BrowserTrainingFields & { at: number };
 
@@ -45,6 +45,8 @@ export function useBrowserTraining() {
           population: t.population ?? 64,
           generations: t.generations ?? 16,
         });
+      } else if (local.jobId === t.job_id && t.status === "failed") {
+        abandonTraining(t.job_id, t.error ?? "failed");
       } else if (local.jobId !== t.job_id && t.status !== "queued") {
         watchElsewhere(t.job_id);
       }

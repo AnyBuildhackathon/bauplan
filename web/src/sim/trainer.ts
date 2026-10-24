@@ -113,6 +113,15 @@ export function resetTrainer() {
   useTrainer.setState({ ...initial });
 }
 
+/** The backend gave up on this tab's job (timeout, reset): stop computing and show why. */
+export function abandonTraining(jobId: string, error: string) {
+  const s = useTrainer.getState();
+  if (s.jobId !== jobId || (s.status !== "running" && s.status !== "claiming")) return;
+  abort?.abort();
+  abort = null;
+  useTrainer.setState({ status: "failed", error });
+}
+
 /** Marks a job that another tab claimed: this tab only shows the shared curve. */
 export function watchElsewhere(jobId: string) {
   if (useTrainer.getState().jobId === jobId) return;
