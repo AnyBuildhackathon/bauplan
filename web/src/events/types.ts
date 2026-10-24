@@ -125,6 +125,7 @@ export interface TrainingEvent {
   reward: number;
   curve: [number, number][];
   video_url: string | null;
+  gains?: FirmwareGains;
 }
 
 export interface OmniverseEvent {
@@ -304,7 +305,7 @@ export interface FirmwareEvent {
   /** The whole file, so the download also works in the static demo. */
   content: string;
   gains: FirmwareGains | null;
-  gains_source: "tool call" | "training" | "defaults" | "none";
+  gains_source: "training" | "defaults" | "none";
   explanation: string;
   wiring: WiringRow[];
 }

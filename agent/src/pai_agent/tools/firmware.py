@@ -41,42 +41,27 @@ _RATES = {"rc_rate": 7, "srate": 67, "expo": 0}
 _SERVO_PINS = (9, 10, 11, 6, 5, 3)
 
 
-def _gains_from(source) -> dict | None:
-    """Reads {roll: {p, i, d, f}, pitch: ..., yaw: ...} in Betaflight units, or flat p_roll keys."""
+def trained_gains(ctx: Ctx) -> tuple[dict, str]:
+    """Gains from the last training event's {roll, pitch, yaw: {p, i, d, f}} in Betaflight units, else defaults."""
 
-    if not isinstance(source, dict):
-        return None
-    found: dict[str, dict] = {}
-    for axis in DEFAULT_GAINS:
-        terms = source.get(axis)
-        for term in _GAIN_LIMITS:
-            value = terms.get(term) if isinstance(terms, dict) else source.get(term + "_" + axis)
-            if isinstance(value, (int, float)) and not isinstance(value, bool):
-                found.setdefault(axis, {})[term] = value
-    return found or None
-
-
-def trained_gains(ctx: Ctx, args: dict) -> tuple[dict, str]:
-    """Gains and where they came from: the tool call, the session, the last training event, or defaults."""
-
-    candidates = [
-        ("tool call", args.get("gains")),
-        ("training", getattr(ctx.state, "controller_gains", None)),
-    ]
     for event in reversed(ctx.bus.events):
-        if event.get("type") == "training" and event.get("gains"):
-            candidates.append(("training", event["gains"]))
-            break
-    for source, raw in candidates:
-        found = _gains_from(raw)
+        if event.get("type") != "training" or not isinstance(event.get("gains"), dict):
+            continue
+        found = False
+        merged = {}
+        for axis, defaults in DEFAULT_GAINS.items():
+            terms = event["gains"].get(axis)
+            merged[axis] = {}
+            for term, default in defaults.items():
+                value = terms.get(term) if isinstance(terms, dict) else None
+                if isinstance(value, (int, float)) and not isinstance(value, bool):
+                    found = True
+                else:
+                    value = default
+                merged[axis][term] = int(round(min(max(float(value), 0.0), _GAIN_LIMITS[term])))
         if found:
-            merged = {}
-            for axis, defaults in DEFAULT_GAINS.items():
-                merged[axis] = {}
-                for term, default in defaults.items():
-                    value = found.get(axis, {}).get(term, default)
-                    merged[axis][term] = int(round(min(max(float(value), 0.0), _GAIN_LIMITS[term])))
-            return merged, source
+            return merged, "training"
+        break
     return {axis: dict(terms) for axis, terms in DEFAULT_GAINS.items()}, "defaults"
 
 
@@ -338,17 +323,12 @@ def _default_explanation(kind: str, ctx: Ctx, gains_source: str, wiring: list[di
 
 async def firmware(ctx: Ctx, args: dict) -> dict:
     product = str(getattr(ctx.state, "product", "") or "drone")
-    kind = str(args.get("kind") or "")
-    if kind not in {"betaflight", "arduino"}:
-        kind = "betaflight" if "flight_controller" in ctx.state.selected else "arduino"
+    kind = "betaflight" if "flight_controller" in ctx.state.selected else "arduino"
     if not ctx.state.selected:
         message = "No parts chosen yet."
         return {"ok": False, "error": message, "detail": message}
-    gains, gains_source = trained_gains(ctx, args)
+    gains, gains_source = trained_gains(ctx)
     if kind == "betaflight":
-        if "flight_controller" not in ctx.state.selected:
-            message = "Betaflight needs a flight controller in the parts."
-            return {"ok": False, "error": message, "detail": message}
         content = betaflight_cli(ctx, gains, gains_source)
         wiring = drone_wiring(ctx)
         filename = f"anybuild-{product}-{_version_label(ctx)}-betaflight.txt"

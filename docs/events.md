@@ -256,6 +256,7 @@ It does not guess from a screenshot.
 `curve` is `[[step, reward], ...]`.
 `video_url` is a backend path such as `/files/fallback/hover.mp4`, or `null` when there is no clip.
 A `done` event after an `offline` tool means the fallback file was played, not that a pod finished a job.
+`gains` is optional: the training task may emit the trained controller gains as `{roll, pitch, yaw}`, each `{p, i, d, f}` in Betaflight units.
 
 ### firmware
 
@@ -266,8 +267,8 @@ The firmware and wiring for the built product, from the `firmware` tool after `b
 `content` is the whole file, so a client can offer the download without the backend.
 The file is a fixed template filled from the chosen parts; only `explanation`, one or two sentences, may come from Claude.
 `gains` is `{roll, pitch, yaw}`, each `{p, i, d, f}` in Betaflight units, or `null` for an Arduino sketch.
-`gains_source` says where they came from: `tool call`, `training`, `defaults`, or `none`.
-`training` means the session's `controller_gains` or the `gains` field of the last `training` event, in the same shape; missing terms keep the defaults.
+`gains_source` says where they came from: `training`, `defaults`, or `none`.
+`training` means the optional `gains` field of the last `training` event that carries one; missing terms keep the defaults.
 `wiring` is a list of `{component, connects_to, pin, wire, note}`, one row per connection of a chosen part.
 
 ## Scene targets

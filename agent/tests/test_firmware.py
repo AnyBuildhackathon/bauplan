@@ -101,7 +101,8 @@ def test_defaults_without_training(tmp_path):
 
 def test_trained_gains_from_the_last_training_event(tmp_path):
     ctx = _ctx(tmp_path)
-    asyncio.run(ctx.emit({"type": "training", "status": "done", "gains": {"roll": {"p": 61.4, "d": 999}, "p_yaw": 33}}))
+    asyncio.run(ctx.emit({"type": "training", "status": "done", "gains": {"roll": {"p": 61.4, "d": 999}, "yaw": {"p": 33}}}))
+    asyncio.run(ctx.emit({"type": "training", "status": "done"}))
     _, event = _run(ctx)
     assert event["gains_source"] == "training"
     assert event["gains"]["roll"] == {"p": 61, "i": 80, "d": 250, "f": 120}

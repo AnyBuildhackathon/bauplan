@@ -307,7 +307,6 @@ SCHEMAS = [
         "input_schema": {
             "type": "object",
             "properties": {
-                "kind": {"type": "string", "enum": ["betaflight", "arduino"]},
                 "explanation": {"type": "string"},
             },
         },

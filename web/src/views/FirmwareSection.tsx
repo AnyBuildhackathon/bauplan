@@ -19,7 +19,6 @@ function download(fw: FirmwareEvent) {
 
 const GAINS_LABEL: Record<FirmwareEvent["gains_source"], string> = {
   training: "trained gains",
-  "tool call": "agent gains",
   defaults: "default gains",
   none: "",
 };

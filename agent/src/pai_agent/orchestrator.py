@@ -41,7 +41,7 @@ AnyBuild builds more than drones. Pick the product from the request:
 - A drone or a meeting that ended: the flow above (call product_brief with product drone first when the user asks in chat).
 - A robot gripper (gripper, claw, end effector): product_brief with product gripper, object_mass_g, object_width_mm, max_weight_g, budget_eur and quote.
   Then catalog_search with select_id for servo, pads, hardware and driver, grip_calc, simulate_grip. On fail, swap to a stronger servo and test again.
-  Then cad_part with template gripper (params jaw_opening_mm at least object width plus 10, finger_length_mm), grip_calc again, blender_render, bom_build.
+  Then cad_part with template gripper (params jaw_opening_mm at least object width plus 10, finger_length_mm), grip_calc again, blender_render, bom_build, firmware.
 - Any other part (a mount, an enclosure, a bracket, an adapter): cad_part with name, a precise description, params in mm and material. FreeCAD builds it headless;
   if the script fails, cad_part fixes and retries it. Report mass, size and material, then blender_render.
 For anything that is not the drone, answer in English.
