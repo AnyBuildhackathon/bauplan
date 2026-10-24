@@ -5,12 +5,12 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, ArrowUpRight, Battery, Box, Cable, CircuitBoard, Cog, Download, Fan, X } from "lucide-react";
 import { useSession } from "../events/store";
 import { useSource } from "../events/source";
-import type { BomItem, PartEvent, TaskItem } from "../events/types";
+import type { BomEvent, BomItem, PartEvent, TaskItem } from "../events/types";
 import { JamieMark, QuoteBubble } from "../components/panels/Panels";
 import { enText } from "../lib/copy";
 import { meets } from "../lib/derived";
 import { assetUrl } from "../lib/api";
-import { fmtEur, fmtGram } from "../lib/format";
+import { fmtEur, fmtGram, fmtNum } from "../lib/format";
 import { useTargets } from "../lib/hooks";
 import { useUi } from "../lib/ui";
 
@@ -24,10 +24,27 @@ function iconFor(name: string) {
   return Cable;
 }
 
+const AVAILABILITY = { in_stock: "in stock", out_of_stock: "out of stock", unknown: "" } as const;
+
+/** "live" when the price came from a shop page found by web search, else the catalog sample. */
+function PriceSource({ item, searching }: { item: BomItem; searching: boolean }) {
+  const live = item.price_source === "live";
+  const label = live ? "live" : searching ? "searching" : "catalog";
+  const title = live && item.checked_at ? `Checked ${new Date(item.checked_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}` : undefined;
+  return (
+    <span
+      title={title}
+      className={`shrink-0 rounded-full px-2.5 py-1 text-[12px] font-bold ${live ? "bg-ok-soft text-ok-ink" : "bg-tile text-muted"}`}
+    >
+      {label}
+    </span>
+  );
+}
+
 /** Absolute URLs stay, backend paths go to the backend, a bare repo path is served under /files/. */
 const href = (u: string) => (/^(https?:)?\/\//.test(u) || u.startsWith("/") ? assetUrl(u) ?? u : assetUrl(`/files/${u}`) ?? u);
 
-function PartRow({ item, part }: { item: BomItem; part: PartEvent | undefined }) {
+function PartRow({ item, part, searching }: { item: BomItem; part: PartEvent | undefined; searching: boolean }) {
   const [why, setWhy] = useState(false);
   const Icon = iconFor(item.name);
   const warnings = part?.warnings ?? [];
@@ -48,8 +65,11 @@ function PartRow({ item, part }: { item: BomItem; part: PartEvent | undefined })
             ) : (
               item.shop
             )}
+            {item.price_source === "live" && item.currency && item.currency !== "EUR" && item.price ? ` · ${fmtNum(item.price, 2)} ${item.currency}` : ""}
+            {item.price_source === "live" && item.availability && AVAILABILITY[item.availability] ? ` · ${AVAILABILITY[item.availability]}` : ""}
           </div>
         </div>
+        <PriceSource item={item} searching={searching} />
         <span className="num shrink-0 text-[19px] font-extrabold">{fmtEur(item.qty * item.unit_price_eur)}</span>
         {part && (part.why || part.reason) && (
           <button
@@ -109,6 +129,12 @@ function TaskRow({ task }: { task: TaskItem }) {
   );
 }
 
+function priceNote(prices: BomEvent["prices"], live: number, total: number): string {
+  if (prices === "searching") return "Searching shops for live prices…";
+  if (live > 0) return `Live prices from the web for ${live} of ${total} lines, catalog samples for the rest. Check before ordering.`;
+  return "Catalog sample prices to verify, not a live checkout.";
+}
+
 export function BomDrawer() {
   const open = useUi((s) => s.bomOpen);
   const setOpen = useUi((s) => s.setBomOpen);
@@ -131,6 +157,7 @@ export function BomDrawer() {
   const byName = new Map(Object.values(parts).map((p) => [p.name, p]));
   const stlHref = cadStl ? assetUrl(cadStl) ?? cadStl : href(bom.stl_path);
   const ordered = tasks?.items.filter((t) => t.done).length ?? 0;
+  const liveCount = bom.items.filter((i) => i.price_source === "live").length;
 
   return (
     <div className="fixed inset-0 z-[70] flex justify-end bg-ink/25 backdrop-blur-[2px]" onPointerDown={() => setOpen(false)}>
@@ -162,10 +189,10 @@ export function BomDrawer() {
         <div className="scroll-soft min-h-0 flex-1 space-y-5 overflow-y-auto px-6 pb-6">
           <ul className="space-y-2">
             {bom.items.map((item) => (
-              <PartRow key={item.name} item={item} part={byName.get(item.name)} />
+              <PartRow key={item.name} item={item} part={byName.get(item.name)} searching={bom.prices === "searching"} />
             ))}
           </ul>
-          <p className="text-[13px] text-faint">Prices are samples to check, not a live checkout.</p>
+          <p className="text-[13px] text-faint">{priceNote(bom.prices, liveCount, bom.items.length)}</p>
           {tasks && tasks.items.length > 0 && (
             <section className="card px-4 pt-4 pb-3" data-target="tasks bestellen">
               <div className="mb-1 flex items-center gap-2 px-2">

@@ -95,12 +95,23 @@ export interface BomItem {
   weight_g: number;
   shop: string;
   url: string;
+  /** "live" when a web search found a shop price, else the catalog sample. Older recordings omit it. */
+  price_source?: "live" | "catalog";
+  /** Shop price per piece in its own currency (live lines only). */
+  price?: number;
+  currency?: string;
+  availability?: "in_stock" | "out_of_stock" | "unknown";
+  pack_qty?: number;
+  catalog_price_eur?: number;
+  checked_at?: string;
 }
 export interface BomEvent {
   type: "bom";
   items: BomItem[];
   total_eur: number;
   stl_path: string;
+  /** "searching" while live prices load, then "live" or "catalog". */
+  prices?: "searching" | "live" | "catalog";
 }
 export interface MascotEvent {
   type: "mascot";
