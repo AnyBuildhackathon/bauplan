@@ -82,12 +82,55 @@ export interface ToolState {
 
 export type Phase = "running" | "ok" | "error";
 
+/** One key number on a results card, frozen when its bill of materials arrived. */
+export interface ResultNumber {
+  key: string;
+  label: string;
+  value: number;
+  unit: string;
+  digits: number;
+  /** data-target of the number, so Mechanic can point at it. */
+  target: string;
+}
+
+const DRONE_TARGETS: Record<string, string> = {
+  weight_g: "metric:weight weight weight_g gewicht",
+  flight_time_min: "metric:flight_time flight_time flight_time_min flugzeit",
+  price_eur: "metric:price price price_eur preis budget",
+};
+
+/** The three key numbers for a results card: the product's own cards, or weight, flight time and price for the drone. */
+function resultNumbers(metrics: MetricsEvent | null, total: number): ResultNumber[] {
+  if (metrics?.cards?.length) {
+    return metrics.cards
+      .filter((c) => !c.pending)
+      .slice(0, 3)
+      .map((c) => ({
+        key: c.key,
+        label: c.label,
+        value: c.key === "cost_eur" ? total : c.value,
+        unit: c.unit,
+        digits: c.digits,
+        target: `metric:${c.key} ${c.key}`,
+      }));
+  }
+  const price = { key: "price_eur", label: "Price", value: total, unit: "€", digits: 2, target: DRONE_TARGETS.price_eur };
+  if (!metrics) return [price];
+  return [
+    { key: "weight_g", label: "Weight", value: metrics.weight_g, unit: "g", digits: 1, target: DRONE_TARGETS.weight_g },
+    { key: "flight_time_min", label: "Flight time", value: metrics.flight_time_min, unit: "min", digits: 1, target: DRONE_TARGETS.flight_time_min },
+    price,
+  ];
+}
+
 export type ChatItem =
   | { kind: "msg"; id: string; seq: number; at: number; role: "user" | "agent"; text: string; local?: boolean; voice?: boolean }
   | { kind: "tool"; id: string; seq: number; at: number; name: string; phase: Phase; detail: string; endedAt?: number; instant?: boolean }
   | { kind: "jamie"; id: string; seq: number; at: number; action: string; phase: Phase; detail: string; endedAt?: number }
   | { kind: "sim"; id: string; seq: number; at: number; run: number; result: "pass" | "fail"; summary: string }
-  | { kind: "bom"; id: string; seq: number; at: number; count: number; total: number }
+  | { kind: "bom"; id: string; seq: number; at: number; count: number; total: number; numbers: ResultNumber[] }
+  /** The one requirements card; it reads the live requirements from the store. */
+  | { kind: "requirements"; id: string; seq: number; at: number }
   | { kind: "training"; id: string; seq: number; at: number; status: TrainingEvent["status"]; detail: string }
   | { kind: "warning"; id: string; seq: number; at: number; part: string; warning: PartWarning }
   | { kind: "question"; id: string; seq: number; at: number; questionId: string }
@@ -411,7 +454,11 @@ export const useSession = create<SessionState>((set, get) => ({
         const requirements = s.requirements.slice();
         if (idx >= 0) requirements[idx] = { ...requirements[idx], ...ev };
         else requirements.push(ev);
-        return set({ log, requirements });
+        // The first requirement opens the card in the chat; later ones update it in place.
+        const chat: ChatItem[] = s.chat.some((c) => c.kind === "requirements")
+          ? s.chat
+          : [...s.chat, { kind: "requirements", id: nextId("requirements"), seq, at }];
+        return set({ log, requirements, chat });
       }
       case "metrics":
         return set({ log, metrics: ev });
@@ -433,7 +480,15 @@ export const useSession = create<SessionState>((set, get) => ({
       case "mascot":
         return set({ log, mascot: { state: ev.state, say: ev.say, voice: ev.voice, at } });
       case "bom": {
-        const card = { kind: "bom" as const, id: nextId("bom"), seq, at, count: ev.items.length, total: ev.total_eur };
+        const card = {
+          kind: "bom" as const,
+          id: nextId("bom"),
+          seq,
+          at,
+          count: ev.items.length,
+          total: ev.total_eur,
+          numbers: resultNumbers(s.metrics, ev.total_eur),
+        };
         // Live prices replace the catalog list they were searched for, so the card updates instead of repeating.
         let open = s.bom?.prices === "searching" ? s.chat.length - 1 : -1;
         while (open >= 0 && s.chat[open].kind !== "bom") open--;

@@ -7,7 +7,6 @@ import { memo, useEffect, useState } from "react";
 import {
   AlertTriangle,
   ArrowRight,
-  Boxes,
   CircleCheck,
   CircleX,
   Cpu,
@@ -23,10 +22,11 @@ import {
 import { useSession, type ChatItem } from "../../events/store";
 import { useSource } from "../../events/source";
 import { enLabel, enText } from "../../lib/copy";
-import { fmtDuration, fmtEur, fmtNum, stripMarkdown } from "../../lib/format";
+import { fmtDuration, fmtNum, stripMarkdown } from "../../lib/format";
 import { useUi } from "../../lib/ui";
 import { StressCard } from "../stress/StressCard";
 import { ExplainChatCard } from "../learn/Explain";
+import { RequirementsCard, ResultsCard } from "./BuildCards";
 
 const TOOL_LABELS: Record<string, { running: string; done: string }> = {
   Claude: { running: "Claude is thinking", done: "Claude" },
@@ -135,26 +135,6 @@ function SimPartRenderer({ item }: { item: Extract<ChatItem, { kind: "sim" }> })
         <ArrowRight className="ml-auto h-4 w-4 text-muted transition group-hover:translate-x-0.5" />
       </div>
       <p className="mt-1 text-[14px] leading-snug text-ink-2">{item.summary}</p>
-    </button>
-  );
-}
-
-function BomPartRenderer({ item }: { item: Extract<ChatItem, { kind: "bom" }> }) {
-  const setBomOpen = useUi((s) => s.setBomOpen);
-  return (
-    <button
-      type="button"
-      onClick={() => setBomOpen(true)}
-      className="group flex w-full items-center gap-3 rounded-[14px] bg-page-2 p-3 text-left"
-    >
-      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white shadow-[var(--shadow-pill)]">
-        <Boxes className="h-5 w-5 text-ink-2" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="text-[14px] font-bold text-ink">Bill of materials · {item.count} parts</div>
-        <div className="num font-label text-[12px] text-muted">{fmtEur(item.total)} · shop links and STL</div>
-      </div>
-      <ArrowRight className="h-4 w-4 text-muted transition group-hover:translate-x-0.5" />
     </button>
   );
 }
@@ -388,7 +368,9 @@ function ContentPartsRenderer({ item }: { item: Exclude<ChatItem, { kind: "msg" 
     case "sim":
       return <SimPartRenderer item={item} />;
     case "bom":
-      return <BomPartRenderer item={item} />;
+      return <ResultsCard item={item} />;
+    case "requirements":
+      return <RequirementsCard />;
     case "training":
       return <TrainingPartRenderer item={item} />;
     case "warning":

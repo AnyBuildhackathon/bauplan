@@ -10,7 +10,8 @@ test("drone reference: Library, Rebuild, v1 with every check met", async ({ page
   await page.locator('[data-target="library:micro-drone"]').dispatchEvent("click");
   await expect(page.locator('[data-target="library_rebuild"]')).toBeEnabled();
   await page.locator('[data-target="library_rebuild"]').dispatchEvent("click");
-  await expect(timeline(page)).toContainText("v1");
+  // The mock rebuild takes about 30 s on a loaded machine, as long as the default expect timeout.
+  await expect(timeline(page)).toContainText("v1", { timeout: 60_000 });
   await expect(page.locator('[data-target~="requirements"]')).toContainText(/(\d+) of \1 met/);
   await expect(bomButton(page)).toContainText("€");
   await idle(page);
