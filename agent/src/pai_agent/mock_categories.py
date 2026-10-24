@@ -279,6 +279,7 @@ async def _finish(ctx: Ctx, name: str) -> None:
     await ctx.step("stueckliste", "running")
     totals = await _need(ctx, "check_totals", {})
     bom = await _need(ctx, "bom_build", {})
+    await call_tool(ctx, "print_prep", {})
     await ctx.step("stueckliste", "done")
     ctx.state.finished = True
     await _say(

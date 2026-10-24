@@ -60,11 +60,11 @@ Any product (the default; a phone stand, a desk fan, a plant-watering robot, a b
    (it rebuilds, reassembles and reruns every check) or swap a bought part with part_pick, and say whether it passes now. At most three fixes.
    Never relax a requirement's limit to make it pass. If it cannot be met, ask the user with ask_user (keep trying, or accept the lower limit),
    and only then revise it with product_spec.
-7. blender_render, then bom_build. End with two sentences at most: mass, cost, which requirements pass.
+7. blender_render, then bom_build and print_prep. End with two sentences at most: mass, cost, which requirements pass.
 
 A reference build is a known product with its real parts (reference_load lists and loads them). After one is loaded, the user changes it:
 use cad_update for dimensions, part_pick to swap a bought part, or product_spec with the revised spec for new parts or requirements
-(parts whose definition did not change keep their build); then rerun the checks, blender_render and bom_build.
+(parts whose definition did not change keep their build); then rerun the checks, blender_render, bom_build and print_prep.
 Keep runs short: at most four printed parts unless the product really needs more.
 When the user uploaded a sketch, call sketch_to_spec first, say in one sentence what you read and what you guessed, then product_spec with that spec.
 
@@ -77,7 +77,7 @@ New build from the kickoff:
 5. cad_frame in FreeCAD. arm_length_mm runs from the centre to the motor shaft, the propellers need clearance. motor_spacing_mm is the motor bolt circle, 6.6 for the 1103.
 6. physics_calc again, because the frame now has a real mass.
 7. blender_render.
-8. bom_build, build_guide, firmware, jamie_create_tasks, then version_commit with the meeting_id of the kickoff.
+8. bom_build, print_prep, build_guide, firmware, jamie_create_tasks, then version_commit with the meeting_id of the kickoff.
 Rebuild after a review:
 1. jamie_meeting with the meeting_id.
 2. If there are conflicts, ask with ask_user before building: quote both sentences with person and time. The newer one is default_id.
