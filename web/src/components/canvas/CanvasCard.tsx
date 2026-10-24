@@ -1,7 +1,7 @@
-// The big canvas in the middle: Modell (live 3D or the Blender render), CAD and
-// Simulation, with Bolzen's spoken line at the bottom.
+// The big canvas in the middle: Modell (live 3D or the Blender render), CAD,
+// Simulation and the agent team, with Bolzen's spoken line at the bottom.
 import { useEffect, useState } from "react";
-import { Box, Boxes, Camera, Cloud, DraftingCompass, Play, Rocket } from "lucide-react";
+import { Box, Boxes, Camera, Cloud, DraftingCompass, Network, Play, Rocket } from "lucide-react";
 import { useSource } from "../../events/source";
 import { useSession } from "../../events/store";
 import { useUi, type CanvasTab, type ModelLook } from "../../lib/ui";
@@ -17,6 +17,7 @@ import { ModelScene } from "./Scenes";
 import { SimView } from "./SimView";
 import { SketchInset } from "./SketchInset";
 import { OmniverseView } from "./OmniverseView";
+import { AgentsView } from "../agents/AgentsView";
 import { BrowserTraining } from "../training/BrowserTraining";
 import { useBrowserTrainingEvent, useSimPane } from "../training/useBrowserTraining";
 
@@ -25,6 +26,7 @@ const TABS: { value: CanvasTab; label: string; icon: typeof Box }[] = [
   { value: "cad", label: "CAD", icon: DraftingCompass },
   { value: "simulation", label: "Simulation", icon: Rocket },
   { value: "omniverse", label: "Omniverse", icon: Cloud },
+  { value: "agents", label: "Agents", icon: Network },
 ];
 
 /** Bolzen's current line, as a caption at the bottom of the canvas. */
@@ -87,7 +89,8 @@ export function CanvasCard() {
     if (!supportsOmniverse && tab === "omniverse") setTab("simulation");
   }, [supportsOmniverse, tab, setTab]);
   const tabs = TABS.filter((t) => t.value !== "omniverse" || supportsOmniverse);
-  const badges: Partial<Record<CanvasTab, boolean>> = { cad: !!cad, simulation: runs > 0, omniverse: !!omniverse };
+  const agentsWorking = useSession((s) => Object.values(s.agents).some((a) => a.status === "running" || a.status === "queued"));
+  const badges: Partial<Record<CanvasTab, boolean>> = { cad: !!cad, simulation: runs > 0, omniverse: !!omniverse, agents: agentsWorking };
   const showRender = tab === "modell" && look === "render";
   const pane = useSimPane((s) => s.pane);
   const setPane = useSimPane((s) => s.setPane);
@@ -204,7 +207,8 @@ export function CanvasCard() {
         {tab === "cad" && <CadView />}
         {tab === "simulation" && (showTraining ? <BrowserTraining /> : <SimView />)}
         {tab === "omniverse" && supportsOmniverse && <OmniverseView />}
-        {tab !== "cad" && tab !== "omniverse" && !(tab === "modell" && compare) && <SpokenLine lifted={(tab === "simulation" && (runs > 0 || showTraining)) || (showRender && renders > 1)} overSlider={tab === "modell" && !showRender} />}
+        {tab === "agents" && <AgentsView />}
+        {tab !== "cad" && tab !== "omniverse" && tab !== "agents" && !(tab === "modell" && compare) && <SpokenLine lifted={(tab === "simulation" && (runs > 0 || showTraining)) || (showRender && renders > 1)} overSlider={tab === "modell" && !showRender} />}
       </div>
     </div>
   );

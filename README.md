@@ -61,6 +61,9 @@ Claude works like a lead engineer with a small team.
 The orchestrator (Claude Opus 5.5 by default, effort `high`, configurable up to `max`) plans the build, writes the spec, decides the fixes and reviews every report.
 It delegates bounded jobs to sub-agents on a smaller model (Claude Sonnet 5.5 by default), each with only the tools its job needs: the CAD agent writes one part's FreeCAD script (several parts run side by side), the parts agent picks the bought parts, the analysis agent runs the checks and the MuJoCo test, and the pricing agent builds and prices the bill of materials.
 Every agent shows up as its own card in the chat with model, effort, job, status, tokens and cost.
+The **Agents** canvas tab draws the team live: the orchestrator in the middle, each sub-agent as a node that appears when it is spawned, joined by an edge that flows while it works, with its model, status, the tool it runs now (FreeCAD, Blender, MuJoCo, the catalog), tokens and cost.
+A Gantt-like timeline below shows which jobs ran in parallel, and a click on a node opens that agent's log: its job, numbers, tool calls and every report.
+Without a key the mock story fans out the same way: a Parts agent, then three CAD agents and a Pricing agent side by side, and an Analysis agent that waits for the geometry.
 The models, the effort levels and delegation are set with `PAI_ORCHESTRATOR_MODEL`, `PAI_ORCHESTRATOR_EFFORT`, `PAI_SUBAGENT_MODEL`, `PAI_SUBAGENT_EFFORT` and `PAI_DELEGATION`, or at runtime with the sliders button in the top bar (`/api/settings`).
 
 The dashboard renders any product from the spec and the check results: requirement rows with the measured value, four key-number cards, the assembly tree and per-part sliders in the CAD tab (moving one reruns the checks without a model call), the before/after MuJoCo replay, and a bill of materials with sample, estimated and live prices marked.

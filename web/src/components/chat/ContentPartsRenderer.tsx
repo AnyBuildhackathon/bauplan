@@ -333,8 +333,8 @@ const fmtTokens = (n: number) => (n >= 1000 ? `${fmtNum(n / 1000, n >= 10000 ? 0
 function AgentPartRenderer({ item }: { item: Extract<ChatItem, { kind: "agent" }> }) {
   const agent = useSession((s) => s.agents[item.agentId]);
   if (!agent) return null;
-  const Icon = AGENT_ICON[agent.role] ?? Cpu;
-  const phase = agent.status === "running" ? "running" : agent.status === "error" ? "error" : "ok";
+  const Icon = AGENT_ICON[agent.role as keyof typeof AGENT_ICON] ?? Cpu;
+  const phase = agent.status === "running" || agent.status === "queued" ? "running" : agent.status === "error" ? "error" : "ok";
   const lead = agent.role === "orchestrator";
   return (
     <div className={`rounded-[14px] px-3 py-2.5 ${lead ? "bg-card ring-1 ring-line" : "bg-page-2"}`} data-target={`agent:${agent.role}`}>

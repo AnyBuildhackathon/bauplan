@@ -305,7 +305,7 @@ def _tools(delegation: bool) -> list[dict]:
 
 
 async def _run_claude(ctx: Ctx, text: str, messages: list[dict]) -> None:
-    from pai_agent.agents import AgentRun, create_message
+    from pai_agent.agents import AgentRun
 
     config = settings.current()
     delegation = bool(config["delegation"])
@@ -316,6 +316,16 @@ async def _run_claude(ctx: Ctx, text: str, messages: list[dict]) -> None:
 
         text = build_context(ctx.state) + text
     messages.append({"role": "user", "content": text})
+    ctx.lead_id = lead.id
+    try:
+        await _lead_loop(ctx, lead, delegation, messages)
+    finally:
+        ctx.lead_id = None
+
+
+async def _lead_loop(ctx: Ctx, lead, delegation: bool, messages: list[dict]) -> None:
+    from pai_agent.agents import create_message
+
     await lead.emit("running", "plans the build")
     for _round in range(40):
         try:
@@ -356,13 +366,18 @@ async def _run_claude(ctx: Ctx, text: str, messages: list[dict]) -> None:
         if not tool_uses:
             await lead.emit("done", "finished in " + str(lead.rounds) + " round(s)")
             return
-        await lead.emit("running", ", ".join(block.name for block in tool_uses)[:120])
+        doing = ", ".join(block.name for block in tool_uses)[:120]
         if len(tool_uses) > 1 and all(block.name in _PARALLEL for block in tool_uses):
+            await lead.use(tool_uses[0].name, doing)
             outcomes = await asyncio.gather(*(call_tool(ctx, block.name, block.input if isinstance(block.input, dict) else {}) for block in tool_uses))
+            for block, outcome in zip(tool_uses, outcomes):
+                lead.called(block.name, outcome)
         else:
             outcomes = []
             for block in tool_uses:
+                await lead.use(block.name, doing)
                 outcomes.append(await call_tool(ctx, block.name, block.input if isinstance(block.input, dict) else {}))
+                lead.called(block.name, outcomes[-1])
         results = [
             {
                 "type": "tool_result",
@@ -373,6 +388,7 @@ async def _run_claude(ctx: Ctx, text: str, messages: list[dict]) -> None:
             for block, result in zip(tool_uses, outcomes)
         ]
         messages.append({"role": "user", "content": results})
+        await lead.emit("running", "reads the results")
     await lead.emit("done", "stopped after 40 rounds")
     await ctx.chat("agent", "I am stopping after 40 tool rounds so the run does not hang.")
 

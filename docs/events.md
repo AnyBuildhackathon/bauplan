@@ -476,8 +476,15 @@ Without an answer the default applies after `timeout_s` (`PAI_ASK_TIMEOUT_S`, de
 
 The orchestrator and the sub-agents it delegates to, one card per agent, sent again whenever it reports.
 `id` is stable for one agent run, `role` is `orchestrator`, `cad` (writes one part's FreeCAD script), `parts`, `checks` or `pricing`, `label` its name ("Orchestrator", "CAD agent", "Parts agent", "Analysis agent", "Pricing agent").
-`model` and `model_label` (`claude-sonnet-5-5`, "Sonnet 5.5"), `effort`, `task` (the job in one line), `status` (`running`, `done` or `error`), `rounds` (model calls so far), `input_tokens`, `output_tokens`, `cache_read_tokens`, `cost_usd` (from the published per-token prices) and `summary` (what it does now, or its report when done).
-The mock path sends none.
+`model` and `model_label` (`claude-sonnet-5-5`, "Sonnet 5.5"), `effort`, `task` (the job in one line), `status` (`queued`, `running`, `done` or `error`), `rounds` (model calls so far), `input_tokens`, `output_tokens`, `cache_read_tokens`, `cost_usd` (from the published per-token prices) and `summary` (what it does now, or its report when done).
+`queued` comes before `running` when a job waits for another job of the same fan-out to finish first.
+`sent_at` is the server time of this report in epoch seconds, so a replayed backlog keeps its real timing.
+`parent` is the `id` of the orchestrator run that delegated the job, `null` for the orchestrator itself and for a sub-agent started outside a run.
+`started_at` and `ended_at` are server times in epoch seconds: `started_at` is `null` while queued, `ended_at` is `null` until `done` or `error`.
+`tool` is the tool it runs right now (`freecad`, `cad_part`, `part_pick`, `bom_build`, `simulate_assembly`, `delegate`, …), or `null`.
+`calls` are its tool calls so far, newest last and at most 30, each `{tool, ok, detail}`.
+The web draws these events as a live graph in the Agents canvas tab (`?tab=agents`, `data-target="tab:agents"`); a click on a node opens its log.
+The mock path sends them too: a scripted team of sub-agents on the sub-agent model runs beside the real mock tools, with fixed token counts priced like a live run.
 
 ### tasks
 
