@@ -150,13 +150,12 @@ cd agent && uv run python scripts/smoke_sse.py
 
 The frontend accepts URL parameters to control playback and view states:
 
-- `?demo`: Plays the recorded mock session from static fixtures without requiring a backend.
+- `?demo`: Plays the recorded mock session from static fixtures without requiring a backend; playback starts on load and the UI shows no playback controls.
 - `?live`: Forces connection to the live backend server.
 - `?mute`: Disables audio synthesis playback on initial load.
 - `?speed=N`: Multiplies playback speed in demo mode (for example `?speed=2`).
 - `?seek=MARKER`: Jumps directly to a named event marker in demo playback.
 - `?end`: Renders the final completed state immediately in demo mode.
-- `?autoplay`: Starts demo playback automatically upon page load.
 - `?view=werkbank|training|logbuch`: Sets the active main view.
 - `?tab=modell|cad|simulation`: Selects the initial 3D canvas tab.
 - `?bom`: Opens the Bill of Materials drawer on startup.

@@ -57,7 +57,6 @@ interface SourceState {
   notice: string | null;
   setMode: (mode: SourceMode) => void;
   play: () => void;
-  pause: () => void;
   restart: () => void;
   setSpeed: (speed: number) => void;
   seekToMarker: (marker: string) => void;
@@ -316,10 +315,6 @@ export const useSource = create<SourceState>((set, get) => {
       if (get().demo.index >= fixture.length) get().restart();
       startDemo();
     },
-    pause: () => {
-      clearTimer();
-      set((s) => ({ demo: { ...s.demo, playing: false } }));
-    },
     restart: () => {
       clearTimer();
       useSession.getState().reset();
@@ -360,7 +355,7 @@ export const useSource = create<SourceState>((set, get) => {
             return;
           }
           session.apply(omniverse);
-          session.apply({ type: "chat", role: "agent", text: "Here is the recorded Omniverse demo. Its values and learning curve are illustrative; this request has not been simulated." });
+          session.apply({ type: "chat", role: "agent", text: "The GPU is not connected, so Omniverse cannot run this test yet. The MuJoCo checks in the Simulation tab work without it." });
           useUi.getState().setTab("omniverse");
           return;
         }
@@ -691,7 +686,8 @@ export function initSource() {
     const seek = params.get("seek");
     if (params.has("end")) useSource.getState().skipToEnd();
     else if (seek) useSource.getState().seekToMarker(seek);
-    else if (params.has("autoplay")) useSource.getState().play();
+    // No playback controls on screen: the recording plays on its own.
+    else useSource.getState().play();
     return;
   }
   void enterLive();

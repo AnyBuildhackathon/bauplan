@@ -1,6 +1,6 @@
 // The Settings panel behind the sliders icon. The dashboard shows only the essentials;
 // these toggles add the rest (agent steps, tool cards, Jamie activity, all metrics,
-// learning mode), show which speech recognition listens, and switch the mic from
+// learning mode), show which speech recognition listens, switch the mic from
 // hands-free to push-to-talk. In live mode it also holds the bench's model settings:
 // which Claude orchestrates, which runs the sub-agents, how hard each one thinks
 // (effort), and whether the orchestrator delegates. GET/POST /api/settings.

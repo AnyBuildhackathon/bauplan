@@ -111,7 +111,10 @@ _SITUATION = {
 
 
 def _reply_prompt(text: str, state: BuildState, status: str, question: dict | None, history: list[dict], detail: str = "") -> str:
-    lines = ["Situation: " + _SITUATION[status].format(detail=detail), f"Product: {state.product}", f"Versions built: {len(state.versions)}"]
+    # A fresh bench still carries the default product; naming it would make Mechanic talk
+    # about a drone when the person asked for something else.
+    product = state.product if state.started else "none yet, the bench is empty: build what the message asks for"
+    lines = ["Situation: " + _SITUATION[status].format(detail=detail), f"Product: {product}", f"Versions built: {len(state.versions)}"]
     if state.metrics:
         lines.append("Latest numbers: " + json.dumps(state.metrics, ensure_ascii=False))
     if question:

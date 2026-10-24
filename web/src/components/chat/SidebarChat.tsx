@@ -5,7 +5,7 @@
 // speaker toggle for Bolzen's voice, Bevel styling. The scroll handling is kept from core-oss.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowDown, CornerDownRight, GitFork, ImagePlus, RotateCcw, Volume2, VolumeX } from "lucide-react";
+import { ArrowDown, CornerDownRight, GitFork, ImagePlus, Maximize2, Minimize2, RotateCcw, Volume2, VolumeX } from "lucide-react";
 import { currentStep, useSession } from "../../events/store";
 import { useSource } from "../../events/source";
 import { useUi, type Display } from "../../lib/ui";
@@ -102,6 +102,16 @@ export default function SidebarChat() {
   const resetUi = useUi((s) => s.resetUi);
   const voiceOn = useUi((s) => s.voiceOn);
   const setVoiceOn = useUi((s) => s.setVoiceOn);
+  const expanded = useUi((s) => s.chatExpanded);
+  const setExpanded = useUi((s) => s.setChatExpanded);
+  // Expanded, the chat keeps a readable line length in the middle of the window.
+  const column = expanded ? "mx-auto w-full max-w-[780px]" : "";
+  useEffect(() => {
+    if (!expanded) return;
+    const collapse = (e: KeyboardEvent) => e.key === "Escape" && setExpanded(false);
+    window.addEventListener("keydown", collapse);
+    return () => window.removeEventListener("keydown", collapse);
+  }, [expanded, setExpanded]);
 
   const [input, setInput] = useState("");
   const [sketch, setSketch] = useState<File | null>(null);
@@ -164,7 +174,7 @@ export default function SidebarChat() {
         </div>
         <div className="min-w-0 flex-1 leading-tight">
           <div className="truncate text-[15px] font-semibold text-ink">{productLabel || "Mechanic"}</div>
-          <div className={`truncate text-[12px] font-medium ${stateTone}`}>
+          <div className={`truncate font-label text-[11px] ${stateTone}`}>
             Mechanic · {MASCOT_LABEL[mascot.state]}
             {working && <span className="text-muted"> · {step.label}</span>}
           </div>
@@ -178,6 +188,16 @@ export default function SidebarChat() {
           aria-pressed={voiceOn}
         >
           {voiceOn ? <Volume2 className="h-4.5 w-4.5" /> : <VolumeX className="h-4.5 w-4.5" />}
+        </button>
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className={`rounded-full p-2 transition-colors hover:bg-tile ${expanded ? "text-ink-2" : "text-faint hover:text-ink-2"}`}
+          title={expanded ? "Back to the side column (Esc)" : "Expand the chat"}
+          aria-label={expanded ? "Collapse the chat" : "Expand the chat"}
+          aria-pressed={expanded}
+          data-target="chat_expand"
+        >
+          {expanded ? <Minimize2 className="h-4.5 w-4.5" /> : <Maximize2 className="h-4.5 w-4.5" />}
         </button>
         <button
           onClick={() => {
@@ -212,20 +232,7 @@ export default function SidebarChat() {
           <div className="flex flex-1 flex-col items-center justify-center gap-3 px-8 text-center">
             <MascotLive state={mascot.state} size={200} className="rounded-[32px]" />
             <p className="text-[17px] font-semibold text-ink-2">“So. What are we building?”</p>
-            {!live ? (
-              <>
-                <p className="text-[15px] text-muted">This is the recorded drone run, not a live build. Start the backend to build any product.</p>
-                <button
-                  type="button"
-                  onClick={() => useSource.getState().play()}
-                  className="mt-1 h-9 rounded-full bg-ink px-4 text-[14px] font-semibold text-white transition hover:bg-[#333]"
-                >
-                  Play the recording
-                </button>
-              </>
-            ) : (
-              <p className="text-[15px] text-muted">Start from a reference build and change it, or describe any product from scratch.</p>
-            )}
+            {live && <p className="text-[15px] text-muted">Start from a reference build and change it, or describe any product from scratch.</p>}
             {references.length > 0 && (
               <div className="mt-1 w-full">
                 <p className="eyebrow mb-1.5">From a reference</p>
@@ -275,7 +282,7 @@ export default function SidebarChat() {
             ref={scrollContainerRef}
             className="scroll-soft flex-1 overflow-y-auto px-5 [mask-image:linear-gradient(to_bottom,transparent,black_28px)]"
           >
-            <div className="space-y-1.5 pt-3 pb-3">
+            <div className={`space-y-1.5 pt-3 pb-3 ${column}`}>
               <AnimatePresence initial={false}>
                 {rows.map((item) => (
                   <motion.div
@@ -327,7 +334,7 @@ export default function SidebarChat() {
 
         {/* Follow-up suggestions */}
         {!isEmpty && !working && live && (
-          <div className="shrink-0 px-5 pb-1" data-target="follow_ups">
+          <div className={`shrink-0 px-5 pb-1 ${column}`} data-target="follow_ups">
             {(FOLLOW_UPS[product ?? ""] ?? FOLLOW_UPS.default).map((text) => (
               <button
                 key={text}
@@ -346,7 +353,7 @@ export default function SidebarChat() {
         )}
 
         {/* Input */}
-        <div className="shrink-0 px-5 pt-2 pb-4">
+        <div className={`shrink-0 px-5 pt-2 pb-4 ${column}`}>
           <SidebarChatInput
             value={input}
             onChange={setInput}

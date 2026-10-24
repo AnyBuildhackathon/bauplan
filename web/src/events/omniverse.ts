@@ -16,7 +16,7 @@ export async function recordedOmniverse(text: string): Promise<OmniverseEvent | 
         payload_g: payload ? Number(payload[1]) : 0 };
   return {
     ...fixture, type: "omniverse", mode, source: "recorded", status: "recorded", requested,
-    detail: "Recorded demo mode. Waiting for a GPU pod for live experiments.",
+    detail: "GPU not connected; nothing was measured.",
     curve: fixture.curve as [number, number][],
     video_url: "/demo/omniverse.mp4", json_url: "/demo/omniverse.json",
   };

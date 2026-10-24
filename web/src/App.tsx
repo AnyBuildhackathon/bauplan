@@ -76,6 +76,7 @@ export default function App() {
 
 function Bench() {
   const view = useUi((s) => s.view);
+  const chatExpanded = useUi((s) => s.chatExpanded);
   useBolzenVoice();
   useBrowserTraining();
   useBrowserStress();
@@ -86,6 +87,7 @@ function Bench() {
   // The panel only sits on the workbench; when the window is narrow the chat gives way first.
   const room = vw - RAIL - WORKBENCH_GUTTERS - CANVAS_MIN;
   const hasPanel = view === "werkbank";
+  const hasChat = view === "werkbank" || view === "library" || view === "community";
   const panelWidth = hasPanel ? fit(panelPane.wanted, PANEL.min, Math.min(PANEL.max, room - CHAT.min)) : 0;
   const chatMax = Math.min(CHAT.max, room - panelWidth);
   const chatWidth = fit(chatPane.wanted, CHAT.min, chatMax);
@@ -100,23 +102,26 @@ function Bench() {
   return (
     <div className="flex h-full min-h-0">
       <IconRail />
-      {(view === "werkbank" || view === "library" || view === "community") && (
+      {hasChat && (
         <>
-          <div className="h-full shrink-0 border-r border-line" style={{ width: chatWidth }}>
+          {/* Expanded, the chat takes the whole window; the bench stays mounted behind it. */}
+          <div className={chatExpanded ? "h-full min-w-0 flex-1" : "h-full shrink-0 border-r border-line"} style={chatExpanded ? undefined : { width: chatWidth }}>
             <SidebarChat />
           </div>
-          <ResizeHandle
+          {!chatExpanded && (
+            <ResizeHandle
             width={chatWidth}
             min={CHAT.min}
             max={chatMax}
             onChange={chatPane.set}
             onReset={chatPane.reset}
-            side="before"
-            label="Resize the chat"
-          />
+              side="before"
+              label="Resize the chat"
+            />
+          )}
         </>
       )}
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <div className={`min-h-0 min-w-0 flex-1 flex-col ${hasChat && chatExpanded ? "hidden" : "flex"}`}>
         <TopBar />
         <main className="min-h-0 flex-1">
           {view === "werkbank" && <WorkbenchView panel={panel} />}

@@ -50,6 +50,13 @@ class MilestoneTest(unittest.TestCase):
         self.assertIsNone(speech.milestone({"type": "step", "id": "cad", "status": "done"}))
         self.assertEqual(speech.milestone({"type": "step", "label": "CAD", "status": "failed"})["step"], "CAD")
 
+    def test_fresh_bench_names_no_product(self):
+        state = BuildState(session_id="t", directory=Path("/tmp"))
+        prompt = speech._reply_prompt("Design a phone stand", state, "started", None, [])
+        self.assertNotIn("drone", prompt)
+        state.started = True
+        self.assertIn("Product: drone", speech._reply_prompt("Make it lighter", state, "started", None, []))
+
     def test_fallback_lines(self):
         self.assertEqual(speech.fallback_line([{"milestone": "simulation", "result": "pass"}]), "The simulation passed.")
         self.assertEqual(speech.fallback_line([{"milestone": "version finished", "version": 2, "summary": "49.3 g · 15.6 min"}]), "Version 2 is done: 49.3 g, 15.6 min.")
