@@ -436,7 +436,8 @@ export const useSession = create<SessionState>((set, get) => ({
       case "training": {
         const prev = s.training;
         let chat = s.chat;
-        if (!prev || prev.status !== ev.status) {
+        // Browser training (`source: "browser"`) is narrated by its tool card and Bolzen, not the Isaac Lab card.
+        if ((!prev || prev.status !== ev.status) && (ev as { source?: string }).source !== "browser") {
           chat = [
             ...chat,
             { kind: "training", id: nextId("training"), seq, at, status: ev.status, detail: trainingDetail(ev) },

@@ -12,6 +12,8 @@ import { RenderGallery } from "./RenderGallery";
 import { ModelScene } from "./Scenes";
 import { SimView } from "./SimView";
 import { OmniverseView } from "./OmniverseView";
+import { BrowserTraining } from "../training/BrowserTraining";
+import { useBrowserTrainingEvent, useSimPane } from "../training/useBrowserTraining";
 
 const TABS: { value: CanvasTab; label: string; icon: typeof Box }[] = [
   { value: "modell", label: "Model", icon: Box },
@@ -81,6 +83,10 @@ export function CanvasCard() {
   const tabs = TABS.filter((t) => t.value !== "omniverse" || supportsOmniverse);
   const badges: Partial<Record<CanvasTab, boolean>> = { cad: !!cad, simulation: runs > 0, omniverse: !!omniverse };
   const showRender = tab === "modell" && look === "render";
+  const pane = useSimPane((s) => s.pane);
+  const setPane = useSimPane((s) => s.setPane);
+  const trained = useBrowserTrainingEvent() !== null;
+  const showTraining = tab === "simulation" && pane === "training";
 
   return (
     <div className="card flex h-full min-h-0 flex-col overflow-hidden">
@@ -101,6 +107,23 @@ export function CanvasCard() {
             badge: badges[t.value] ? <span className="h-1.5 w-1.5 rounded-full bg-agent" /> : undefined,
           }))}
         />
+        {tab === "simulation" && (
+          <Segmented<"hover" | "training">
+            size="sm"
+            className="ml-auto"
+            value={pane}
+            onChange={setPane}
+            options={[
+              { value: "hover", label: "Hover test", target: "sim:hover" },
+              {
+                value: "training",
+                label: "Training",
+                target: "sim:training training",
+                badge: trained ? <span className="h-1.5 w-1.5 rounded-full bg-agent" /> : undefined,
+              },
+            ]}
+          />
+        )}
         {tab === "modell" && (
           <Segmented<ModelLook>
             size="sm"
@@ -134,9 +157,9 @@ export function CanvasCard() {
       >
         {tab === "modell" && (showRender ? <RenderGallery /> : product === "drone" ? <ModelScene look="modell" /> : <PartModel />)}
         {tab === "cad" && <CadView />}
-        {tab === "simulation" && <SimView />}
+        {tab === "simulation" && (showTraining ? <BrowserTraining /> : <SimView />)}
         {tab === "omniverse" && supportsOmniverse && <OmniverseView />}
-        {tab !== "cad" && tab !== "omniverse" && <SpokenLine lifted={(tab === "simulation" && runs > 0) || (showRender && renders > 1)} />}
+        {tab !== "cad" && tab !== "omniverse" && <SpokenLine lifted={(tab === "simulation" && (runs > 0 || showTraining)) || (showRender && renders > 1)} />}
       </div>
     </div>
   );

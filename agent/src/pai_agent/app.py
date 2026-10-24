@@ -16,6 +16,7 @@ from pydantic import BaseModel
 from pai_agent.env import claude_enabled, load_env
 from pai_agent.paths import FALLBACK_DIR, REPO_ROOT, SESSIONS_DIR
 from pai_agent.session import Session
+from pai_agent.tools.browser_train import router as browser_train_router
 
 
 class PromptIn(BaseModel):
@@ -53,6 +54,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.include_router(browser_train_router)
 
 
 @app.get("/api/health")

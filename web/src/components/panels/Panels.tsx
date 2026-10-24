@@ -9,6 +9,7 @@ import { fmtEur, fmtGram, fmtMin, fmtNum, fmtRatio } from "../../lib/format";
 import { useShownBuild, useTargets } from "../../lib/hooks";
 import { useUi } from "../../lib/ui";
 import { CheckCircle } from "../ui/primitives";
+import { TrainedGains } from "../training/TrainedGains";
 
 export function JamieMark({ className = "" }: { className?: string }) {
   return (
@@ -174,6 +175,8 @@ export function BuildPanel() {
         })}
       </div>
       )}
+
+      <TrainedGains />
 
       <button
         type="button"
