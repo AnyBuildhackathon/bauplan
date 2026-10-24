@@ -11,6 +11,7 @@ import {
   type CadEvent,
   type DrawEvent,
   type FirmwareEvent,
+  type ElectronicsEvent,
   type RenderEvent,
   type MascotState,
   type MeetingEvent,
@@ -206,6 +207,7 @@ export interface SessionState {
   /** The product this session builds: empty on a fresh bench, set by a `product` event or by the first drone event. */
   product: ProductEvent["id"];
   firmware: FirmwareEvent | null;
+  electronics: ElectronicsEvent | null;
   productLabel: string;
   /** The hand sketch this build started from, if any. */
   sketch: SketchEvent | null;
@@ -290,6 +292,7 @@ const TOOL_ALIASES: Record<string, string> = {
   build_guide: "Build guide",
   print_prep: "Print plan",
   firmware: "Firmware",
+  electronics_plan: "Electronics",
   safety_check: "Safety",
   version_commit: "Version",
   ask_user: "Question",
@@ -360,6 +363,7 @@ function emptyState() {
     questions: {} as Record<string, QuestionEvent>,
     tasks: null as TasksEvent | null,
     firmware: null as FirmwareEvent | null,
+    electronics: null as ElectronicsEvent | null,
     agents: {} as SessionState["agents"],
     product: "" as ProductEvent["id"],
     productLabel: "Any product",
@@ -601,6 +605,7 @@ export const useSession = create<SessionState>((set, get) => ({
           parts: {},
           versions: [],
           firmware: null,
+          electronics: null,
         });
       }
       case "stress": {
@@ -621,6 +626,8 @@ export const useSession = create<SessionState>((set, get) => ({
       }
       case "firmware":
         return set({ log, firmware: ev });
+      case "electronics":
+        return set({ log, electronics: ev });
       case "safety":
         return set({ log, chat: [...s.chat, { kind: "safety", id: nextId("safety"), seq, at, safety: ev }] });
       case "training": {

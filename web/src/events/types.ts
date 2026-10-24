@@ -579,6 +579,62 @@ export interface FirmwareEvent {
   wiring: WiringRow[];
 }
 
+export interface ElectronicsBlock {
+  id: string;
+  name: string;
+  role: "supply" | "connector" | "switch" | "regulator" | "controller" | "driver" | "inline" | "load" | "sensor";
+  col: number;
+  row: number;
+  voltage_v: number | null;
+  rating: string;
+  qty: number;
+}
+export interface ElectronicsWire {
+  id: string;
+  from: string;
+  to: string;
+  from_pin: string;
+  to_pin: string;
+  kind: "power" | "phase" | "signal";
+  voltage_v: number | null;
+  current_a: number | null;
+  color: "3v3" | "1s" | "5v" | "high" | "phase" | "signal" | "power";
+  label: string;
+}
+export interface ElectronicsLoad {
+  name: string;
+  voltage_v: number;
+  power_w: number;
+  duty: number;
+  peak_w: number;
+  average_w: number;
+  current_a: number;
+}
+/** Wiring diagram and power budget from the chosen parts (`electronics_plan`). */
+export interface ElectronicsEvent {
+  type: "electronics";
+  product: string;
+  ok: boolean;
+  summary: string;
+  explanation?: string;
+  blocks: ElectronicsBlock[];
+  wires: ElectronicsWire[];
+  budget: {
+    supply: string;
+    supply_voltage_v: number;
+    supply_limit_a: number;
+    average_a: number;
+    peak_a: number;
+    average_w: number;
+    peak_w: number;
+    headroom: number;
+    runtime_h?: number;
+    loads: ElectronicsLoad[];
+  };
+  warnings: { part: string; text: string; severity: "fail" | "warn" }[];
+  gaps: string[];
+  wiring: WiringRow[];
+}
 export type SafetySeverity = "danger" | "warning" | "info";
 /** One safety or regulatory note: why it fires, the rule or source it rests on, and a fix the agent can apply. */
 export interface SafetyFinding {
@@ -660,6 +716,7 @@ export type AgentEvent =
   | BuildGuideEvent
   | PrintEvent
   | FirmwareEvent
+  | ElectronicsEvent
   | SafetyEvent
   | AgentRunEvent
   | SayEvent
@@ -697,6 +754,7 @@ const EVENT_TYPES = new Set<AgentEvent["type"]>([
   "build_guide",
   "print",
   "firmware",
+  "electronics",
   "safety",
   "agent",
   "say",

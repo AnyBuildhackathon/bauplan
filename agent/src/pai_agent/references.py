@@ -221,6 +221,8 @@ async def build_folder(ctx, folder: Path) -> dict:
         await need(check["tool"], check.get("args", {}))
     await call_tool(ctx, "blender_render", {})
     bom = await need("bom_build", {})
+    # Products without electronics have no plan; that is no failure of the reference.
+    await call_tool(ctx, "electronics_plan", {})
     state = ctx.state
     passed = sum(1 for r in state.requirements if r.get("_met") is True)
     built = state.assembly or {}
