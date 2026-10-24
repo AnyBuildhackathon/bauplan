@@ -10,6 +10,12 @@ This file is the only copy of the wire format.
 The response is `{"ok": true, "mode": "mock"|"claude", "status": "started"|"already_running"}`.
 `mode` is `mock` when `ANTHROPIC_API_KEY` is empty or `PAI_FORCE_MOCK` is `1`.
 
+`POST /api/sketch` with `{"image_base64": "...", "media_type": "image/png", "note": "..."}` starts a new product from a photo of a hand sketch, on a fresh bench.
+`image_base64` is plain base64 or a data URL; the type is read from the bytes: PNG, JPEG or WebP up to 8 MB, anything else (HEIC too) is HTTP 400, and while Mechanic builds it is HTTP 409.
+The photo is stored as `sketch-<n>.<ext>` in the session and served under `/files/`; the backend publishes `sketch` with status `reading` and runs `sketch_to_spec`, then `product_spec` and the normal flow.
+The response is `{"ok": true, "mode": ..., "status": "started", "sketch": "sketch-1.png", "url": "/files/{session}/sketch-1.png"}`.
+`GET /api/sketch/sample` returns the sample sketch of a phone stand (`agent/data/sketches/phone-stand.png`).
+
 `GET /api/events` is a Server-Sent Events stream.
 Each event is one `data: ` line of JSON, followed by a blank line.
 Comments of the form `: keepalive` are not events.
@@ -202,6 +208,12 @@ The gripper sends `weight_g`, `price_eur`, `grip_force_n`, `safety_factor`, and 
 Sent by `product_brief` and `product_spec`; a revised spec that keeps the name or any part id keeps the same `id` (only the `label` changes), and its `requirements` lists the requirement ids it still has, so the client drops the others.
 When the product changes, the client drops the other product's requirements, numbers, parts, runs, CAD, renders and bill of materials.
 Without this event a fresh bench has no product; the first drone event (drone metrics, a drone part, a hover run, the frame CAD, a version) makes it the drone.
+
+### sketch
+
+The photo of a hand sketch a build started from: `id` (`sketch-1`), `url` (under `/files/`, never the image data), `status` and `note` (what the user wrote with it).
+`reading` comes first, when the photo is stored; `sketch_to_spec` then publishes `read` with `summary` (one sentence), `read` (`[{label, value, unit, confidence}]`, confidence `high`, `medium` or `low`), `unreadable` (strings), `product` (the spec id) and `source` (`claude` or `recorded`), or `failed` with `error` and `unreadable`.
+The client shows the latest sketch in the Model tab; a `reset` drops it, and so does a `product` event for another product than the sketch's.
 
 ### sim
 
@@ -465,7 +477,7 @@ UI:
 
 ## Tools
 
-`jamie_templates`, `jamie_requirements`, `jamie_search`, `jamie_meeting`, `requirements_accept`, `ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `stress_test`, `cad_frame`, `cad_part`, `product_brief`, `product_spec`, `reference_load`, `delegate`, `part_pick`, `assemble`, `cad_update`, `check_totals`, `check_tip_over`, `check_deflection`, `check_torque`, `check_runtime`, `simulate_assembly`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `blender_render`, `bom_build`, `build_guide`, `firmware`, `jamie_create_tasks`, `version_commit`, `ui_point_at`, `ui_draw`, `mascot_say`, `train_in_browser`.
+`jamie_templates`, `jamie_requirements`, `jamie_search`, `jamie_meeting`, `requirements_accept`, `ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `stress_test`, `cad_frame`, `cad_part`, `product_brief`, `product_spec`, `sketch_to_spec`, `reference_load`, `delegate`, `part_pick`, `assemble`, `cad_update`, `check_totals`, `check_tip_over`, `check_deflection`, `check_torque`, `check_runtime`, `simulate_assembly`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `blender_render`, `bom_build`, `build_guide`, `firmware`, `jamie_create_tasks`, `version_commit`, `ui_point_at`, `ui_draw`, `mascot_say`, `train_in_browser`.
 
 ### Any product
 
@@ -484,6 +496,11 @@ An external part is a load that is not ordered, such as the phone on a stand: `m
 A requirement has `text`, `check` and a limit: `mass` (max g, product without loads), `cost` (max eur), `size` (max mm, largest side), `tip_over` (min deg, or min N pushed at the top), `deflection` (max mm, optional `part_id`), `torque` (min x), `runtime` (min with `unit` `min`, `h` or `days`), `stability` (max deg after the push), `drop` (max g) or `printable` (no limit).
 At most six printed parts and sixteen parts.
 A spec that keeps the name or a part id revises the product on the bench: a printed part with the same description and material keeps its script and is rebuilt from it when its params changed, a part that is still bought keeps its pick, and the result lists `kept`, `rebuilt_with_new_params`, `to_build` and `to_pick`.
+
+`sketch_to_spec` with `sketch` (the file name, the newest when left out) and optional `note` sends the photo to Claude vision on the orchestrator model at medium effort, with one forced tool `propose_spec` whose `spec` is the `product_spec` schema.
+`spec.py` validates the answer; its problems go back in the same conversation, up to two retries. A photo without a product answers `ok: false` with what was seen, so Mechanic asks instead of building.
+It returns `spec`, `read`, `unreadable`, `summary` and `source` and does not start the build: the orchestrator calls `product_spec` with `spec`.
+Without a key the recorded reading of the sample (`agent/data/sketches/phone-stand.json`) answers after 1.5 s, whatever the photo, and the mock builds the phone stand from it.
 
 `cad_part` takes `part_id` for a spec part: the spec gives name, description, material and params, and the script writer also sees the product, the frame and the other parts.
 The build is checked against the part's envelope (its largest side between 0.4x and 2.5x), against walls under 0.2 mm and against anything over 2 m; a failure goes back to Claude like a FreeCAD error.
