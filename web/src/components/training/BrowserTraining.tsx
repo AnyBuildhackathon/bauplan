@@ -11,15 +11,16 @@ import { drawDroneFrame, themeColors, type DrawStyle } from "./drawDrone";
 import { drawGripperFrame } from "./drawGripper";
 import { useBrowserTrainingEvent } from "./useBrowserTraining";
 
+/** Callback ref, so the observer follows the element even when it remounts (after a reset). */
 function useSize<T extends HTMLElement>() {
-  const ref = useRef<T>(null);
+  const [el, ref] = useState<T | null>(null);
   const [size, setSize] = useState({ w: 400, h: 300 });
   useEffect(() => {
-    if (!ref.current) return;
+    if (!el) return;
     const ro = new ResizeObserver(([e]) => setSize({ w: e.contentRect.width, h: e.contentRect.height }));
-    ro.observe(ref.current);
+    ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [el]);
   return [ref, size] as const;
 }
 
