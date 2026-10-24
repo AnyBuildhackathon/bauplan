@@ -460,8 +460,10 @@ async def cad_update(ctx: Ctx, args: dict) -> dict:
 async def rerun_checks(ctx: Ctx) -> list[dict]:
     """Runs every check again that has run before, in the same order, with the same arguments."""
 
-    from pai_agent.tools.checks import CHECK_TOOLS
+    from pai_agent.tools.checks import CHECK_TOOLS as BASE
+    from pai_agent.tools.checks_more import CHECK_TOOLS as MORE
 
+    CHECK_TOOLS = {**BASE, **MORE}
     await ensure_assembly(ctx)
     results = []
     for key, entry in list(ctx.state.checks.items()):

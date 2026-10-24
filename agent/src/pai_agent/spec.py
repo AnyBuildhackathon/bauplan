@@ -25,6 +25,9 @@ CHECKS = {
     "stability": ("max", ("deg",)),
     "drop": ("max", ("g",)),
     "printable": (None, ()),
+    "power": ("min", ("x",)),
+    "thermal": ("max", ("deg_c",)),
+    "rollover": ("min", ("g", "deg")),
 }
 MAX_PRINTED = 6
 MAX_PARTS = 16
@@ -90,7 +93,7 @@ def _params(raw: object, where: str, problems: list[str]) -> dict[str, float]:
 
 def _unit(raw: object) -> str:
     unit = str(raw or "").strip().lower().replace("€", "eur").replace("°", "deg").replace("×", "x")
-    return {"degree": "deg", "degrees": "deg", "newton": "n", "minutes": "min", "hours": "h", "hour": "h", "day": "days", "euro": "eur"}.get(unit, unit)
+    return {"degree": "deg", "degrees": "deg", "newton": "n", "minutes": "min", "hours": "h", "hour": "h", "day": "days", "euro": "eur", "degc": "deg_c", "c": "deg_c", "celsius": "deg_c"}.get(unit, unit)
 
 
 def validate_spec(raw: dict) -> dict:

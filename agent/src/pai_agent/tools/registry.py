@@ -13,6 +13,7 @@ from pai_agent.tools.build_guide import SCHEMA as BUILD_GUIDE_SCHEMA, build_guid
 from pai_agent.tools.cad import cad_frame
 from pai_agent.tools.cad_part import cad_part
 from pai_agent.tools.checks import check_deflection, check_runtime, check_tip_over, check_torque, check_totals, simulate_assembly
+from pai_agent.tools.checks_more import check_power, check_rollover, check_thermal
 from pai_agent.tools.product import assemble, cad_update, part_pick, product_spec
 from pai_agent.tools.reference import reference_load
 from pai_agent.agents import delegate
@@ -63,6 +64,9 @@ TOOLS = {
     "check_deflection": check_deflection,
     "check_torque": check_torque,
     "check_runtime": check_runtime,
+    "check_power": check_power,
+    "check_thermal": check_thermal,
+    "check_rollover": check_rollover,
     "simulate_assembly": simulate_assembly,
     "catalog_search": catalog_search,
     "grip_calc": grip_calc,
@@ -85,7 +89,7 @@ TOOLS = {
 }
 
 # With delegation on, these belong to the sub-agents; the orchestrator reaches them through delegate.
-DELEGATED = {"part_pick", "check_totals", "check_tip_over", "check_deflection", "check_torque", "check_runtime", "simulate_assembly"}
+DELEGATED = {"part_pick", "check_totals", "check_tip_over", "check_deflection", "check_torque", "check_runtime", "check_power", "check_thermal", "check_rollover", "simulate_assembly"}
 
 _STEP = {
     "jamie_requirements": "meeting",
@@ -105,6 +109,9 @@ _STEP = {
     "check_deflection": "simulation",
     "check_torque": "simulation",
     "check_runtime": "simulation",
+    "check_power": "simulation",
+    "check_thermal": "simulation",
+    "check_rollover": "simulation",
     "simulate_assembly": "simulation",
     "catalog_search": "teile",
     "grip_calc": "teile",
@@ -324,7 +331,7 @@ SCHEMAS = [
                         "properties": {
                             "id": {"type": "string"},
                             "text": {"type": "string", "description": "Short and checkable, e.g. 'Weighs under 150 g'."},
-                            "check": {"type": "string", "enum": ["mass", "cost", "size", "tip_over", "deflection", "torque", "runtime", "stability", "drop", "printable"]},
+                            "check": {"type": "string", "enum": ["mass", "cost", "size", "tip_over", "deflection", "torque", "runtime", "stability", "drop", "printable", "power", "thermal", "rollover"]},
                             "max": {"type": "number"},
                             "min": {"type": "number"},
                             "unit": {"type": "string", "description": "g, eur, mm, deg, N, x, min, h or days."},
@@ -499,6 +506,78 @@ SCHEMAS = [
         },
     },
     {
+        "name": "check_power",
+        "description": (
+            "Power budget: supply_part_id (a picked supply with voltage_v and max_current_a, or a battery with c_rating and capacity_mah) and loads "
+            "[{part_id or name, power_w or current_a, voltage_v, duty, peak_factor}]. Loads at another voltage go through a regulator at 85 %. "
+            "Headroom is the supply current limit over the peak current; a battery supply also gives the runtime. Judges power (min headroom x) and runtime requirements."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "supply_part_id": {"type": "string"},
+                "loads": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "part_id": {"type": "string"},
+                            "name": {"type": "string"},
+                            "power_w": {"type": "number"},
+                            "current_a": {"type": "number"},
+                            "voltage_v": {"type": "number"},
+                            "duty": {"type": "number"},
+                            "peak_factor": {"type": "number"},
+                        },
+                    },
+                },
+            },
+            "required": ["supply_part_id", "loads"],
+        },
+    },
+    {
+        "name": "check_thermal",
+        "description": (
+            "Heat in a closed case: enclosure_part_id (the printed shell), power_w or heat_part_ids (picked parts with tdp_w or power_w), optional wall_mm, "
+            "vents_mm2 (else the vents_mm2 parameter of a built part), ambient_c, component_limit_c (default 70). Every picked part with airflow_m3h counts as a fan. "
+            "Natural convection h = 5 W/m2K on the outer area through the wall, plus air exchange through vents and fans; the inside temperature must stay under "
+            "the wall material limit (PLA 55, PETG 75, ABS 95 °C) and the component limit. Judges thermal requirements (max °C)."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "enclosure_part_id": {"type": "string"},
+                "power_w": {"type": "number"},
+                "heat_part_ids": {"type": "array", "items": {"type": "string"}},
+                "fan_part_ids": {"type": "array", "items": {"type": "string"}},
+                "bbox_mm": {"type": "array", "items": {"type": "number"}},
+                "wall_mm": {"type": "number"},
+                "vents_mm2": {"type": "number"},
+                "ambient_c": {"type": "number"},
+                "component_limit_c": {"type": "number"},
+            },
+            "required": ["enclosure_part_id"],
+        },
+    },
+    {
+        "name": "check_rollover",
+        "description": (
+            "Vehicle roll-over: track_mm and wheelbase_mm (else the track_mm and wheelbase_mm parameters of a built printed part), the centre of mass height from the "
+            "assembly (or com_height_mm), and a turn: speed_mps on turn_radius_m. Static stability factor T / 2h is the lateral g it rolls at; the turn needs v^2 / (r g). "
+            "Judges rollover requirements (min g lateral, or min deg side slope)."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "track_mm": {"type": "number"},
+                "wheelbase_mm": {"type": "number"},
+                "com_height_mm": {"type": "number"},
+                "speed_mps": {"type": "number"},
+                "turn_radius_m": {"type": "number"},
+            },
+        },
+    },
+    {
         "name": "simulate_assembly",
         "description": (
             "MuJoCo test of the whole assembly as one rigid body (convex hull, real masses and centre of mass). "
@@ -670,7 +749,7 @@ async def _advance(ctx: Ctx, name: str, result: dict, started: bool) -> None:
         return
     if name in {"simulate_drone", "simulate_grip", "simulate_assembly"}:
         await ctx.step("simulation", "done" if result.get("result") == "pass" else "failed")
-    elif name in {"check_tip_over", "check_deflection", "check_torque", "check_runtime"}:
+    elif name in {"check_tip_over", "check_deflection", "check_torque", "check_runtime", "check_power", "check_thermal", "check_rollover"}:
         await ctx.step("simulation", "done" if result.get("result") == "pass" else "failed")
     elif name == "check_totals":
         await ctx.step("teile", "done" if result.get("result") == "pass" else "failed")
