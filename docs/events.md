@@ -310,6 +310,7 @@ The tool pill still shows `offline`.
 `role` is `user` or `agent`.
 `text` is the utterance.
 `voice: true` marks a spoken line: a user turn heard by Reson8 or the browser, or a line Mechanic said aloud in a Gemini Live conversation.
+A spoken user turn from a Gemini Live conversation also carries `transcriber`: `reson8` when Reson8 transcribed it in parallel (the chat shows "Transcribed by Reson8"), or `gemini` when Gemini's own transcription stood in.
 
 ### tool
 

@@ -106,6 +106,8 @@ def test_transcripts_reach_chat_and_durable_log(tmp_path):
         await live.record(s, "user", "Make it lighter", "reson8")
         await live.record(s, "agent", "I'll ask Claude to check it.", "gemini")
         assert [e["role"] for e in s.bus.events] == ["user", "agent"]
+        # Reson8 is credited on the user turn; Mechanic's line has no transcriber.
+        assert [e.get("transcriber") for e in s.bus.events] == ["reson8", None]
         rows = [
             json.loads(row)
             for row in (tmp_path / "voice_conversation.jsonl").read_text().splitlines()
@@ -309,6 +311,9 @@ def test_gateway_audio_tools_transcript_ownership_and_reconnect(tmp_path, reson8
             users
             == ["Reson8 heard the user" if reson8 else "Gemini heard the user"] * 2
         )
+        assert {e["transcriber"] for e in events if e.get("role") == "user"} == {
+            "reson8" if reson8 else "gemini"
+        }
         assert len([e for e in events if e.get("role") == "agent"]) == 2
         assert all(
             any("toolResponse" in d for d in upstream.sent) for upstream in upstreams

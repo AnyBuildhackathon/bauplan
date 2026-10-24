@@ -22,7 +22,10 @@ export interface ChatEvent {
   text: string;
   /** A spoken line: the person's turn heard by Reson8 or the browser, or what Mechanic said aloud. */
   voice?: boolean;
+  /** Who transcribed a spoken user turn. */
+  transcriber?: Transcriber;
 }
+export type Transcriber = "reson8" | "browser" | "gemini";
 export interface ToolEvent {
   type: "tool";
   name: string;

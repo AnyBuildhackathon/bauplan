@@ -196,6 +196,9 @@ async def record(session, role: str, text: str, source: str) -> None:
     if not text:
         return
     event = {"type": "chat", "role": role, "text": text, "voice": True}
+    if role == "user":
+        # Credits who heard the turn: Reson8 in parallel, or Gemini's own transcription without it.
+        event["transcriber"] = "reson8" if source == "reson8" else "gemini"
     # The bus also feeds the normal logbook and saved-chat archive.
     await session.bus.publish(event)
     path = session.state.directory / "voice_conversation.jsonl"

@@ -214,7 +214,8 @@ export const useSource = create<SourceState>((set, get) => {
     sendPrompt: async (text, voice = false) => {
       const trimmed = text.trim();
       if (!trimmed) return;
-      useSession.getState().addLocalUserMessage(trimmed, voice);
+      const stt = useUi.getState().stt;
+      useSession.getState().addLocalUserMessage(trimmed, voice, voice && stt !== "none" ? stt : undefined);
       try {
         const res = await apiFetch("/api/prompt", {
           method: "POST",

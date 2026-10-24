@@ -50,6 +50,7 @@ Gemini's 24 kHz PCM response plays through Web Audio, and its level drives the m
 The header mute button silences playback while preserving transcription.
 
 Reson8's final turn text is recorded without sending another engineering prompt.
+Those turns carry `transcriber: "reson8"`, and the chat credits them with a "Transcribed by Reson8" label.
 Gemini's output transcription records Mechanic's spoken reply.
 When Reson8 is unavailable or disconnects, Gemini's input transcription becomes the transcript source and the UI displays a notice.
 Both sides enter the existing `chat` SSE stream and logbook archive.
