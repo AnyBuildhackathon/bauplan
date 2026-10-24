@@ -143,7 +143,9 @@ class Session:
             await self.reset()
         ctx = self._ctx(auto_steps=False)
         ctx.trigger = "library"
-        ctx.label = "Library: " + ref_id
+        from pai_agent.references import name_of
+
+        ctx.label = "Library: " + name_of(ref_id)
         self.task = asyncio.create_task(self._run(run_reference(ctx, ref_id), ctx))
         return {"ok": True, "mode": mode, "status": "started", "reference": ref_id}
 
