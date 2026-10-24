@@ -115,12 +115,13 @@ def test_transcripts_reach_chat_and_durable_log(tmp_path):
     asyncio.run(run())
 
 
-def test_engineer_waits_for_result_without_duplicating_user(tmp_path):
+def test_engineer_returns_at_once_and_reports_when_done(tmp_path):
     async def run():
         s = session(tmp_path)
+        gate = asyncio.Event()
 
         async def work():
-            await asyncio.sleep(0)
+            await gate.wait()
             s.state.metrics = {"weight_g": 42}
 
         async def start(*args, **kwargs):
@@ -130,8 +131,13 @@ def test_engineer_waits_for_result_without_duplicating_user(tmp_path):
             return {"status": "started", "mode": "mock"}
 
         s.start = start
+        # Gemini gets its answer while Claude still works, so Mechanic keeps talking.
         result = await live.execute(s, "engineer", {"request": "Make a phone stand"})
-        assert result["current"]["metrics"] == {"weight_g": 42}
+        assert result["action"]["status"] == "started"
+        assert not s.task.done()
+        gate.set()
+        report = await live.finished(s)
+        assert report["current"]["metrics"] == {"weight_g": 42}
         assert s.bus.events == []
         assert (await live.execute(s, "unknown", {}))["ok"] is False
 
@@ -306,5 +312,7 @@ def test_gateway_audio_tools_gemini_transcript_and_reconnect(tmp_path):
         assert all(
             any("toolResponse" in d for d in upstream.sent) for upstream in upstreams
         )
-        # Mechanic greets first: right after setup, before any microphone audio.
-        assert all(upstream.sent[1] == live.GREETING for upstream in upstreams)
+        # Mechanic greets first, right after setup, and only once: the second session continues.
+        assert upstreams[0].sent[1] == live.GREETING
+        assert all(live.GREETING not in upstream.sent for upstream in upstreams[1:])
+        assert "Gemini heard the user" in upstreams[1].sent[0]["setup"]["systemInstruction"]["parts"][0]["text"]

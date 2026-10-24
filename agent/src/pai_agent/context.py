@@ -25,10 +25,17 @@ class Ctx:
         self.lead_id: str | None = None
         # Waits while the run is paused and raises RunStopped after Stop; set by the session.
         self.gate = None
+        # Messages the person sent while this run was busy; the session shares its list.
+        self.pending: list[str] = []
 
     async def checkpoint(self) -> None:
         if self.gate is not None:
             await self.gate()
+
+    def take_pending(self) -> list[str]:
+        taken = list(self.pending)
+        self.pending.clear()
+        return taken
 
     async def emit(self, event: dict) -> None:
         await self.bus.publish(event)

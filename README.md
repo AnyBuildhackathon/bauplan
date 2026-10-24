@@ -231,7 +231,7 @@ Every variable is optional.
 | `FREECAD_MCP_URL` | freecad-mcp RPC server (default `http://127.0.0.1:9875`). |
 | `ISAAC_SSH_HOST`, `ISAAC_SSH_PORT`, `ISAAC_SSH_USER`, `ISAAC_SSH_KEY`, `ISAAC_TIMEOUT_S` | GPU host for Isaac Sim and Isaac Lab (`RUNPOD_SSH_*` are accepted aliases); empty uses the recorded result. |
 | `PAI_ASK_TIMEOUT_S` | Seconds Mechanic waits for an answer before taking the default (default `20`). |
-| `PAI_TOOL_TIMEOUT_S`, `PAI_TIMEOUT_<TOOL>`, `PAI_MODEL_TIMEOUT_S` | Time limits per tool call and per model round (see `agent/src/pai_agent/timeouts.py`). |
+| `PAI_TOOL_TIMEOUT_S`, `PAI_TIMEOUT_<TOOL>`, `PAI_MODEL_TIMEOUT_S`, `PAI_MODEL_ROUND_MAX_S` | Time limits per tool call, per silent model stream and per model round (see `agent/src/pai_agent/timeouts.py`). |
 | `PAI_TRAIN_TIMEOUT_S`, `PAI_TRAIN_CLAIM_TIMEOUT_S`, `PAI_TRAIN_STALL_S` | Time limits for browser training jobs. |
 | `PAI_SLICER` | Optional slicer executable path; `off` uses labelled estimates. |
 | `PAI_CACHE` | `0` turns off reuse of identical FreeCAD and Blender results. |

@@ -129,6 +129,12 @@ def timed_out(name: str, seconds: float) -> str:
 
 
 def model_timeout() -> float:
-    """Seconds one orchestrator model round may take (PAI_MODEL_TIMEOUT_S, default 90)."""
+    """Seconds a streamed orchestrator model round may go without any progress (PAI_MODEL_TIMEOUT_S, default 90)."""
 
     return _seconds(os.environ.get("PAI_MODEL_TIMEOUT_S")) or 90.0
+
+
+def round_limit() -> float:
+    """Seconds one streamed orchestrator model round may take in all (PAI_MODEL_ROUND_MAX_S, default 600)."""
+
+    return _seconds(os.environ.get("PAI_MODEL_ROUND_MAX_S")) or 600.0
