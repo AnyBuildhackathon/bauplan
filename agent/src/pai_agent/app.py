@@ -24,6 +24,13 @@ class PromptIn(BaseModel):
     text: str
 
 
+class SketchIn(BaseModel):
+    # Plain base64 or a data URL (data:image/png;base64,...); the image type is read from the bytes.
+    image_base64: str
+    media_type: str = ""
+    note: str = ""
+
+
 class AnswerIn(BaseModel):
     id: str
     answer_id: str
@@ -72,6 +79,27 @@ async def prompt(body: PromptIn, request: Request) -> dict:
     if not text:
         raise HTTPException(status_code=400, detail="text is required")
     return await request.app.state.session.start(text)
+
+
+@app.post("/api/sketch")
+async def sketch(body: SketchIn, request: Request) -> dict:
+    from pai_agent.tools.sketch import decode_image
+
+    _require_json(request)
+    try:
+        result = await request.app.state.session.start_sketch(decode_image(body.image_base64), body.note.strip()[:500])
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if result.get("busy"):
+        raise HTTPException(status_code=409, detail="Mechanic is building. Send the sketch when the build is done.")
+    return result
+
+
+@app.get("/api/sketch/sample")
+async def sketch_sample() -> FileResponse:
+    from pai_agent.tools.sketch import SAMPLE
+
+    return FileResponse(SAMPLE, media_type="image/png", filename=SAMPLE.name)
 
 
 @app.post("/api/reset")
@@ -223,6 +251,9 @@ def _media(name: str) -> str:
         ".stp": "model/step",
         ".glb": "model/gltf-binary",
         ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".webp": "image/webp",
+        ".gif": "image/gif",
         ".mp4": "video/mp4",
         ".json": "application/json",
         ".zip": "application/zip",

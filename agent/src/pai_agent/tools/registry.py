@@ -15,6 +15,7 @@ from pai_agent.tools.cad_part import cad_part
 from pai_agent.tools.checks import check_deflection, check_runtime, check_tip_over, check_torque, check_totals, simulate_assembly
 from pai_agent.tools.product import assemble, cad_update, part_pick, product_spec
 from pai_agent.tools.reference import reference_load
+from pai_agent.tools.sketch import sketch_to_spec
 from pai_agent.agents import delegate
 from pai_agent.tools.gripper import catalog_search, grip_calc, product_brief, simulate_grip
 from pai_agent.tools.firmware import firmware, refresh_after_training
@@ -53,6 +54,7 @@ TOOLS = {
     "cad_part": cad_part,
     "product_brief": product_brief,
     "product_spec": product_spec,
+    "sketch_to_spec": sketch_to_spec,
     "reference_load": reference_load,
     "delegate": delegate,
     "part_pick": part_pick,
@@ -96,6 +98,7 @@ _STEP = {
     "cad_part": "cad",
     "product_brief": "meeting",
     "product_spec": "meeting",
+    "sketch_to_spec": "meeting",
     "reference_load": "meeting",
     "part_pick": "teile",
     "assemble": "cad",
@@ -377,6 +380,16 @@ SCHEMAS = [
         },
     },
     {
+        "name": "sketch_to_spec",
+        "description": (
+            "Use it when a sketch image is on the bench (the user uploaded one): Claude vision reads the photo of the hand sketch "
+            "and returns spec (a validated product_spec), read (each dimension and label with value, unit and confidence), unreadable and summary. "
+            "It does not start the build: say what you read and guessed, then call product_spec with spec. "
+            "sketch is the file name from the user's message (sketch-1.png); note is what the user wrote with it."
+        ),
+        "input_schema": {"type": "object", "properties": {"sketch": {"type": "string"}, "note": {"type": "string"}}},
+    },
+    {
         "name": "reference_load",
         "description": (
             "Reference builds are known products with all their real parts. Without id it lists them; with id it loads one onto the bench: "
@@ -644,6 +657,8 @@ def _running_detail(name: str, args: dict) -> str:
         return str(args.get("part_id") or args.get("name") or "")
     if name == "product_spec":
         return str(args.get("name", ""))
+    if name == "sketch_to_spec":
+        return str(args.get("sketch", ""))
     if name == "delegate":
         return str(args.get("agent", "")) + " agent"
     if name == "simulate_assembly":
@@ -689,7 +704,7 @@ async def _advance(ctx: Ctx, name: str, result: dict, started: bool) -> None:
         await ctx.step("training", "done")
     elif name == "jamie_create_tasks":
         await ctx.step("stueckliste", "done")
-    elif name in {"blender_render", "isaac_sim_render", "cad_frame", "cad_part", "cad_update", "assemble", "product_brief", "product_spec", "reference_load", "part_pick", "jamie_requirements", "jamie_meeting"}:
+    elif name in {"blender_render", "isaac_sim_render", "cad_frame", "cad_part", "cad_update", "assemble", "product_brief", "product_spec", "sketch_to_spec", "reference_load", "part_pick", "jamie_requirements", "jamie_meeting"}:
         await ctx.step(step, "done")
 
 
