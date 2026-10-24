@@ -25,7 +25,7 @@ flowchart LR
         ORC[Orchestrator<br/>Claude Opus 5.5]
         SUB[Sub-agents<br/>Claude Sonnet 5.5]
         GLV[Gemini Live gateway<br/>WS /api/voice/live]
-        REG[Tool registry<br/>51 tools]
+        REG[Tool registry<br/>54 tools]
         BUS[Event bus<br/>SSE fan-out]
     end
 
@@ -47,7 +47,7 @@ flowchart LR
     UI -- "POST /api/*" --> API
     API --> SES
     SES --> ORC
-    SES --> VOX
+    SES --> GLV
     ORC -- delegate --> SUB
     ORC --> REG
     SUB --> REG
@@ -122,6 +122,40 @@ sequenceDiagram
     Orc->>Jamie: version_commit, jamie_create_tasks
     Tools-->>Web: SSE events (cad, sim, requirement, metrics, bom, version)
 ```
+
+## One request through the code
+
+This section follows one typed request, "design a phone stand under 6 euros", through the code with the function that handles each step.
+Paths are relative to `agent/src/pai_agent/` unless they start with `web/`.
+
+1. **Browser to backend.** The chat input calls the source's prompt action (`web/src/events/source.ts`), which posts `POST /api/prompt`.
+   `app.py` validates the body and calls `Session.start` (`session.py`).
+2. **Dashboard commands first.** `Session.start` asks `app_control.match_commands` whether the text only asks to see something ("show me the CAD"); if so it presses those controls through `tools/ui.py` and no model is called.
+   If a run is already in progress, the text either answers the open question or is refused with `already_running`; two runs never share one `BuildState`.
+3. **A background run.** Otherwise `Session.start` creates one `asyncio` task around `orchestrator.run_prompt` and returns `{"status": "started"}` immediately; everything after this point reaches the browser only as events.
+4. **Live or offline.** `run_prompt` checks `env.claude_enabled`.
+   Without a key it routes by keywords to a deterministic runner (`mock_product.py` for this request) that calls the same tools in a fixed order.
+   With a key it calls `_run_claude`, which opens an `agents.AgentRun` for the orchestrator (an `agent` event the chat shows as a card) and enters `_lead_loop`.
+5. **The model round.** `_lead_loop` sends Mechanic's system prompt, the tool schemas (`tools/registry.SCHEMAS`, minus the delegated ones) and the conversation to `agents.create_message` (Anthropic Messages API, adaptive thinking, the configured effort).
+   Text blocks become `chat` events; every `tool_use` block goes to `tools/registry.call_tool`.
+6. **The spec.** Claude's first call is `product_spec` (`tools/product.py`), which runs `spec.validate_spec`.
+   A spec with problems returns all of them at once as an error result, the model fixes them and calls again; only a valid spec becomes requirement rows and the assembly skeleton.
+7. **CAD.** Claude calls `cad_part` once per printed part, all in one round, and `_lead_loop` runs them concurrently.
+   `tools/cad_part.cad_part` has a CAD agent write FreeCAD Python for the part (`_write_script`), `cad_script.check_script` rejects anything outside the allowed imports and file access, and `cad_script.run_script` runs it in `freecadcmd` in a fresh temporary directory (under `sandbox-exec` on macOS) with a timeout.
+   `cad_script.check_geometry` compares the result with the part's envelope; on an error the message goes back to the CAD agent, up to `MAX_ATTEMPTS = 3`, then a clearly marked block stands in (`run_block`).
+   Every success emits a `cad` event with STEP, STL and GLB links.
+8. **Bought parts, assembly, checks.** With delegation on, the orchestrator calls `delegate` (`agents.delegate`), which runs `agents.run_subagent` with the parts role and only `part_pick` available.
+   `assemble` (`assembly.py`) combines meshes, masses and costs into one model with centre of mass and footprint.
+   The checks role then runs `check_totals`, `check_tip_over` and `simulate_assembly` (`tools/checks.py`, math in `analysis.py`, MuJoCo in `rigid_sim.py`), and each check stores its result in `state.checks`.
+9. **Pass or fail is derived, not claimed.** After every successful tool call, `call_tool` runs `requirements.refresh_requirements`, which recomputes every requirement row from `state` (`tools/checks.judge` for a generic product) and emits `requirement` and `metrics` events.
+   The model never sets a row to met; it can only change the design and let the checks run again.
+10. **The fix loop.** On a failed check Claude calls `cad_update` (`tools/product.py`), which rebuilds that part with the new parameter, reassembles and reruns every check that ran before (`rerun_checks`), or swaps a bought part with `part_pick`.
+11. **Deliverables.** `blender_render` (`tools/blender.py`) renders the assembly, `safety_check` (`tools/safety.py`) runs right before `bom_build` (`tools/bom.py`), which emits the bill of materials with a `price_source` per line, then `print_prep` and, for products with electronics, `electronics_plan`.
+    For any product other than the drone, `call_tool` hands a successful `bom_build` to `versions.after_tool`, which commits the build as a version with its diff to the previous one (the drone commits through `version_commit` with its meeting).
+12. **Back in the browser.** `web/src/events/source.ts` receives every event over `GET /api/events` and `web/src/events/store.ts` folds it into state; the chat, the Model, CAD and Simulation tabs and the requirement cards re-render from that store.
+
+The voice path joins at step 1: Gemini Live's `engineer` function (`gemini_live.execute`) calls the same `Session.start` with the spoken request, waits for the run, and reads the measured result back as speech.
+A Jamie `meeting.ended` webhook joins at step 3 through `Session.start_from_meeting` and `orchestrator.run_meeting`.
 
 ## Orchestrator and sub-agents
 
@@ -298,12 +332,34 @@ Wrong codes are rate limited per IP, and builds, speech, speech-to-text tokens, 
 State-changing calls without a typed body require `Content-Type: application/json`, and CORS allows only localhost, the Mac app and the Vercel deployments.
 Generated CAD scripts run sandboxed as described above, and `/files/` serves only single path segments inside the session directory.
 
+## Design decisions
+
+The reasons behind the main choices, for a reviewer who wants to know why the code looks the way it does.
+
+- **Real engineering tools instead of generated meshes.** A mesh from an image or text model looks right but has no dimensions to check, no mass and no editable history.
+  FreeCAD produces B-rep solids with exact dimensions, a mass from volume and density, STEP files a workshop can open, and a parametric script that `cad_update` and the CAD sliders rerun with new values.
+  MuJoCo gives a pass or fail from physics rather than from the model's judgement.
+- **The model decides, tools compute.** Every number the dashboard shows comes from a tool result; requirement rows are recomputed from state after each call (`requirements.refresh_requirements`), and the system prompt forbids stating a number a tool did not produce.
+  This makes model errors visible as failed checks instead of confident text.
+- **One tool dispatch for every caller.** Claude, the sub-agents, the offline mock runners and the dashboard controls all go through `tools/registry.call_tool`.
+  The offline demo therefore exercises the same CAD, simulation, pricing and Jamie code as a live run, and every call gets the same timeout, `tool` events and requirement refresh.
+- **Sub-agents for bounded jobs.** Writing one part's FreeCAD script, picking parts and running checks do not need the orchestrator's model or its whole context.
+  Each sub-agent sees only its role's tools and a short task (`agents.ROLES`), so it is cheaper, cannot change what it was not asked to change, and several CAD agents run in parallel.
+  The orchestrator keeps the spec, the fixes and the final word.
+- **Validate before building, check before ordering.** `spec.validate_spec` rejects an incomplete spec with every problem at once before any CAD runs, and the orchestrator prompt runs the requirement checks and `safety_check` before `bom_build` and `jamie_create_tasks`, so parts go on an order list only after the design was tested.
+- **Generated code runs sandboxed.** Claude writes FreeCAD Python, so `cad_script.py` treats it as untrusted: a static check of imports and attribute access, a fresh temporary directory, an environment without the backend's secrets, a timeout, and `sandbox-exec` on macOS.
+- **Everything degrades with a label, nothing silently.** Each external dependency has a fallback (see [Mock mode and fallbacks](#mock-mode-and-fallbacks)), and each fallback says so: `price_source: estimate`, `source: recorded`, a marked placeholder block, a recorded still.
+- **One event stream as the only state channel.** The backend never renders UI and the dashboard never polls; it replays the backlog onto an empty store (`bus.EventBus`, `events/store.ts`).
+  A reconnecting or second client shows exactly the same bench, which is also what makes the Mac app and the public web app identical.
+- **Gemini for conversation, Claude for engineering.** Gemini Live handles low-latency speech, barge-in and transcription; engineering requests go through its `engineer` function into the same Claude run as typed text, so spoken and typed requests produce the same, checked result.
+- **Meetings as the source of requirements.** Each requirement and part choice keeps the quote, speaker and time it came from (Jamie), and contradictions between meetings become a question (`ask_user`) before a build, so a design decision can be traced to the conversation that made it.
+
 ## Repository layout
 
 | Path | Contents |
 | --- | --- |
 | `agent/src/pai_agent/` | Backend package: API, session, orchestrator, sub-agents, engineering core, voice. |
-| `agent/src/pai_agent/tools/` | The 51 agent tools, see [TOOLS.md](TOOLS.md). |
+| `agent/src/pai_agent/tools/` | The 54 agent tools, see [TOOLS.md](TOOLS.md). |
 | `agent/freecad/` | FreeCAD build scripts, the part harness, parametric library parts and downloaded part models. |
 | `agent/blender/` | The Blender studio scene script. |
 | `agent/data/` | Part catalogs, reference builds, community seeds, meeting fixtures, webhook samples, the sample sketch. |

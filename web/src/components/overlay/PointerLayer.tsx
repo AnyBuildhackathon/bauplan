@@ -1,4 +1,4 @@
-// Bolzen's pointer, in the style of Clicky (github.com/farzaa/clicky, MIT, see
+// Mechanic's pointer, in the style of Clicky (github.com/farzaa/clicky, MIT, see
 // THIRD_PARTY_NOTICES). Ported mechanism: the pointer flies along a quadratic
 // bezier arc (duration distance/800 px/s clamped to 0.6-1.4 s, arc height
 // min(distance*0.2, 80 px), smoothstep easing, scale swell at mid-flight, nose
@@ -131,7 +131,7 @@ export function PointerLayer() {
           f.done = undefined;
           f.phase = "idle";
         } else if (now - f.startedAt > WAIT_FOR_TARGET_MS) {
-          // Target is not on screen (other view): Bolzen says it from where he stands.
+          // Target is not on screen (other view): Mechanic says it from where he stands.
           f.fallback = true;
           f.phase = "pointing";
           f.arrivedAt = now;

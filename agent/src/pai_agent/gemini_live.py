@@ -1,4 +1,22 @@
-"""Gemini speech gateway. Only this server sees the permanent Google credential."""
+"""Gemini Live gateway: Mechanic's realtime voice, proxied so only this server holds the Google credential.
+
+The browser opens `WS /api/voice/live` and streams 16 kHz PCM from the microphone; `live`
+opens the upstream BidiGenerateContent socket (Vertex AI with a fresh `gcloud` user token on
+every connection, or AI Studio with `GEMINI_API_KEY`) and relays audio both ways, 24 kHz PCM
+coming back for Web Audio playback and lip-sync. The WebSocket is checked against the CORS
+origins and the access code itself, because neither the HTTP CORS middleware nor `AccessGate`
+covers WebSockets.
+
+Gemini is the conversation layer, not the engineer. It gets three function tools:
+`engineer` forwards a request to the same `Session.start` a typed prompt uses, so Claude does
+the engineering and Gemini only speaks the measured result; `control_app` operates the
+dashboard through the same `ui_control` path as the agent; `product_state` returns a compact
+snapshot (metrics, checks, open question, version). `engineer` is declared NON_BLOCKING and
+awaited behind `asyncio.shield`, so the microphone and barge-in keep working while Claude
+builds. Gemini's own input and output transcriptions are published as `chat` events and
+appended to `voice_conversation.jsonl`, which makes the voice conversation part of the logbook
+and lets `POST /api/voice/note` send it to a Jamie meeting.
+"""
 
 from __future__ import annotations
 

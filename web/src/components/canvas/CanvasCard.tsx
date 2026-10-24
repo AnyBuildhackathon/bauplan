@@ -1,5 +1,5 @@
 // The big canvas in the middle: Modell (live 3D or the Blender render), CAD,
-// Simulation and the agent team, with Bolzen's spoken line at the bottom.
+// Simulation and the agent team, with Mechanic's spoken line at the bottom.
 import { useEffect, useState } from "react";
 import { Box, Boxes, Camera, Cloud, DraftingCompass, Network, Play, Rocket } from "lucide-react";
 import { useSource } from "../../events/source";
@@ -30,7 +30,7 @@ const TABS: { value: CanvasTab; label: string; icon: typeof Box }[] = [
   { value: "agents", label: "Agents", icon: Network },
 ];
 
-/** Bolzen's current line, as a caption at the bottom of the canvas, with his full figure in the corner while he talks. */
+/** Mechanic's current line, as a caption at the bottom of the canvas, with his full figure in the corner while he talks. */
 function SpokenLine({ lifted, overSlider }: { lifted: boolean; overSlider: boolean }) {
   const mascot = useSession((s) => s.mascot);
   const speaking = useSpeech((s) => s.speaking);

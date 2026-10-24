@@ -1,4 +1,4 @@
-"""Directories the backend reads and writes."""
+"""Directories the backend reads and writes, resolved from the package location so the server runs from any cwd."""
 
 from pathlib import Path
 

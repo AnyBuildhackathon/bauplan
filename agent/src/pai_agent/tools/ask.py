@@ -1,4 +1,10 @@
-"""Bolzen asks the room before building on a contradiction."""
+"""`ask_user`: Mechanic asks the room a multiple-choice question before building on a contradiction.
+
+Typical use is two meetings that disagree (the kickoff says 8 minutes of flight time, the
+review says 10). The question goes through `ctx.asker` (`Session.ask`), which shows it in the
+chat and waits for a click, a spoken or typed answer, or the timeout; the default option is
+the newer statement. Without an asker (a sub-agent or a test) the default is taken at once.
+"""
 
 from __future__ import annotations
 

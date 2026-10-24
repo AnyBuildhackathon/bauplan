@@ -48,7 +48,7 @@ flowchart LR
     B -->|SSE event stream| W
     B --> O[Orchestrator<br/>Claude Opus 5.5]
     O -->|delegate| S[Sub-agents<br/>Claude Sonnet 5.5]
-    O --> T[51 tools]
+    O --> T[54 tools]
     S --> T
     T --> FC[FreeCAD]
     T --> MJ[MuJoCo]
@@ -69,12 +69,30 @@ flowchart LR
 
 The details are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md); every tool is described in [docs/TOOLS.md](docs/TOOLS.md).
 
+### For reviewers: where to look
+
+Every backend module starts with a docstring that says what it does, where it sits in the pipeline and why it is built that way.
+A good reading order:
+
+| Question | Start here |
+| --- | --- |
+| How does one request become a checked product? | [One request through the code](docs/ARCHITECTURE.md#one-request-through-the-code), then `agent/src/pai_agent/orchestrator.py` |
+| How does Claude call the tools, and how do sub-agents work? | `orchestrator._lead_loop`, `agents.py` (`ROLES`, `run_subagent`, `delegate`) |
+| Where are the tools, and what does every call go through? | `agent/src/pai_agent/tools/registry.py` (`SCHEMAS`, `call_tool`), [docs/TOOLS.md](docs/TOOLS.md) |
+| How is a spec validated and pass or fail decided? | `spec.py` (`validate_spec`), `requirements.py`, `tools/checks.py`, `analysis.py`, `rigid_sim.py` |
+| How is generated CAD code kept safe? | `cad_script.py` (`check_script`, `run_script`), `tools/cad_part.py` |
+| How does the voice agent hand work to Claude? | `gemini_live.py` (`execute`), `web/src/lib/geminiLive.ts`, [docs/GEMINI_LIVE.md](docs/GEMINI_LIVE.md) |
+| How do Jamie meetings drive versions? | `tools/jamie.py`, `jamie_client.py`, `meetings.py`, `versions.py` |
+| How does the dashboard stay in sync? | `bus.py`, `web/src/events/source.ts`, `web/src/events/store.ts`, [docs/events.md](docs/events.md) |
+| Why these design choices? | [Design decisions](docs/ARCHITECTURE.md#design-decisions) |
+| What runs without keys? | [Mock mode and fallbacks](docs/ARCHITECTURE.md#mock-mode-and-fallbacks) |
+
 ## Partner technology
 
 ### Anthropic Claude
 
 Claude is the engineer.
-The orchestrator runs on Claude Opus 5.5 with adaptive thinking and a configurable effort level, and it drives the whole bench through 51 tools with the Messages API tool-use loop (`agent/src/pai_agent/orchestrator.py`).
+The orchestrator runs on Claude Opus 5.5 with adaptive thinking and a configurable effort level, and it drives the whole bench through 54 tools with the Messages API tool-use loop (`agent/src/pai_agent/orchestrator.py`).
 It delegates bounded jobs to Claude Sonnet 5.5 sub-agents that see only the tools their job needs (`agent/src/pai_agent/agents.py`).
 Claude writes the FreeCAD Python for every generated part and repairs it from FreeCAD's error messages, reads hand sketches with vision, and finds live shop prices with server-side web search.
 Claude Haiku 5.5 writes the learning-mode explanations, using only numbers the tools produced.
@@ -308,10 +326,11 @@ cd web && npm run typecheck && npm run e2e             # type check and Playwrig
 
 | Document | Contents |
 | --- | --- |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Components, data flow, orchestrator and sub-agents, CAD pipeline, simulation, voice loop, event stream, fallbacks, security. |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Components, one request through the code, orchestrator and sub-agents, CAD pipeline, simulation, voice loop, event stream, fallbacks, security, design decisions. |
 | [docs/API.md](docs/API.md) | Every HTTP endpoint and SSE event, with auth and rate limits. |
 | [docs/events.md](docs/events.md) | The authoritative wire format of every request, response and event. |
-| [docs/TOOLS.md](docs/TOOLS.md) | All 51 agent tools with inputs, outputs and the software behind them. |
+| [docs/TOOLS.md](docs/TOOLS.md) | All 54 agent tools with inputs, outputs and the software behind them. |
+| [docs/GEMINI_LIVE.md](docs/GEMINI_LIVE.md) | The Gemini Live voice agent: configuration, protocol, transcripts and measured latency. |
 | [docs/FRAMEWORKS.md](docs/FRAMEWORKS.md) | Frameworks, services and applications with versions and licenses. |
 | [docs/omniverse.md](docs/omniverse.md) | NVIDIA Isaac Sim and Isaac Lab experiments on a GPU host. |
 | [docs/PLAN.md](docs/PLAN.md) | The hackathon day plan. |

@@ -1,4 +1,11 @@
-"""Requirement checks. The meeting file owns the wording; this owns met."""
+"""Requirement rows: whether each requirement is met, recomputed from the measured state.
+
+The meeting file (or the product spec) owns the wording and the limits; this module owns
+`met`. `refresh_requirements` runs after every successful tool call (`tools/registry.py`), so a
+row only turns green when a tool produced a number that satisfies its limit. For a generic
+product the verdict comes from the check library (`tools/checks.judge`); the drone and gripper
+compare their metrics against fixed requirement ids.
+"""
 
 from __future__ import annotations
 

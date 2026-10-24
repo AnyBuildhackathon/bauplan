@@ -516,7 +516,7 @@ def wants_stress(text: str, finished: bool) -> bool:
 
 
 async def run_stress_mock(ctx: Ctx) -> None:
-    """'Stress test it' without a key: the same tool, with Bolzen's lines around it."""
+    """'Stress test it' without a key: the same tool, with Mechanic's lines around it."""
 
     from pai_agent.tools.registry import call_tool
 

@@ -1,4 +1,10 @@
-"""Claude's door to the reference builds: list them, or load one onto the bench."""
+"""`reference_load`: Claude's door to the library of reference builds (`references.py`).
+
+Without an id it lists the references. With an id and a live key it returns the reference's
+spec and parts as a request, so the orchestrator rebuilds it fresh with the live tools rather
+than replaying a saved run. Without a key it puts the saved build on the bench through the
+same tools, so the offline demo can start from a known product.
+"""
 
 from __future__ import annotations
 

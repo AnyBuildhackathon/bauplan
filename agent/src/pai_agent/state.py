@@ -1,4 +1,13 @@
-"""Session state for one build: the drone, the gripper, or any product from a spec."""
+"""`BuildState`: everything one bench knows about the build in progress.
+
+One dataclass for all three flows: the drone (`selected` parts by category, `frame_mass_g`,
+`last_sim`), the gripper (`brief`, `part`) and any product from a spec (`spec`, `built`
+printed parts, `picked` bought parts, `assembly`, `checks`). Tools write their results here
+and the requirement rows are recomputed from it after every successful tool call
+(`requirements.py`), so the pass or fail the dashboard shows is always derived from measured
+values, never from what the model said. The Jamie timeline, versions and order tasks hang
+on the same state so a rebuild can diff against the previous version.
+"""
 
 from __future__ import annotations
 

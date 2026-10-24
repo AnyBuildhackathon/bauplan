@@ -145,7 +145,7 @@ def _assert_final(final: dict, events: list[dict]) -> None:
     if final["survived"] < final["total"] and (worst["pass"] or final["weakest"] not in {"gust", "motor", "mass", "noise"}):
         raise SystemExit("Weakest point or worst world wrong: " + str(final["weakest"]))
     if not final["explanation"]:
-        raise SystemExit("Bolzen's sentence is missing.")
+        raise SystemExit("Mechanic's sentence is missing.")
     tools = [e for e in events if e.get("type") == "tool" and e.get("name") == "stress_test"]
     if not tools or tools[-1]["status"] != "ok" or "Survived" not in tools[-1]["detail"]:
         raise SystemExit("stress_test tool did not finish ok: " + str(tools[-1:]))

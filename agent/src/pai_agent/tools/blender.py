@@ -1,4 +1,10 @@
-"""Headless Blender studio render of the whole drone. Offline, with a recorded still, when Blender is absent."""
+"""`blender_render`: a headless Blender studio render of the current build, one image per version.
+
+Runs `blender -b -P agent/blender/studio.py` with a JSON spec of the assembly: the drone GLB
+on a workbench scene, a generated part, or a generic product's parts with their placements.
+Identical inputs reuse an earlier image (`cache.py`). Without Blender, or when it fails or
+times out, a recorded still is served and labelled as such instead of failing the run.
+"""
 
 from __future__ import annotations
 

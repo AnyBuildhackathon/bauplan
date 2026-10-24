@@ -97,7 +97,7 @@ def _done(events: list[dict]) -> bool:
     versions = [i for i, event in enumerate(events) if event.get("type") == "version"]
     if len(versions) < 2:
         return False
-    # The run ends with Bolzen's summary after the second version.
+    # The run ends with Mechanic's summary after the second version.
     return any(event.get("type") == "chat" and event.get("role") == "agent" for event in events[versions[1] + 1 :]) and any(
         event.get("type") == "step" and event.get("id") == "stueckliste" and event.get("status") == "done" for event in events[versions[1] + 1 :]
     )

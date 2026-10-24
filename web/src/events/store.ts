@@ -1,3 +1,10 @@
+// The session store: folds the SSE event stream (docs/events.md, types in events/types.ts) into
+// the UI state every view reads. `apply` is a reducer over one event at a time, so a client
+// that connects late replays the backlog onto an empty state and ends up exactly where a live
+// client is; `reset` empties it. Every event is also appended to `log`, which the camera
+// director, the agent graph, the meeting timeline and the training view read in order.
+// Nothing here calls the backend: user actions are posted through events/source.ts and
+// lib/api.ts, and their effect comes back as events.
 import { create } from "zustand";
 import { archiveChat } from "../lib/archive";
 import {
@@ -406,7 +413,7 @@ export const useSession = create<SessionState>((set, get) => ({
   apply: (ev, opts) => {
     // The server starts every stream, and every reset, with this marker; a reconnect replays from it.
     if (ev.type === "reset") return set(emptyState());
-    // Spoken lines go straight to the speaker (lib/speech.ts); they are not session state.
+    // `replayed` only marks the end of the backlog for events/source.ts; it carries no state.
     if (ev.type === "replayed") return;
     const at = opts?.instant ? Date.now() - INSTANT_AGE_MS : Date.now();
     const seq = ++seqCounter;
@@ -631,7 +638,7 @@ export const useSession = create<SessionState>((set, get) => ({
       case "safety":
         return set({ log, chat: [...s.chat, { kind: "safety", id: nextId("safety"), seq, at, safety: ev }] });
       case "training": {
-        // Browser training is narrated by its tool card and Bolzen, not the Isaac Lab card.
+        // Browser training is narrated by its tool card and Mechanic, not the Isaac Lab card.
         if ((ev as { source?: string }).source === "browser") return set({ log, browserTraining: { ...ev, at } });
         const prev = s.training;
         let chat = s.chat;

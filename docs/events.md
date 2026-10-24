@@ -634,7 +634,7 @@ The stress test runs the current product in 50 randomized MuJoCo worlds (`stress
 `mass_pct` is −15…+15 (the drone, or the gripper's payload) and `motor_pct` −25…0 (motors, or the gripper servo).
 `margin` is 1 for a perfect run and 0 or less for a lost world; `reason` is an empty string when the world survived.
 `worst` is `null` while running; when `done` it is the lost world with the lowest margin (the survived one with the lowest margin when none was lost) plus its `trajectory` (`[[t, x, y, z], ...]`, the same shape as `sim`).
-`weakest` names the factor that separates lost worlds from survived ones, or is `null` when every world survived; `explanation` is Bolzen's one sentence about it.
+`weakest` names the factor that separates lost worlds from survived ones, or is `null` when every world survived; `explanation` is Mechanic's one sentence about it.
 
 Drone: the worlds fly in the browser, on the MuJoCo WASM workers of the training module, with its drone episode: the controller holds its spot 1 m up for 10 s while a 1-cosine gust hits it.
 The first event is `queued` with `source: "browser"`, `job_id`, and `spec` (the training spec); the first dashboard tab that sees it claims the job, and every later event carries the same three fields.
@@ -774,7 +774,7 @@ Without `ANTHROPIC_API_KEY` only templates and passed scripts build.
 `simulate_grip` runs the MuJoCo grip test above.
 
 `train_in_browser` queues a browser training job and waits until a dashboard tab finishes it; the result carries `best_params`, `best_metrics`, `best_score`, and `curve`.
-In mock mode a prompt containing "train" runs it after a short Bolzen line, and the `training` step goes `running`, then `done` or `failed`.
+In mock mode a prompt containing "train" runs it after a short Mechanic line, and the `training` step goes `running`, then `done` or `failed`.
 
 `cad_frame` arguments are `arm_length_mm` (center to motor shaft), `thickness_mm`, and `motor_spacing_mm` (bolt-circle diameter of the motor screws).
 The 1103 mount is 6.6 mm.

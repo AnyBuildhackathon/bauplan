@@ -1,4 +1,9 @@
-"""Environment loading. Never log secret values."""
+"""Environment loading and the switch between the live Claude loop and the offline mock runners.
+
+`agent/.env` is read once; variables already set in the shell win. `claude_enabled` is the
+single place that decides whether a run uses Claude (`ANTHROPIC_API_KEY` set and
+`PAI_FORCE_MOCK` not 1) or the deterministic mock stories. Never log secret values.
+"""
 
 from __future__ import annotations
 

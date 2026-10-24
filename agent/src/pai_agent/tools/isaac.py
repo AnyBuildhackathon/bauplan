@@ -1,4 +1,13 @@
-"""Bounded, isolated Isaac jobs over SSH, with explicit recorded provenance."""
+"""NVIDIA Isaac Sim tests and Isaac Lab training on a remote GPU host, bounded and with recorded provenance.
+
+`isaac_test` (wind, payload or hover) and `isaac_train` (the stock Crazyflie
+`Isaac-Quadcopter-Direct-v0` task) export the drone to USD, copy it with `runpod/isaac_job.py`
+to the host over SSH, run it under a remote `timeout`, and download the MP4 and result JSON,
+which is validated before it is shown. Every parameter is range-checked before it reaches the
+remote shell. Without `RUNPOD_SSH_HOST`, or when the job fails, a result marked
+`source: recorded` stands in; the orchestrator prompt forbids quoting it as a measurement of
+the current product. See docs/omniverse.md.
+"""
 
 from __future__ import annotations
 

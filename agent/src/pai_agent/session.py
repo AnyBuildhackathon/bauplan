@@ -1,4 +1,18 @@
-"""One local session. The demo is single-user."""
+"""The bench: one session that owns the build state, the event bus and the run in progress.
+
+The demo is single-user, so there is exactly one `Session` per server (created in the app
+lifespan). Every entry point (a chat prompt, a voice request from Gemini Live, a sketch, a
+library reference, a remix, a Jamie meeting-ended webhook, a slider change) arrives here and
+becomes at most one background task; a second build while one runs is refused with
+`already_running` instead of interleaving two runs on the same state. Pure dashboard commands
+("show me the CAD") are matched first by `app_control.match_commands` and answered without a
+model call.
+
+`ask` is how the agent asks the room: it publishes a `question` event and waits for a click,
+a typed or spoken answer (`_answer_from_text`) or the `PAI_ASK_TIMEOUT_S` timeout, after which
+the default option is taken so a stage demo never stalls on an unanswered question.
+`reset` cancels the run, clears the bus and starts a fresh state with a `reset` event.
+"""
 
 from __future__ import annotations
 
