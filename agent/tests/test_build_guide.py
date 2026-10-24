@@ -57,6 +57,14 @@ class BuildGuideTest(unittest.TestCase):
         self.assertFalse(result["ok"])
         self.assertIn("bom_build", result["error"])
 
+    def test_refuses_other_products(self):
+        ctx = _ctx()
+        ctx.state.product = "gripper"
+        result = _run(ctx, mock_steps(ctx))
+        self.assertFalse(result["ok"])
+        self.assertIn("only available for the drone", result["error"])
+        self.assertFalse([e for e in ctx.bus.events if e["type"] == "build_guide"])
+
     def test_rejects_unknown_part(self):
         ctx = _ctx()
         steps = copy.deepcopy(mock_steps(ctx))

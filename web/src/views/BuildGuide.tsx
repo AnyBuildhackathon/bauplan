@@ -19,7 +19,7 @@ interface GuideUi {
 }
 
 export const useGuide = create<GuideUi>((set) => ({
-  open: new URLSearchParams(window.location.search).has("guide"),
+  open: false,
   index: 0,
   exploded: true,
   show: (open) => set(open ? { open, index: 0 } : { open }),
@@ -48,7 +48,7 @@ const fmtMinutes = (m: number) => `${Number.isInteger(m) ? m : m.toFixed(1)} min
 export function BuildGuide() {
   const guide = useSession((s) => s.buildGuide);
   const { open, index, exploded, show, go, setExploded } = useGuide();
-  const build = useAssembly();
+  const build = useAssembly("latest");
   const steps = guide?.steps ?? [];
   const at = Math.min(index, Math.max(0, steps.length - 1));
   const step = steps[at];

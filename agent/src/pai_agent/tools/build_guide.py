@@ -16,7 +16,7 @@ MAX_MINUTES = 240
 SCHEMA = {
     "name": "build_guide",
     "description": (
-        "Writes the step-by-step build guide for the current bill of materials. Call it after bom_build. "
+        "Writes the step-by-step build guide for the drone's bill of materials. Call it after bom_build, drone only. "
         "Each step names the scene parts to highlight (parts), the tools needed and the minutes it takes. "
         "Together the steps must cover every scene part. Write title and instructions in English."
     ),
@@ -107,6 +107,9 @@ def _validate(steps: object) -> tuple[list[dict], str | None]:
 
 
 async def build_guide(ctx: Ctx, args: dict) -> dict:
+    if ctx.state.product != "drone":
+        message = "The build guide is only available for the drone."
+        return {"ok": False, "error": message, "detail": message}
     if not ctx.state.bom:
         message = "No bill of materials yet; call bom_build first."
         return {"ok": False, "error": message, "detail": message}
