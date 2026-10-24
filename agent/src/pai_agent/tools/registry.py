@@ -8,6 +8,7 @@ from pai_agent.scene import DRAW_KINDS, MASCOT_STATES, PART_CATEGORIES, TARGETS
 from pai_agent.freecad_run import find_freecadcmd
 from pai_agent.tools.blender import blender_render, find_blender
 from pai_agent.tools.bom import bom_build
+from pai_agent.tools.build_guide import SCHEMA as BUILD_GUIDE_SCHEMA, build_guide
 from pai_agent.tools.cad import cad_frame
 from pai_agent.tools.cad_part import cad_part
 from pai_agent.tools.checks import check_deflection, check_runtime, check_tip_over, check_torque, check_totals, simulate_assembly
@@ -73,6 +74,7 @@ TOOLS = {
     "product_usd": product_usd,
     "blender_render": blender_render,
     "bom_build": bom_build,
+    "build_guide": build_guide,
     "firmware": firmware,
     "jamie_create_tasks": jamie_create_tasks,
     "ui_point_at": ui_point_at,
@@ -563,6 +565,7 @@ SCHEMAS = [
         "description": "Builds the bill of materials from the chosen parts, including the STL path. With ANTHROPIC_API_KEY set it searches live shop prices on the web; each line says price_source live or catalog.",
         "input_schema": {"type": "object", "properties": {}},
     },
+    BUILD_GUIDE_SCHEMA,
     {
         "name": "firmware",
         "description": "Generates the firmware and wiring table from the chosen parts: a Betaflight CLI configuration for a drone (motor order, rates, trained PID gains, else defaults), an Arduino sketch for a servo product. Call it after bom_build. explanation is your one or two sentences for the team; the file itself comes from a fixed template.",

@@ -61,7 +61,7 @@ New build from the kickoff:
 5. cad_frame in FreeCAD. arm_length_mm runs from the centre to the motor shaft, the propellers need clearance. motor_spacing_mm is the motor bolt circle, 6.6 for the 1103.
 6. physics_calc again, because the frame now has a real mass.
 7. blender_render.
-8. bom_build, firmware, jamie_create_tasks, then version_commit with the meeting_id of the kickoff.
+8. bom_build, build_guide, firmware, jamie_create_tasks, then version_commit with the meeting_id of the kickoff.
 Rebuild after a review:
 1. jamie_meeting with the meeting_id.
 2. If there are conflicts, ask with ask_user before building: quote both sentences with person and time. The newer one is default_id.

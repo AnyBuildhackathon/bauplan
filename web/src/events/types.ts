@@ -402,6 +402,23 @@ export interface TasksEvent {
   live: boolean;
 }
 
+export interface BuildGuideStep {
+  n: number;
+  title: string;
+  instructions: string;
+  /** Scene part names to highlight, from the "Scene targets" list in docs/events.md. */
+  parts: string[];
+  tools: string[];
+  minutes: number;
+  /** Bill-of-materials names of those parts. */
+  items: string[];
+}
+export interface BuildGuideEvent {
+  type: "build_guide";
+  version: number;
+  steps: BuildGuideStep[];
+  total_minutes: number;
+}
 export interface WiringRow {
   component: string;
   connects_to: string;
@@ -448,6 +465,7 @@ export type AgentEvent =
   | QuestionEvent
   | TasksEvent
   | ProductEvent
+  | BuildGuideEvent
   | FirmwareEvent
   | AgentRunEvent
   | ResetEvent
@@ -476,6 +494,7 @@ const EVENT_TYPES = new Set<AgentEvent["type"]>([
   "question",
   "tasks",
   "product",
+  "build_guide",
   "firmware",
   "agent",
   "reset",
