@@ -58,6 +58,8 @@
   --animate-rise: rise 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   --animate-spin-slow: spin 1.2s linear infinite;
   --animate-indeterminate: indeterminate 1.6s ease-in-out infinite;
+  --animate-training-rise: training-rise 400ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-spark-draw: spark-draw 900ms ease forwards;
   /* Agents tab: the dashes of a working edge flow from the orchestrator to the sub-agent. */
   --animate-edge-flow: edge-flow 0.9s linear infinite;
   /* Mechanic: breathing for every state, a slow sway on top that depends on the state. */
@@ -132,6 +134,21 @@
     to {
       opacity: 1;
       transform: none;
+    }
+  }
+  @keyframes training-rise {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes spark-draw {
+    to {
+      stroke-dashoffset: 0;
     }
   }
 }
