@@ -26,15 +26,15 @@ export interface BlockTypeOption {
 }
 
 export const BLOCK_TYPE_OPTIONS: BlockTypeOption[] = [
-  { type: 'paragraph', label: 'Text', description: 'Normaler Text', icon: 'Aa' },
-  { type: 'heading1', label: 'Überschrift 1', description: 'Große Überschrift', icon: 'H1' },
-  { type: 'heading2', label: 'Überschrift 2', description: 'Mittlere Überschrift', icon: 'H2' },
-  { type: 'heading3', label: 'Überschrift 3', description: 'Kleine Überschrift', icon: 'H3' },
-  { type: 'bulletList', label: 'Liste', description: 'Aufzählung', icon: '•' },
-  { type: 'numberedList', label: 'Nummeriert', description: 'Nummerierte Liste', icon: '1.' },
-  { type: 'code', label: 'Code', description: 'Codeblock', icon: '</>' },
-  { type: 'quote', label: 'Zitat', description: 'Zitat aus dem Meeting', icon: '"' },
-  { type: 'divider', label: 'Trennlinie', description: 'Horizontale Linie', icon: '-' },
+  { type: 'paragraph', label: 'Text', description: 'Plain text', icon: 'Aa' },
+  { type: 'heading1', label: 'Heading 1', description: 'Large heading', icon: 'H1' },
+  { type: 'heading2', label: 'Heading 2', description: 'Medium heading', icon: 'H2' },
+  { type: 'heading3', label: 'Heading 3', description: 'Small heading', icon: 'H3' },
+  { type: 'bulletList', label: 'List', description: 'Bullet list', icon: '•' },
+  { type: 'numberedList', label: 'Numbered', description: 'Numbered list', icon: '1.' },
+  { type: 'code', label: 'Code', description: 'Code block', icon: '</>' },
+  { type: 'quote', label: 'Quote', description: 'Quote from the meeting', icon: '"' },
+  { type: 'divider', label: 'Divider', description: 'Horizontal line', icon: '-' },
 ];
 
 let blockCounter = 0;

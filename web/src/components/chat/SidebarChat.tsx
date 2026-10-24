@@ -132,7 +132,7 @@ export default function SidebarChat() {
           <MascotBust state={mascot.state} size={78} className="translate-y-[9px]" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-[19px] font-bold tracking-[-0.01em]">Bolzen</div>
+          <div className="text-[19px] font-bold tracking-[-0.01em]">Mechanic</div>
           <div className={`truncate text-[14px] font-semibold ${stateTone}`}>
             {MASCOT_LABEL[mascot.state]}
             {working && <span className="text-muted"> · {step.label}</span>}
@@ -141,8 +141,8 @@ export default function SidebarChat() {
         <button
           onClick={() => setVoiceOn(!voiceOn)}
           className={`rounded-full p-2 transition-colors hover:bg-tile ${voiceOn ? "text-agent-ink" : "text-faint hover:text-ink-2"}`}
-          title={voiceOn ? "Bolzen spricht" : "Bolzen ist stumm"}
-          aria-label={voiceOn ? "Bolzen stumm schalten" : "Bolzen sprechen lassen"}
+          title={voiceOn ? "Mechanic is speaking" : "Mechanic is muted"}
+          aria-label={voiceOn ? "Mute Mechanic" : "Let Mechanic speak"}
           aria-pressed={voiceOn}
         >
           {voiceOn ? <Volume2 className="h-4.5 w-4.5" /> : <VolumeX className="h-4.5 w-4.5" />}
@@ -153,8 +153,8 @@ export default function SidebarChat() {
             void resetSession();
           }}
           className="rounded-full p-2 text-faint transition-colors hover:bg-tile hover:text-ink-2"
-          title="Neu starten"
-          aria-label="Neu starten"
+          title="Start over"
+          aria-label="Start over"
         >
           <RotateCcw className="h-4.5 w-4.5" />
         </button>
@@ -165,8 +165,8 @@ export default function SidebarChat() {
         {isEmpty ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 px-8 text-center">
             <MascotBust state="ruhig" size={150} />
-            <p className="text-[17px] font-semibold text-ink-2">„Na? Was bauen wir heute?“</p>
-            <p className="text-[15px] text-muted">Sag es, tipp es, oder starte die Demo oben rechts.</p>
+            <p className="text-[17px] font-semibold text-ink-2">“So. What are we building?”</p>
+            <p className="text-[15px] text-muted">Say it or type it.</p>
             <div className="mt-1 flex flex-wrap justify-center gap-2">
               {EXAMPLES.map((example) => (
                 <button
@@ -228,7 +228,7 @@ export default function SidebarChat() {
           <button
             onClick={() => scrollToBottom()}
             className="absolute bottom-[112px] left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-card text-muted shadow-[var(--shadow-pill)] transition-colors hover:text-ink"
-            aria-label="Nach unten"
+            aria-label="Scroll to bottom"
           >
             <ArrowDown className="h-4 w-4" />
           </button>

@@ -48,7 +48,7 @@ async def record() -> list[dict]:
 
     session.bus.publish = keep  # type: ignore[method-assign]
     await session.bootstrap()
-    await session.start_from_meeting(KICKOFF, "Kickoff Drohne")
+    await session.start_from_meeting(KICKOFF, "Drone kickoff")
     assert session.task is not None
     await session.task
     await session.meeting_started(REVIEW, "Review 1")

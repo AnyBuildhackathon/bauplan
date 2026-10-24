@@ -25,7 +25,7 @@ export function RenderGallery() {
       <div className="relative h-full">
         <ModelScene look="render" />
         <span className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-white/90 px-3.5 py-1.5 text-[13px] font-semibold text-muted shadow-[var(--shadow-pill)]">
-          Noch kein Blender-Render · 3D-Vorschau
+          No Blender render yet · 3D preview
         </span>
       </div>
     );

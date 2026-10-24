@@ -59,20 +59,20 @@ function SourceControls() {
             type="button"
             onClick={demo.playing ? pause : play}
             className="flex h-8 items-center gap-1.5 rounded-full bg-ink pr-3 pl-2.5 text-[13px] font-semibold text-white"
-            title={demo.playing ? "Pause" : "Abspielen"}
+            title={demo.playing ? "Pause" : "Play"}
           >
             {demo.playing ? <Pause className="h-3.5 w-3.5" fill="currentColor" /> : <Play className="h-3.5 w-3.5" fill="currentColor" />}
-            {demo.playing ? "Pause" : ended ? "Nochmal" : demo.started ? "Weiter" : "Demo starten"}
+            {demo.playing ? "Pause" : ended ? "Again" : demo.started ? "Resume" : "Play"}
           </button>
           <button
             type="button"
             onClick={() => setSpeed(demo.speed === 4 ? 1 : demo.speed * 2)}
             className="num flex h-8 min-w-11 items-center justify-center gap-1 rounded-full px-2 text-[13px] font-bold text-ink-2 hover:bg-tile"
-            title="Tempo"
+            title="Speed"
           >
             <FastForward className="h-3.5 w-3.5" /> {demo.speed}×
           </button>
-          <button type="button" onClick={skipToEnd} className="flex h-8 w-8 items-center justify-center rounded-full text-ink-2 hover:bg-tile" title="Zum Ende springen">
+          <button type="button" onClick={skipToEnd} className="flex h-8 w-8 items-center justify-center rounded-full text-ink-2 hover:bg-tile" title="Jump to the end">
             <SkipForward className="h-4 w-4" />
           </button>
           <button
@@ -82,14 +82,14 @@ function SourceControls() {
               restart();
             }}
             className="flex h-8 w-8 items-center justify-center rounded-full text-ink-2 hover:bg-tile"
-            title="Von vorn"
+            title="From the start"
           >
             <RotateCcw className="h-4 w-4" />
           </button>
         </div>
       ) : (
         <span className={`text-[13px] font-semibold ${live === "open" ? "text-ok-ink" : live === "connecting" ? "text-agent-ink" : "text-fail-ink"}`}>
-          {live === "open" ? "Backend verbunden" : live === "connecting" ? "verbinde …" : "Backend offline"}
+          {live === "open" ? "Backend connected" : live === "connecting" ? "connecting…" : "Backend offline"}
         </span>
       )}
     </div>
@@ -97,9 +97,9 @@ function SourceControls() {
 }
 
 const MENU: { value: View; label: string; icon: typeof Dumbbell }[] = [
-  { value: "werkbank", label: "Werkbank", icon: LayoutDashboard },
+  { value: "werkbank", label: "Workbench", icon: LayoutDashboard },
   { value: "training", label: "Training", icon: Dumbbell },
-  { value: "logbuch", label: "Logbuch", icon: BookOpen },
+  { value: "logbuch", label: "Logbook", icon: BookOpen },
 ];
 
 /** Training and Logbuch are not part of the stage flow, so they sit behind a small menu. */
@@ -122,8 +122,8 @@ function MoreMenu() {
         type="button"
         onClick={() => setOpen(!open)}
         className={`flex h-10 w-10 items-center justify-center rounded-full transition ${open || view !== "werkbank" ? "bg-ink text-white" : "text-ink-2 hover:bg-card"}`}
-        title="Mehr"
-        aria-label="Mehr Ansichten"
+        title="More"
+        aria-label="More views"
       >
         <Ellipsis className="h-5 w-5" />
       </button>
@@ -155,8 +155,8 @@ export function TopBar() {
       <button type="button" onClick={() => setView("werkbank")} className="flex shrink-0 items-center gap-3 text-left">
         <Logo />
         <div className="leading-tight">
-          <div className="text-[19px] font-bold tracking-[-0.01em]">Bauplan</div>
-          <div className="text-[13px] font-medium text-muted">Drohne</div>
+          <div className="text-[19px] font-bold tracking-[-0.01em]">AnyBuild</div>
+          <div className="text-[13px] font-medium text-muted">Drone</div>
         </div>
       </button>
       <div className="flex min-w-0 flex-1 justify-center">

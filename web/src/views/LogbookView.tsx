@@ -12,6 +12,7 @@ import { STEP_IDS, type MeetingEvent, type VersionEvent } from "../events/types"
 import { useSession } from "../events/store";
 import { loadSavedChats } from "../lib/archive";
 import { fmtClock, fmtEur, fmtGram, fmtNum, stripMarkdown } from "../lib/format";
+import { enLabel, enText } from "../lib/copy";
 import { LESSONS } from "../lib/lessons";
 import { useUi } from "../lib/ui";
 
@@ -39,15 +40,15 @@ function VersionCard({ v }: { v: VersionEvent }) {
         className="mb-3 min-w-0 flex-1 rounded-[22px] bg-page-2 p-4 text-left transition hover:bg-tile"
       >
         <div className="flex items-baseline gap-2">
-          <span className="text-[17px] font-bold">aus {v.meeting_title}</span>
-          <span className={`text-[15px] font-bold ${pass ? "text-ok-ink" : "text-fail-ink"}`}>{pass ? "✓ schwebt" : "✕ sackt ab"}</span>
+          <span className="text-[17px] font-bold">from {v.meeting_title}</span>
+          <span className={`text-[15px] font-bold ${pass ? "text-ok-ink" : "text-fail-ink"}`}>{pass ? "✓ hovers" : "✕ drops"}</span>
         </div>
         <p className="num mt-1 text-[15px] font-semibold text-ink-2">{v.summary}</p>
         {v.diff.length > 0 && (
           <ul className="num mt-2 space-y-0.5 text-[14px]">
             {v.diff.map((d) => (
               <li key={d.key} className="flex gap-2">
-                <span className="w-28 shrink-0 font-semibold text-muted">{d.label}</span>
+                <span className="w-28 shrink-0 font-semibold text-muted">{enLabel(d.label)}</span>
                 <span className="min-w-0 truncate text-ink-2">
                   {fmt(d.before, d.unit)} → <b className="text-ink">{fmt(d.after, d.unit)}</b>
                 </span>
@@ -59,8 +60,8 @@ function VersionCard({ v }: { v: VersionEvent }) {
           <div className="mt-3 flex gap-2 rounded-2xl bg-lavender/55 px-3 py-2.5">
             <NotebookPen className="mt-0.5 h-4 w-4 shrink-0 text-jamie" />
             <div className="min-w-0">
-              <p className="text-[12px] font-bold text-jamie">Notiz an {v.meeting_title}</p>
-              <p className="text-[14px] leading-snug whitespace-pre-line text-ink">{v.note}</p>
+              <p className="text-[12px] font-bold text-jamie">Note on {v.meeting_title}</p>
+              <p className="text-[14px] leading-snug whitespace-pre-line text-ink">{enText(v.note)}</p>
             </div>
           </div>
         )}
@@ -90,7 +91,7 @@ function SavedChats() {
           onClick={() => setOpen("current")}
           className={`h-8 rounded-full px-3 text-[13px] font-semibold ${open === "current" ? "bg-ink text-white" : "bg-tile text-ink-2"}`}
         >
-          Jetzt · {current.length} Nachrichten
+          Now · {current.length} messages
         </button>
         {saved.map((s, i) => (
           <button
@@ -104,7 +105,7 @@ function SavedChats() {
         ))}
       </div>
       <div className="scroll-soft mt-3 min-h-0 flex-1 space-y-2.5 overflow-y-auto pr-1">
-        {shown.length === 0 && <p className="text-[15px] text-muted">Noch kein Chat. Start auf der Werkbank.</p>}
+        {shown.length === 0 && <p className="text-[15px] text-muted">No chat yet. Start on the workbench.</p>}
         {shown.map((m, i) =>
           m!.role === "user" ? (
             <div key={i} className="ml-8 rounded-[18px] rounded-br-md bg-tile px-3.5 py-2 text-[14px] leading-snug text-ink">
@@ -130,9 +131,9 @@ function Concepts() {
   return (
     <Card className="px-5 pt-4 pb-4">
       <div className="flex items-baseline">
-        <h2 className="text-[17px] font-semibold text-ink-2">Gelernt</h2>
+        <h2 className="text-[17px] font-semibold text-ink-2">Learned</h2>
         <span className="num ml-auto text-[13px] font-semibold text-muted">
-          {understood} von {STEP_IDS.length} verstanden
+          {understood} of {STEP_IDS.length} learned
         </span>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-2">
@@ -150,7 +151,7 @@ function Concepts() {
               <div className="flex items-start gap-2">
                 <span className="text-[15px] leading-tight font-bold">{l.concept}</span>
                 <Chip tone={st === "verstanden" ? "ok" : st === "gesehen" ? "agent" : "muted"} className="ml-auto h-6! px-2! text-[11px]!">
-                  {st ?? "offen"}
+                  {st === "verstanden" ? "learned" : st === "gesehen" ? "seen" : "open"}
                 </Chip>
               </div>
             </button>
@@ -169,11 +170,11 @@ function buildLogbook(args: {
   concepts: Record<string, string>;
 }): Block[] {
   const b: Block[] = [];
-  b.push(createBlock("heading1", "Drohne · Logbuch"));
+  b.push(createBlock("heading1", "Drone · Logbook"));
   const stations = args.meetings.filter((m) => m.kind !== "archive" && m.status === "done").map((m) => m.title);
-  b.push(createBlock("paragraph", esc(`${stations.join(" → ") || "Noch kein Meeting"} · Stand ${fmtClock(Date.now())}`)));
+  b.push(createBlock("paragraph", esc(`${stations.join(" → ") || "No meeting yet"} · as of ${fmtClock(Date.now())}`)));
   if (args.requirements.length) {
-    b.push(createBlock("heading2", "Anforderungen"));
+    b.push(createBlock("heading2", "Requirements"));
     for (const r of args.requirements) {
       const mark = r.met === true ? "✓" : r.met === false ? "✕" : "○";
       const who = [r.speaker, r.time, r.meeting_title].filter(Boolean).join(", ");
@@ -183,20 +184,20 @@ function buildLogbook(args: {
   if (args.versions.length) {
     b.push(createBlock("heading2", "Jamie-Zusammenfassung"));
     for (const v of args.versions) {
-      const lines = (v.note ?? `Bauplan v${v.n} aus ${v.meeting_title}: ${v.summary}.`).split("\n");
+      const lines = enText(v.note ?? `AnyBuild v${v.n} from ${v.meeting_title}: ${v.summary}.`).split("\n");
       b.push(createBlock("bulletList", `<b>${esc(lines[0])}</b>${lines.slice(1).map((l) => `<br>${esc(l)}`).join("")}`));
     }
   }
   if (args.bom) {
-    b.push(createBlock("heading2", `Stückliste · ${fmtEur(args.bom.total_eur)}`));
+    b.push(createBlock("heading2", `Bill of materials · ${fmtEur(args.bom.total_eur)}`));
     for (const it of args.bom.items) b.push(createBlock("bulletList", esc(`${it.qty}× ${it.name}, ${fmtEur(it.unit_price_eur)}, ${fmtGram(it.weight_g)}`)));
   }
   const learned = STEP_IDS.filter((id) => args.concepts[id]);
   if (learned.length) {
-    b.push(createBlock("heading2", "Gelernt"));
+    b.push(createBlock("heading2", "Learned"));
     for (const id of learned) b.push(createBlock("bulletList", `<b>${esc(LESSONS[id].concept)}</b>: ${args.concepts[id]}`));
   }
-  b.push(createBlock("heading2", "Notizen"));
+  b.push(createBlock("heading2", "Notes"));
   b.push(createBlock("paragraph", ""));
   return b;
 }
@@ -224,7 +225,7 @@ function LogbookEditor() {
     const url = URL.createObjectURL(new Blob([md], { type: "text/markdown;charset=utf-8" }));
     const a = document.createElement("a");
     a.href = url;
-    a.download = `logbuch-drohne-${new Date().toISOString().slice(0, 10)}.md`;
+    a.download = `logbook-drone-${new Date().toISOString().slice(0, 10)}.md`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
@@ -232,8 +233,8 @@ function LogbookEditor() {
   return (
     <Card className="flex min-h-0 flex-1 flex-col pt-4 pb-4">
       <div className="flex items-center gap-2 px-5">
-        <h2 className="text-[17px] font-semibold text-ink-2">Logbuch</h2>
-        <span className="text-[13px] text-muted">bearbeitbar, „/“ für Blöcke</span>
+        <h2 className="text-[17px] font-semibold text-ink-2">Logbook</h2>
+        <span className="text-[13px] text-muted">editable, “/” for blocks</span>
         <button
           type="button"
           onClick={() => {
@@ -241,7 +242,7 @@ function LogbookEditor() {
             setContent(generated);
           }}
           className="ml-auto rounded-full p-1.5 text-faint hover:bg-tile hover:text-ink-2"
-          title="Aus der Sitzung neu erzeugen"
+          title="Rebuild from the session"
         >
           <RefreshCw className="h-4 w-4" />
         </button>
@@ -257,7 +258,7 @@ function LogbookEditor() {
       </div>
       <div className="px-5 pt-3">
         <PillButton variant="agent" size="lg" className="w-full" onClick={exportMd}>
-          <Download className="h-4.5 w-4.5" /> Als Markdown exportieren
+          <Download className="h-4.5 w-4.5" /> Export Markdown
         </PillButton>
       </div>
     </Card>
@@ -269,18 +270,18 @@ export function LogbookView() {
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 px-5 pb-4">
       <div className="flex items-baseline gap-3 pt-1">
-        <h1 className="text-[34px] leading-none font-extrabold tracking-[-0.03em]">Logbuch</h1>
-        <span className="text-[17px] text-muted">Alles, was gebaut, getestet und gelernt wurde.</span>
+        <h1 className="text-[34px] leading-none font-extrabold tracking-[-0.03em]">Logbook</h1>
+        <span className="text-[17px] text-muted">Everything that was built, tested and learned.</span>
       </div>
       <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(0,1fr)] gap-4">
         <Card className="flex min-h-0 flex-col px-5 pt-4 pb-2">
           <div className="mb-3 flex items-center gap-2">
-            <h2 className="text-[17px] font-semibold text-ink-2">Versionen</h2>
-            <span className="text-[13px] text-muted">je Meeting bei</span>
+            <h2 className="text-[17px] font-semibold text-ink-2">Versions</h2>
+            <span className="text-[13px] text-muted">one per meeting in</span>
             <JamieMark />
           </div>
           <div className="scroll-soft min-h-0 flex-1 overflow-y-auto pr-1">
-            {versions.length === 0 && <p className="text-[15px] text-muted">v1 entsteht aus dem Kickoff.</p>}
+            {versions.length === 0 && <p className="text-[15px] text-muted">v1 comes out of the kickoff.</p>}
             {[...versions].reverse().map((v) => (
               <VersionCard key={v.n} v={v} />
             ))}

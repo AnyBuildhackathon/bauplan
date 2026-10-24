@@ -1,4 +1,4 @@
-//! Bauplan as a Mac app: a window around the same web dashboard as the browser.
+//! AnyBuild as a Mac app: a window around the same web dashboard as the browser.
 //!
 //! In development the window loads the Vite dev server on http://localhost:5180,
 //! which proxies /api and /files to the backend. A release build serves the bundled
@@ -30,12 +30,12 @@ pub fn run() {
             );
 
             WebviewWindowBuilder::new(app, "main", url)
-                .title("Bauplan")
+                .title("AnyBuild")
                 .inner_size(1440.0, 900.0)
                 .min_inner_size(1280.0, 800.0)
                 .build()?;
             Ok(())
         })
         .run(tauri::generate_context!())
-        .expect("error while running Bauplan");
+        .expect("error while running AnyBuild");
 }

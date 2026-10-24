@@ -8,7 +8,7 @@ from pai_agent.scene import DRAW_KINDS, MASCOT_STATES, TARGETS
 
 def _bad_target(target: object) -> dict | None:
     if target not in TARGETS:
-        message = "target muss einer von " + ", ".join(TARGETS) + " sein."
+        message = "target must be one of " + ", ".join(TARGETS) + "."
         return {"ok": False, "error": message, "detail": message}
     return None
 
@@ -27,7 +27,7 @@ async def ui_draw(ctx: Ctx, args: dict) -> dict:
     kind = args.get("kind")
     target = args.get("target")
     if kind not in DRAW_KINDS:
-        message = "kind muss halo, arrow, circle oder note sein."
+        message = "kind must be halo, arrow, circle or note."
         return {"ok": False, "error": message, "detail": message}
     invalid = _bad_target(target)
     if invalid:
@@ -41,10 +41,10 @@ async def mascot_say(ctx: Ctx, args: dict) -> dict:
     state = args.get("state")
     say = str(args.get("say", "")).strip()
     if state not in MASCOT_STATES:
-        message = "state muss ruhig, denkt, erklaert, freut_sich oder besorgt sein."
+        message = "state must be ruhig, denkt, erklaert, freut_sich or besorgt."
         return {"ok": False, "error": message, "detail": message}
     if not say:
-        message = "say fehlt."
+        message = "say is missing."
         return {"ok": False, "error": message, "detail": message}
     await ctx.emit({"type": "mascot", "state": state, "say": say})
     return {"ok": True, "detail": str(state)}

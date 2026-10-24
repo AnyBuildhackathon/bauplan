@@ -27,12 +27,12 @@ import {
 
 export const STEP_LABELS: Record<StepId, string> = {
   meeting: "Meeting",
-  teile: "Teile",
+  teile: "Parts",
   cad: "CAD",
   render: "Render",
   simulation: "Simulation",
   training: "Training",
-  stueckliste: "Stückliste",
+  stueckliste: "BOM",
 };
 
 /** The fixed tool roster shown in the status card; unknown tool names are appended. */
@@ -189,11 +189,11 @@ const TOOL_ALIASES: Record<string, string> = {
   product_usd: "Blender",
   isaac_lab_train: "Isaac Lab",
   isaac_lab_status: "Isaac Lab",
-  parts_search: "Teile",
-  physics_calc: "Physik",
-  bom_build: "Stückliste",
+  parts_search: "Parts",
+  physics_calc: "Physics",
+  bom_build: "BOM",
   version_commit: "Version",
-  ask_user: "Rückfrage",
+  ask_user: "Question",
 };
 
 /**
@@ -459,7 +459,7 @@ export const useSession = create<SessionState>((set, get) => ({
   reset: () => {
     const { chat, runs } = get();
     const last = runs.at(-1);
-    archiveChat(chat, last ? `Lauf ${last.run} ${last.result === "pass" ? "besteht" : "sackt ab"}` : "ohne Lauf");
+    archiveChat(chat, last ? `Run ${last.run} ${last.result === "pass" ? "passes" : "drops"}` : "no run");
     set(emptyState());
   },
 }));
@@ -467,22 +467,22 @@ export const useSession = create<SessionState>((set, get) => ({
 function trainingDetail(ev: TrainingEvent): string {
   switch (ev.status) {
     case "queued":
-      return "wartet auf die GPU";
+      return "waiting for the GPU";
     case "running":
-      return `${formatSteps(ev.step)} Schritte`;
+      return `${formatSteps(ev.step)} steps`;
     case "done":
-      return `fertig nach ${formatSteps(ev.step)} Schritten`;
+      return `done after ${formatSteps(ev.step)} steps`;
     case "failed":
-      return "abgebrochen";
+      return "stopped";
     case "offline":
-      return "RunPod nicht erreichbar";
+      return "RunPod unreachable";
   }
 }
 
 export function formatSteps(step: number): string {
-  if (step >= 1_000_000) return `${(step / 1_000_000).toLocaleString("de-DE", { maximumFractionDigits: 1 })} Mio.`;
-  if (step >= 1000) return `${Math.round(step / 1000).toLocaleString("de-DE")} Tsd.`;
-  return step.toLocaleString("de-DE");
+  if (step >= 1_000_000) return `${(step / 1_000_000).toLocaleString("en-GB", { maximumFractionDigits: 1 })}M`;
+  if (step >= 1000) return `${Math.round(step / 1000).toLocaleString("en-GB")}k`;
+  return step.toLocaleString("en-GB");
 }
 
 /** The step the agent is on right now: the running one, else the last one that finished or failed. */

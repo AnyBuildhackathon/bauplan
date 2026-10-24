@@ -58,7 +58,7 @@ function Pipeline() {
             <div className="truncate text-[13px] text-muted">{st.status === "pending" ? w.tool : st.label}</div>
             <div className="mt-3 flex items-center gap-1.5 text-[12px] font-bold tracking-[0.03em] text-muted uppercase">
               {w.place === "cloud" ? <Cloud className="h-3.5 w-3.5" /> : <Laptop className="h-3.5 w-3.5" />}
-              {w.place === "cloud" ? "Cloud" : "Lokal"} · {w.where}
+              {w.place === "cloud" ? "Cloud" : "Local"} · {w.where}
             </div>
           </Card>
         );
@@ -77,7 +77,7 @@ function PolicyVideo() {
       <div className="flex items-center justify-between px-5 pt-4 pb-3">
         <h2 className="text-[17px] font-semibold text-ink-2">Video</h2>
         <span className="text-[13px] font-semibold text-muted">
-          {training?.video_url ? "Aufnahme aus Isaac Sim" : lastPass ? `Policy-Replay · Lauf ${lastPass.run}` : "noch keins"}
+          {training?.video_url ? "Clip from Isaac Sim" : lastPass ? `Policy replay · run ${lastPass.run}` : "none yet"}
         </span>
       </div>
       <div className="relative mx-3 mb-3 min-h-0 flex-1 overflow-hidden rounded-[22px] bg-[radial-gradient(110%_80%_at_50%_10%,#ffffff_0%,#f3f2f8_60%,#eae9f1_100%)]">
@@ -87,7 +87,7 @@ function PolicyVideo() {
           <SimScene run={lastPass} primary={false} color={RUN_COLOR.pass} />
         ) : (
           <div className="flex h-full items-center justify-center px-8 text-center text-[15px] text-muted">
-            Das Video kommt von Isaac Sim auf RunPod, sobald die Policy gelernt ist.
+            The clip comes from Isaac Sim on RunPod once the policy has learned.
           </div>
         )}
       </div>
@@ -105,15 +105,15 @@ function LearningCurve() {
   return (
     <Card className="flex min-h-0 flex-col px-5 pt-4 pb-4">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-[17px] font-semibold text-ink-2">Lernkurve</h2>
-        <span className="text-[13px] font-semibold text-muted">Belohnung pro Episode</span>
+        <h2 className="text-[17px] font-semibold text-ink-2">Learning curve</h2>
+        <span className="text-[13px] font-semibold text-muted">Reward per episode</span>
       </div>
       <div className="mt-2 flex items-baseline gap-3">
         <span className="num text-[54px] leading-none font-extrabold tracking-[-0.03em]">{last !== undefined ? fmtNum(last, 1) : "–"}</span>
         {first !== undefined && last !== undefined && curve.length > 1 && (
           <span className="num text-[16px] font-bold text-ok-ink">
             {last - first >= 0 ? "+" : ""}
-            {fmtNum(last - first, 1)} seit Start
+            {fmtNum(last - first, 1)} since start
           </span>
         )}
       </div>
@@ -132,7 +132,7 @@ function LearningCurve() {
           />
         ) : (
           <div className="flex h-full items-center justify-center rounded-[22px] bg-page-2 text-[15px] text-muted">
-            Kurve erscheint, sobald Isaac Lab Schritte meldet.
+            The curve appears once Isaac Lab reports steps.
           </div>
         )}
       </div>
@@ -163,22 +163,22 @@ function StatusCard() {
   const mode = useSource((s) => s.mode);
   const sendPrompt = useSource((s) => s.sendPrompt);
   const status = training?.status ?? "offline";
-  const title = { queued: "Wartet auf GPU", running: "Training läuft", done: "Training fertig", failed: "Abgebrochen", offline: "Noch nicht gestartet" }[status];
+  const title = { queued: "Waiting for a GPU", running: "Training running", done: "Training done", failed: "Stopped", offline: "Not started" }[status];
   const tone = status === "running" || status === "queued" ? "agent" : status === "done" ? "ok" : status === "failed" ? "fail" : "muted";
   const rows: [string, string][] = [
-    ["Wo", `RunPod${tools.RunPod?.detail ? ` · ${tools.RunPod.detail.split("·")[0].trim()}` : ""}`],
+    ["Where", `RunPod${tools.RunPod?.detail ? ` · ${tools.RunPod.detail.split("·")[0].trim()}` : ""}`],
     ["Simulator", tools["Isaac Sim"]?.detail || "Isaac Sim"],
-    ["Aufgabe", isaac.task ?? "–"],
-    ["Umgebungen", isaac.envs ? `${isaac.envs} parallel` : "–"],
-    ["Schritte", training ? formatSteps(training.step) : "–"],
-    ["Belohnung", training?.curve.length ? fmtNum(training.reward, 1) : "–"],
+    ["Task", isaac.task ?? "–"],
+    ["Environments", isaac.envs ? `${isaac.envs} parallel` : "–"],
+    ["Steps", training ? formatSteps(training.step) : "–"],
+    ["Reward", training?.curve.length ? fmtNum(training.reward, 1) : "–"],
   ];
   return (
     <Card className="flex min-h-0 flex-col px-5 pt-4 pb-4">
       <div className="flex items-center gap-2">
         <h2 className="text-[17px] font-semibold text-ink-2">{title}</h2>
         <Chip tone={tone} className="ml-auto">
-          {status === "running" ? "läuft" : status === "done" ? "fertig" : status === "queued" ? "Warteschlange" : status === "failed" ? "Fehler" : "aus"}
+          {status === "running" ? "running" : status === "done" ? "done" : status === "queued" ? "queued" : status === "failed" ? "failed" : "off"}
         </Chip>
       </div>
       <div className="relative mt-3 h-2.5 overflow-hidden rounded-full bg-tile">
@@ -207,10 +207,10 @@ function StatusCard() {
           variant="secondary"
           className="w-full"
           disabled={status !== "running" || mode !== "live"}
-          onClick={() => void sendPrompt("Stopp das Training.")}
-          title={mode !== "live" ? "Nur im Live-Modus" : undefined}
+          onClick={() => void sendPrompt("Stop the training.")}
+          title={mode !== "live" ? "Live mode only" : undefined}
         >
-          Training stoppen
+          Stop training
         </PillButton>
       </div>
     </Card>
@@ -222,7 +222,7 @@ export function TrainingView() {
     <div className="flex h-full min-h-0 flex-col gap-4 px-5 pb-4">
       <div className="flex items-baseline gap-3 pt-1">
         <h1 className="text-[34px] leading-none font-extrabold tracking-[-0.03em]">Training</h1>
-        <span className="text-[17px] text-muted">Isaac Lab auf RunPod · Isaac-Quadcopter-Direct-v0 mit unseren Massen und Schubwerten</span>
+        <span className="text-[17px] text-muted">Isaac Lab on RunPod · Isaac-Quadcopter-Direct-v0 with our mass and thrust</span>
       </div>
       <Pipeline />
       <div className="grid min-h-0 flex-1 grid-cols-[1.25fr_1fr_340px] gap-4">

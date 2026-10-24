@@ -90,7 +90,7 @@ def build_with_freecad(directory: Path, params: dict) -> float:
     stl = directory / "frame.stl"
     step = directory / "frame.step"
     if not stl.is_file() or not step.is_file():
-        raise FreeCADFailed("FreeCAD hat STL oder STEP nicht geschrieben")
+        raise FreeCADFailed("FreeCAD did not write STL or STEP")
     if not (directory / "frame.glb").is_file():
         stl_to_glb(stl, directory / "frame.glb")
     return float(result["mass_g"])
@@ -146,15 +146,15 @@ def build_in_gui(directory: Path, params: dict, version: int, progress=None) -> 
     arm = float(params["arm_length_mm"])
     thick = float(params["thickness_mm"])
     bolt = float(params["motor_spacing_mm"]) / 2.0
-    doc = "Bauplan_v" + str(version)
+    doc = "AnyBuild_v" + str(version)
     head = "import FreeCAD as App\nimport FreeCADGui as Gui\nimport math\ndoc = App.getDocument(" + repr(doc) + ")\n"
     view = "Gui.getDocument(doc.Name).ActiveView.fitAll()\n"
     steps: list[tuple[str, str]] = [
         (
-            "neues Dokument",
+            "New document",
             "import FreeCAD as App\nimport FreeCADGui as Gui\n"
             "for name in list(App.listDocuments()):\n"
-            "    if name.startswith('Bauplan'):\n"
+            "    if name.startswith('AnyBuild') or name.startswith('Bauplan'):\n"
             "        App.closeDocument(name)\n"
             "doc = App.newDocument(" + repr(doc) + ")\n"
             "App.setActiveDocument(doc.Name)\n"
@@ -162,7 +162,7 @@ def build_in_gui(directory: Path, params: dict, version: int, progress=None) -> 
             "Gui.getDocument(doc.Name).ActiveView.viewIsometric()\n",
         ),
         (
-            "Nabe",
+            "Hub",
             head
             + "hub = doc.addObject('Part::Cylinder', 'Nabe')\n"
             + f"hub.Radius = 20\nhub.Height = {thick}\n"
@@ -174,7 +174,7 @@ def build_in_gui(directory: Path, params: dict, version: int, progress=None) -> 
         angle = index * 90
         steps.append(
             (
-                f"Arm {index + 1} von 4",
+                f"Arm {index + 1} of 4",
                 head
                 + f"a = math.radians({angle})\n"
                 + f"arm = doc.addObject('Part::Box', 'Arm{index + 1}')\n"
@@ -197,7 +197,7 @@ def build_in_gui(directory: Path, params: dict, version: int, progress=None) -> 
             holes.append((cx + bolt * math.cos(angle), cy + bolt * math.sin(angle), 0.8))
     steps.append(
         (
-            "Bohrungen",
+            "Bolt holes",
             head
             + "import Part\n"
             + "parts = [doc.getObject(n) for n in ['Nabe'] + ['Arm%d' % i for i in range(1, 5)] + ['Motorauflage%d' % i for i in range(1, 5)]]\n"
@@ -217,7 +217,7 @@ def build_in_gui(directory: Path, params: dict, version: int, progress=None) -> 
     )
     steps.append(
         (
-            "Speichern und exportieren",
+            "Save and export",
             head
             + "import json\nimport Mesh\nimport Part\n"
             + "frame = doc.getObject('Rahmen')\n"
@@ -238,7 +238,7 @@ def build_in_gui(directory: Path, params: dict, version: int, progress=None) -> 
             answer = proxy.execute_code(code, 12)
             if not isinstance(answer, dict) or not answer.get("success"):
                 message = answer.get("error") or answer.get("message") if isinstance(answer, dict) else str(answer)
-                raise FreeCADFailed("FreeCAD-Fenster: " + label + ": " + str(message)[:300])
+                raise FreeCADFailed("FreeCAD window: " + label + ": " + str(message)[:300])
             time.sleep(_GUI_STEP_S)
         try:
             shot = proxy.get_active_screenshot("Isometric", 1280, 720, "Rahmen")
@@ -247,13 +247,13 @@ def build_in_gui(directory: Path, params: dict, version: int, progress=None) -> 
         except Exception:
             pass
     except (OSError, xmlrpc.client.Error) as exc:
-        raise FreeCADFailed("FreeCAD-Fenster antwortet nicht: " + str(exc)) from exc
+        raise FreeCADFailed("FreeCAD window did not answer: " + str(exc)) from exc
     if not result_path.is_file():
-        raise FreeCADFailed("FreeCAD-Fenster hat kein Ergebnis geschrieben")
+        raise FreeCADFailed("FreeCAD window wrote no result")
     result = json.loads(result_path.read_text(encoding="utf-8"))
     stl = directory / "frame.stl"
     if not stl.is_file() or not (directory / "frame.step").is_file():
-        raise FreeCADFailed("FreeCAD-Fenster hat STL oder STEP nicht geschrieben")
+        raise FreeCADFailed("FreeCAD window did not write STL or STEP")
     stl_to_glb(stl, directory / "frame.glb")
     return float(result["mass_g"])
 
@@ -267,7 +267,7 @@ def open_in_freecad(path: Path) -> None:
     if binary:
         subprocess.Popen([binary, str(path)])
         return
-    raise FreeCADFailed("FreeCAD ist nicht installiert")
+    raise FreeCADFailed("FreeCAD is not installed")
 
 
 def _rpc_host_port() -> tuple[str, int]:

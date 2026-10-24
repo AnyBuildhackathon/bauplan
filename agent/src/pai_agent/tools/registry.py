@@ -107,17 +107,17 @@ SCHEMAS = [
     },
     {
         "name": "jamie_templates",
-        "description": "Legt bei Jamie die Zusammenfassungs-Vorlagen Hardware-Anforderungen und Drohnen-Review an (upsert_template). Einmal pro Sitzung.",
+        "description": "Creates the Jamie summary templates Hardware-Anforderungen and Drohnen-Review (upsert_template). Once per session.",
         "input_schema": {"type": "object", "properties": {}},
     },
     {
         "name": "jamie_requirements",
-        "description": "Liest die Vorgaben des Kickoff-Meetings bei Jamie, jede mit Zitat, Person und Uhrzeit. Ohne meeting_id das neueste Kickoff.",
+        "description": "Reads the kickoff requirements from Jamie, each with quote, person and time. Without meeting_id, the newest kickoff.",
         "input_schema": {"type": "object", "properties": {"meeting_id": {"type": "string"}}},
     },
     {
         "name": "jamie_search",
-        "description": "Sucht in früheren Jamie-Meetings (search_meetings), etwa nach einem Teil, um Warnungen zu finden.",
+        "description": "Searches earlier Jamie meetings (search_meetings), for example for a part, to find warnings.",
         "input_schema": {
             "type": "object",
             "properties": {"query": {"type": "string"}},
@@ -126,7 +126,7 @@ SCHEMAS = [
     },
     {
         "name": "jamie_meeting",
-        "description": "Liest ein beendetes Review-Meeting: geänderte Vorgaben, Widersprüche zu früheren Meetings (conflicts) und Beschwerden über Teile. Eine Beschwerde über 'letzte Woche' ist schon auf das Teil aus dem Meeting der Vorwoche aufgelöst (refers_to).",
+        "description": "Reads a finished review: changed requirements, conflicts with earlier meetings, and complaints about parts. A complaint about 'last week' is already resolved to the part from that earlier meeting (refers_to).",
         "input_schema": {
             "type": "object",
             "properties": {"meeting_id": {"type": "string"}},
@@ -135,7 +135,7 @@ SCHEMAS = [
     },
     {
         "name": "requirements_accept",
-        "description": "Übernimmt Vorgaben aus einem Meeting in den Bau. ids wählt einzelne Vorgaben, ohne ids alle. Bei Widersprüchen erst ask_user.",
+        "description": "Accepts requirements from a meeting into the build. ids picks some, omitting ids takes all. On conflicts, ask_user first.",
         "input_schema": {
             "type": "object",
             "properties": {"meeting_id": {"type": "string"}, "ids": {"type": "array", "items": {"type": "string"}}},
@@ -144,7 +144,7 @@ SCHEMAS = [
     },
     {
         "name": "ask_user",
-        "description": "Fragt die Leute im Raum und wartet auf Klick, Sprache oder Text. Ohne Antwort gilt nach kurzer Zeit default_id.",
+        "description": "Asks the room and waits for a click, speech or text. With no answer, default_id applies after a short wait.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -164,12 +164,12 @@ SCHEMAS = [
     },
     {
         "name": "version_commit",
-        "description": "Schließt eine Version ab: hängt sie an das Meeting, aus dem sie kommt, rechnet die Differenz zur letzten Version, schreibt sie als Notiz zu Jamie und taggt das Meeting.",
+        "description": "Closes a version: hangs it on the meeting it came from, computes the difference from the last version, writes that note to Jamie and tags the meeting.",
         "input_schema": {"type": "object", "properties": {"meeting_id": {"type": "string"}}},
     },
     {
         "name": "parts_search",
-        "description": "Sucht im Kuratkatalog. Jeder Treffer bringt jamie_notes mit, also was in früheren Meetings über das Teil gesagt wurde. select_id wählt das Teil; because nennt die Vorgabe oder 'complaint', reason ist dein Grund in einem Satz. Preise sind Stichproben.",
+        "description": "Searches the curated catalog. Every hit includes jamie_notes, what earlier meetings said about the part. select_id chooses the part; because names the requirement or 'complaint'; reason is your one-sentence reason. Prices are samples.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -184,17 +184,17 @@ SCHEMAS = [
     },
     {
         "name": "physics_calc",
-        "description": "Rechnet Masse, Schub-Gewicht, geschätzte Flugzeit und Stichprobenpreis aus den gewählten Teilen.",
+        "description": "Computes mass, thrust-to-weight, estimated flight time and sample price from the chosen parts.",
         "input_schema": {"type": "object", "properties": {}},
     },
     {
         "name": "simulate_drone",
-        "description": "MuJoCo-Schwebetest. Masse und Maximalschub kommen aus den gewählten Teilen. fail heißt zu schwer, pass heißt sie hält den Schwebepunkt.",
+        "description": "MuJoCo hover test. Mass and peak thrust come from the chosen parts. fail means too heavy, pass means it holds the hover.",
         "input_schema": {"type": "object", "properties": {}},
     },
     {
         "name": "cad_frame",
-        "description": "Baut den parametrischen Rahmen in FreeCAD, sonst in CadQuery. Schreibt STL, STEP und GLB. arm_length_mm ist die Strecke von der Mitte zur Motorwelle. motor_spacing_mm ist der Lochkreisdurchmesser der Motorschrauben, beim 1102 sind das 6,6.",
+        "description": "Builds the parametric frame in FreeCAD, otherwise in CadQuery. Writes STL, STEP and GLB. arm_length_mm is the distance from the center to the motor shaft. motor_spacing_mm is the bolt-circle diameter of the motor screws. On the 1102 that is 6.6.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -291,22 +291,22 @@ SCHEMAS = [
     },
     {
         "name": "blender_render",
-        "description": "Rendert das aktuelle STL in Blender headless als Studio-PNG. Ohne Blender bleibt das Werkzeug offline und liefert das aufgezeichnete Standbild.",
+        "description": "Renders the current STL in headless Blender as a studio PNG. Without Blender the tool stays offline and returns the recorded still.",
         "input_schema": {"type": "object", "properties": {}},
     },
     {
         "name": "bom_build",
-        "description": "Baut die Stückliste aus den gewählten Teilen, inklusive STL-Pfad.",
+        "description": "Builds the bill of materials from the chosen parts, including the STL path.",
         "input_schema": {"type": "object", "properties": {}},
     },
     {
         "name": "jamie_create_tasks",
-        "description": "Legt pro Stücklistenzeile eine Bestell- oder Druckaufgabe mit Person und Fälligkeit am Meeting an. Unveränderte Teile behalten ihre Aufgabe, ersetzte Teile werden geschlossen.",
+        "description": "Creates one order or print task per bill-of-materials line, with a person and a due date on the meeting. Unchanged parts keep their task. Replaced parts are closed.",
         "input_schema": {"type": "object", "properties": {"meeting_id": {"type": "string"}}},
     },
     {
         "name": "ui_point_at",
-        "description": "Der Zeiger fliegt auf ein Szenenteil oder ein UI-Element. Ein Motor aus dem Katalog sitzt viermal in der Szene; für den Motortyp nimm motor_front_left.",
+        "description": "The pointer flies to a scene part or a UI element. A catalog motor sits four times in the scene; for the motor type use motor_front_left.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -318,7 +318,7 @@ SCHEMAS = [
     },
     {
         "name": "ui_draw",
-        "description": "Zeichnet Halo, Pfeil, Kreis oder Notiz auf ein Ziel in der 3D-Szene.",
+        "description": "Draws a halo, arrow, circle or note on a target in the 3D scene.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -331,7 +331,7 @@ SCHEMAS = [
     },
     {
         "name": "mascot_say",
-        "description": "Bolzen wechselt den Ausdruck und sagt einen kurzen Satz.",
+        "description": "Mechanic changes expression and says one short sentence.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -361,7 +361,7 @@ def _running_detail(name: str, args: dict) -> str:
         return (str(args.get("category") or args.get("product") or "") + " " + str(args.get("query", ""))).strip()
     if name == "cad_frame":
         try:
-            return "Arm " + f"{float(args.get('arm_length_mm')):g}".replace(".", ",") + " mm"
+            return "Arm " + f"{float(args.get('arm_length_mm')):g}" + " mm"
         except (TypeError, ValueError):
             return ""
     return ""
@@ -400,7 +400,7 @@ async def call_tool(ctx: Ctx, name: str, args: dict | None) -> dict:
     payload = dict(args or {})
     function = TOOLS.get(name)
     if function is None:
-        message = "Unbekanntes Werkzeug: " + name
+        message = "Unknown tool: " + name
         await ctx.emit({"type": "tool", "name": name, "status": "error", "detail": message})
         return {"ok": False, "error": message}
     await ctx.emit(
@@ -430,19 +430,19 @@ async def emit_connections(publish) -> None:
     isaac_detail = "GPU SSH is configured" if host else "Waiting for pod: GPU SSH is not configured"
     if find_blender():
         blender_status = "connected"
-        blender_detail = "Blender kann headless rendern."
+        blender_detail = "Blender can render headless."
     else:
         blender_status = "offline"
-        blender_detail = "Blender ist nicht installiert."
+        blender_detail = "Blender is not installed."
     if find_freecadcmd():
-        cad_detail = "FreeCAD auf diesem Rechner, CadQuery bleibt der Ersatz."
+        cad_detail = "FreeCAD on this machine. CadQuery stays the fallback."
     else:
-        cad_detail = "CadQuery auf diesem Rechner. freecadcmd fehlt."
-    jamie_detail = "Jamie MCP live" if live_enabled() else "Lokale Meetings und Outbox. JAMIE_MCP_TOKEN fehlt."
+        cad_detail = "CadQuery on this machine. freecadcmd is missing."
+    jamie_detail = "Jamie MCP live" if live_enabled() else "Local meetings and outbox. JAMIE_MCP_TOKEN is missing."
     rows = (
         ("jamie_requirements", "connected", jamie_detail),
-        ("parts_search", "connected", "Katalog agent/data/parts.json"),
-        ("simulate_drone", "connected", "MuJoCo auf diesem Rechner"),
+        ("parts_search", "connected", "Catalog agent/data/parts.json"),
+        ("simulate_drone", "connected", "MuJoCo on this machine"),
         ("cad_frame", "connected", cad_detail),
         ("cad_part", "connected" if find_freecadcmd() else "offline", "Generated parts, headless and sandboxed" if find_freecadcmd() else "freecadcmd is missing"),
         ("blender_render", blender_status, blender_detail),
@@ -454,4 +454,4 @@ async def emit_connections(publish) -> None:
 
 
 if {schema["name"] for schema in SCHEMAS} != set(TOOLS):
-    raise RuntimeError("Werkzeug-Schema und Funktionen driften auseinander.")
+    raise RuntimeError("Tool schemas and functions have drifted apart.")

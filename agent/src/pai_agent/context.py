@@ -33,4 +33,6 @@ class Ctx:
 
 
 def de(value: float, digits: int) -> str:
-    return f"{value:.{digits}f}".replace(".", ",")
+    """Formats a number for the English UI. The name stays, the decimal point does not."""
+
+    return f"{value:.{digits}f}"

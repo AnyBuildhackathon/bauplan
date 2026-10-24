@@ -27,7 +27,7 @@ class PhysicsError(Exception):
 def compute(state: BuildState) -> dict:
     missing = [category for category in PART_CATEGORIES if category not in state.selected]
     if missing:
-        raise PhysicsError("Teile fehlen: " + ", ".join(missing))
+        raise PhysicsError("Parts missing: " + ", ".join(missing))
 
     weight = 0.0
     price = 0.0
@@ -50,33 +50,33 @@ def compute(state: BuildState) -> dict:
             thrust += float(part["thrust_g"]) * qty
 
     if weight <= 0 or thrust <= 0:
-        raise PhysicsError("Masse oder Schub ist 0.")
+        raise PhysicsError("Mass or thrust is 0.")
 
     bench_prop = motor.get("bench_prop_id")
     if bench_prop and bench_prop != propeller["id"]:
         warnings.append(
-            "Die Schubzahl gilt für "
+            "The thrust figure is for "
             + str(bench_prop)
-            + ", nicht für die gewählte Luftschraube."
+            + ", not for the chosen propeller."
         )
     if int(battery["cells"]) > int(motor["cells_max"]):
         warnings.append(
-            "Der Akku hat "
+            "The battery is "
             + str(battery["cells"])
-            + "S, die Motoren sind bis "
+            + "S, the motors are rated to "
             + str(motor["cells_max"])
-            + "S freigegeben. Gerechnet wird mit dem Datenblatt-Schub, nicht mit mehr Spannung."
+            + "S. The calculation uses the datasheet thrust, not a higher voltage."
         )
     if int(battery["cells"]) > int(controller.get("cells_max", 99)):
         warnings.append(
-            "Der Regler ist bis "
+            "The controller is rated to "
             + str(controller["cells_max"])
-            + "S freigegeben, der Akku hat "
+            + "S, the battery is "
             + str(battery["cells"])
             + "S."
         )
     if state.frame_mass_g is None and state.selected["frame"].get("mass_is_estimate"):
-        warnings.append("Die Rahmenmasse ist die Schätzung, bis cad_frame das STL wiegt.")
+        warnings.append("The frame mass is the estimate until cad_frame weighs the STL.")
 
     twr = thrust / weight
     minutes = _flight_minutes(weight, motor, battery, twr)
@@ -132,7 +132,7 @@ async def physics_calc(ctx: Ctx, args: dict) -> dict:
     )
     detail = (
         de(metrics["weight_g"], 1)
-        + " g, Schub-Gewicht "
+        + " g, thrust-to-weight "
         + de(metrics["thrust_to_weight"], 2)
         + ", "
         + de(metrics["flight_time_min"], 1)
