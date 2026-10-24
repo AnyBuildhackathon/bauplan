@@ -107,6 +107,31 @@ export interface ProductEvent {
   /** A spec's requirement ids; a revised spec drops the rows it no longer has. */
   requirements?: string[];
 }
+/** One dimension or label read off a sketch. */
+export interface SketchReading {
+  label: string;
+  value: string;
+  unit?: string;
+  confidence?: "high" | "medium" | "low";
+}
+/** The photo of a hand sketch a build started from, and what Claude vision read off it. */
+export interface SketchEvent {
+  type: "sketch";
+  /** "sketch-1" */
+  id: string;
+  /** The stored photo, served by the backend under /files/. */
+  url: string;
+  status: "reading" | "read" | "failed";
+  note?: string;
+  summary?: string;
+  read?: SketchReading[];
+  unreadable?: string[];
+  /** The spec id the sketch became, once read. */
+  product?: string;
+  /** "claude" for a live vision read, "recorded" for the sample's recorded reading. */
+  source?: "claude" | "recorded";
+  error?: string;
+}
 export interface DrawEvent {
   type: "draw";
   kind: DrawKind;
@@ -507,6 +532,7 @@ export type AgentEvent =
   | QuestionEvent
   | TasksEvent
   | ProductEvent
+  | SketchEvent
   | BuildGuideEvent
   | FirmwareEvent
   | AgentRunEvent
@@ -538,6 +564,7 @@ const EVENT_TYPES = new Set<AgentEvent["type"]>([
   "question",
   "tasks",
   "product",
+  "sketch",
   "build_guide",
   "firmware",
   "agent",

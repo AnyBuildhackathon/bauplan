@@ -13,10 +13,11 @@ import subprocess
 import threading
 from pathlib import Path
 
+from pai_agent import cache, freecad_run
 from pai_agent.context import Ctx
-from pai_agent.freecad_run import FreeCADFailed, build_in_gui, build_with_freecad, ensure_gui
+from pai_agent.freecad_run import FreeCADFailed, build_in_gui, build_with_freecad, ensure_gui, find_freecadcmd
 from pai_agent.mesh_export import stl_to_glb
-from pai_agent.paths import REPO_ROOT
+from pai_agent.paths import AGENT_ROOT, REPO_ROOT
 
 log = logging.getLogger(__name__)
 
@@ -232,6 +233,15 @@ def _file_url(session_id: str, name: str, build: int) -> str:
     return "/files/" + session_id + "/" + name + "?build=" + str(build)
 
 
+# What a headless frame build leaves behind; the GUI build is never cached, the room watches it.
+_FRAME_FILES = ("frame.stl", "frame.step", "frame.glb", "frame.FCStd", "drone.step")
+
+
+def _frame_cache_key(build_params: dict) -> str:
+    code = sorted((AGENT_ROOT / "freecad").glob("*.py")) + [Path(__file__), Path(freecad_run.__file__)]
+    return cache.key("frame", build_params, cache.tool_version(find_freecadcmd()), [cache.digest(path) for path in code])
+
+
 async def cad_frame(ctx: Ctx, args: dict) -> dict:
     arm_length = _number(args, "arm_length_mm")
     thickness = _number(args, "thickness_mm")
@@ -299,6 +309,13 @@ async def cad_frame(ctx: Ctx, args: dict) -> dict:
         except (FreeCADFailed, OSError, TimeoutError, ValueError) as exc:
             log.warning("FreeCAD-Fenster fällt auf headless zurück: %s", exc)
             await ctx.emit({"type": "tool", "name": "cad_frame", "status": "running", "detail": "FreeCAD window stalled, continuing in the background"})
+    cache_entry = _frame_cache_key(build_params) if mass_g is None else None
+    if cache_entry is not None:
+        hit = cache.restore("frames", cache_entry, {}) or {}
+        if hit and cache.restore("frames", cache_entry, {name: directory / name for name in hit["files"]}) is not None:
+            mass_g = float(hit["mass_g"])
+            source = str(hit["source"])
+            cache_entry = None
     if mass_g is None:
         try:
             mass_g = await asyncio.to_thread(build_with_freecad, directory, build_params)
@@ -315,6 +332,9 @@ async def cad_frame(ctx: Ctx, args: dict) -> dict:
         return _fail("STL or STEP is missing.")
     if not (directory / "frame.glb").is_file():
         await asyncio.to_thread(stl_to_glb, stl, directory / "frame.glb")
+    if cache_entry is not None and not viewed:
+        files = {name: directory / name for name in _FRAME_FILES if (directory / name).is_file()}
+        cache.store("frames", cache_entry, files, {"files": list(files), "mass_g": mass_g, "source": source})
 
     mass_g = round(mass_g, 2)
     ctx.state.frame_mass_g = mass_g

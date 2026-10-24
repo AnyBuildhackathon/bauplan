@@ -230,6 +230,11 @@ Never commit `.env` files or secret keys to the repository.
 - `FREECAD_GUI`: Determines FreeCAD execution mode (`auto` connects to open window, `launch` starts app, `off` forces headless).
 - `FREECAD_MCP_URL`: Target URL of the FreeCAD MCP RPC server; defaults to `http://127.0.0.1:9875`.
 - `PAI_ASK_TIMEOUT_S`: Seconds Mechanic waits for question input before adopting default option; defaults to `20`.
+- `PAI_TIMEOUT_<TOOL>`: Time limit in seconds for one tool call (for example `PAI_TIMEOUT_BLENDER_RENDER=60`), `0` for none; defaults per tool in `agent/src/pai_agent/timeouts.py`, `PAI_TOOL_TIMEOUT_S` (default `120`) for the rest.
+- `PAI_MODEL_TIMEOUT_S`: Seconds one orchestrator model round may take before the run stops with a message; defaults to `90`.
+- `PAI_CACHE`: Set to `0` to turn off reusing identical FreeCAD and Blender results from `agent/runs/cache/`.
+- `PAI_WARM`: Set to `0` to skip warming CadQuery, MuJoCo, the Anthropic SDK, FreeCAD and Blender at server start.
+- `E2E_LIVE`: Set to `1` for the live Playwright smoke (`npm run e2e:live`), which needs `ANTHROPIC_API_KEY` on the backend.
 - `RUNPOD_SSH_HOST`: Hostname or IP address of the RunPod GPU pod for Isaac Sim.
 - `RUNPOD_SSH_PORT`: SSH port for connecting to RunPod; defaults to `22`.
 - `RUNPOD_SSH_USER`: SSH username for RunPod pod; defaults to `root`.

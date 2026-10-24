@@ -16,6 +16,7 @@ from pai_agent.mock_story import run_mock, run_mock_followup, run_review
 from pai_agent.scene import STEPS
 from pai_agent.tools.browser_train import run_mock_training
 from pai_agent.tools.registry import DELEGATED, SCHEMAS, call_tool
+from pai_agent.timeouts import model_timeout
 from pai_agent.tools.stress import run_stress_mock, wants_stress
 
 log = logging.getLogger(__name__)
@@ -57,6 +58,7 @@ A reference build is a known product with its real parts (reference_load lists a
 use cad_update for dimensions, part_pick to swap a bought part, or product_spec with the revised spec for new parts or requirements
 (parts whose definition did not change keep their build); then rerun the checks, blender_render and bom_build.
 Keep runs short: at most four printed parts unless the product really needs more.
+When the user uploaded a sketch, call sketch_to_spec first, say in one sentence what you read and what you guessed, then product_spec with that spec.
 
 The drone (a drone, or a Jamie meeting that ended). Jamie is the team's memory: every drone decision hangs on a sentence from a meeting.
 New build from the kickoff:
@@ -210,6 +212,18 @@ async def run_meeting(ctx: Ctx, meta: dict, messages: list[dict]) -> None:
     await _run_claude(ctx, text, messages)
 
 
+async def run_sketch(ctx: Ctx, name: str, note: str, messages: list[dict]) -> None:
+    """The photo of a hand sketch starts a product: sketch_to_spec reads it, product_spec and the any-product flow build it."""
+
+    await _first(ctx)
+    await ctx.chat("user", "Build this from my sketch" + (": " + note if note else "."))
+    if not claude_enabled():
+        await run_product_mock(ctx, note, sketch=True)
+        return
+    text = "The user uploaded a sketch (" + name + ")" + (": " + note if note else "") + ". Read it with sketch_to_spec, then build it with product_spec and the normal flow."
+    await _run_claude(ctx, text, messages)
+
+
 async def run_reference(ctx: Ctx, ref_id: str) -> None:
     """The empty bench's other start: a reference build, loaded through the same tools, ready to change."""
 
@@ -264,17 +278,22 @@ async def _run_claude(ctx: Ctx, text: str, messages: list[dict]) -> None:
     await lead.emit("running", "plans the build")
     for _round in range(40):
         try:
-            response = await asyncio.to_thread(
-                create_message,
-                lead.model,
-                lead.effort,
-                max_tokens=16000,
-                system=_system(delegation),
-                tools=_tools(delegation),
-                messages=messages,
+            response = await asyncio.wait_for(
+                asyncio.to_thread(
+                    create_message,
+                    lead.model,
+                    lead.effort,
+                    max_tokens=16000,
+                    system=_system(delegation),
+                    tools=_tools(delegation),
+                    messages=messages,
+                ),
+                model_timeout(),
             )
         except Exception as exc:
             log.exception("anthropic call failed")
+            if isinstance(exc, TimeoutError):
+                exc = TimeoutError(f"no answer within {model_timeout():g} s (PAI_MODEL_TIMEOUT_S), the run stops here")
             await lead.emit("error", str(exc)[:160])
             await ctx.chat("agent", "The model request failed: " + str(exc))
             await call_tool(

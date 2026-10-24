@@ -17,6 +17,7 @@ import {
   type PartEvent,
   type PartWarning,
   type ProductEvent,
+  type SketchEvent,
   type QuestionEvent,
   type TasksEvent,
   type VersionEvent,
@@ -155,6 +156,8 @@ export interface SessionState {
   product: ProductEvent["id"];
   firmware: FirmwareEvent | null;
   productLabel: string;
+  /** The hand sketch this build started from, if any. */
+  sketch: SketchEvent | null;
   /** Stress tests by run number, latest event of each. */
   stress: Record<number, StressEvent & { seq: number; at: number }>;
   /** Step-by-step build guide for the latest bill of materials. */
@@ -297,6 +300,7 @@ function emptyState() {
     agents: {} as SessionState["agents"],
     product: "" as ProductEvent["id"],
     productLabel: "Any product",
+    sketch: null as SketchEvent | null,
     stress: {} as SessionState["stress"],
     buildGuide: null as BuildGuideEvent | null,
     explains: {} as Record<string, ExplainEvent>,
@@ -480,6 +484,8 @@ export const useSession = create<SessionState>((set, get) => ({
         const chat: ChatItem[] = known ? s.chat : [...s.chat, { kind: "agent", id: nextId("agent"), seq, at, agentId: ev.id }];
         return set({ log, agents, chat });
       }
+      case "sketch":
+        return set({ log, sketch: ev });
       case "product": {
         if (ev.id === s.product) {
           const keep = ev.requirements;
@@ -491,6 +497,8 @@ export const useSession = create<SessionState>((set, get) => ({
           log,
           product: ev.id,
           productLabel: ev.label,
+          // The sketch a fresh bench was built from stays next to its model.
+          sketch: s.product === "" || s.sketch?.product === ev.id ? s.sketch : null,
           requirements: [],
           metrics: null,
           omniverse: null,

@@ -5,3 +5,6 @@
 **/*.pyc
 **/.pytest_cache/
 agent/runs/sessions/
+agent/runs/cache/
+web/test-results/
+web/playwright-report/
