@@ -1,0 +1,16 @@
+[package]
+name = "bauplan"
+version = "0.1.0"
+description = "Bauplan: the physical AI agent dashboard as a Mac app"
+edition = "2021"
+
+[lib]
+name = "bauplan_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-localhost = "2"

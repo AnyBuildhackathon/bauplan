@@ -1,0 +1,324 @@
+// CAD tab: the part from the latest `cad` event (glb_url) in 3D, its feature tree,
+// the parameters as sliders (POST /api/cad/params, the next `cad` event updates
+// the view), a small image of the real FreeCAD view and "In FreeCAD öffnen".
+import { OrbitControls } from "@react-three/drei";
+import { Canvas, useLoader, useThree } from "@react-three/fiber";
+import { ChevronRight, Download, ExternalLink, Layers } from "lucide-react";
+import { Component, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import * as THREE from "three";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { useSession } from "../../events/store";
+import { useSource } from "../../events/source";
+import type { CadNode, CadParam } from "../../events/types";
+import { assetUrl } from "../../lib/api";
+import { fmtNum } from "../../lib/format";
+import { useHighlight } from "../../lib/hooks";
+import { AnchorScope, useAnchor } from "./anchors";
+
+export const CAD_SOURCE_LABEL = { freecad: "FreeCAD", cadquery: "CadQuery" } as const;
+
+const PARAM_LABELS: Record<string, string> = {
+  arm_length_mm: "Armlänge",
+  thickness_mm: "Armstärke",
+  motor_spacing_mm: "Motor-Lochkreis",
+  diagonal_mm: "Diagonale",
+  plate_width_mm: "Plattenbreite",
+};
+const paramLabel = (key: string) =>
+  PARAM_LABELS[key] ?? key.replace(/_(mm|deg|g)$/, "").replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
+
+class LoadBoundary extends Component<{ children: ReactNode; fallback: ReactNode; resetKey: string }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  componentDidUpdate(prev: { resetKey: string }) {
+    if (prev.resetKey !== this.props.resetKey && this.state.failed) this.setState({ failed: false });
+  }
+  render() {
+    return this.state.failed ? this.props.fallback : this.props.children;
+  }
+}
+
+const AGENT = new THREE.Color("#ff8a3d");
+
+function Part({ url }: { url: string }) {
+  const gltf = useLoader(GLTFLoader, url);
+  const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
+  const size = useThree((s) => s.size);
+  const controls = useThree((s) => s.controls) as unknown as { target: THREE.Vector3; update: () => void } | null;
+  const highlight = useHighlight();
+  const glow = highlight.has("frame");
+
+  // One calm CAD material plus crisp edges, whatever the exporter put in the file.
+  const { object, center, radius, edges } = useMemo(() => {
+    const root = gltf.scene.clone(true);
+    const box = new THREE.Box3().setFromObject(root);
+    const sphere = box.getBoundingSphere(new THREE.Sphere());
+    const lines: THREE.LineSegments[] = [];
+    root.traverse((o) => {
+      if (o instanceof THREE.Mesh) {
+        o.material = new THREE.MeshStandardMaterial({ color: "#c9ccd3", roughness: 0.55, metalness: 0.08, emissive: AGENT, emissiveIntensity: 0 });
+        o.castShadow = true;
+        const e = new THREE.LineSegments(new THREE.EdgesGeometry(o.geometry, 30), new THREE.LineBasicMaterial({ color: "#2b2d33", transparent: true, opacity: 0.55 }));
+        e.matrixAutoUpdate = false;
+        o.add(e);
+        lines.push(e);
+      }
+    });
+    return { object: root, center: sphere.center, radius: sphere.radius || 1, edges: lines };
+  }, [gltf]);
+
+  useEffect(() => {
+    object.traverse((o) => {
+      if (o instanceof THREE.Mesh) (o.material as THREE.MeshStandardMaterial).emissiveIntensity = glow ? 0.18 : 0;
+    });
+  }, [object, glow]);
+  useEffect(() => () => edges.forEach((e) => e.geometry.dispose()), [edges]);
+
+  useLayoutEffect(() => {
+    const vfov = THREE.MathUtils.degToRad(camera.fov);
+    const hfov = 2 * Math.atan(Math.tan(vfov / 2) * (size.width / Math.max(1, size.height)));
+    // The part auto-rotates, so the whole bounding sphere has to stay in view.
+    const dist = radius / Math.sin(Math.min(vfov, hfov) / 2);
+    const dir = new THREE.Vector3(0.75, 0.62, 0.95).normalize();
+    camera.position.copy(center).addScaledVector(dir, dist);
+    camera.near = dist / 100;
+    camera.far = dist * 10;
+    camera.lookAt(center);
+    camera.updateProjectionMatrix();
+    if (controls) {
+      controls.target.copy(center);
+      controls.update();
+    }
+  }, [camera, center, radius, size.width, size.height, controls]);
+
+  const anchor = useAnchor("frame", radius * 0.8);
+  return (
+    <>
+      <primitive object={object} />
+      <group ref={anchor} position={center} />
+    </>
+  );
+}
+
+function CadScene({ url }: { url: string }) {
+  return (
+    <Canvas dpr={[1, 2]} camera={{ fov: 30 }} gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}>
+      <AnchorScope primary>
+        <ambientLight intensity={0.65} />
+        <hemisphereLight args={["#ffffff", "#d9d6e8", 0.7]} />
+        <directionalLight position={[3, 5, 2]} intensity={1.7} />
+        <directionalLight position={[-3, 2, -2]} intensity={0.5} />
+        <Suspense fallback={null}>
+          <Part url={url} />
+        </Suspense>
+        <OrbitControls makeDefault enablePan={false} autoRotate autoRotateSpeed={0.5} />
+      </AnchorScope>
+    </Canvas>
+  );
+}
+
+function TreeNode({ node, depth }: { node: CadNode; depth: number }) {
+  const [open, setOpen] = useState(depth < 2);
+  const hasKids = node.children?.length > 0;
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={() => hasKids && setOpen(!open)}
+        className={`flex w-full items-center gap-1.5 rounded-lg py-1 pr-2 text-left text-[14px] ${hasKids ? "hover:bg-tile" : "cursor-default"}`}
+        style={{ paddingLeft: 4 + depth * 14 }}
+      >
+        <ChevronRight className={`h-3.5 w-3.5 shrink-0 text-faint transition ${hasKids ? "" : "opacity-0"} ${open ? "rotate-90" : ""}`} />
+        <span className={`h-2 w-2 shrink-0 rounded-[3px] ${depth === 0 ? "bg-ink" : "bg-track"}`} />
+        <span className={`truncate ${depth === 0 ? "font-bold text-ink" : "font-medium text-ink-2"}`}>{node.label}</span>
+      </button>
+      {hasKids && open && (
+        <ul>
+          {node.children.map((c) => (
+            <TreeNode key={c.id} node={c} depth={depth + 1} />
+          ))}
+        </ul>
+      )}
+    </li>
+  );
+}
+
+function ParamSlider({
+  name,
+  param,
+  value,
+  pending,
+  onChange,
+  onCommit,
+}: {
+  name: string;
+  param: CadParam;
+  value: number;
+  pending: boolean;
+  onChange: (v: number) => void;
+  onCommit: () => void;
+}) {
+  const span = param.max - param.min || 1;
+  const pct = ((value - param.min) / span) * 100;
+  const step = span <= 10 ? 0.1 : span <= 50 ? 0.5 : 1;
+  const changed = Math.abs(value - param.value) > 1e-9;
+  return (
+    <label className="block" data-target={`param:${name} ${name}`}>
+      <div className="flex items-baseline justify-between">
+        <span className="text-[14px] font-semibold text-ink-2">{paramLabel(name)}</span>
+        <span className={`num text-[15px] font-bold ${pending ? "text-agent-ink" : changed ? "text-ink" : "text-ink"}`}>
+          {changed && <span className="mr-1 text-[13px] font-semibold text-faint">{fmtNum(param.value, step < 1 ? 1 : 0)} →</span>}
+          {fmtNum(value, step < 1 ? 1 : 0)} {param.unit}
+        </span>
+      </div>
+      <input
+        type="range"
+        min={param.min}
+        max={param.max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        onPointerUp={onCommit}
+        onKeyUp={(e) => ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(e.key) && onCommit()}
+        className={`bevel-range mt-1.5 w-full ${pending ? "is-pending" : ""}`}
+        style={{ "--p": `${pct}%` } as React.CSSProperties}
+        aria-label={paramLabel(name)}
+      />
+      <div className="num flex justify-between text-[11px] font-semibold text-faint">
+        <span>{fmtNum(param.min)}</span>
+        <span>{fmtNum(param.max)}</span>
+      </div>
+    </label>
+  );
+}
+
+export function CadView() {
+  const cad = useSession((s) => s.cad);
+  const cadStep = useSession((s) => s.steps.cad.status);
+  const { setCadParams, openInFreecad } = useSource.getState();
+  const [values, setValues] = useState<Record<string, number>>({});
+  const [pending, setPending] = useState<string | null>(null);
+  const answeredBy = useRef(0);
+
+  // A new `cad` event is the backend's answer: take its values, clear the pending state.
+  useEffect(() => {
+    if (!cad) return;
+    setValues(Object.fromEntries(Object.entries(cad.params).map(([k, p]) => [k, p.value])));
+    if (cad.n > answeredBy.current) setPending(null);
+  }, [cad]);
+
+  if (!cad) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-2 px-8 text-center">
+        <Layers className="h-8 w-8 text-faint" />
+        <p className="text-[18px] font-semibold text-ink-2">{cadStep === "running" ? "Das CAD-Teil entsteht gerade …" : "Noch kein CAD-Teil"}</p>
+        <p className="max-w-sm text-[15px] text-muted">CadQuery oder FreeCAD baut den Rahmen im Schritt CAD. Danach kannst du hier die Maße mit Reglern ändern.</p>
+      </div>
+    );
+  }
+
+  const glb = assetUrl(cad.glb_url);
+  const view = assetUrl(cad.view_png_url);
+  const stl = assetUrl(cad.stl_url);
+  const step = assetUrl(cad.step_url);
+  const source = CAD_SOURCE_LABEL[cad.source] ?? cad.source;
+
+  const commit = async (name: string) => {
+    const v = values[name];
+    if (v === undefined || Math.abs(v - cad.params[name].value) < 1e-9) return;
+    answeredBy.current = cad.n;
+    setPending(name);
+    const ok = await setCadParams({ [name]: v });
+    if (!ok) {
+      setPending(null);
+      setValues((prev) => ({ ...prev, [name]: cad.params[name].value }));
+    }
+  };
+
+  return (
+    <div className="grid h-full min-h-0 grid-cols-[minmax(0,1fr)_268px]">
+      <div className="relative min-h-0 min-w-0">
+        {glb ? (
+          <LoadBoundary
+            resetKey={glb}
+            fallback={<div className="flex h-full items-center justify-center px-6 text-center text-[15px] text-muted">Das 3D-Modell ließ sich nicht laden ({glb}).</div>}
+          >
+            <CadScene url={glb} />
+          </LoadBoundary>
+        ) : (
+          <div className="flex h-full items-center justify-center text-[15px] text-muted">Kein 3D-Modell im CAD-Ereignis.</div>
+        )}
+        <span className="pointer-events-none absolute top-3 left-3 inline-flex h-8 items-center gap-2 rounded-full bg-white/90 px-3.5 text-[13px] font-bold text-ink-2 shadow-[var(--shadow-pill)]">
+          <span className={`h-2 w-2 rounded-full ${cad.source === "freecad" ? "bg-[#d23f31]" : "bg-sky"}`} />
+          {source}
+          {pending && <span className="font-semibold text-agent-ink">· rechnet …</span>}
+        </span>
+      </div>
+
+      <div className="scroll-soft min-h-0 overflow-y-auto border-l border-line bg-card/70 px-4 py-3.5">
+        <section>
+          <h3 className="eyebrow mb-1">Feature-Baum</h3>
+          <ul className="-mx-1">
+            {cad.tree.map((n) => (
+              <TreeNode key={n.id} node={n} depth={0} />
+            ))}
+          </ul>
+        </section>
+
+        {Object.keys(cad.params).length > 0 && (
+          <section className="mt-4 space-y-3">
+            <h3 className="eyebrow">Parameter</h3>
+            {Object.entries(cad.params).map(([name, p]) => (
+              <ParamSlider
+                key={name}
+                name={name}
+                param={p}
+                value={values[name] ?? p.value}
+                pending={pending === name}
+                onChange={(v) => setValues((prev) => ({ ...prev, [name]: v }))}
+                onCommit={() => void commit(name)}
+              />
+            ))}
+          </section>
+        )}
+
+        <section className="mt-4">
+          <h3 className="eyebrow mb-1.5">FreeCAD-Ansicht</h3>
+          <div className="overflow-hidden rounded-2xl bg-tile ring-1 ring-line">
+            {view ? (
+              <img src={view} alt="Ansicht aus FreeCAD" className="block aspect-[4/3] w-full object-cover" />
+            ) : (
+              <div className="flex aspect-[4/3] items-center justify-center px-4 text-center text-[13px] text-muted">
+                Erscheint, sobald das Teil in FreeCAD offen ist.
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => void openInFreecad()}
+            data-target="freecad_open in_freecad_oeffnen"
+            className="mt-2.5 flex h-10 w-full items-center justify-center gap-2 rounded-full bg-ink text-[14px] font-semibold text-white shadow-[var(--shadow-pill)] hover:bg-[#333]"
+          >
+            <ExternalLink className="h-4 w-4" /> In FreeCAD öffnen
+          </button>
+          {(stl || step) && (
+            <div className="mt-2 flex gap-2">
+              {stl && (
+                <a href={stl} download className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full bg-tile text-[13px] font-semibold text-ink-2 hover:bg-track">
+                  <Download className="h-3.5 w-3.5" /> STL
+                </a>
+              )}
+              {step && (
+                <a href={step} download className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full bg-tile text-[13px] font-semibold text-ink-2 hover:bg-track">
+                  <Download className="h-3.5 w-3.5" /> STEP
+                </a>
+              )}
+            </div>
+          )}
+        </section>
+      </div>
+    </div>
+  );
+}

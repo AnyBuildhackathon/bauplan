@@ -1,0 +1,458 @@
+import { create } from "zustand";
+import { archiveChat } from "../lib/archive";
+import {
+  STEP_IDS,
+  type AgentEvent,
+  type BomEvent,
+  type CadEvent,
+  type DrawEvent,
+  type RenderEvent,
+  type MascotState,
+  type MeetingEvent,
+  type MetricsEvent,
+  type PartEvent,
+  type PartWarning,
+  type QuestionEvent,
+  type TasksEvent,
+  type VersionEvent,
+  type RequirementEvent,
+  type SimEvent,
+  type StepId,
+  type StepStatus,
+  type ToolStatus,
+  type TrainingEvent,
+} from "./types";
+
+export const STEP_LABELS: Record<StepId, string> = {
+  meeting: "Meeting",
+  teile: "Teile",
+  cad: "CAD",
+  render: "Render",
+  simulation: "Simulation",
+  training: "Training",
+  stueckliste: "Stückliste",
+};
+
+/** The fixed tool roster shown in the status card; unknown tool names are appended. */
+export const TOOL_NAMES = [
+  "Claude",
+  "FreeCAD",
+  "CadQuery",
+  "MuJoCo",
+  "Blender",
+  "Isaac Sim",
+  "Isaac Lab",
+  "RunPod",
+  "Jamie",
+  "Reson8",
+] as const;
+
+export interface LoggedEvent {
+  seq: number;
+  at: number;
+  ev: AgentEvent;
+}
+
+export interface StepState {
+  id: StepId;
+  status: StepStatus;
+  label: string;
+  at: number;
+  seq: number;
+}
+
+export interface ToolState {
+  name: string;
+  status: ToolStatus | "unknown";
+  detail: string;
+  at: number;
+}
+
+export type Phase = "running" | "ok" | "error";
+
+export type ChatItem =
+  | { kind: "msg"; id: string; seq: number; at: number; role: "user" | "agent"; text: string; local?: boolean }
+  | { kind: "tool"; id: string; seq: number; at: number; name: string; phase: Phase; detail: string; endedAt?: number; instant?: boolean }
+  | { kind: "jamie"; id: string; seq: number; at: number; action: string; phase: Phase; detail: string; endedAt?: number }
+  | { kind: "sim"; id: string; seq: number; at: number; run: number; result: "pass" | "fail"; summary: string }
+  | { kind: "bom"; id: string; seq: number; at: number; count: number; total: number }
+  | { kind: "training"; id: string; seq: number; at: number; status: TrainingEvent["status"]; detail: string }
+  | { kind: "warning"; id: string; seq: number; at: number; part: string; warning: PartWarning }
+  | { kind: "question"; id: string; seq: number; at: number; questionId: string }
+  | { kind: "version"; id: string; seq: number; at: number; n: number };
+
+export interface Run extends SimEvent {
+  seq: number;
+  at: number;
+}
+
+export interface Draw extends DrawEvent {
+  id: string;
+  at: number;
+}
+
+export interface Pointing {
+  id: string;
+  target: string;
+  label: string;
+  at: number;
+}
+
+export interface JamieEntry {
+  id: string;
+  seq: number;
+  at: number;
+  action: string;
+  status: string;
+  phase: Phase;
+  detail: string;
+}
+
+export interface SessionState {
+  log: LoggedEvent[];
+  steps: Record<StepId, StepState>;
+  tools: Record<string, ToolState>;
+  chat: ChatItem[];
+  requirements: RequirementEvent[];
+  metrics: MetricsEvent | null;
+  runs: Run[];
+  draws: Draw[];
+  point: Pointing | null;
+  mascot: { state: MascotState; say: string; at: number };
+  bom: BomEvent | null;
+  jamie: JamieEntry[];
+  training: (TrainingEvent & { at: number }) | null;
+  /** Latest CAD part, and how many `cad` events arrived (a new one answers a parameter change). */
+  cad: (CadEvent & { at: number; n: number }) | null;
+  renders: (RenderEvent & { id: string; at: number })[];
+  /** Jamie meetings in timeline order (kickoff, reviews; archive meetings are kept too). */
+  meetings: MeetingEvent[];
+  versions: VersionEvent[];
+  /** Chosen part per category, with the Jamie quote behind it. */
+  parts: Record<string, PartEvent>;
+  /** Every part announced so far by name, so an older version can still be drawn. */
+  partsByName: Record<string, PartEvent>;
+  questions: Record<string, QuestionEvent>;
+  tasks: TasksEvent | null;
+  /** Reduces one contract event. `instant` marks events replayed in bulk (seek), so nothing animates for them. */
+  apply: (ev: AgentEvent, opts?: { instant?: boolean }) => void;
+  addLocalUserMessage: (text: string) => void;
+  reset: () => void;
+}
+
+/** Event order; one step per applied event, so neighbouring events differ by 1. */
+let seqCounter = 0;
+let idCounter = 0;
+const nextId = (prefix: string) => `${prefix}-${++idCounter}`;
+
+export function phaseOf(status: string): Phase {
+  const s = status.toLowerCase();
+  if (["error", "failed", "fail", "fehler"].includes(s)) return "error";
+  if (["running", "pending", "queued", "started", "läuft"].includes(s)) return "running";
+  return "ok";
+}
+
+function initialSteps(): Record<StepId, StepState> {
+  return Object.fromEntries(
+    STEP_IDS.map((id) => [id, { id, status: "pending" as StepStatus, label: STEP_LABELS[id], at: 0, seq: 0 }]),
+  ) as Record<StepId, StepState>;
+}
+
+function initialTools(): Record<string, ToolState> {
+  return Object.fromEntries(TOOL_NAMES.map((name) => [name, { name, status: "unknown", detail: "", at: 0 }]));
+}
+
+/** Backend tool functions shown under the program they drive. */
+const TOOL_ALIASES: Record<string, string> = {
+  jamie_requirements: "Jamie",
+  jamie_search: "Jamie",
+  jamie_meeting: "Jamie",
+  jamie_create_tasks: "Jamie",
+  jamie_templates: "Jamie",
+  jamie_note: "Jamie",
+  cad_frame: "FreeCAD",
+  simulate_drone: "MuJoCo",
+  blender_render: "Blender",
+  isaac_sim_render: "Isaac Sim",
+  isaac_lab_train: "Isaac Lab",
+  isaac_lab_status: "Isaac Lab",
+  parts_search: "Teile",
+  physics_calc: "Physik",
+  bom_build: "Stückliste",
+  version_commit: "Version",
+  ask_user: "Rückfrage",
+};
+
+/**
+ * Tools that never get a chat card: pointer and face moves, and calls whose result
+ * has its own card (Jamie actions, the question, the version).
+ */
+const SILENT_TOOLS = new Set([
+  "ui_point_at",
+  "ui_draw",
+  "mascot_say",
+  "ask_user",
+  "version_commit",
+  "requirements_accept",
+  "jamie_templates",
+  "jamie_requirements",
+  "jamie_search",
+  "jamie_meeting",
+  "jamie_create_tasks",
+  "bom_build",
+  "physics_calc",
+]);
+
+/** Tool names from the backend may differ in case or spacing ("isaac_lab", "Isaac Lab"). */
+export function canonicalToolName(name: string): string {
+  if (TOOL_ALIASES[name]) return TOOL_ALIASES[name];
+  const flat = name.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const known = TOOL_NAMES.find((t) => t.toLowerCase().replace(/[^a-z0-9]/g, "") === flat);
+  return known ?? name;
+}
+
+const MAX_DRAWS = 8;
+/** Age given to bulk-replayed events; animations only run for events younger than a few seconds. */
+export const INSTANT_AGE_MS = 120_000;
+const LOCAL_ECHO_WINDOW_MS = 15000;
+
+function emptyState() {
+  return {
+    log: [] as LoggedEvent[],
+    steps: initialSteps(),
+    tools: initialTools(),
+    chat: [] as ChatItem[],
+    requirements: [] as RequirementEvent[],
+    metrics: null as MetricsEvent | null,
+    runs: [] as Run[],
+    draws: [] as Draw[],
+    point: null as Pointing | null,
+    mascot: { state: "ruhig" as MascotState, say: "", at: 0 },
+    bom: null as BomEvent | null,
+    jamie: [] as JamieEntry[],
+    training: null as SessionState["training"],
+    cad: null as SessionState["cad"],
+    renders: [] as SessionState["renders"],
+    meetings: [] as MeetingEvent[],
+    versions: [] as VersionEvent[],
+    parts: {} as Record<string, PartEvent>,
+    partsByName: {} as Record<string, PartEvent>,
+    questions: {} as Record<string, QuestionEvent>,
+    tasks: null as TasksEvent | null,
+  };
+}
+
+const meetingOrder = (m: MeetingEvent) => `${m.date}T${m.time}`;
+
+/** Finds the newest still-running chat card of a tool or Jamie action so its result updates it in place. */
+function findOpenCard(chat: ChatItem[], kind: "tool" | "jamie", key: string): number {
+  for (let i = chat.length - 1; i >= 0; i--) {
+    const item = chat[i];
+    if (item.kind === "tool" && kind === "tool" && item.name === key && item.phase === "running") return i;
+    if (item.kind === "jamie" && kind === "jamie" && item.action === key && item.phase === "running") return i;
+  }
+  return -1;
+}
+
+export const useSession = create<SessionState>((set, get) => ({
+  ...emptyState(),
+
+  apply: (ev, opts) => {
+    // The server starts every stream, and every reset, with this marker; a reconnect replays from it.
+    if (ev.type === "reset") return set(emptyState());
+    if (ev.type === "replayed") return;
+    const at = opts?.instant ? Date.now() - INSTANT_AGE_MS : Date.now();
+    const seq = ++seqCounter;
+    const s = get();
+    const log = [...s.log, { seq, at, ev }];
+
+    switch (ev.type) {
+      case "step": {
+        if (!STEP_IDS.includes(ev.id)) return set({ log });
+        const steps = { ...s.steps, [ev.id]: { id: ev.id, status: ev.status, label: ev.label || STEP_LABELS[ev.id], at, seq } };
+        return set({ log, steps });
+      }
+      case "chat": {
+        if (ev.role === "user") {
+          // The backend echoes prompts we already showed optimistically; drop the echo.
+          const echo = s.chat.findIndex(
+            (c) => c.kind === "msg" && c.local && c.text.trim() === ev.text.trim() && at - c.at < LOCAL_ECHO_WINDOW_MS,
+          );
+          if (echo >= 0) {
+            const chat = s.chat.slice();
+            const item = chat[echo];
+            if (item.kind === "msg") chat[echo] = { ...item, local: false };
+            return set({ log, chat });
+          }
+        }
+        const chat: ChatItem[] = [...s.chat, { kind: "msg", id: nextId("msg"), seq, at, role: ev.role, text: ev.text }];
+        return set({ log, chat });
+      }
+      case "tool": {
+        const name = canonicalToolName(ev.name);
+        const tools = { ...s.tools, [name]: { name, status: ev.status, detail: ev.detail, at } };
+        if (SILENT_TOOLS.has(ev.name)) return set({ log, tools });
+        let chat = s.chat;
+        if (ev.status === "running") {
+          // A second "running" for an open card is progress (FreeCAD: Arm 2 von 4), not a new call.
+          const open = findOpenCard(chat, "tool", name);
+          if (open >= 0) {
+            chat = chat.slice();
+            const item = chat[open];
+            if (item.kind === "tool") chat[open] = { ...item, detail: ev.detail || item.detail };
+          } else {
+            chat = [...chat, { kind: "tool", id: nextId("tool"), seq, at, name, phase: "running", detail: ev.detail, instant: opts?.instant }];
+          }
+        } else {
+          // offline (a fallback took over) and connected also end a call.
+          const phase: Phase = ev.status === "error" ? "error" : "ok";
+          const open = findOpenCard(chat, "tool", name);
+          if (open >= 0) {
+            chat = chat.slice();
+            const item = chat[open];
+            if (item.kind === "tool")
+              chat[open] = { ...item, phase, detail: ev.detail || item.detail, endedAt: at, instant: item.instant || opts?.instant };
+          } else if (ev.status === "ok" || ev.status === "error") {
+            // Connection status at startup (connected, offline) is not a call and gets no card.
+            chat = [...chat, { kind: "tool", id: nextId("tool"), seq, at, name, phase, detail: ev.detail, endedAt: at }];
+          }
+        }
+        return set({ log, tools, chat });
+      }
+      case "requirement": {
+        const idx = s.requirements.findIndex((r) => r.id === ev.id);
+        const requirements = s.requirements.slice();
+        if (idx >= 0) requirements[idx] = { ...requirements[idx], ...ev };
+        else requirements.push(ev);
+        return set({ log, requirements });
+      }
+      case "metrics":
+        return set({ log, metrics: ev });
+      case "sim": {
+        const runs = [...s.runs.filter((r) => r.run !== ev.run), { ...ev, seq, at }].sort((a, b) => a.run - b.run);
+        const chat: ChatItem[] = [
+          ...s.chat,
+          { kind: "sim", id: nextId("sim"), seq, at, run: ev.run, result: ev.result, summary: ev.summary },
+        ];
+        // A new run result starts a fresh explanation, so old annotations go away.
+        return set({ log, runs, chat, draws: [] });
+      }
+      case "draw": {
+        const draws = [...s.draws, { ...ev, id: nextId("draw"), at }].slice(-MAX_DRAWS);
+        return set({ log, draws });
+      }
+      case "point":
+        return set({ log, point: { id: nextId("point"), target: ev.target, label: ev.label, at } });
+      case "mascot":
+        return set({ log, mascot: { state: ev.state, say: ev.say, at } });
+      case "bom": {
+        const chat: ChatItem[] = [
+          ...s.chat,
+          { kind: "bom", id: nextId("bom"), seq, at, count: ev.items.length, total: ev.total_eur },
+        ];
+        return set({ log, bom: ev, chat });
+      }
+      case "jamie": {
+        const phase = phaseOf(ev.status);
+        const jamie = [...s.jamie, { id: nextId("jamie"), seq, at, action: ev.action, status: ev.status, phase, detail: ev.detail }];
+        let chat = s.chat;
+        const open = findOpenCard(chat, "jamie", ev.action);
+        if (phase !== "running" && open >= 0) {
+          chat = chat.slice();
+          const item = chat[open];
+          if (item.kind === "jamie") chat[open] = { ...item, phase, detail: ev.detail || item.detail, endedAt: at };
+        } else {
+          chat = [...chat, { kind: "jamie", id: nextId("jamie"), seq, at, action: ev.action, phase, detail: ev.detail }];
+        }
+        return set({ log, jamie, chat });
+      }
+      case "cad":
+        return set({ log, cad: { ...ev, at, n: (s.cad?.n ?? 0) + 1 } });
+      case "render":
+        return set({ log, renders: [...s.renders, { ...ev, id: nextId("render"), at }] });
+      case "meeting": {
+        const meetings = [...s.meetings.filter((m) => m.id !== ev.id && m.id !== ev.replaces), ev].sort((a, b) =>
+          meetingOrder(a).localeCompare(meetingOrder(b)),
+        );
+        return set({ log, meetings });
+      }
+      case "version": {
+        const versions = [...s.versions.filter((v) => v.n !== ev.n), ev].sort((a, b) => a.n - b.n);
+        const chat: ChatItem[] = [...s.chat, { kind: "version", id: nextId("version"), seq, at, n: ev.n }];
+        return set({ log, versions, chat });
+      }
+      case "part": {
+        const parts = ev.considered ? s.parts : { ...s.parts, [ev.category]: ev };
+        const partsByName = { ...s.partsByName, [ev.name]: ev };
+        const chat: ChatItem[] = [
+          ...s.chat,
+          ...ev.warnings.map((warning) => ({ kind: "warning" as const, id: nextId("warn"), seq, at, part: ev.name, warning })),
+        ];
+        return set({ log, parts, partsByName, chat });
+      }
+      case "question": {
+        const questions = { ...s.questions, [ev.id]: ev };
+        const known = s.chat.some((c) => c.kind === "question" && c.questionId === ev.id);
+        const chat: ChatItem[] = known ? s.chat : [...s.chat, { kind: "question", id: nextId("question"), seq, at, questionId: ev.id }];
+        return set({ log, questions, chat });
+      }
+      case "tasks":
+        return set({ log, tasks: ev });
+      case "training": {
+        const prev = s.training;
+        let chat = s.chat;
+        if (!prev || prev.status !== ev.status) {
+          chat = [
+            ...chat,
+            { kind: "training", id: nextId("training"), seq, at, status: ev.status, detail: trainingDetail(ev) },
+          ];
+        }
+        return set({ log, training: { ...ev, at }, chat });
+      }
+    }
+  },
+
+  addLocalUserMessage: (text) => {
+    const at = Date.now();
+    set((s) => ({
+      chat: [...s.chat, { kind: "msg", id: nextId("msg"), seq: ++seqCounter, at, role: "user", text, local: true }],
+    }));
+  },
+
+  reset: () => {
+    const { chat, runs } = get();
+    const last = runs.at(-1);
+    archiveChat(chat, last ? `Lauf ${last.run} ${last.result === "pass" ? "besteht" : "sackt ab"}` : "ohne Lauf");
+    set(emptyState());
+  },
+}));
+
+function trainingDetail(ev: TrainingEvent): string {
+  switch (ev.status) {
+    case "queued":
+      return "wartet auf die GPU";
+    case "running":
+      return `${formatSteps(ev.step)} Schritte`;
+    case "done":
+      return `fertig nach ${formatSteps(ev.step)} Schritten`;
+    case "failed":
+      return "abgebrochen";
+    case "offline":
+      return "RunPod nicht erreichbar";
+  }
+}
+
+export function formatSteps(step: number): string {
+  if (step >= 1_000_000) return `${(step / 1_000_000).toLocaleString("de-DE", { maximumFractionDigits: 1 })} Mio.`;
+  if (step >= 1000) return `${Math.round(step / 1000).toLocaleString("de-DE")} Tsd.`;
+  return step.toLocaleString("de-DE");
+}
+
+/** The step the agent is on right now: the running one, else the last one that finished or failed. */
+export function currentStep(steps: Record<StepId, StepState>): StepState {
+  const all = STEP_IDS.map((id) => steps[id]);
+  const running = all.filter((s) => s.status === "running").sort((a, b) => b.seq - a.seq)[0];
+  if (running) return running;
+  const touched = all.filter((s) => s.status !== "pending").sort((a, b) => b.seq - a.seq)[0];
+  return touched ?? all[0];
+}

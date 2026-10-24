@@ -1,0 +1,24 @@
+{
+  "id": "werkstatt-2026-09-02",
+  "kind": "archive",
+  "title": "Werkstattnotiz Whoop",
+  "date": "2026-09-02",
+  "time": "18:10",
+  "recorded_with": "Jamie",
+  "utterances": [
+    {
+      "speaker": "Lea",
+      "time": "18:14",
+      "text": "Häng den FunFly 4S 1300 nicht an die 1102er. 150 Gramm Akku, und die Motoren sind 1S.",
+      "about": ["tattu-funfly-4s-1300"],
+      "tone": "warning"
+    },
+    {
+      "speaker": "Ben",
+      "time": "18:16",
+      "text": "Das hebt nicht ab, egal wie groß die Milliamperestunden aussehen.",
+      "about": ["tattu-funfly-4s-1300"],
+      "tone": "warning"
+    }
+  ]
+}

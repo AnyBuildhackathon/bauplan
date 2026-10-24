@@ -1,0 +1,19 @@
+{
+  "task": "Isaac-Quadcopter-Direct-v0",
+  "source": "fallback",
+  "note": "Offline stand-in so the demo still has a learning curve when RUNPOD_SSH_HOST is unset. Replace curve and video with a real Isaac Lab run from the pod before treating the numbers as a training result.",
+  "video": "hover.mp4",
+  "curve": [
+    [0, -10.0],
+    [20, -8.4],
+    [40, -6.5],
+    [60, -4.2],
+    [80, -2.1],
+    [100, -0.4],
+    [120, 1.8],
+    [140, 4.6],
+    [160, 7.9],
+    [180, 11.2],
+    [200, 14.0]
+  ]
+}

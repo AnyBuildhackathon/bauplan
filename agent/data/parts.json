@@ -1,0 +1,184 @@
+{
+  "price_note": "Every unit_price_eur is a sample to verify before ordering, not a live shop price. Motors and the Lava cells are often sold as a multipack, so the checkout total can differ from qty times the per-piece sample.",
+  "parts": [
+    {
+      "id": "betafpv-1102-18000kv",
+      "name": "BetaFPV 1102 18000KV",
+      "category": "motor",
+      "bom_qty": 4,
+      "mass_g": 2.95,
+      "thrust_g": 40.6,
+      "efficiency_g_per_w": 2.11,
+      "bench_prop_id": "gemfan-1635-3",
+      "kv": 18000,
+      "cells_max": 1,
+      "height_mm": 13.6,
+      "shaft_mm": 1.5,
+      "mount_diameter_mm": 6.6,
+      "unit_price_eur": 4.99,
+      "price_is_sample": true,
+      "shop": "BetaFPV",
+      "url": "https://betafpv.com/products/1102-13500kv-brushless-motors",
+      "scene_target": "motor_front_left",
+      "note": "Masse, 1S-Freigabe und Schub 40,6 g bei 2,11 g/W mit GF-1635-3B stehen so auf der BetaFPV-Seite. Der Schub gilt pro Motor, nicht für den Satz.",
+      "aliases": [
+        "1102 18000",
+        "18000kv",
+        "18000"
+      ]
+    },
+    {
+      "id": "betafpv-1102-22000kv",
+      "name": "BetaFPV 1102 22000KV",
+      "category": "motor",
+      "bom_qty": 4,
+      "mass_g": 2.79,
+      "thrust_g": 46.3,
+      "efficiency_g_per_w": 1.9,
+      "bench_prop_id": "gemfan-1635-3",
+      "kv": 22000,
+      "cells_max": 1,
+      "height_mm": 13.6,
+      "shaft_mm": 1.5,
+      "mount_diameter_mm": 6.6,
+      "unit_price_eur": 4.99,
+      "price_is_sample": true,
+      "shop": "BetaFPV",
+      "url": "https://betafpv.com/products/1102-13500kv-brushless-motors",
+      "scene_target": "motor_front_left",
+      "note": "Gleiche BetaFPV-Tabelle: 46,3 g Schub und 1,90 g/W mit GF-1635-3B. Mehr KV, schlechtere Effizienz, immer noch 1S.",
+      "aliases": [
+        "1102 22000",
+        "22000kv",
+        "22000"
+      ]
+    },
+    {
+      "id": "gemfan-1635-3",
+      "name": "Gemfan 1635-3 40 mm",
+      "category": "propeller",
+      "bom_qty": 4,
+      "mass_g": 0.54,
+      "diameter_mm": 40,
+      "pitch_in": 3.5,
+      "unit_price_eur": 0.95,
+      "price_is_sample": true,
+      "shop": "Gemfan",
+      "url": "https://www.gemfanhobby.com/40mm-1635-pc-3-blade-single-hole.html",
+      "scene_target": "propeller_front_left",
+      "note": "0,54 g und 40 mm stehen auf der Gemfan-Seite. BetaFPV misst den 1102-Schub mit diesem Propeller; Gemfan selbst nennt eher 1103er Motoren.",
+      "aliases": [
+        "gemfan 1635",
+        "1635"
+      ]
+    },
+    {
+      "id": "tattu-funfly-4s-1300",
+      "name": "Tattu FunFly 4S 1300mAh 100C",
+      "category": "battery",
+      "bom_qty": 1,
+      "mass_g": 149.5,
+      "capacity_mah": 1300,
+      "voltage_v": 14.8,
+      "cells": 4,
+      "length_mm": 73,
+      "width_mm": 35,
+      "height_mm": 28.5,
+      "unit_price_eur": 21.56,
+      "price_is_sample": true,
+      "shop": "GensTattu",
+      "url": "https://genstattu.com/ta-ff-100c-1300-4s1p.html",
+      "scene_target": "battery",
+      "note": "149,5 g und 73 x 35 x 28,5 mm laut Tattu. Der Euro-Preis ist eine Stichprobe von Baltic Drones, kein Live-Preis.",
+      "aliases": [
+        "funfly",
+        "4s 1300"
+      ]
+    },
+    {
+      "id": "betafpv-lava-1s-550",
+      "name": "BetaFPV Lava 1S 550mAh 75C",
+      "category": "battery",
+      "bom_qty": 1,
+      "mass_g": 14,
+      "capacity_mah": 550,
+      "voltage_v": 3.8,
+      "cells": 1,
+      "length_mm": 68,
+      "width_mm": 15.5,
+      "height_mm": 6.7,
+      "unit_price_eur": 6.49,
+      "price_is_sample": true,
+      "shop": "BetaFPV",
+      "url": "https://betafpv.com/products/lava-1s-550mah-75c-battery-4pcs",
+      "scene_target": "battery",
+      "note": "14 g, 3,8 V LiHV, 68 x 15,5 x 6,7 mm laut BetaFPV. Der Shop verkauft ein 4er-Pack; unit_price_eur ist eine Stichprobe pro Zelle, nicht der Pack-Preis.",
+      "aliases": [
+        "lava 550",
+        "lava 1s"
+      ]
+    },
+    {
+      "id": "lihv-1s-1100",
+      "name": "LiHV 1S 1100mAh 75C",
+      "category": "battery",
+      "bom_qty": 1,
+      "mass_g": 26,
+      "capacity_mah": 1100,
+      "voltage_v": 3.8,
+      "cells": 1,
+      "length_mm": 63,
+      "width_mm": 19,
+      "height_mm": 13,
+      "unit_price_eur": 9.9,
+      "price_is_sample": true,
+      "shop": "Stichprobe",
+      "url": "",
+      "scene_target": "battery",
+      "aliases": [
+        "1100",
+        "1s 1100",
+        "lihv 1100"
+      ],
+      "note": "Masse, Maße und Preis sind eine Stichprobe für eine 1S-Zelle dieser Klasse, nicht von einem Datenblatt geprüft. Vor dem Bestellen eine konkrete Zelle wählen."
+    },
+    {
+      "id": "betafpv-f4-1s-12a-aio-v3",
+      "name": "BetaFPV F4 1S 12A AIO V3 ELRS",
+      "category": "flight_controller",
+      "bom_qty": 1,
+      "mass_g": 4.68,
+      "cells_max": 2,
+      "mount_mm": 26,
+      "unit_price_eur": 36.9,
+      "price_is_sample": true,
+      "shop": "BetaFPV",
+      "url": "https://betafpv.com/products/f4-1s-12a-aio-brushless-flight-controller-v3-0",
+      "scene_target": "flight_controller",
+      "note": "4,68 g mit Motorsteckern, ohne Stromkabel, laut BetaFPV. ESC ist für 1-2S freigegeben. Der Euro-Preis ist eine Stichprobe neben dem USD-Listenpreis.",
+      "aliases": [
+        "aio",
+        "f4 1s",
+        "aio-regler"
+      ]
+    },
+    {
+      "id": "printed-whoop-frame",
+      "name": "Gedruckter Whoop-Rahmen PLA",
+      "category": "frame",
+      "bom_qty": 1,
+      "mass_g": 6,
+      "mass_is_estimate": true,
+      "unit_price_eur": 1.8,
+      "price_is_sample": true,
+      "shop": "Werkstatt",
+      "url": "",
+      "scene_target": "frame",
+      "note": "6 g sind die Schätzung vor dem STL. cad_frame ersetzt sie durch das PLA-Volumen. Der Preis ist eine Filament-Stichprobe.",
+      "aliases": [
+        "rahmen",
+        "frame"
+      ]
+    }
+  ]
+}

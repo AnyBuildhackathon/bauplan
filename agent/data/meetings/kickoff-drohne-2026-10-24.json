@@ -1,0 +1,62 @@
+{
+  "id": "kickoff-drohne-2026-10-24",
+  "kind": "kickoff",
+  "title": "Kickoff Drohne",
+  "date": "2026-10-24",
+  "time": "09:30",
+  "recorded_with": "Jamie",
+  "summary_template": {
+    "name": "Hardware-Anforderungen",
+    "fields": {
+      "budget": {
+        "text": "Gesamtpreis unter 80 €",
+        "max": 80,
+        "unit": "EUR",
+        "speaker": "Lea",
+        "time": "09:34",
+        "source_quote": "Die Teile müssen unter 80 Euro bleiben, sonst bestellen wir das nicht."
+      },
+      "flight_time": {
+        "text": "Mindestens 10 Minuten Flugzeit",
+        "min": 10,
+        "unit": "min",
+        "speaker": "Ben",
+        "time": "09:36",
+        "source_quote": "Ich will zehn Minuten Flugzeit, nicht nur einen kurzen Hopser."
+      },
+      "weight": {
+        "text": "Gesamtmasse unter 50 g",
+        "max": 50,
+        "unit": "g",
+        "speaker": "Lea",
+        "time": "09:38",
+        "source_quote": "Unter 50 Gramm, sonst ist das kein Whoop."
+      }
+    }
+  },
+  "utterances": [
+    { "speaker": "Lea", "time": "09:34", "text": "Die Teile müssen unter 80 Euro bleiben, sonst bestellen wir das nicht." },
+    { "speaker": "Ben", "time": "09:36", "text": "Ich will zehn Minuten Flugzeit, nicht nur einen kurzen Hopser." },
+    { "speaker": "Lea", "time": "09:38", "text": "Unter 50 Gramm, sonst ist das kein Whoop." },
+    { "speaker": "Lea", "time": "09:41", "text": "Wenn die Drohne nicht richtig abhebt, ist die Demo tot." },
+    { "speaker": "Ben", "time": "09:43", "text": "Den Rahmen drucken wir selber, also brauche ich eine STL." },
+    { "speaker": "Lea", "time": "09:47", "text": "Ich bestelle die Elektronik, Ben macht Akku, Propeller und den Druck." }
+  ],
+  "requirements": [
+    {
+      "id": "hover",
+      "text": "Muss stabil abheben und schweben",
+      "speaker": "Lea",
+      "time": "09:41",
+      "source_quote": "Wenn die Drohne nicht richtig abhebt, ist die Demo tot."
+    },
+    {
+      "id": "printable",
+      "text": "Rahmen selbst drucken, als STL",
+      "speaker": "Ben",
+      "time": "09:43",
+      "source_quote": "Den Rahmen drucken wir selber, also brauche ich eine STL."
+    }
+  ],
+  "owners": { "motor": "Lea", "flight_controller": "Lea", "battery": "Ben", "propeller": "Ben", "frame": "Ben" }
+}

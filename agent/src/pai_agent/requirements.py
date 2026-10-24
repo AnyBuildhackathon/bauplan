@@ -1,0 +1,61 @@
+"""Requirement checks. The meeting file owns the wording; this owns met."""
+
+from __future__ import annotations
+
+from pai_agent.context import Ctx
+from pai_agent.paths import REPO_ROOT
+from pai_agent.state import BuildState
+
+
+def met_for(state: BuildState, requirement: dict) -> bool | None:
+    requirement_id = requirement["id"]
+    metrics = state.metrics
+    if requirement_id == "budget":
+        if "price_eur" not in metrics:
+            return None
+        return bool(metrics["price_eur"] <= float(requirement.get("max", 80)))
+    if requirement_id == "flight_time":
+        if "flight_time_min" not in metrics:
+            return None
+        return bool(metrics["flight_time_min"] >= float(requirement.get("min", 10)))
+    if requirement_id == "weight":
+        if "weight_g" not in metrics:
+            return None
+        limit = requirement.get("max")
+        if limit is None:
+            return True
+        return bool(metrics["weight_g"] <= float(limit))
+    if requirement_id == "hover":
+        if state.last_sim is None:
+            return None
+        return state.last_sim["result"] == "pass"
+    if requirement_id == "printable":
+        if not state.stl_path:
+            return None
+        return (REPO_ROOT / state.stl_path).is_file()
+    return None
+
+
+async def emit_requirement(ctx: Ctx, requirement: dict, met: bool | None) -> None:
+    if requirement.get("_emitted") and requirement.get("_met") is met:
+        return
+    requirement["_emitted"] = True
+    requirement["_met"] = met
+    await ctx.emit(
+        {
+            "type": "requirement",
+            "id": requirement["id"],
+            "text": requirement["text"],
+            "source_quote": requirement["source_quote"],
+            "met": met,
+            "speaker": requirement.get("speaker", ""),
+            "time": requirement.get("time", ""),
+            "meeting_title": requirement.get("meeting_title", ""),
+            "changed_from": requirement.get("changed_from"),
+        }
+    )
+
+
+async def refresh_requirements(ctx: Ctx) -> None:
+    for requirement in ctx.state.requirements:
+        await emit_requirement(ctx, requirement, met_for(ctx.state, requirement))

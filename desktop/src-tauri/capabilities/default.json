@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "The dashboard uses no Tauri APIs; it only needs a window.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

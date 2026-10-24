@@ -1,0 +1,282 @@
+"""Parametric whoop frame. arm_length is center to motor shaft, motor_spacing is the bolt-circle diameter.
+
+FreeCAD runs first when freecadcmd is on the machine. CadQuery is the fallback.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+import math
+import subprocess
+import threading
+from pathlib import Path
+
+from pai_agent.context import Ctx, de
+from pai_agent.freecad_run import FreeCADFailed, build_in_gui, build_with_freecad, ensure_gui
+from pai_agent.mesh_export import stl_to_glb
+from pai_agent.paths import REPO_ROOT
+
+log = logging.getLogger(__name__)
+
+_PLA_G_PER_MM3 = 1.24 / 1000.0
+_PROP_GAP_MM = 4.0
+DEFAULT_PARAMS = {
+    "arm_length_mm": 36.0,
+    "thickness_mm": 2.0,
+    "motor_spacing_mm": 6.6,
+}
+_LIMITS = {
+    "arm_length_mm": (20.0, 80.0, "mm"),
+    "thickness_mm": (1.2, 6.0, "mm"),
+    "motor_spacing_mm": (4.0, 16.0, "mm"),
+}
+_TREE = [
+    {
+        "id": "frame",
+        "label": "Rahmen",
+        "children": [
+            {"id": "hub", "label": "Nabe", "children": []},
+            {"id": "arms", "label": "Arme", "children": []},
+            {"id": "pads", "label": "Motorauflagen", "children": []},
+        ],
+    }
+]
+
+
+def _fail(message: str) -> dict:
+    return {"ok": False, "error": message, "detail": message}
+
+
+def _number(args: dict, key: str) -> float | None:
+    try:
+        return float(args[key])
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
+def build_frame(arm_length_mm: float, thickness_mm: float, motor_spacing_mm: float):
+    import cadquery as cq
+
+    arm_width = 6.0
+    hub_radius = 20.0
+    pad_radius = 6.0
+    bolt_radius = motor_spacing_mm / 2.0
+
+    def arm():
+        return cq.Workplane("XY").box(
+            arm_length_mm,
+            arm_width,
+            thickness_mm,
+            centered=(False, True, False),
+        )
+
+    frame = arm()
+    for angle in (90, 180, 270):
+        frame = frame.union(arm().rotate((0, 0, 0), (0, 0, 1), angle))
+    frame = frame.union(cq.Workplane("XY").circle(hub_radius).extrude(thickness_mm))
+    for angle in (0, 90, 180, 270):
+        radians = math.radians(angle)
+        frame = frame.union(
+            cq.Workplane("XY")
+            .center(arm_length_mm * math.cos(radians), arm_length_mm * math.sin(radians))
+            .circle(pad_radius)
+            .extrude(thickness_mm)
+        )
+
+    cutters = cq.Workplane("XY")
+    first = True
+    holes: list[tuple[float, float, float]] = [(0.0, 0.0, 2.2)]
+    for sign_x in (-1, 1):
+        for sign_y in (-1, 1):
+            holes.append((13.0 * sign_x, 13.0 * sign_y, 1.1))
+    for angle in (0, 90, 180, 270):
+        radians = math.radians(angle)
+        cx = arm_length_mm * math.cos(radians)
+        cy = arm_length_mm * math.sin(radians)
+        holes.append((cx, cy, 1.0))
+        for index in range(3):
+            hole_angle = math.radians(angle + index * 120)
+            holes.append(
+                (
+                    cx + bolt_radius * math.cos(hole_angle),
+                    cy + bolt_radius * math.sin(hole_angle),
+                    0.8,
+                )
+            )
+    for x_mm, y_mm, radius in holes:
+        cutter = (
+            cq.Workplane("XY")
+            .center(x_mm, y_mm)
+            .circle(radius)
+            .extrude(thickness_mm + 2)
+            .translate((0, 0, -1))
+        )
+        cutters = cutter if first else cutters.union(cutter)
+        first = False
+    frame = frame.cut(cutters)
+    return frame
+
+
+def export_frame(frame, path: Path) -> float:
+    from cadquery import exporters
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    exporters.export(frame, str(path))
+    volume_mm3 = float(frame.val().Volume())
+    return volume_mm3 * _PLA_G_PER_MM3
+
+
+def apply_param_body(current: dict, body: dict) -> dict:
+    params = dict(DEFAULT_PARAMS)
+    params.update(current or {})
+    if "name" in body or "value" in body:
+        name = body.get("name")
+        if name not in _LIMITS or "value" not in body:
+            raise ValueError("name und value müssen ein bekanntes Maß nennen.")
+        params[str(name)] = float(body["value"])
+        return params
+    for key in _LIMITS:
+        if key in body:
+            params[key] = float(body[key])
+    return params
+
+
+def _cadquery_bundle(directory: Path, params: dict) -> float:
+    frame = build_frame(params["arm_length_mm"], params["thickness_mm"], params["motor_spacing_mm"])
+    directory.mkdir(parents=True, exist_ok=True)
+    mass_g = export_frame(frame, directory / "frame.stl")
+    export_frame(frame, directory / "frame.step")
+    stl_to_glb(directory / "frame.stl", directory / "frame.glb")
+    return mass_g
+
+
+def _param_payload(params: dict) -> dict:
+    payload = {}
+    for name, (low, high, unit) in _LIMITS.items():
+        payload[name] = {"value": params[name], "min": low, "max": high, "unit": unit}
+    return payload
+
+
+def _file_url(session_id: str, name: str, build: int) -> str:
+    # The query changes with every build, so a browser never shows a cached older part.
+    return "/files/" + session_id + "/" + name + "?build=" + str(build)
+
+
+async def cad_frame(ctx: Ctx, args: dict) -> dict:
+    arm_length = _number(args, "arm_length_mm")
+    thickness = _number(args, "thickness_mm")
+    motor_spacing = _number(args, "motor_spacing_mm")
+    if arm_length is None or thickness is None or motor_spacing is None:
+        return _fail("arm_length_mm, thickness_mm und motor_spacing_mm müssen Zahlen sein.")
+    if not 20 <= arm_length <= 80:
+        return _fail("arm_length_mm muss zwischen 20 und 80 liegen. Das ist die Strecke von der Mitte zur Motorwelle.")
+    if not 1.2 <= thickness <= 6:
+        return _fail("thickness_mm muss zwischen 1,2 und 6 liegen.")
+    if not 4 <= motor_spacing <= 16:
+        return _fail("motor_spacing_mm ist der Lochkreis der Motorschrauben und muss zwischen 4 und 16 liegen.")
+
+    propeller = ctx.state.selected.get("propeller")
+    clearance = None
+    if propeller and propeller.get("diameter_mm"):
+        # Neighbouring motors sit arm * sqrt(2) apart; two propeller radii must fit with a gap.
+        clearance = arm_length * math.sqrt(2) - float(propeller["diameter_mm"])
+        if clearance < _PROP_GAP_MM:
+            needed = (float(propeller["diameter_mm"]) + _PROP_GAP_MM) / math.sqrt(2)
+            return _fail(
+                "Bei "
+                + de(arm_length, 0)
+                + " mm Arm stehen die Motoren "
+                + de(arm_length * math.sqrt(2), 1)
+                + " mm auseinander, die "
+                + de(float(propeller["diameter_mm"]), 0)
+                + "-mm-Propeller berühren sich. Mindestens "
+                + de(math.ceil(needed), 0)
+                + " mm Arm."
+            )
+
+    params = {
+        "arm_length_mm": arm_length,
+        "thickness_mm": thickness,
+        "motor_spacing_mm": motor_spacing,
+        "prop_clearance_mm": round(clearance, 1) if clearance is not None else None,
+    }
+    directory = Path(ctx.state.directory)
+    for stale in ("frame.stl", "frame.step", "frame.glb", "view.png"):
+        (directory / stale).unlink(missing_ok=True)
+    source = "freecad"
+    viewed = False
+    loop = asyncio.get_running_loop()
+    stop = threading.Event()
+
+    def progress(detail: str) -> None:
+        # A reset cancels the run but not this thread; stop before the next step instead of
+        # writing into the new session.
+        if stop.is_set():
+            raise FreeCADFailed("abgebrochen")
+        asyncio.run_coroutine_threadsafe(
+            ctx.emit({"type": "tool", "name": "cad_frame", "status": "running", "detail": detail}), loop
+        )
+
+    mass_g: float | None = None
+    if await asyncio.to_thread(ensure_gui):
+        try:
+            mass_g = await asyncio.to_thread(build_in_gui, directory, params, len(ctx.state.versions) + 1, progress)
+            viewed = True
+        except asyncio.CancelledError:
+            stop.set()
+            raise
+        except (FreeCADFailed, OSError, TimeoutError, ValueError) as exc:
+            log.warning("FreeCAD-Fenster fällt auf headless zurück: %s", exc)
+            await ctx.emit({"type": "tool", "name": "cad_frame", "status": "running", "detail": "FreeCAD-Fenster hängt, baue im Hintergrund weiter"})
+    if mass_g is None:
+        try:
+            mass_g = await asyncio.to_thread(build_with_freecad, directory, params)
+        except (FreeCADFailed, OSError, TimeoutError, ValueError, subprocess.TimeoutExpired) as exc:
+            log.info("FreeCAD fällt auf CadQuery zurück: %s", exc)
+            source = "cadquery"
+            try:
+                mass_g = await asyncio.to_thread(_cadquery_bundle, directory, params)
+            except Exception as fallback:
+                message = "CadQuery konnte den Rahmen nicht bauen: " + str(fallback)
+                return _fail(message)
+    stl = directory / "frame.stl"
+    if not stl.is_file() or stl.stat().st_size < 100 or not (directory / "frame.step").is_file():
+        return _fail("STL oder STEP fehlt.")
+    if not (directory / "frame.glb").is_file():
+        await asyncio.to_thread(stl_to_glb, stl, directory / "frame.glb")
+
+    mass_g = round(mass_g, 2)
+    ctx.state.frame_mass_g = mass_g
+    ctx.state.cad_params = params
+    relative = stl.relative_to(REPO_ROOT).as_posix()
+    ctx.state.stl_path = relative
+    session_id = ctx.state.session_id
+    ctx.state.cad_builds += 1
+    build = ctx.state.cad_builds
+    view_url = _file_url(session_id, "view.png", build) if viewed and (directory / "view.png").is_file() else None
+    await ctx.emit(
+        {
+            "type": "cad",
+            "source": source,
+            "tree": _TREE,
+            "params": _param_payload(params),
+            "glb_url": _file_url(session_id, "frame.glb", build),
+            "stl_url": _file_url(session_id, "frame.stl", build),
+            "step_url": _file_url(session_id, "frame.step", build),
+            "view_png_url": view_url,
+        }
+    )
+    where = "FreeCAD-Fenster" if viewed else ("FreeCAD headless" if source == "freecad" else "CadQuery")
+    detail = where + ", " + de(mass_g, 1) + " g PLA, STL und STEP"
+    return {
+        "ok": True,
+        "detail": detail,
+        "source": source,
+        "stl_path": relative,
+        "mass_g": mass_g,
+        "arm_length_mm": arm_length,
+        "thickness_mm": thickness,
+        "motor_spacing_mm": motor_spacing,
+        "prop_clearance_mm": round(clearance, 1) if clearance is not None else None,
+    }

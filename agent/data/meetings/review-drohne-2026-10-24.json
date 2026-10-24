@@ -1,0 +1,25 @@
+{
+  "id": "review-drohne-2026-10-24",
+  "kind": "review",
+  "title": "Review 1",
+  "date": "2026-10-24",
+  "time": "20:05",
+  "recorded_with": "Jamie",
+  "summary_template": {
+    "name": "Drohnen-Review",
+    "fields": {
+      "flight_time": {
+        "text": "Mindestens 15 Minuten Flugzeit",
+        "min": 15,
+        "unit": "min",
+        "speaker": "Ben",
+        "time": "20:06",
+        "source_quote": "15 Minuten Flugzeit, sonst filmen wir nur Ausschnitte."
+      }
+    }
+  },
+  "utterances": [
+    { "speaker": "Ben", "time": "20:06", "text": "15 Minuten Flugzeit, sonst filmen wir nur Ausschnitte." },
+    { "speaker": "Lea", "time": "20:07", "text": "Und der Motor von letzter Woche war zu laut, den hört man durch die ganze Halle." }
+  ]
+}

@@ -1,0 +1,233 @@
+// Adapted from core-oss (github.com/10xapp/core-oss, Apache-2.0),
+// core-web/src/components/SidebarChat/SidebarChat.tsx. Modified: driven by our SSE
+// session store instead of core.so's conversation API, Bolzen's state in the
+// header, tool cards inline with the messages (repeats grouped into one card), a
+// speaker toggle for Bolzen's voice, Bevel styling. The scroll handling is kept from core-oss.
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { ArrowDown, RotateCcw, Volume2, VolumeX } from "lucide-react";
+import { currentStep, useSession } from "../../events/store";
+import { useSource } from "../../events/source";
+import { useUi } from "../../lib/ui";
+import { MASCOT_LABEL, MascotBust } from "../mascot/Mascot";
+import type { ChatItem } from "../../events/store";
+import ContentPartsRenderer, { JamieGroupRenderer, ToolGroupRenderer } from "./ContentPartsRenderer";
+import ChatMessage from "./SidebarChatMessage";
+import SidebarChatInput from "./SidebarChatInput";
+
+const FRESH_MS = 2500;
+
+type JamieItem = Extract<ChatItem, { kind: "jamie" }>;
+type ToolItem = Extract<ChatItem, { kind: "tool" }>;
+type Row =
+  | ChatItem
+  | { kind: "jamieGroup"; id: string; at: number; items: JamieItem[] }
+  | { kind: "toolGroup"; id: string; at: number; items: ToolItem[] };
+
+/** Consecutive Jamie actions, and consecutive finished calls of one tool (five part choices), collapse into one card. */
+function group(chat: ChatItem[]): Row[] {
+  const rows: Row[] = [];
+  for (const item of chat) {
+    const last = rows.at(-1);
+    if (item.kind === "jamie" && last && (last.kind === "jamie" || last.kind === "jamieGroup")) {
+      const items = last.kind === "jamie" ? [last, item] : [...last.items, item];
+      rows[rows.length - 1] = { kind: "jamieGroup", id: items[0].id, at: items[0].at, items };
+    } else if (
+      item.kind === "tool" &&
+      item.phase === "ok" &&
+      last &&
+      ((last.kind === "tool" && last.phase === "ok" && last.name === item.name) || (last.kind === "toolGroup" && last.items[0].name === item.name))
+    ) {
+      const items = last.kind === "tool" ? [last, item] : [...(last as Extract<Row, { kind: "toolGroup" }>).items, item];
+      rows[rows.length - 1] = { kind: "toolGroup", id: items[0].id, at: items[0].at, items };
+    } else {
+      rows.push(item);
+    }
+  }
+  return rows;
+}
+
+export default function SidebarChat() {
+  const allChat = useSession((s) => s.chat);
+  // A Jamie tool call and its Jamie action card describe the same thing; keep the action card.
+  const chat = useMemo(
+    () =>
+      allChat.filter(
+        (c) => !(c.kind === "tool" && c.name === "Jamie" && allChat.some((j) => j.kind === "jamie" && Math.abs(j.seq - c.seq) <= 2)),
+      ),
+    [allChat],
+  );
+  const rows = useMemo(() => group(chat), [chat]);
+  const mascot = useSession((s) => s.mascot);
+  const steps = useSession((s) => s.steps);
+  const sendPrompt = useSource((s) => s.sendPrompt);
+  const resetSession = useSource((s) => s.resetSession);
+  const resetUi = useUi((s) => s.resetUi);
+  const voiceOn = useUi((s) => s.voiceOn);
+  const setVoiceOn = useUi((s) => s.setVoiceOn);
+
+  const [input, setInput] = useState("");
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const stickToBottom = useRef(true);
+  const step = currentStep(steps);
+  const isEmpty = chat.length === 0;
+  const working = Object.values(steps).some((s) => s.status === "running");
+
+  // Check scroll position
+  const checkScrollPosition = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const threshold = 100;
+    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
+    stickToBottom.current = isNearBottom;
+    setShowScrollButton(!isNearBottom);
+  }, []);
+
+  const scrollToBottom = useCallback((smooth = true) => {
+    const container = scrollContainerRef.current;
+    if (container) container.scrollTo({ top: container.scrollHeight, behavior: smooth ? "smooth" : "auto" });
+  }, []);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    container.addEventListener("scroll", checkScrollPosition);
+    return () => container.removeEventListener("scroll", checkScrollPosition);
+  }, [checkScrollPosition, isEmpty]);
+
+  // Auto-scroll when new content arrives, unless the reader scrolled up.
+  useEffect(() => {
+    if (stickToBottom.current) scrollToBottom(false);
+  }, [chat, scrollToBottom]);
+  const onRevealProgress = useCallback(() => {
+    if (stickToBottom.current) scrollToBottom(false);
+  }, [scrollToBottom]);
+
+  const send = () => {
+    const text = input.trim();
+    if (!text) return;
+    setInput("");
+    stickToBottom.current = true;
+    void sendPrompt(text);
+  };
+
+  const stateTone =
+    mascot.state === "freut_sich" ? "text-ok-ink" : mascot.state === "besorgt" ? "text-fail-ink" : "text-agent-ink";
+
+  return (
+    <div className="card flex h-full min-h-0 flex-col overflow-hidden" data-target="chat">
+      {/* Header */}
+      <div className="flex shrink-0 items-center gap-3 px-5 pt-4 pb-3">
+        <div
+          data-target="mascot bolzen"
+          className="relative flex h-[60px] w-[60px] shrink-0 items-end justify-center overflow-hidden rounded-full bg-gradient-to-b from-lavender to-page-2"
+        >
+          <MascotBust state={mascot.state} size={78} className="translate-y-[9px]" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-[19px] font-bold tracking-[-0.01em]">Bolzen</div>
+          <div className={`truncate text-[14px] font-semibold ${stateTone}`}>
+            {MASCOT_LABEL[mascot.state]}
+            {working && <span className="text-muted"> · {step.label}</span>}
+          </div>
+        </div>
+        <button
+          onClick={() => setVoiceOn(!voiceOn)}
+          className={`rounded-full p-2 transition-colors hover:bg-tile ${voiceOn ? "text-agent-ink" : "text-faint hover:text-ink-2"}`}
+          title={voiceOn ? "Bolzen spricht" : "Bolzen ist stumm"}
+          aria-label={voiceOn ? "Bolzen stumm schalten" : "Bolzen sprechen lassen"}
+          aria-pressed={voiceOn}
+        >
+          {voiceOn ? <Volume2 className="h-4.5 w-4.5" /> : <VolumeX className="h-4.5 w-4.5" />}
+        </button>
+        <button
+          onClick={() => {
+            resetUi();
+            void resetSession();
+          }}
+          className="rounded-full p-2 text-faint transition-colors hover:bg-tile hover:text-ink-2"
+          title="Neu starten"
+          aria-label="Neu starten"
+        >
+          <RotateCcw className="h-4.5 w-4.5" />
+        </button>
+      </div>
+
+      {/* Content */}
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+        {isEmpty ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 px-8 text-center">
+            <MascotBust state="ruhig" size={150} />
+            <p className="text-[17px] font-semibold text-ink-2">„Na? Was bauen wir heute?“</p>
+            <p className="text-[15px] text-muted">Sag es, tipp es, oder starte die Demo oben rechts.</p>
+          </div>
+        ) : (
+          <div
+            ref={scrollContainerRef}
+            className="scroll-soft flex-1 overflow-y-auto px-4 [mask-image:linear-gradient(to_bottom,transparent,black_28px)]"
+          >
+            <div className="space-y-1.5 pt-3 pb-3">
+              <AnimatePresence initial={false}>
+                {rows.map((item) => (
+                  <motion.div
+                    key={item.id}
+                    initial={Date.now() - item.at < FRESH_MS ? { opacity: 0, y: 8 } : false}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.25, ease: [0.2, 0.8, 0.2, 1] }}
+                  >
+                    {item.kind === "jamieGroup" ? (
+                      <div className="py-0.5 pl-[34px]">
+                        <JamieGroupRenderer items={item.items} />
+                      </div>
+                    ) : item.kind === "toolGroup" ? (
+                      <div className="py-0.5 pl-[34px]">
+                        <ToolGroupRenderer items={item.items} />
+                      </div>
+                    ) : item.kind === "msg" ? (
+                      <ChatMessage
+                        role={item.role}
+                        content={item.text}
+                        animate={item.role === "agent" && Date.now() - item.at < FRESH_MS}
+                        mascot={mascot.state}
+                        onRevealProgress={onRevealProgress}
+                      />
+                    ) : (
+                      <div className="py-0.5 pl-[34px]">
+                        <ContentPartsRenderer item={item} />
+                      </div>
+                    )}
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+          </div>
+        )}
+
+        {/* Scroll to bottom button */}
+        {showScrollButton && !isEmpty && (
+          <button
+            onClick={() => scrollToBottom()}
+            className="absolute bottom-[112px] left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-card text-muted shadow-[var(--shadow-pill)] transition-colors hover:text-ink"
+            aria-label="Nach unten"
+          >
+            <ArrowDown className="h-4 w-4" />
+          </button>
+        )}
+
+        {/* Input */}
+        <div className="shrink-0 px-4 pt-2 pb-3">
+          <SidebarChatInput
+            value={input}
+            onChange={setInput}
+            onSubmit={send}
+            onVoice={(text) => {
+              stickToBottom.current = true;
+              void sendPrompt(text);
+            }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}

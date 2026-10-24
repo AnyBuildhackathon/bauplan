@@ -1,0 +1,171 @@
+@import "tailwindcss";
+
+/* Bevel look as tokens. Colors carry meaning: agent (orange) = what the agent is
+   doing right now, ok (teal-green) = passed or met, fail (red) = failed.
+   The *-ink variants are darker text shades that stay readable on a projector. */
+@theme {
+  --font-sans: "Inter Tight", "Inter Tight Fallback", -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  --font-hand: "Caveat", "Bradley Hand", cursive;
+
+  --color-page: #f2f2f6;
+  --color-page-2: #f7f7fb;
+  --color-card: #ffffff;
+  --color-ink: #1f1f1f;
+  --color-ink-2: #45454b;
+  --color-muted: #6f6f76;
+  --color-faint: #a3a3aa;
+  --color-line: #e8e7eb;
+  --color-tile: #f2f2f5;
+  --color-track: #e4e3e6;
+
+  --color-agent: #ff8a3d;
+  --color-agent-ink: #d9620f;
+  --color-agent-soft: #fff1e6;
+  --color-ok: #2ed3ae;
+  --color-ok-ink: #0b9677;
+  --color-ok-soft: #e2f8f1;
+  --color-fail: #ff5a5f;
+  --color-fail-ink: #dc3439;
+  --color-fail-soft: #ffebec;
+  --color-link: #1f7bff;
+  --color-lavender: #e8e2ff;
+  --color-sky: #6fa8ff;
+  --color-jamie: #7f5af0;
+
+  --radius-card: 28px;
+  --radius-tile: 20px;
+
+  --shadow-card: 0 1px 2px rgb(20 20 40 / 0.04), 0 12px 32px -14px rgb(30 30 70 / 0.14);
+  --shadow-float: 0 2px 6px rgb(20 20 40 / 0.06), 0 18px 40px -12px rgb(30 30 70 / 0.22);
+  --shadow-pill: 0 1px 2px rgb(20 20 40 / 0.06), 0 4px 12px -4px rgb(30 30 70 / 0.12);
+
+  --animate-pulse-soft: pulse-soft 1.4s ease-in-out infinite;
+  --animate-rise: rise 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-spin-slow: spin 1.2s linear infinite;
+  --animate-indeterminate: indeterminate 1.6s ease-in-out infinite;
+
+  @keyframes indeterminate {
+    from {
+      left: -40%;
+    }
+    to {
+      left: 100%;
+    }
+  }
+
+  @keyframes pulse-soft {
+    0%,
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.45;
+      transform: scale(0.82);
+    }
+  }
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-page text-ink font-sans antialiased;
+    font-feature-settings: "ss01", "cv11";
+    overflow: hidden;
+  }
+  button {
+    cursor: pointer;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--color-agent) 28%, transparent);
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-card rounded-[var(--radius-card)] shadow-[var(--shadow-card)];
+  }
+  .tile {
+    @apply bg-tile rounded-[var(--radius-tile)];
+  }
+  .eyebrow {
+    @apply text-[13px] font-semibold text-muted;
+  }
+  .num {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+  .glow-dot {
+    box-shadow:
+      0 0 0 4px color-mix(in srgb, currentColor 22%, transparent),
+      0 0 18px 4px color-mix(in srgb, currentColor 55%, transparent);
+  }
+  /* Bevel slider: soft track, ink fill up to the thumb (--p), orange while recomputing. */
+  .bevel-range {
+    appearance: none;
+    height: 22px;
+    background: transparent;
+    cursor: pointer;
+    --fill: var(--color-ink);
+  }
+  .bevel-range.is-pending {
+    --fill: var(--color-agent);
+  }
+  .bevel-range::-webkit-slider-runnable-track {
+    height: 6px;
+    border-radius: 999px;
+    background: linear-gradient(to right, var(--fill) var(--p), var(--color-track) var(--p));
+  }
+  .bevel-range::-moz-range-track {
+    height: 6px;
+    border-radius: 999px;
+    background: linear-gradient(to right, var(--fill) var(--p), var(--color-track) var(--p));
+  }
+  .bevel-range::-webkit-slider-thumb {
+    appearance: none;
+    width: 22px;
+    height: 22px;
+    margin-top: -8px;
+    border-radius: 999px;
+    background: white;
+    box-shadow:
+      0 0 0 1px rgb(20 20 40 / 0.08),
+      0 3px 8px rgb(30 30 70 / 0.22);
+  }
+  .bevel-range::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+    border: none;
+    border-radius: 999px;
+    background: white;
+    box-shadow:
+      0 0 0 1px rgb(20 20 40 / 0.08),
+      0 3px 8px rgb(30 30 70 / 0.22);
+  }
+  .bevel-range:focus-visible {
+    outline: none;
+  }
+  .bevel-range:focus-visible::-webkit-slider-thumb {
+    box-shadow:
+      0 0 0 4px color-mix(in srgb, var(--color-agent) 35%, transparent),
+      0 3px 8px rgb(30 30 70 / 0.22);
+  }
+  .scroll-soft {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-track) transparent;
+  }
+}
