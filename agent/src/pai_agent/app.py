@@ -380,6 +380,23 @@ async def library() -> dict:
     return {"ok": True, "items": list_references()}
 
 
+@app.get("/api/bench")
+async def bench_results() -> dict:
+    """The AnyBuild Bench results bench.run wrote: the live run first, then the mock run."""
+
+    from pai_agent.paths import AGENT_ROOT
+
+    runs = []
+    for mode in ("live", "mock"):
+        path = AGENT_ROOT / "bench" / "results" / (mode + ".json")
+        if path.is_file():
+            try:
+                runs.append(json.loads(path.read_text(encoding="utf-8")))
+            except (OSError, ValueError):
+                continue
+    return {"ok": True, "runs": runs}
+
+
 @app.post("/api/library/{item_id}/open")
 async def library_open(item_id: str, request: Request) -> dict:
     _require_json(request)

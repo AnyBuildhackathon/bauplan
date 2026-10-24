@@ -1,0 +1,392 @@
+{
+  "mode": "mock",
+  "note": "Mock run: the recorded mock story without Claude, not a measure of the live agent.",
+  "started_at": "2026-10-24T13:55:14+00:00",
+  "finished_at": "2026-10-24T13:55:22+00:00",
+  "orchestrator_model": null,
+  "subagent_model": null,
+  "concurrency": 2,
+  "prompts_total": 20,
+  "timeout_s": 900,
+  "budget_s": 3600,
+  "summary": {
+    "prompts": 5,
+    "ran": 5,
+    "passed": 1,
+    "pass_rate": 0.2,
+    "checks_passed": 31,
+    "checks_total": 36,
+    "check_pass_rate": 0.861,
+    "cost_usd": 0,
+    "cost_per_product_usd": 0.0,
+    "cost_per_valid_product_usd": 0.0,
+    "time_s": 13.6,
+    "retries": 3,
+    "cad_fallbacks": 7,
+    "input_tokens": 0,
+    "output_tokens": 0
+  },
+  "results": [
+    {
+      "id": "drone-micro",
+      "title": "Micro racing drone",
+      "category": "drone",
+      "prompt": "Build a small racing drone: under 50 g, at least 8 minutes of flight time, parts under 120 euros.",
+      "status": "done",
+      "error": null,
+      "pass": true,
+      "checks": [
+        {
+          "id": "built",
+          "label": "Build finished",
+          "pass": true,
+          "detail": "finished"
+        },
+        {
+          "id": "cad",
+          "label": "CAD geometry",
+          "pass": true,
+          "detail": "geometry written"
+        },
+        {
+          "id": "bom",
+          "label": "Bill of materials",
+          "pass": true,
+          "detail": "117.38 €"
+        },
+        {
+          "id": "render",
+          "label": "Studio render",
+          "pass": true,
+          "detail": "rendered"
+        },
+        {
+          "id": "req:weight",
+          "label": "Total mass under 50 g",
+          "pass": true,
+          "detail": "met"
+        },
+        {
+          "id": "req:flight_time",
+          "label": "At least 8 minutes of flight time",
+          "pass": true,
+          "detail": "met"
+        },
+        {
+          "id": "req:budget",
+          "label": "Total price under €120",
+          "pass": true,
+          "detail": "met"
+        }
+      ],
+      "checks_passed": 7,
+      "checks_total": 7,
+      "time_s": 0.2,
+      "tool_calls": 45,
+      "tool_errors": 1,
+      "fixes": 0,
+      "retries": 1,
+      "cad_fallbacks": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cache_read_tokens": 0,
+      "cost_usd": 0,
+      "agents": 0,
+      "model_rounds": 0,
+      "product": "Drone kickoff",
+      "mass_g": 48.3,
+      "parts_eur": 117.38,
+      "session_id": "13edf00d"
+    },
+    {
+      "id": "gripper-can",
+      "title": "Robot gripper",
+      "category": "robotics",
+      "prompt": "Design a robot gripper that picks up a 200 g soda can, 66 mm wide, the gripper under 300 g and under 60 euros.",
+      "status": "done",
+      "error": null,
+      "pass": false,
+      "checks": [
+        {
+          "id": "built",
+          "label": "Build finished",
+          "pass": true,
+          "detail": "finished"
+        },
+        {
+          "id": "cad",
+          "label": "CAD geometry",
+          "pass": true,
+          "detail": "geometry written"
+        },
+        {
+          "id": "bom",
+          "label": "Bill of materials",
+          "pass": true,
+          "detail": "28.96 €"
+        },
+        {
+          "id": "render",
+          "label": "Studio render",
+          "pass": true,
+          "detail": "rendered"
+        },
+        {
+          "id": "req:payload",
+          "label": "Holds 200 g while the arm moves",
+          "pass": true,
+          "detail": "met"
+        },
+        {
+          "id": "req:opening",
+          "label": "Opens wider than 66 mm",
+          "pass": true,
+          "detail": "met"
+        },
+        {
+          "id": "req:weight",
+          "label": "Gripper under 300 g",
+          "pass": false,
+          "detail": "not met"
+        },
+        {
+          "id": "req:budget",
+          "label": "Parts under 60 €",
+          "pass": true,
+          "detail": "met"
+        }
+      ],
+      "checks_passed": 7,
+      "checks_total": 8,
+      "time_s": 4.0,
+      "tool_calls": 25,
+      "tool_errors": 0,
+      "fixes": 0,
+      "retries": 0,
+      "cad_fallbacks": 1,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cache_read_tokens": 0,
+      "cost_usd": 0,
+      "agents": 0,
+      "model_rounds": 0,
+      "product": "Bench: Robot gripper",
+      "mass_g": 540.6,
+      "parts_eur": 28.96,
+      "session_id": "d5bba552"
+    },
+    {
+      "id": "phone-stand",
+      "title": "Phone stand",
+      "category": "desk",
+      "prompt": "Build a phone stand for a 6.7 inch phone that does not tip when you tap the screen, under 150 g and 6 euros in parts.",
+      "status": "done",
+      "error": null,
+      "pass": false,
+      "checks": [
+        {
+          "id": "built",
+          "label": "Build finished",
+          "pass": true,
+          "detail": "finished"
+        },
+        {
+          "id": "cad",
+          "label": "CAD geometry",
+          "pass": true,
+          "detail": "geometry written"
+        },
+        {
+          "id": "bom",
+          "label": "Bill of materials",
+          "pass": true,
+          "detail": "25.25 €"
+        },
+        {
+          "id": "render",
+          "label": "Studio render",
+          "pass": true,
+          "detail": "rendered"
+        },
+        {
+          "id": "req:mass",
+          "label": "Weighs under 150 g",
+          "pass": false,
+          "detail": "993 g, max. 150 g"
+        },
+        {
+          "id": "req:cost",
+          "label": "Parts under 6 €",
+          "pass": false,
+          "detail": "25.25 €, max. 6.00 €"
+        },
+        {
+          "id": "req:tip_over",
+          "label": "A 0.75 N tap on the phone top does not tip it",
+          "pass": true,
+          "detail": "2.7 N, min. 0.75 N"
+        }
+      ],
+      "checks_passed": 5,
+      "checks_total": 7,
+      "time_s": 3.8,
+      "tool_calls": 22,
+      "tool_errors": 0,
+      "fixes": 1,
+      "retries": 1,
+      "cad_fallbacks": 2,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cache_read_tokens": 0,
+      "cost_usd": 0,
+      "agents": 0,
+      "model_rounds": 0,
+      "product": "Phone stand",
+      "mass_g": 992.7,
+      "parts_eur": 25.25,
+      "session_id": "38b5a1f5"
+    },
+    {
+      "id": "pi-case",
+      "title": "Raspberry Pi 5 enclosure",
+      "category": "electronics",
+      "prompt": "Design an enclosure for a Raspberry Pi 5 with a 30 mm fan that keeps the board under 70 °C, under 120 g.",
+      "status": "done",
+      "error": null,
+      "pass": false,
+      "checks": [
+        {
+          "id": "built",
+          "label": "Build finished",
+          "pass": true,
+          "detail": "finished"
+        },
+        {
+          "id": "cad",
+          "label": "CAD geometry",
+          "pass": true,
+          "detail": "geometry written"
+        },
+        {
+          "id": "bom",
+          "label": "Bill of materials",
+          "pass": true,
+          "detail": "93.46 €"
+        },
+        {
+          "id": "render",
+          "label": "Studio render",
+          "pass": true,
+          "detail": "rendered"
+        },
+        {
+          "id": "req:mass",
+          "label": "Weighs under 300 g with the Pi",
+          "pass": false,
+          "detail": "464 g, max. 300 g"
+        },
+        {
+          "id": "req:cost",
+          "label": "Parts under 110 €",
+          "pass": true,
+          "detail": "93.46 €, max. 110.00 €"
+        },
+        {
+          "id": "req:thermal",
+          "label": "Air inside stays under 70 °C with the Pi at 8 W",
+          "pass": true,
+          "detail": "27.5°C, max. 70.0°C"
+        }
+      ],
+      "checks_passed": 6,
+      "checks_total": 7,
+      "time_s": 2.7,
+      "tool_calls": 30,
+      "tool_errors": 0,
+      "fixes": 0,
+      "retries": 0,
+      "cad_fallbacks": 2,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cache_read_tokens": 0,
+      "cost_usd": 0,
+      "agents": 0,
+      "model_rounds": 0,
+      "product": "Raspberry Pi 5 case",
+      "mass_g": 463.5,
+      "parts_eur": 93.46,
+      "session_id": "011bdb8f"
+    },
+    {
+      "id": "rc-car",
+      "title": "2WD RC car",
+      "category": "vehicle",
+      "prompt": "Build a 2WD RC car chassis with two geared motors that does not roll over in a 0.6 g turn, under 400 g.",
+      "status": "done",
+      "error": null,
+      "pass": false,
+      "checks": [
+        {
+          "id": "built",
+          "label": "Build finished",
+          "pass": true,
+          "detail": "finished"
+        },
+        {
+          "id": "cad",
+          "label": "CAD geometry",
+          "pass": true,
+          "detail": "geometry written"
+        },
+        {
+          "id": "bom",
+          "label": "Bill of materials",
+          "pass": true,
+          "detail": "82.91 €"
+        },
+        {
+          "id": "render",
+          "label": "Studio render",
+          "pass": true,
+          "detail": "rendered"
+        },
+        {
+          "id": "req:mass",
+          "label": "Weighs under 400 g",
+          "pass": false,
+          "detail": "1117 g, max. 400 g"
+        },
+        {
+          "id": "req:cost",
+          "label": "Parts under 90 €",
+          "pass": true,
+          "detail": "82.91 €, max. 90.00 €"
+        },
+        {
+          "id": "req:rollover",
+          "label": "Takes a 3 m/s turn on a 0.75 m radius (1.2 g) without rolling",
+          "pass": true,
+          "detail": "1.6 g, min. 1.2 g"
+        }
+      ],
+      "checks_passed": 6,
+      "checks_total": 7,
+      "time_s": 2.9,
+      "tool_calls": 32,
+      "tool_errors": 0,
+      "fixes": 1,
+      "retries": 1,
+      "cad_fallbacks": 2,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cache_read_tokens": 0,
+      "cost_usd": 0,
+      "agents": 0,
+      "model_rounds": 0,
+      "product": "2WD RC car chassis",
+      "mass_g": 1116.6,
+      "parts_eur": 82.91,
+      "session_id": "3c4a28d3"
+    }
+  ]
+}
