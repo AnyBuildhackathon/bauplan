@@ -59,7 +59,7 @@ export function markTurnEnd() {
   pendingLatency = { turnEnd: performance.now() };
 }
 
-function audioStarted(phrase: Phrase, tts: string) {
+function audioStarted(phrase: Pick<Phrase, "measure">, tts: string) {
   const l = pendingLatency;
   if (!l || !phrase.measure) return;
   pendingLatency = null;
@@ -407,4 +407,32 @@ function tick() {
   }
   const previous = useSpeech.getState().level;
   if (Math.abs(previous - level) > 0.02) useSpeech.setState({ level });
+}
+
+/** Gemini's native 24 kHz PCM uses the same audio output and lip-sync meter. */
+export function playLivePcm(data: string) {
+  const ctx = unlockAudio();
+  const raw = atob(data);
+  const bytes = Uint8Array.from(raw, (c) => c.charCodeAt(0));
+  const pcm = new DataView(bytes.buffer);
+  const buffer = ctx.createBuffer(1, Math.floor(bytes.length / 2), 24000);
+  const channel = buffer.getChannelData(0);
+  for (let i = 0; i < channel.length; i++) channel[i] = pcm.getInt16(i * 2, true) / 32768;
+  const source = ctx.createBufferSource();
+  source.buffer = buffer;
+  source.connect(analyser!);
+  const at = Math.max(ctx.currentTime + 0.02, nextTime);
+  source.start(at);
+  nextTime = at + buffer.duration;
+  sources.add(source);
+  const mine = generation;
+  source.onended = () => {
+    sources.delete(source);
+    if (!sources.size && mine === generation) endSpeaking();
+  };
+  setTimeout(() => {
+    if (mine !== generation) return;
+    beginSpeaking();
+    audioStarted({ measure: true }, "gemini-live");
+  }, Math.max(0, (at - ctx.currentTime) * 1000));
 }

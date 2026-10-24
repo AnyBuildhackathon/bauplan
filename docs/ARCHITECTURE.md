@@ -248,6 +248,14 @@ Without a GLB (the CadQuery fallback) the studio places simple parts around the 
 
 ## Voice loop
 
+Gemini Live is the default hands-free engine when configured.
+The backend proxies native audio through Vertex AI with gcloud user OAuth or AI Studio with a server-only key.
+Gemini calls Claude for engineering and the existing app controls for navigation; Reson8 independently transcribes the same microphone stream for the chat and logbook.
+Gemini output shares the existing Web Audio lip-sync path.
+See [realtime voice](GEMINI_LIVE.md) for configuration, protocol, transcript ownership and measured latency.
+
+The existing loop below remains available through Settings and starts automatically when Gemini fails.
+
 ```text
 mic -16 kHz PCM-> Reson8 Turns --turn_start--> Mechanic pauses (barge-in)
                        |

@@ -6,6 +6,7 @@ import { useSession } from "./store";
 import { parseEvent, type QuestionEvent } from "./types";
 import { accessToken, apiFetch, apiStreamUrl, errorDetail, onAccessEvents, setAccessToken } from "../lib/api";
 import { useUi } from "../lib/ui";
+import { useVoiceEngine } from "../lib/voiceEngine";
 import { loadVoiceCapabilities } from "../lib/voice";
 import { handleSay, unlockAudio } from "../lib/speech";
 import { recordedOmniverse } from "./omniverse";
@@ -151,7 +152,10 @@ function openLive(onStatus: (s: LiveStatus) => void) {
     onStatus("open");
     void probeBackend().then((backend) => useSource.setState({ backend }));
     void loadReferences().then((references) => useSource.setState({ references }));
-    void loadVoiceCapabilities().then((caps) => useUi.setState({ stt: caps.stt }));
+    void loadVoiceCapabilities().then((caps) => {
+      useUi.setState({ stt: caps.stt });
+      useVoiceEngine.setState({ available: caps.geminiLive });
+    });
   };
   es.onerror = () => {
     if (es.readyState !== EventSource.CLOSED) return onStatus("connecting");
@@ -172,7 +176,7 @@ function openLive(onStatus: (s: LiveStatus) => void) {
     }
     if (ev.type === "say") {
       const ui = useUi.getState();
-      if (!replaying) handleSay(ev, { voiceOn: ui.voiceOn, userTalking: ui.userTalking });
+      if (!replaying && !useVoiceEngine.getState().active) handleSay(ev, { voiceOn: ui.voiceOn, userTalking: ui.userTalking });
       return;
     }
     useSession.getState().apply(ev, { instant: replaying });

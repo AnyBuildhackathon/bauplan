@@ -21,6 +21,7 @@ interface Capabilities {
   ttsSampleRate: number;
   /** The backend writes Mechanic's spoken lines (`say` events), so the speech bubble is not read aloud. */
   narrator: boolean;
+  geminiLive: boolean;
 }
 
 const BROWSER_STT = typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
@@ -35,6 +36,7 @@ let caps: Capabilities = {
   customModelId: null,
   ttsSampleRate: 24000,
   narrator: false,
+  geminiLive: false,
 };
 
 /** Asks the backend which voice services have keys. The demo recording plays its pre-rendered clips. */
@@ -53,6 +55,7 @@ export async function loadVoiceCapabilities(): Promise<Capabilities> {
         customModelId: typeof body.custom_model_id === "string" ? body.custom_model_id : null,
         ttsSampleRate: Number(body.tts_sample_rate) || 24000,
         narrator: body.narrator === true,
+        geminiLive: body.gemini_live === true,
       };
     }
   } catch {
@@ -95,17 +98,18 @@ interface Mic {
 }
 
 /** Opens the microphone (with echo cancellation, so Mechanic's own voice is mostly kept out) and streams PCM chunks. */
-async function openMic(onChunk: (chunk: ArrayBuffer) => void): Promise<Mic> {
+export async function openMic(onChunk: (chunk: ArrayBuffer) => void, sharedContext?: AudioContext): Promise<Mic> {
   const stream = await navigator.mediaDevices.getUserMedia({
     audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
   });
-  let ctx: AudioContext | null = null;
+  let ctx: AudioContext | null = sharedContext ?? null;
   const close = () => {
     stream.getTracks().forEach((t) => t.stop());
-    void ctx?.close();
+    if (!sharedContext) void ctx?.close();
   };
   try {
-    ctx = new AudioContext();
+    ctx ??= new AudioContext();
+    await ctx.resume();
     const url = URL.createObjectURL(new Blob([WORKLET], { type: "application/javascript" }));
     try {
       await ctx.audioWorklet.addModule(url);
@@ -116,6 +120,8 @@ async function openMic(onChunk: (chunk: ArrayBuffer) => void): Promise<Mic> {
     const node = new AudioWorkletNode(ctx, "pcm16");
     node.port.onmessage = (e) => onChunk(e.data as ArrayBuffer);
     source.connect(node);
+    // Keep the worklet in the active graph; its output is silence.
+    node.connect(ctx.destination);
     return {
       close: () => {
         source.disconnect();

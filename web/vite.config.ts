@@ -12,7 +12,7 @@ export default defineConfig({
     port: 5180,
     strictPort: true,
     proxy: {
-      "/api": { target: BACKEND, changeOrigin: true },
+      "/api": { target: BACKEND, changeOrigin: true, ws: true },
       // CAD parts, renders and other files the backend produces.
       "/files": { target: BACKEND, changeOrigin: true },
     },

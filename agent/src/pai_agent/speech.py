@@ -134,6 +134,7 @@ def _reply_prompt(text: str, state: BuildState, status: str, question: dict | No
 
 class Voice:
     def __init__(self, bus: EventBus, busy: Callable[[], bool]) -> None:
+        self.realtime = False
         self.bus = bus
         self._busy = busy
         self._client = None
@@ -144,7 +145,7 @@ class Voice:
         self._warmed = -_WARM_EVERY_S
 
     def reply(self, text: str, state: BuildState, status: str, question: dict | None = None, detail: str = "") -> None:
-        if not enabled():
+        if self.realtime or not enabled():
             return
         if self._reply is not None and not self._reply.done():
             # A newer message makes the old answer moot.
@@ -160,7 +161,7 @@ class Voice:
     def observe(self, event: dict) -> None:
         """Bus observer: queues a spoken update for milestones of a running build (not for slider moves)."""
 
-        if not enabled() or not self._busy():
+        if self.realtime or not enabled() or not self._busy():
             return
         facts = milestone(event)
         if facts is None:
