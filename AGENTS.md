@@ -1,37 +1,50 @@
 # AnyBuild
 
-AnyBuild is a physical-AI engineering agent for drone design.
+AnyBuild is a general physical-AI engineering agent for developing physical products.
+It turns team meetings, requirements, and constraints into validated CAD models, physics simulations, and bills of materials.
 The project was originally named Bauplan and code references still reflect that name in places.
 It is built for the {Tech: Europe} Agentic AI Hack Berlin on 2026-10-24.
 Partners include Jamie, Reson8, and Anthropic.
-Live demos take place on a projector at 20:00, with an opt-in deadline at 19:00.
+Live demos take place on a projector at 20:00, with an opt-in deadline at 19:00 and project submission at 18:30.
+The team hackathon roadmap, timeline, and workstreams are documented in docs/PLAN.md.
 
-## Product and Stage Demo Story
+## Product Concept
 
-Team meetings recorded with Jamie define the engineering requirements.
-Claude uses tools to design and validate a drone inside real engineering applications.
+AnyBuild is designed as a universal physical-AI engineer for diverse hardware domains.
+In the general workflow, teams discuss any physical product in recorded meetings and the agent autonomously specs, designs, simulates, and sources it.
+Jamie serves as the sensory and conversational backbone across meetings.
+The agent extracts engineering requirements, tracks design revisions over time, and catches contradictions between past and present discussions.
+Claude plans the engineering steps and invokes real domain software tools.
+Parametric CAD tools build 3D components with exact geometric dimensions.
+Physics and aerodynamic simulators validate real-world performance against environmental forces.
+Rendering tools produce photorealistic studio visualizations for team review.
+Bill of materials calculators price orderable parts and sync purchasing tasks back into Jamie.
+Realtime speech-to-text with Reson8 enables spoken dialogue with mascot Bolzen during design reviews.
+Bolzen answers using browser speech synthesis or ElevenLabs.
+Offline fallbacks run the complete workflow when API keys are absent.
+
+## Worked Demo Example: Drone Design
+
+For the hackathon stage demonstration, AnyBuild implements a complete end-to-end worked example for racing drone design.
+The current codebase implements drone-specific part catalogs, aerodynamic wind testing in MuJoCo, and a parametric quadcopter frame in FreeCAD.
+The stage demo begins with a kickoff meeting recording that builds drone version 1.
+During kickoff, the agent catches warnings about the FunFly 4S motor, fails an initial downdraft test in MuJoCo, and switches to the Lava 1S 550 pack.
 FreeCAD builds the frame visibly in an open window, with headless FreeCAD and CadQuery fallbacks.
 Blender renders the assembled drone in a virtual studio environment.
 MuJoCo simulates drone flight stability against wind gusts.
 AnyBuild extracts real measurements: CAD weight, thrust-to-weight ratio, flight time, stability pass/fail, and bill of materials cost.
-Jamie serves as the project backbone.
 The meeting timeline attaches every drone version to its originating meeting.
 Every part links to a specific quote naming the speaker, timestamp, and meeting title.
 Earlier meeting notes surface as warnings before part selection.
 Contradictions between meetings trigger user questions from mascot Bolzen before building.
 The agent creates the Jamie templates "Hardware-Anforderungen" and "Drohnen-Review" automatically.
-When a meeting ends, AnyBuild rebuilds the drone and posts differences back to Jamie as notes.
-Jamie tags mark drone versions on meetings.
-Order tasks with assignees and due dates appear in Jamie.
-Realtime speech-to-text uses Reson8 to speak with mascot Bolzen in the chat.
-Bolzen answers using browser speech synthesis or ElevenLabs.
-Offline fallbacks run the complete workflow when API keys are absent.
-The stage demo begins with a kickoff meeting recording that builds drone version 1.
-During kickoff, the agent catches warnings about the FunFly 4S motor, fails an initial downdraft test in MuJoCo, and switches to the Lava 1S 550 pack.
 A live review follows requesting 15 minutes of flight time and noting that last week's motor was too loud.
 Bolzen asks for clarification on flight time requirements and resolves the motor reference.
 AnyBuild rebuilds to version 2, showing metrics differences, quotes, warnings, and updated order tasks.
-A public static demo is available at https://anybuild-demo.vercel.app.
+When a meeting ends, AnyBuild rebuilds the drone and posts differences back to Jamie as notes.
+Jamie tags mark drone versions on meetings.
+Order tasks with assignees and due dates appear in Jamie.
+A public static demo of the recorded drone run is available at https://anybuild-demo.vercel.app.
 
 ## Repository Map
 
@@ -63,6 +76,7 @@ The repository is structured into five main directories:
   - `desktop/package.json`: Build commands for native macOS app bundles.
 - `docs/`: Technical specifications.
   - `docs/events.md`: Authoritative wire format contract for HTTP and SSE communication.
+  - `docs/PLAN.md`: Day plan, workstream allocations, submission timeline, and tool stack.
 - `runpod/`: Cloud GPU infrastructure scripts.
   - `runpod/setup.sh`: Setup script for NVIDIA Isaac Sim 6.2 and Isaac Lab 3.0 on an RTX 4090 pod.
 
@@ -243,6 +257,7 @@ Never commit `.env` files or secret keys to the repository.
 
 ## Planned Next Work
 
+- Generalize beyond drones: generalize CAD generation for arbitrary product classes, expand hardware component catalogs, and support flexible multi-physics simulation domains.
 - Rename remaining user interface elements and repository paths from Bauplan to AnyBuild.
 - Connect NVIDIA Omniverse and Isaac Sim on RunPod RTX 4090 to load drone USD files, execute wind tests, run Isaac Lab training, and stream results to a dedicated tab.
 - Switch Jamie MCP and Reson8 STT to live production credentials once on-site keys are provided.
