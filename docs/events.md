@@ -326,6 +326,15 @@ The order tasks, one per part, published whole after every change.
 Each item is `{id, title, assignee, due, done, part_category}`; `due` reads like `27 Oct`.
 A rebuild keeps the tasks of unchanged parts with their `done` state and closes the tasks of replaced parts.
 
+### build_guide
+
+The step-by-step build guide for the current bill of materials, published whole after `bom_build`.
+`version` is the version the guide belongs to, `total_minutes` the sum of the steps.
+`steps` is a list of `{n, title, instructions, parts, tools, minutes, items}`, numbered from 1.
+`parts` are scene part names from the list below; the web explodes the model and highlights them for that step.
+`items` are the bill-of-materials names of those parts, plus the parts of categories without a scene part of their own (camera, canopy, hardware) that the step names, filled in by the backend.
+Together the steps cover every scene part.
+
 ### point
 
 `target` is a scene name.
@@ -385,7 +394,7 @@ UI:
 
 ## Tools
 
-`jamie_templates`, `jamie_requirements`, `jamie_search`, `jamie_meeting`, `requirements_accept`, `ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `cad_frame`, `cad_part`, `product_brief`, `product_spec`, `reference_load`, `delegate`, `part_pick`, `assemble`, `cad_update`, `check_totals`, `check_tip_over`, `check_deflection`, `check_torque`, `check_runtime`, `simulate_assembly`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `blender_render`, `bom_build`, `firmware`, `jamie_create_tasks`, `version_commit`, `ui_point_at`, `ui_draw`, `mascot_say`.
+`jamie_templates`, `jamie_requirements`, `jamie_search`, `jamie_meeting`, `requirements_accept`, `ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `cad_frame`, `cad_part`, `product_brief`, `product_spec`, `reference_load`, `delegate`, `part_pick`, `assemble`, `cad_update`, `check_totals`, `check_tip_over`, `check_deflection`, `check_torque`, `check_runtime`, `simulate_assembly`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `blender_render`, `bom_build`, `build_guide`, `firmware`, `jamie_create_tasks`, `version_commit`, `ui_point_at`, `ui_draw`, `mascot_say`.
 
 ### Any product
 
@@ -441,6 +450,8 @@ The open FreeCAD window builds first when its RPC answers; on an error or a step
 CadQuery writes the same STL, STEP, and GLB when FreeCAD is missing or the script fails.
 `blender_render` runs `blender -b -P` on the current drone GLB, or on the frame STL after a CadQuery fallback.
 `jamie_requirements` reads the `Hardware-Anforderungen` fields first.
+`build_guide` is drone only, comes after `bom_build`, and takes `steps` as in the `build_guide` event, without `items`; a step number out of order, an unknown part, or a scene part no step installs is an error that names it.
+A step may add `bom_parts`, categories from the bill of materials that have no scene part (`camera`, `canopy`, `hardware`); they show up in `items`.
 
 ## Mock story
 
@@ -450,6 +461,7 @@ The agent reads the kickoff (under 120 €, at least 8 minutes, under 50 g, hove
 It tries the FunFly anyway: the MuJoCo gust pushes it to the floor, the swap to the Tattu R-Line 1S 550 passes.
 A 34 mm arm lets the 51 mm propellers touch, so the frame becomes the Twiglet's 42.5 mm.
 v1 is 47.2 g, 8.5 min, 113.64 €.
+Each build writes a `build_guide` from the same step template with the parts it chose: frame, motors, flight controller, wiring, camera and canopy, battery, motor test, propellers.
 The review "Review 1" asks for 10 minutes.
 Mechanic asks which flight time counts and swaps to the BetaFPV LAVA II 1S 680, the other pack from the video.
 v2 is 48.4 g, 10.4 min, 115.12 €, and the difference goes back to the review as a note.

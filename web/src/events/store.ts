@@ -5,6 +5,7 @@ import {
   type AgentEvent,
   type AgentRunEvent,
   type BomEvent,
+  type BuildGuideEvent,
   type CadEvent,
   type DrawEvent,
   type FirmwareEvent,
@@ -146,6 +147,8 @@ export interface SessionState {
   product: ProductEvent["id"];
   firmware: FirmwareEvent | null;
   productLabel: string;
+  /** Step-by-step build guide for the latest bill of materials. */
+  buildGuide: BuildGuideEvent | null;
   /** Reduces one contract event. `instant` marks events replayed in bulk (seek), so nothing animates for them. */
   apply: (ev: AgentEvent, opts?: { instant?: boolean }) => void;
   addLocalUserMessage: (text: string) => void;
@@ -209,6 +212,7 @@ const TOOL_ALIASES: Record<string, string> = {
   parts_search: "Parts",
   physics_calc: "Physics",
   bom_build: "BOM",
+  build_guide: "Build guide",
   firmware: "Firmware",
   version_commit: "Version",
   ask_user: "Question",
@@ -278,6 +282,7 @@ function emptyState() {
     agents: {} as SessionState["agents"],
     product: "" as ProductEvent["id"],
     productLabel: "Any product",
+    buildGuide: null as BuildGuideEvent | null,
   };
 }
 
@@ -474,6 +479,7 @@ export const useSession = create<SessionState>((set, get) => ({
           runs: [],
           draws: [],
           bom: null,
+          buildGuide: null,
           cad: null,
           renders: [],
           parts: {},
@@ -481,6 +487,8 @@ export const useSession = create<SessionState>((set, get) => ({
           firmware: null,
         });
       }
+      case "build_guide":
+        return set({ log, buildGuide: ev });
       case "firmware":
         return set({ log, firmware: ev });
       case "training": {
