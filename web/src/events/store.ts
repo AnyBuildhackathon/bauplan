@@ -194,6 +194,7 @@ const TOOL_ALIASES: Record<string, string> = {
   parts_search: "Parts",
   physics_calc: "Physics",
   bom_build: "BOM",
+  firmware: "Firmware",
   version_commit: "Version",
   ask_user: "Question",
 };

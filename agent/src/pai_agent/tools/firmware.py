@@ -117,12 +117,12 @@ def drone_wiring(ctx: Ctx) -> list[dict]:
                     "connects_to": f"{fc_name} motor plug {pad}",
                     "pin": pad,
                     "wire": "3 phase wires, black",
-                    "note": f"Spins {spin}. Swap any two phases or set the direction in the configurator.",
+                    "note": f"Spins {spin}, props in.",
                 }
             )
     if battery:
         cells = int(battery.get("cells") or 1)
-        plug = board.get("battery_plug", "battery lead") if cells == 1 else "XT30"
+        plug = board.get("battery_plug", "battery lead") if cells == 1 else "XT30" if cells == 2 else "XT60"
         rows.append(
             {
                 "component": battery["name"],
@@ -182,6 +182,7 @@ def betaflight_cli(ctx: Ctx, gains: dict, gains_source: str) -> str:
         "# Battery: " + (battery["name"] if battery else "unknown"),
         "# PID gains: " + ("trained controller" if gains_source == "training" else gains_source),
         "# Paste into the Betaflight Configurator CLI tab and press Enter. The board saves and reboots.",
+        "# A motor that spins the wrong way: swap any two of its phase wires, or reverse it in the Motors tab.",
     ]
     for warning in _drone_warnings(fc, motor, battery):
         lines.append("# WARNING: " + warning)
