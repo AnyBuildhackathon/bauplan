@@ -12,7 +12,7 @@ from __future__ import annotations
 import re
 
 from pai_agent.context import Ctx
-from pai_agent.mock_story import _beat, _need, _say
+from pai_agent.mock_story import _beat, _need, _safety, _say
 from pai_agent.tools.registry import call_tool
 
 GRIPPER_WORDS = re.compile(r"\b(gripper|greifer|claw|robot ?hand|end ?effector)\b", re.IGNORECASE)
@@ -106,6 +106,7 @@ async def run_gripper_mock(ctx: Ctx, text: str) -> None:
 
     await _beat()
     await ctx.step("stueckliste", "running")
+    await _safety(ctx)
     bom = await _need(ctx, "bom_build", {})
     await _need(ctx, "firmware", {})
     await ctx.step("stueckliste", "done")
