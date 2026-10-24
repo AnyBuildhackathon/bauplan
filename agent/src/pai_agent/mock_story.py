@@ -160,6 +160,7 @@ async def _build(ctx: Ctx, meeting_id: str, label: str) -> dict:
     await call_tool(ctx, "print_prep", {"orientation": "as_modeled"})
     await _need(ctx, "build_guide", {"steps": mock_steps(ctx)})
     await _need(ctx, "firmware", {})
+    await call_tool(ctx, "electronics_plan", {})
     tasks = await _need(ctx, "jamie_create_tasks", {"meeting_id": meeting_id})
     version = await _need(ctx, "version_commit", {"meeting_id": meeting_id})
     await ctx.step("stueckliste", "done")

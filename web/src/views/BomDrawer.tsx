@@ -9,6 +9,7 @@ import type { BomEvent, BomItem, PartEvent, TaskItem } from "../events/types";
 import { JamieMark, QuoteBubble } from "../components/panels/Panels";
 import { enText } from "../lib/copy";
 import { FirmwareSection } from "./FirmwareSection";
+import { ElectronicsSection } from "./ElectronicsSection";
 import { meets } from "../lib/derived";
 import { assetUrl } from "../lib/api";
 import { fmtEur, fmtGram, fmtNum } from "../lib/format";
@@ -230,6 +231,7 @@ export function BomDrawer() {
           </ul>
           <p className="text-[13px] text-faint">{priceNote(bom.prices, liveCount, bom.items.length)}</p>
           <FirmwareSection />
+          <ElectronicsSection />
           {tasks && tasks.items.length > 0 && (
             <section className="card px-4 pt-4 pb-3" data-target="tasks bestellen">
               <div className="mb-1 flex items-center gap-2 px-2">
