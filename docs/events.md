@@ -117,6 +117,11 @@ The response is like `POST /api/prompt`, with `reference`: `{"ok": true, "mode":
 It answers like `POST /api/prompt` with `restoring: n`; HTTP 404 for an unknown `n`, 409 while Mechanic is building.
 Versions live in the session; a reset clears them.
 
+### Optimizer
+
+`POST /api/optimize/apply` with `{"id": "opt1", "variant": "C"}` builds that variant of an `optimize` run (a click on its point in the chart): Mechanic picks its battery with `parts_search`, builds the frame with `cad_frame`, then `physics_calc`, `simulate_drone`, `blender_render` and `bom_build`, and commits it as the next version labelled `Optimizer: C <label>` with its `diff` to the last version.
+It answers like `POST /api/prompt` with `variant`; HTTP 404 for an unknown run or variant, 409 while Mechanic is building.
+
 ### Export
 
 All three answer HTTP 404 before the first `bom`.
@@ -485,7 +490,7 @@ Without an answer the default applies after `timeout_s` (`PAI_ASK_TIMEOUT_S`, de
 ### agent
 
 The orchestrator and the sub-agents it delegates to, one card per agent, sent again whenever it reports.
-`id` is stable for one agent run, `role` is `orchestrator`, `cad` (writes one part's FreeCAD script), `parts`, `checks` or `pricing`, `label` its name ("Orchestrator", "CAD agent", "Parts agent", "Analysis agent", "Pricing agent").
+`id` is stable for one agent run, `role` is `orchestrator`, `cad` (writes one part's FreeCAD script), `parts`, `checks`, `pricing` or `optimizer` (one design optimizer variant, "Variant agent A"), `label` its name ("Orchestrator", "CAD agent", "Parts agent", "Analysis agent", "Pricing agent").
 `model` and `model_label` (`claude-sonnet-5-5`, "Sonnet 5.5"), `effort`, `task` (the job in one line), `status` (`queued`, `running`, `done` or `error`), `rounds` (model calls so far), `input_tokens`, `output_tokens`, `cache_read_tokens`, `cost_usd` (from the published per-token prices) and `summary` (what it does now, or its report when done).
 `queued` comes before `running` when a job waits for another job of the same fan-out to finish first.
 `sent_at` is the server time of this report in epoch seconds, so a replayed backlog keeps its real timing.
@@ -495,6 +500,14 @@ The orchestrator and the sub-agents it delegates to, one card per agent, sent ag
 `calls` are its tool calls so far, newest last and at most 30, each `{tool, ok, detail}`.
 The web draws these events as a live graph in the Agents canvas tab (`?tab=agents`, `data-target="tab:agents"`); a click on a node opens its log.
 The mock path sends them too: a scripted team of sub-agents on the sub-agent model runs beside the real mock tools, with fixed token counts priced like a live run.
+
+### optimize
+
+The design optimizer explored variants of the built drone. Sent with `status` `running` (no variants yet), `done`, and once more when a variant is built.
+`id` (`opt1`, `opt2`, ...), `goals` (any of `lighter`, `cheaper`, `longer_runtime`, `stronger`), `keep` (limits to hold, keys `min_flight_time_min`, `max_weight_g`, `max_price_eur`, `min_thrust_to_weight`, `min_arm_stiffness`), `axes` (`x`, `y` and `color`, each a variant number key; the chart plots `y` against `x` and colours by `color`).
+`baseline` is the current build through the same checks plus `label` (`v2`), or `null` while running. `recommended` is the Pareto variant best on the first goal, or `null`.
+Each of `variants` has `id` (a letter), `label`, `reason`, `agent` (the variant agent that proposed it), `battery`, `battery_id`, `params` (`arm_length_mm`, `thickness_mm`), `frame_g` (the CadQuery frame model's mass), `weight_g`, `thrust_to_weight`, `flight_time_min`, `price_eur` (physics_calc's numbers), `arm_stiffness` (relative to now: thickness cubed over arm length cubed), `warnings`, `checks` (`id`, `label`, `pass`, `detail`: the MuJoCo gust test, the prop clearance, one per `keep` limit), `feasible` (every check passes) and `pareto` (feasible and no feasible variant is at least as good on every goal and both chart axes and better on one).
+`applied` is the letter built as a version and `version` its number, else `null`.
 
 ### tasks
 
@@ -681,7 +694,9 @@ Closing buttons are tagged `{control}:close`, and `look:3d` is the 3D switch of 
 
 ## Tools
 
-`jamie_templates`, `jamie_requirements`, `jamie_search`, `jamie_meeting`, `requirements_accept`, `ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `stress_test`, `cad_frame`, `cad_part`, `product_brief`, `product_spec`, `sketch_to_spec`, `reference_load`, `delegate`, `part_pick`, `assemble`, `cad_update`, `check_totals`, `check_tip_over`, `check_deflection`, `check_torque`, `check_runtime`, `check_power`, `check_thermal`, `check_rollover`, `simulate_assembly`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `blender_render`, `bom_build`, `print_prep`, `build_guide`, `firmware`, `electronics_plan`, `safety_check`, `jamie_create_tasks`, `version_commit`, `ui_point_at`, `ui_draw`, `ui_control`, `mascot_say`, `train_in_browser`.
+`jamie_templates`, `jamie_requirements`, `jamie_search`, `jamie_meeting`, `requirements_accept`, `ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `stress_test`, `cad_frame`, `cad_part`, `product_brief`, `product_spec`, `sketch_to_spec`, `reference_load`, `delegate`, `part_pick`, `assemble`, `cad_update`, `check_totals`, `check_tip_over`, `check_deflection`, `check_torque`, `check_runtime`, `check_power`, `check_thermal`, `check_rollover`, `simulate_assembly`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `blender_render`, `bom_build`, `print_prep`, `build_guide`, `firmware`, `electronics_plan`, `safety_check`, `jamie_create_tasks`, `version_commit`, `ui_point_at`, `ui_draw`, `ui_control`, `mascot_say`, `train_in_browser`, `optimize_design`, `optimize_apply`.
+
+`optimize_design` (drone, after a build) takes `goals`, `keep` and `count` (4 to 8, default 6). With a key, `count` variant agents on the sub-agent model run in parallel (`agent` events with `role` `optimizer`, `label` "Variant agent A" ...), each proposing one battery, arm length and plate thickness; without one, fixed strategies propose them. A proposal that repeats the current build or another variant is replaced by the next strategy. Every variant runs the same checks and the result is the `optimize` event; `optimize_apply` takes `id` and `variant` (default the latest run and its recommendation) and builds it as `POST /api/optimize/apply` does.
 
 `ui_control` takes `control` (see Dashboard controls) and, as the control needs, `open`, `value`, `part`, `versions` and `say` (the bubble, a default otherwise).
 It checks the control against the build (no bill of materials yet, fewer than two versions, Omniverse for a non-drone product) and answers an error the model can act on; `run:test` and `run:rebuild` wait for the run and return its result.
@@ -778,6 +793,8 @@ A prompt that asks for a lamp on mains (`lamp` with `230 V`, `mains` or `wall so
 The drone story calls `electronics_plan` right after `firmware`.
 A prompt that asks for a phone stand (`phone`, `tablet` with `stand`, `holder`, `dock` or `mount`) plays the generic story: Mechanic writes the spec, FreeCAD builds the base plate and the back rest from the phone stand reference build (`agent/data/references/phone-stand/`), the rubber feet come from the catalog, and the assembly with the 200 g phone tips at 0.35 N, under the 0.75 N tap it must take; the MuJoCo push knocks it over.
 Mechanic deepens the base from 60 to 110 mm with `cad_update`, every check runs again and passes (0.81 N, the push only rocks it), then Blender renders it and the bill of materials comes to 3.32 € and 116 g.
+Once the drone is built, a prompt that asks for it lighter, cheaper, stronger or longer-running ("make the drone lighter but keep 8 minutes") runs `optimize_design` with goals and limits read from the sentence (`8 minutes` keeps the flight time, `under 50 g` the weight; without a number the flight-time requirement holds); before any build it builds v1 first.
+Six variants come back, each with its checks; "take variant C" or a click on its point builds it as the next version.
 The dashboard's `?demo` replays exactly the drone run from `web/src/events/recording.json`, written by `agent/scripts/record_demo.py`.
 
 ## Omniverse results

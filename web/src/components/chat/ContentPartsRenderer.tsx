@@ -18,6 +18,7 @@ import {
   NotebookPen,
   Package,
   Receipt,
+  Sparkles,
 } from "lucide-react";
 import { useSession, type ChatItem } from "../../events/store";
 import { useSource } from "../../events/source";
@@ -29,6 +30,7 @@ import { PrintPlanCard } from "../print/PrintPlanCard";
 import { ExplainChatCard } from "../learn/Explain";
 import { RequirementsCard, ResultsCard } from "./BuildCards";
 import { SafetyCard } from "../safety/SafetyCard";
+import { OptimizeCard } from "./OptimizeCard";
 
 const TOOL_LABELS: Record<string, { running: string; done: string }> = {
   Claude: { running: "Claude is thinking", done: "Claude" },
@@ -327,7 +329,7 @@ export function JamieGroupRenderer({ items }: { items: Extract<ChatItem, { kind:
   );
 }
 
-const AGENT_ICON = { orchestrator: Network, cad: DraftingCompass, parts: Package, checks: Gauge, pricing: Receipt } as const;
+const AGENT_ICON = { orchestrator: Network, cad: DraftingCompass, parts: Package, checks: Gauge, pricing: Receipt, optimizer: Sparkles } as const;
 
 const fmtTokens = (n: number) => (n >= 1000 ? `${fmtNum(n / 1000, n >= 10000 ? 0 : 1)}k` : fmtNum(n));
 
@@ -391,6 +393,8 @@ function ContentPartsRenderer({ item }: { item: Exclude<ChatItem, { kind: "msg" 
       return <PrintPlanCard plan={item.plan} />;
     case "safety":
       return <SafetyCard safety={item.safety} />;
+    case "optimize":
+      return <OptimizeCard optimizeId={item.optimizeId} />;
   }
 }
 

@@ -457,6 +457,16 @@ async def versions_restore(n: int, request: Request) -> dict:
     return result
 
 
+@app.post("/api/optimize/apply")
+async def optimize_apply(request: Request) -> dict:
+    _require_json(request)
+    body = await request.json()
+    result = await request.app.state.session.apply_variant(str(body.get("id") or ""), str(body.get("variant") or "").upper())
+    if result.get("ok") is False:
+        raise HTTPException(status_code=409 if result.get("busy") else 404, detail=str(result["error"]))
+    return result
+
+
 def _bom_state(request: Request):
     state = request.app.state.session.state
     if not state.bom:
