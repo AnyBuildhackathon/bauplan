@@ -1,8 +1,9 @@
 """One pass of the browser-training protocol in mock mode, with this script playing the dashboard tab. Not a suite.
 
 "train it" queues a job; a client claims it, a second client is refused, two progress posts and a
-done post land as `training` events, and the agent reports the gains. Then a job nobody claims
-fails with `no_browser`, and a claimed job that goes quiet fails with `browser_gone`.
+done post land as `training` events, and the agent reports the gains. A gripper build queues a
+gripper job from its servo and pads. Then a job nobody claims fails with `no_browser`, and a
+claimed job that goes quiet fails with `browser_gone`.
 """
 
 from __future__ import annotations
@@ -39,11 +40,12 @@ def main() -> None:
         try:
             _wait_healthy(process, log_path)
             _trained()
+            _gripper()
             _unclaimed()
             _stalled()
         finally:
             _stop(process)
-    print("train ok: claim, refuse, progress, done with gains; no_browser and browser_gone fail cleanly")
+    print("train ok: drone claim, refuse, progress, done with gains; gripper spec from the build; no_browser and browser_gone fail cleanly")
 
 
 def _trained() -> None:
@@ -82,6 +84,25 @@ def _trained() -> None:
     latest = _get("/api/training/browser")["job"]
     if latest["status"] != "done" or latest["best_params"] != GAINS or latest.get("gains") != EXPORTED:
         raise SystemExit("GET /api/training/browser misses the gains: " + json.dumps(latest))
+
+
+def _gripper() -> None:
+    _reset()
+    # The gripper mock picks its parts before CAD, so the spec is real even where FreeCAD is missing.
+    _prompt("Build a gripper that lifts a 200 g part, 66 mm wide")
+    _wait_events(lambda evs: any(e.get("type") == "sim" and e.get("kind") == "grip" and e.get("result") == "pass" for e in evs), timeout=60)
+    deadline = time.time() + 60
+    while time.time() < deadline and _post("/api/prompt", {"text": "train it"}).get("status") != "started":
+        time.sleep(0.3)
+    job = _wait_job(lambda j: j["status"] == "queued" and j["product"] == "gripper")
+    spec = job["spec"]
+    if spec.get("nominal") or spec.get("payload_g") != 200 or not 5.5 < spec.get("max_force_n", 0) < 6.5 or spec.get("friction") != 0.8:
+        raise SystemExit("Gripper spec does not come from the build: " + json.dumps(spec))
+    _post("/api/training/" + job["job_id"] + "/claim", {"client": "tab-a"})
+    grasp = {"squeeze": 0.368, "grip_force_n": 2.19, "ramp_ms": 265, "settle_ms": 1, "lift_ms": 416, "cycle_ms": 681}
+    metrics = {"slip_mm": 5.4, "force_n": 2.19, "cycle_s": 0.68, "crashed": False, "held": True}
+    _post("/api/training/" + job["job_id"] + "/progress", {"client": "tab-a", "status": "done", "step": 1024, "generation": 16, "best_score": 62.1, "best_params": {"squeeze": 0.368}, "best_metrics": metrics, "gains": grasp})
+    _wait_events(lambda evs: any(e.get("type") == "chat" and "2.2 N per finger" in e.get("text", "") for e in evs))
 
 
 def _unclaimed() -> None:

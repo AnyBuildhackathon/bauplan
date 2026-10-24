@@ -25,6 +25,8 @@ POPULATION = 64
 GENERATIONS = 16
 # Nominal small drone for a run before anything is built (the mock v1: 36.7 g, 4 x 1102 motors).
 _NOMINAL = {"weight_g": 36.7, "thrust_g": 4 * 28.0, "arm_length_mm": 36.0}
+# Nominal gripper: the brief's 200 g, 66 mm part, an MG996R on the 70 mm finger, printed TPU pads.
+_NOMINAL_GRIP = {"payload_g": 200.0, "width_mm": 66.0, "max_force_n": 5.95, "friction": 0.8}
 
 # job_id -> job record; a reset makes a new session id, which orphans older jobs.
 _JOBS: dict[str, dict] = {}
@@ -55,10 +57,54 @@ def stall_timeout() -> float:
         return 30.0
 
 
+def _parts(state) -> list[dict]:
+    parts = []
+    for category, part in state.selected.items():
+        mass = float(part.get("mass_g") or 0)
+        if category == "frame" and state.frame_mass_g is not None:
+            mass = float(state.frame_mass_g)
+        parts.append({"category": category, "name": str(part.get("name", category)), "qty": int(part.get("bom_qty") or 1), "mass_g": round(mass, 2)})
+    return parts
+
+
+def _gripper_spec(state) -> dict:
+    """The grip test's inputs: the object from the brief, the finger force the servo holds, pad friction."""
+
+    from pai_agent.tools.gripper import compute_grip
+
+    brief = state.brief or {}
+    try:
+        metrics = compute_grip(state)
+    except (KeyError, ValueError):
+        return {
+            "product": "gripper",
+            "nominal": True,
+            "label": "nominal gripper (nothing built yet)",
+            "payload_g": float(brief.get("object_mass_g") or _NOMINAL_GRIP["payload_g"]),
+            "width_mm": float(brief.get("object_width_mm") or _NOMINAL_GRIP["width_mm"]),
+            "max_force_n": _NOMINAL_GRIP["max_force_n"],
+            "friction": _NOMINAL_GRIP["friction"],
+            "parts": [],
+        }
+    version = len(state.versions)
+    return {
+        "product": "gripper",
+        "nominal": False,
+        "label": ("v" + str(version) if version else "current build") + " · " + str(state.selected["servo"]["name"]),
+        "payload_g": float(brief.get("object_mass_g") or _NOMINAL_GRIP["payload_g"]),
+        "width_mm": float(brief.get("object_width_mm") or _NOMINAL_GRIP["width_mm"]),
+        "max_force_n": float(metrics["grip_force_n"]),
+        "friction": float(metrics["friction"]),
+        "parts": _parts(state),
+    }
+
+
 def product_spec(ctx: Ctx) -> dict:
-    """What the browser needs to build the MJCF: total mass, thrust, arm, and the parts."""
+    """What the browser needs to build the MJCF: for the drone total mass, thrust, arm, and the parts."""
 
     state = ctx.state
+    if getattr(state, "product", "drone") == "gripper":
+        return _gripper_spec(state)
     arm = float((state.cad_params or {}).get("arm_length_mm") or _NOMINAL["arm_length_mm"])
     try:
         metrics = compute(state)
@@ -73,12 +119,7 @@ def product_spec(ctx: Ctx) -> dict:
             "arm_length_mm": arm,
             "parts": [],
         }
-    parts = []
-    for category, part in state.selected.items():
-        mass = float(part.get("mass_g") or 0)
-        if category == "frame" and state.frame_mass_g is not None:
-            mass = float(state.frame_mass_g)
-        parts.append({"category": category, "name": str(part.get("name", category)), "qty": int(part.get("bom_qty") or 1), "mass_g": round(mass, 2)})
+    parts = _parts(state)
     motors = int(state.selected.get("motor", {}).get("bom_qty") or 4)
     version = len(state.versions)
     return {
@@ -282,20 +323,52 @@ async def latest(request: Request) -> dict:
 # --- mock: "train it" without a key ------------------------------------------
 
 
+_MOCK_LINES = {
+    "drone": (
+        "Training the hover controller: 1,024 MuJoCo runs, right in your browser.",
+        "I start 64 controller candidates for 16 generations, 1,024 MuJoCo simulations in the browser. "
+        "Each one has to hold its position for 10 seconds, 15 % heavier than it expects and with a gust from the side.",
+        "Trained. The best controller holds its spot.",
+    ),
+    "gripper": (
+        "Training the grasp: 1,024 MuJoCo runs, right in your browser.",
+        "I start 64 grasps for 16 generations, 1,024 MuJoCo simulations in the browser. "
+        "Each one squeezes, lifts the part 15 cm and shakes it; the least force and the shortest cycle that still hold win.",
+        "Trained. The grasp holds with less force.",
+    ),
+}
+
+
+def _result_line(product: str, result: dict) -> str:
+    metrics = result.get("best_metrics") or {}
+    exported = result.get("gains") or {}
+    line = f"Done after {int(result.get('rollouts') or 0):,} simulations. Best score {float(result.get('best_score') or 0):.1f}."
+    if product == "gripper":
+        if metrics.get("slip_mm") is not None:
+            held = "It holds" if metrics.get("held") else "It still slips"
+            line += f" {held} with {float(metrics.get('force_n') or 0):.1f} N per finger, {float(metrics['slip_mm']):.1f} mm slip, lifted after {float(metrics.get('cycle_s') or 0):.2f} s."
+        if exported:
+            line += f" For the sketch: squeeze {exported.get('squeeze')}, ramp {exported.get('ramp_ms')} ms, settle {exported.get('settle_ms')} ms, lift {exported.get('lift_ms')} ms."
+        return line
+    if metrics.get("rms_error_cm") is not None and metrics.get("max_tilt_deg") is not None:
+        line += f" It holds position within {float(metrics['rms_error_cm']):.1f} cm RMS and tilts at most {float(metrics['max_tilt_deg']):.0f}°."
+    roll, pitch = exported.get("roll"), exported.get("pitch")
+    if isinstance(roll, dict) and isinstance(pitch, dict):
+        line += f" For the firmware: Betaflight roll P/I {roll.get('p')}/{roll.get('i')}, pitch {pitch.get('p')}/{pitch.get('i')}."
+    params = result.get("best_params") or {}
+    if params:
+        line += " Gains: " + ", ".join(f"{key} {value:g}" for key, value in params.items()) + "."
+    return line
+
+
 async def run_mock_training(ctx: Ctx) -> None:
     from pai_agent.tools.registry import call_tool
 
+    product = "gripper" if getattr(ctx.state, "product", "drone") == "gripper" else "drone"
+    start, plan, done = _MOCK_LINES[product]
     await ctx.step("training", "running")
-    await call_tool(
-        ctx,
-        "mascot_say",
-        {"state": "erklaert", "say": "Training the hover controller: 1,024 MuJoCo runs, right in your browser."},
-    )
-    await ctx.chat(
-        "agent",
-        "I start 64 controller candidates for 16 generations, 1,024 MuJoCo simulations in the browser. "
-        "Each one has to hold its position for 10 seconds, 15 % heavier than it expects and with a gust from the side.",
-    )
+    await call_tool(ctx, "mascot_say", {"state": "erklaert", "say": start})
+    await ctx.chat("agent", plan)
     result = await call_tool(ctx, "train_in_browser", {})
     if result.get("ok") is False:
         await ctx.step("training", "failed")
@@ -303,17 +376,5 @@ async def run_mock_training(ctx: Ctx) -> None:
         await ctx.chat("agent", str(result.get("error") or "The training did not run."))
         return
     await ctx.step("training", "done")
-    params = result.get("best_params") or {}
-    metrics = result.get("best_metrics") or {}
-    gains = ", ".join(f"{key} {value:g}" for key, value in params.items())
-    error_cm = metrics.get("rms_error_cm")
-    tilt = metrics.get("max_tilt_deg")
-    summary = f"Done after {int(result.get('rollouts') or 0):,} simulations. Best score {float(result.get('best_score') or 0):.1f}."
-    if error_cm is not None and tilt is not None:
-        summary += f" It holds position within {float(error_cm):.1f} cm RMS and tilts at most {float(tilt):.0f}°."
-    await call_tool(ctx, "mascot_say", {"state": "freut_sich", "say": "Trained. The best controller holds its spot."})
-    exported = result.get("gains") or {}
-    roll, pitch = exported.get("roll"), exported.get("pitch")
-    if isinstance(roll, dict) and isinstance(pitch, dict):
-        summary += f" For the firmware: Betaflight roll P/I {roll.get('p')}/{roll.get('i')}, pitch {pitch.get('p')}/{pitch.get('i')}."
-    await ctx.chat("agent", summary + (" Gains: " + gains + "." if gains else ""))
+    await call_tool(ctx, "mascot_say", {"state": "freut_sich", "say": done})
+    await ctx.chat("agent", _result_line(product, result))

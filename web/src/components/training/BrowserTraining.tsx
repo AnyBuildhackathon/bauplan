@@ -1,12 +1,14 @@
 // Simulation tab, training pane: 16 of each generation's 64 MuJoCo runs replayed in a
 // grid, the rollout counter up to 1,024, the fitness curve, and the best run large.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { productFor } from "../../sim/products";
 import { GRID_SIZE, REPLAY_SPEED, useTrainer, type Tile } from "../../sim/trainer";
 import type { DroneSpec } from "../../sim/drone";
+import type { GripperSpec } from "../../sim/gripper";
 import { fmtGain, fmtNum } from "./format";
 import { TrendChart } from "../ui/TrendChart";
-import { drawDroneFrame, themeColors } from "./drawDrone";
+import { drawDroneFrame, themeColors, type DrawStyle } from "./drawDrone";
+import { drawGripperFrame } from "./drawGripper";
 import { useBrowserTrainingEvent } from "./useBrowserTraining";
 
 function useSize<T extends HTMLElement>() {
@@ -21,6 +23,15 @@ function useSize<T extends HTMLElement>() {
   return [ref, size] as const;
 }
 
+type Renderer = (ctx: CanvasRenderingContext2D, w: number, h: number, frames: Float32Array, frameSize: number, index: number, style: DrawStyle) => void;
+
+/** How each product's rollout frames are drawn. */
+function rendererFor(productId: string, spec: unknown): Renderer {
+  if (productId === "gripper") return (ctx, w, h, f, n, i, st) => drawGripperFrame(ctx, w, h, f, n, i, st, spec as GripperSpec | null);
+  const armM = ((spec as DroneSpec | null)?.arm_length_mm ?? 36) / 1000;
+  return (ctx, w, h, f, n, i, st) => drawDroneFrame(ctx, w, h, f, n, i, st, armM);
+}
+
 function tileColor(t: { crashed: boolean; held: boolean }, c: ReturnType<typeof themeColors>) {
   return t.crashed ? c.fail : t.held ? c.ok : c.agent;
 }
@@ -31,7 +42,7 @@ function useReplayLoop(
   tilesAt: number,
   canvases: React.RefObject<(HTMLCanvasElement | null)[]>,
   big: React.RefObject<HTMLCanvasElement | null>,
-  armM: number,
+  draw: Renderer,
 ) {
   const best = useTrainer((s) => s.best);
   useEffect(() => {
@@ -47,12 +58,12 @@ function useReplayLoop(
         const frames = Math.floor(tile.frames.length / Math.max(1, tile.frameSize));
         const index = Math.floor((((now - tilesAt) / 1000) * REPLAY_SPEED * tile.frameHz));
         fit(cv);
-        drawDroneFrame(ctx, cv.width, cv.height, tile.frames, tile.frameSize, Math.min(index, frames - 1), {
+        draw(ctx, cv.width, cv.height, tile.frames, tile.frameSize, Math.min(index, frames - 1), {
           color: tileColor(tile, colors),
           ink: colors.ink,
           faint: colors.faint,
           line: colors.line,
-        }, armM);
+        });
       });
       const bc = big.current;
       const bctx = bc?.getContext("2d");
@@ -64,19 +75,19 @@ function useReplayLoop(
         const index = Math.floor(((now - bigStart) / 1000) * best.frameHz) % Math.max(1, loopFrames);
         const crashed = best.metrics.crashed === true;
         const held = best.metrics.held === true;
-        drawDroneFrame(bctx, bc.width, bc.height, best.frames, best.frameSize, Math.min(index, frames - 1), {
+        draw(bctx, bc.width, bc.height, best.frames, best.frameSize, Math.min(index, frames - 1), {
           color: tileColor({ crashed, held }, colors),
           ink: colors.ink,
           faint: colors.faint,
           line: colors.line,
           big: true,
-        }, armM);
+        });
       }
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [tiles, tilesAt, canvases, big, best, armM]);
+  }, [tiles, tilesAt, canvases, big, best, draw]);
 }
 
 /** Matches the canvas backing store to its CSS size at device pixel ratio. */
@@ -99,11 +110,11 @@ export function BrowserTraining() {
   const big = useRef<HTMLCanvasElement | null>(null);
   const [chartRef, chartSize] = useSize<HTMLDivElement>();
   const here = local.status === "running" || local.status === "done" || local.status === "claiming";
-  const spec = (here ? local.spec : sse?.spec) as DroneSpec | null;
-  const armM = (spec?.arm_length_mm ?? 36) / 1000;
-  useReplayLoop(local.tiles, local.tilesAt, canvases, big, armM);
-
+  const spec = here ? local.spec : sse?.spec ?? null;
   const productId = (here ? local.productId : sse?.product) ?? "drone";
+  const draw = useMemo(() => rendererFor(productId, spec), [productId, spec]);
+  useReplayLoop(local.tiles, local.tilesAt, canvases, big, draw);
+
   let product: ReturnType<typeof productFor> | null = null;
   try {
     product = productFor(productId);
@@ -178,10 +189,11 @@ export function BrowserTraining() {
           <div className="absolute top-2.5 left-3 text-[13px] font-bold text-ink-2">
             Best so far{local.best ? ` · gen ${local.best.generation}` : ""}
           </div>
-          {bestMetrics && (
+          {bestMetrics && product && (
             <div className="num absolute right-3 bottom-2.5 text-right text-[13px] font-semibold text-ink-2">
-              {typeof bestMetrics.rms_error_cm === "number" && <div>{fmtNum(bestMetrics.rms_error_cm, 1)} cm RMS from target</div>}
-              {typeof bestMetrics.max_tilt_deg === "number" && <div>max tilt {fmtNum(bestMetrics.max_tilt_deg, 0)}°</div>}
+              {product.describe(bestMetrics).lines.map((line) => (
+                <div key={line}>{line}</div>
+              ))}
             </div>
           )}
           {!here && !local.best && (

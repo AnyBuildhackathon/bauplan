@@ -1,6 +1,7 @@
 // Browser simulation: the contract between a product (drone, gripper, legged robot)
 // and the generic MuJoCo WASM rollout pool and trainer.
 import type { MainModule, MjData, MjModel } from "@mujoco/mujoco";
+import type { CrossEntropyOptions } from "./es";
 
 export type Mujoco = MainModule;
 
@@ -77,6 +78,8 @@ export interface TrainingProduct<Spec = unknown> {
   /** One-line goal shown in the UI, such as "stay level and hold position for 10 s". */
   goal: string;
   params: ParamSpec[];
+  /** Search settings for this product's parameter space; the defaults suit a 7-gain controller. */
+  search?: CrossEntropyOptions;
   horizonS: number;
   frameSize: number;
   frameHz: number;
@@ -89,4 +92,6 @@ export interface TrainingProduct<Spec = unknown> {
   /** The scenario every candidate of one generation runs (common random numbers). */
   trainingPerturbation(generation: number): Perturbation;
   episode(params: Params, perturbation: Perturbation, spec: Spec): Episode;
+  /** How a result reads in the UI: whether it passed, a headline, and short readouts. */
+  describe(metrics: Record<string, number | boolean>): { ok: boolean; headline: string; lines: string[] };
 }

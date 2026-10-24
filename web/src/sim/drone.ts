@@ -244,6 +244,11 @@ export const droneProduct: TrainingProduct<DroneSpec> = {
   frameHz: 20,
   buildMjcf,
   exportGains,
+  describe: (m) => ({
+    ok: m.held === true,
+    headline: m.held === true ? "Holds position for 10 s" : m.crashed === true ? "Crashes" : "Best found, not yet within 10 cm",
+    lines: [`${Number(m.rms_error_cm ?? 0).toFixed(1)} cm RMS from target`, `max tilt ${Number(m.max_tilt_deg ?? 0).toFixed(0)}°`],
+  }),
   // A payload 15 % over what the controller assumes, so the altitude integral earns its keep.
   trainingPerturbation: (generation) => ({ seed: 1000 * (generation + 1) + 1, mass_scale: 1.15 }),
   episode,

@@ -346,7 +346,7 @@ SCHEMAS = [
     },
     {
         "name": "train_in_browser",
-        "description": "Trains the current product's controller in 1,024 MuJoCo simulations in the open dashboard (64 candidates x 16 generations, evolution strategy). For the drone: altitude PID and position and attitude PD gains that stay level and hold position for 10 s with a payload and a side gust. Waits for the run and returns the best gains and score.",
+        "description": "Trains the current product's controller in 1,024 MuJoCo simulations in the open dashboard (64 candidates x 16 generations, evolution strategy). For the drone: altitude PID and position and attitude PD gains that stay level and hold position for 10 s with a payload and a side gust. For the gripper: squeeze force, ramp, settle and lift time that hold the part through the lift and shake with the least force. Waits for the run and returns the best gains and score.",
         "input_schema": {"type": "object", "properties": {}},
     },
 ]

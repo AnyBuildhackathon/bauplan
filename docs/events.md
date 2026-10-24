@@ -264,14 +264,17 @@ It does not guess from a screenshot.
 A `done` event after an `offline` tool means the fallback file was played, not that a pod finished a job.
 
 A browser run (`train_in_browser`) adds `source: "browser"` and these fields to the same shape:
-`job_id`; `product` (`drone`); `spec`, what the browser builds the MJCF from: `{product, label, nominal, mass_g, thrust_g, motors, arm_length_mm, parts: [{category, name, qty, mass_g}]}`, where `thrust_g` is the total maximum thrust of all motors and `nominal: true` means nothing was built yet; `population` (64), `generations` (16), `rollouts_total` (1024), `generation` (finished generations);
-`best_params`, the best controller gains so far (drone: `kp_z`, `ki_z`, `kd_z`, `kp_xy`, `kd_xy`, `kp_att`, `kd_att`), or `null`; `best_metrics` (drone: `rms_error_cm` after the first 2 s, `max_tilt_deg`, `survived_s`, `crashed`, `held`), or `null`; and `error` on `failed`.
+`job_id`; `product` (`drone` or `gripper`, from the session's product); `spec`, what the browser builds the MJCF from, with `product`, `label`, `nominal` (`true` when nothing was built yet), and `parts: [{category, name, qty, mass_g}]`;
+for the drone also `mass_g`, `thrust_g` (total maximum thrust of all motors), `motors`, and `arm_length_mm`; for the gripper `payload_g` and `width_mm` (the object from the brief), `max_force_n` (finger force the servo holds, per pad), and `friction` (pads); `population` (64), `generations` (16), `rollouts_total` (1024), `generation` (finished generations);
+`best_params`, the best controller gains so far (drone: `kp_z`, `ki_z`, `kd_z`, `kp_xy`, `kd_xy`, `kp_att`, `kd_att`), or `null`; `best_metrics` (drone: `rms_error_cm` after the first 2 s, `max_tilt_deg`, `survived_s`, `crashed`, `held`; gripper: `slip_mm`, `force_n`, `cycle_s`, `crashed` for a dropped part, `held` for at most 10 mm slip), or `null`; and `error` on `failed`.
+The gripper trains its grasp (`squeeze` as a share of `max_force_n`, `ramp_s`, `settle_s`, `lift_s`) in the grip test above: a held grasp scores for less force, a shorter cycle, and less slip.
 `step` counts finished rollouts and `reward` is the best score so far, 0–100; `curve` holds one point per generation.
 `best_params` are in the trainer's own units (drone: attitude gains divided by the roll inertia, 1/s² and 1/s).
 The `done` event also carries `gains`, the trained controller for other modules, and the session keeps the same object as `trained_gains` and `controller_gains`.
 For the drone it is `{kp_z, ki_z, kd_z, kp_xy, kd_xy, kp_att, kd_att, roll: {p, i}, pitch: {p, i}}`:
 `kp_z` (1/s²), `ki_z` (1/s³), `kd_z` (1/s), `kp_xy` (1/s²), and `kd_xy` (1/s) shape the commanded acceleration, `kp_att` (N m/rad) and `kd_att` (N m s/rad) are the attitude torque gains, and `roll` and `pitch` are Betaflight 4.4 rate P and I.
 Those are the Betaflight defaults (roll 45/80, pitch 47/84) scaled by the trained `kd_att` against 12 1/s and clamped to 0.5–2×, a starting point for the bench rather than a measured tune; yaw, D, and feed-forward are not trained and keep the firmware defaults.
+For the gripper `gains` is `{squeeze, grip_force_n, ramp_ms, settle_ms, lift_ms, cycle_ms}`, the grasp to put in the servo sketch.
 `queued` asks a dashboard to run it; `running` follows each generation; `done` carries the final gains.
 `failed` with `error: "no_browser"` means no dashboard claimed the job within `PAI_TRAIN_CLAIM_TIMEOUT_S` (default 20); a run that does not finish within `PAI_TRAIN_TIMEOUT_S` (default 240) fails with `error: "timeout"`, and a claimed run that reports nothing for `PAI_TRAIN_STALL_S` (default 30) fails with `error: "browser_gone"`, for example after the tab was closed or reloaded.
 

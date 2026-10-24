@@ -160,7 +160,7 @@ export async function runBrowserTraining(jobId: string, fallback: { productId: s
 
   try {
     const product = productFor(productId);
-    const es = new CrossEntropy(product.params);
+    const es = new CrossEntropy(product.params, product.search);
     let best: Best | null = null;
     await report({ status: "running", step: 0, generation: 0 });
     for (let g = 0; g < generations; g++) {
