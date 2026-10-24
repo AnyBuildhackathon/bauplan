@@ -1,5 +1,6 @@
 // Thin Jamie meeting timeline in the top bar: kickoff, reviews, and the drone
-// version each meeting produced. Clicking a meeting shows that version's numbers.
+// version each meeting produced, as name and version chip; dates sit in the tooltip.
+// Clicking a meeting shows that version's numbers.
 import { Fragment, useMemo } from "react";
 import { History } from "lucide-react";
 import { useSession } from "../../events/store";
@@ -8,7 +9,7 @@ import type { MeetingEvent, VersionEvent } from "../../events/types";
 import { meetingTitle } from "../../lib/derived";
 import { useUi } from "../../lib/ui";
 
-const STATUS_TEXT: Record<MeetingEvent["status"], string> = { done: "", live: "live", next: "planned" };
+const STATUS_TEXT: Record<MeetingEvent["status"], string> = { done: "", live: "live now", next: "planned" };
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -20,11 +21,16 @@ function shortDate(iso: string): string {
   return `${MONTHS[m - 1]} ${d}`;
 }
 
+function hoverText(m: MeetingEvent): string {
+  const when = [shortDate(m.date), m.time].filter(Boolean).join(" ");
+  return [m.title, when, STATUS_TEXT[m.status], m.tags.length ? `Tags: ${m.tags.join(", ")}` : ""].filter(Boolean).join(" · ");
+}
+
 function VersionBadge({ version, active }: { version: VersionEvent | undefined; active: boolean }) {
   if (!version) return null;
   const tone = version.sim === "fail" ? "bg-fail" : "bg-ok";
   return (
-    <span className={`num flex h-6 min-w-8 items-center justify-center rounded-full px-1.5 text-[13px] font-semibold text-white ${tone} ${active ? "ring-2 ring-white/30" : ""}`}>
+    <span className={`num flex h-5 min-w-7 items-center justify-center rounded-full px-1.5 text-[12px] font-semibold text-white ${tone} ${active ? "ring-2 ring-white/30" : ""}`}>
       v{version.n}
     </span>
   );
@@ -71,11 +77,10 @@ export function MeetingTimeline() {
       ? shown.find((m) => m.kind === "review" && m.status !== "done")
       : undefined;
   const current = selected ?? newest;
-  const showDate = new Set(shown.map((m) => m.date).filter(Boolean)).size > 1;
 
   return (
     <nav className="flex min-w-0 items-center overflow-hidden" data-target="timeline meetings" aria-label="Jamie meetings">
-      <span className="mr-3 inline-flex shrink-0 items-center gap-1.5 text-[13px] font-semibold text-jamie">
+      <span className="mr-2.5 inline-flex shrink-0 items-center gap-1.5 text-[12px] font-semibold text-jamie">
         <span className="h-2 w-2 rounded-full bg-jamie" /> Jamie
       </span>
       {shown.map((m, i) => {
@@ -84,14 +89,14 @@ export function MeetingTimeline() {
         const clickable = version !== undefined;
         return (
           <Fragment key={m.id}>
-            {i > 0 && <span className={`h-px w-4 shrink-0 ${m.status === "next" ? "bg-track" : "bg-faint"}`} />}
+            {i > 0 && <span className={`h-px w-3 shrink-0 ${m.status === "next" ? "bg-track" : "bg-faint"}`} />}
             <button
               type="button"
               disabled={!clickable}
               data-target={`meeting:${m.id}`}
               onClick={() => version && selectVersion(version.n === newest ? null : version.n)}
-              title={[m.title, [m.date, m.time].filter(Boolean).join(" "), m.tags.length ? `Tags: ${m.tags.join(", ")}` : ""].filter(Boolean).join(" · ")}
-              className={`flex h-9 max-w-[200px] items-center ${m.status === "next" ? "min-w-[60px] shrink" : "min-w-0 shrink-0"} gap-2 rounded-full pr-1.5 pl-3 transition ${
+              title={hoverText(m)}
+              className={`flex h-8 max-w-[180px] items-center ${m.status === "next" ? "min-w-[60px] shrink" : "min-w-0 shrink-0"} gap-1.5 rounded-full pr-1.5 pl-2.5 transition ${
                 active
                   ? "bg-ink text-white"
                   : m.status === "next"
@@ -107,12 +112,7 @@ export function MeetingTimeline() {
               ) : (
                 <span className={`h-2 w-2 shrink-0 rounded-full ${m.status === "next" ? "ring-[1.5px] ring-faint ring-inset" : active ? "bg-white" : "bg-jamie"}`} />
               )}
-              <span className="truncate text-[14px] font-semibold">{m.title}</span>
-              {(m.status !== "done" || !version) && (m.time || m.date || STATUS_TEXT[m.status]) && (
-                <span className={`num shrink-0 text-[13px] font-medium ${active ? "text-white/70" : m.status === "live" ? "text-fail-ink" : "text-muted"}`}>
-                  {m.status === "live" ? "live" : [showDate ? shortDate(m.date) : "", m.time].filter(Boolean).join(" ") || STATUS_TEXT[m.status]}
-                </span>
-              )}
+              <span className="truncate text-[13px] font-semibold">{m.title}</span>
               <VersionBadge version={version} active={active} />
             </button>
             {nextReview?.id === m.id && !building && (
@@ -120,7 +120,7 @@ export function MeetingTimeline() {
                 type="button"
                 data-target="meeting_end"
                 onClick={() => void meetingWebhook(m.status === "live" ? "ended" : "started", m)}
-                className={`ml-1.5 h-8 shrink-0 rounded-full px-3 text-[13px] font-bold transition ${
+                className={`ml-1.5 h-7 shrink-0 rounded-full px-3 text-[12px] font-bold transition ${
                   m.status === "live" ? "bg-fail text-white hover:brightness-110" : "bg-card text-ink-2 shadow-[var(--shadow-pill)] hover:bg-page-2"
                 }`}
                 title={m.status === "live" ? "End the meeting: AnyBuild rebuilds" : "Start the meeting"}

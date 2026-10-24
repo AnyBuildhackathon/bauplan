@@ -147,6 +147,8 @@ export interface MascotEvent {
   type: "mascot";
   state: MascotState;
   say: string;
+  /** Pre-rendered audio of `say` (the recorded demo has no backend to speak it). */
+  voice?: string;
 }
 export interface JamieEvent {
   type: "jamie";
@@ -390,6 +392,8 @@ export interface QuestionEvent {
   timeout_s: number;
   status: "open" | "answered";
   answer_id: string | null;
+  /** Pre-rendered audio of the question's last sentence (the recorded demo only). */
+  voice?: string;
 }
 export interface TaskItem {
   id: string;

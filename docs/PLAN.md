@@ -15,7 +15,7 @@ The architecture combines engineering software, physical simulation, AI models, 
 
 - AI reasoning: Anthropic Claude Sonnet with tool use for engineering decision-making and reconciliation.
 - Meeting intelligence: Jamie MCP for recording ingestion, requirement extraction, notes back, and task management.
-- Speech processing: Reson8 for realtime streaming speech-to-text, plus browser speech synthesis or ElevenLabs TTS.
+- Speech processing: Reson8 for realtime streaming speech-to-text, plus ElevenLabs TTS (pre-rendered clips in the static demo, never the system voice).
 - Parametric CAD: FreeCAD with `freecad-mcp` for live interactive building in GUI, falling back to headless `freecadcmd` and CadQuery.
 - Photorealistic rendering: Blender with EEVEE headless rendering for studio product presentations.
 - Fast physics simulation: MuJoCo for aerodynamics and downdraft gust stability evaluation.

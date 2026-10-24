@@ -14,6 +14,8 @@ export interface Display {
   tools: boolean;
   jamie: boolean;
   allMetrics: boolean;
+  /** Learning mode: the concepts Mechanic explains, and what was learned in the logbook. */
+  learning: boolean;
 }
 
 interface UiState {
@@ -70,7 +72,7 @@ const TABS: CanvasTab[] = ["modell", "cad", "simulation", "omniverse"];
 const params = () => new URLSearchParams(window.location.search);
 const VOICE_KEY = "bauplan.voice";
 const DISPLAY_KEY = "anybuild.display";
-const DISPLAY_DEFAULT: Display = { agents: false, tools: false, jamie: false, allMetrics: false };
+const DISPLAY_DEFAULT: Display = { agents: false, tools: false, jamie: false, allMetrics: false, learning: false };
 
 function storedDisplay(): Display {
   try {

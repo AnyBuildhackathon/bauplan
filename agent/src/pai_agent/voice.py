@@ -6,7 +6,8 @@ and opens a Reson8 socket with the subprotocols ["bearer", token]. Hands-free, t
 the Turns endpoint, which says when a turn starts (barge-in) and when it has ended (send
 it); push-to-talk keeps the Realtime endpoint. Without RESON8_API_KEY the browser uses its
 own speech recognition. Mechanic speaks through ElevenLabs when ELEVENLABS_API_KEY is set,
-streamed sentence by sentence as raw PCM, else through the browser's speech synthesis.
+streamed sentence by sentence as raw PCM, else he stays silent and his text is the caption
+(never the system voice). The recorded demo plays pre-rendered ElevenLabs clips instead.
 Key values are never logged or returned.
 """
 
@@ -56,7 +57,9 @@ PHRASES = [
 _ELEVEN_STREAM_URL = "https://api.elevenlabs.io/v1/text-to-speech/{voice}/stream"
 # "Roger", a stock ElevenLabs voice: a confident, laid-back American male. Not a clone of anyone.
 DEFAULT_VOICE = "CwhRBWXzGAHq8TQ4Fs17"
-DEFAULT_TTS_MODEL = "eleven_flash_v2_5"
+# Turbo v2.5 sounds fuller than Flash at a similar latency; the recorded demo has no latency to hit, so it uses multilingual v2.
+DEFAULT_TTS_MODEL = "eleven_turbo_v2_5"
+VOICE_SETTINGS = {"stability": 0.4, "similarity_boost": 0.8, "style": 0.45, "use_speaker_boost": True}
 TTS_SAMPLE_RATE = 24000
 
 
@@ -97,7 +100,7 @@ def _key(name: str) -> str:
 def capabilities() -> dict:
     return {
         "stt": "reson8" if _key("RESON8_API_KEY") else "browser",
-        "tts": "elevenlabs" if _key("ELEVENLABS_API_KEY") else "browser",
+        "tts": "elevenlabs" if _key("ELEVENLABS_API_KEY") else "none",
         "realtime_url": RESON8_REALTIME_URL,
         "turns_url": RESON8_TURNS_URL,
         "language": os.environ.get("RESON8_LANGUAGE", "").strip() or "en",
@@ -130,7 +133,7 @@ async def reson8_token() -> dict:
     return {"access_token": token, "expires_in": int(body.get("expires_in") or 600)}
 
 
-async def elevenlabs_stream(text: str, previous_text: str = "") -> AsyncIterator[bytes]:
+async def elevenlabs_stream(text: str, previous_text: str = "", model: str = "") -> AsyncIterator[bytes]:
     """Opens an ElevenLabs stream for one sentence and yields 16-bit mono PCM at TTS_SAMPLE_RATE.
 
     The request is sent before the first chunk is yielded, so a missing key or an HTTP error
@@ -143,7 +146,11 @@ async def elevenlabs_stream(text: str, previous_text: str = "") -> AsyncIterator
     if not key:
         raise VoiceError("ELEVENLABS_API_KEY is missing")
     voice = _key("ELEVENLABS_VOICE_ID") or DEFAULT_VOICE
-    payload: dict = {"text": text[:600], "model_id": _key("ELEVENLABS_MODEL") or DEFAULT_TTS_MODEL}
+    payload: dict = {
+        "text": text[:600],
+        "model_id": model or _key("ELEVENLABS_MODEL") or DEFAULT_TTS_MODEL,
+        "voice_settings": VOICE_SETTINGS,
+    }
     if previous_text:
         # The sentence before keeps the intonation of one reply continuous across requests.
         payload["previous_text"] = previous_text[-400:]

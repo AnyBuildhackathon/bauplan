@@ -1,7 +1,8 @@
-// Mechanic reads his fresh lines aloud: the short question at the end of a "Rückfrage",
+// Mechanic reads his fresh lines aloud: the short question at the end of a question card,
 // and, when the backend has no narrator (no Claude key, or the recorded demo), the
 // mascot's speech bubble. With a narrator the backend's `say` lines are spoken instead
-// (lib/speech.ts), so the bubble stays silent. Replayed (seeked) events stay silent.
+// (lib/speech.ts), so the bubble stays silent. The recorded demo carries a pre-rendered
+// clip per line. Replayed (seeked) events stay silent.
 import { useEffect, useRef } from "react";
 import { INSTANT_AGE_MS, useSession } from "../events/store";
 import { useSource } from "../events/source";
@@ -37,7 +38,7 @@ export function useBolzenVoice() {
     spokenLine.current = mascot.at;
     if (mode === "live" && voiceCapabilities().narrator) return;
     if (!voiceOn || personTalking() || Date.now() - mascot.at > FRESH_MS) return;
-    void speak(mascot.say, mode);
+    void speak(mascot.say, mode, mascot.voice);
   }, [mascot, voiceOn, mode]);
 
   useEffect(() => {
@@ -45,7 +46,7 @@ export function useBolzenVoice() {
     if (!open || open.id === spokenQuestion.current) return;
     spokenQuestion.current = open.id;
     if (!voiceOn || personTalking()) return;
-    void speak(lastSentence(open.text), mode);
+    void speak(lastSentence(open.text), mode, open.voice);
   }, [questions, voiceOn, mode]);
 
   useEffect(() => {
