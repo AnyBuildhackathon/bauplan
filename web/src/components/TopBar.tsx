@@ -1,11 +1,9 @@
-import { useEffect, useRef, useState } from "react";
-import { BookOpen, Dumbbell, Ellipsis, FastForward, LayoutDashboard, Pause, Play, RotateCcw, SkipForward } from "lucide-react";
-import { useSession } from "../events/store";
+import { FastForward, Pause, Play, RotateCcw, SkipForward } from "lucide-react";
 import { useSource } from "../events/source";
-import { useUi, type View } from "../lib/ui";
+import { useUi } from "../lib/ui";
 import { BenchSettings } from "./BenchSettings";
 import { MeetingTimeline } from "./timeline/MeetingTimeline";
-import { Segmented, StatusDot } from "./ui/primitives";
+import { StatusDot } from "./ui/primitives";
 
 export function Logo({ size = 40 }: { size?: number }) {
   return (
@@ -30,34 +28,14 @@ function SourceControls() {
   const live = useSource((s) => s.live);
   const demo = useSource((s) => s.demo);
   const backend = useSource((s) => s.backend);
-  const { setMode, play, pause, restart, setSpeed, skipToEnd } = useSource.getState();
+  const { play, pause, restart, setSpeed, skipToEnd } = useSource.getState();
   const resetUi = useUi((s) => s.resetUi);
   const ended = demo.index >= demo.total;
 
   return (
     <div className="flex items-center gap-2">
-      <Segmented
-        size="sm"
-        value={mode}
-        onChange={(m) => {
-          resetUi();
-          setMode(m);
-        }}
-        options={[
-          {
-            value: "live",
-            label: (
-              <>
-                <StatusDot tone={live === "open" ? "ok" : live === "connecting" ? "agent" : "fail"} pulse={live === "connecting" && mode === "live"} hollow={mode !== "live"} />
-                Live
-              </>
-            ),
-          },
-          { value: "demo", label: "Recorded demo" },
-        ]}
-      />
       {mode === "demo" ? (
-        <div className="flex items-center gap-1 rounded-full bg-card p-1 shadow-[var(--shadow-pill)]">
+        <div className="flex items-center gap-1 rounded-full bg-tile p-1">
           <button
             type="button"
             onClick={demo.playing ? pause : play}
@@ -70,12 +48,12 @@ function SourceControls() {
           <button
             type="button"
             onClick={() => setSpeed(demo.speed === 4 ? 1 : demo.speed * 2)}
-            className="num flex h-8 min-w-11 items-center justify-center gap-1 rounded-full px-2 text-[13px] font-bold text-ink-2 hover:bg-tile"
+            className="num flex h-8 min-w-11 items-center justify-center gap-1 rounded-full px-2 text-[13px] font-bold text-ink-2 hover:bg-track"
             title="Speed"
           >
             <FastForward className="h-3.5 w-3.5" /> {demo.speed}×
           </button>
-          <button type="button" onClick={skipToEnd} className="flex h-8 w-8 items-center justify-center rounded-full text-ink-2 hover:bg-tile" title="Jump to the end">
+          <button type="button" onClick={skipToEnd} className="flex h-8 w-8 items-center justify-center rounded-full text-ink-2 hover:bg-track" title="Jump to the end">
             <SkipForward className="h-4 w-4" />
           </button>
           <button
@@ -84,14 +62,15 @@ function SourceControls() {
               resetUi();
               restart();
             }}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-ink-2 hover:bg-tile"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-ink-2 hover:bg-track"
             title="From the start"
           >
             <RotateCcw className="h-4 w-4" />
           </button>
         </div>
       ) : (
-        <span className={`text-[13px] font-semibold ${live !== "open" ? (live === "connecting" ? "text-agent-ink" : "text-fail-ink") : backend === "mock" ? "text-agent-ink" : "text-ok-ink"}`}>
+        <span className={`flex items-center gap-2 text-[13px] font-semibold ${live !== "open" ? (live === "connecting" ? "text-agent-ink" : "text-fail-ink") : backend === "mock" ? "text-agent-ink" : "text-ok-ink"}`}>
+          <StatusDot tone={live === "open" ? "ok" : live === "connecting" ? "agent" : "fail"} pulse={live === "connecting"} />
           {live === "open" ? (backend === "mock" ? "Mock run · no API key" : "Claude live") : live === "connecting" ? "connecting …" : "Backend offline"}
         </span>
       )}
@@ -99,77 +78,15 @@ function SourceControls() {
   );
 }
 
-const MENU: { value: View; label: string; icon: typeof Dumbbell }[] = [
-  { value: "werkbank", label: "Workbench", icon: LayoutDashboard },
-  { value: "training", label: "Training", icon: Dumbbell },
-  { value: "logbuch", label: "Logbook", icon: BookOpen },
-];
-
-/** Training and Logbuch are not part of the stage flow, so they sit behind a small menu. */
-function MoreMenu() {
-  const view = useUi((s) => s.view);
-  const setView = useUi((s) => s.setView);
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: PointerEvent) => {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
-    };
-    window.addEventListener("pointerdown", close);
-    return () => window.removeEventListener("pointerdown", close);
-  }, [open]);
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className={`flex h-10 w-10 items-center justify-center rounded-full transition ${open || view !== "werkbank" ? "bg-ink text-white" : "text-ink-2 hover:bg-card"}`}
-        title="More"
-        aria-label="More views"
-      >
-        <Ellipsis className="h-5 w-5" />
-      </button>
-      {open && (
-        <div className="absolute top-12 right-0 z-[90] w-52 animate-rise rounded-[20px] bg-card p-1.5 shadow-[var(--shadow-float)]">
-          {MENU.map((m) => (
-            <button
-              key={m.value}
-              type="button"
-              onClick={() => {
-                setView(m.value);
-                setOpen(false);
-              }}
-              className={`flex h-11 w-full items-center gap-3 rounded-2xl px-3.5 text-[15px] font-semibold ${view === m.value ? "bg-tile text-ink" : "text-ink-2 hover:bg-page-2"}`}
-            >
-              <m.icon className="h-4.5 w-4.5 text-muted" /> {m.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
+/** The slim bar over the canvas: the Jamie meetings on the left, the run controls on the right. */
 export function TopBar() {
-  const setView = useUi((s) => s.setView);
-  const productLabel = useSession((s) => s.productLabel);
-  const mode = useSource((s) => s.mode);
   return (
-    <header className="flex h-[72px] shrink-0 items-center gap-5 px-5">
-      <button type="button" onClick={() => setView("werkbank")} className="flex shrink-0 items-center gap-3 text-left">
-        <Logo />
-        <div className="leading-tight">
-          <div className="text-[19px] font-bold tracking-[-0.01em]">AnyBuild</div>
-          <div className="max-w-[180px] truncate text-[13px] font-medium text-muted">{productLabel}</div>
-        </div>
-      </button>
-      <div className="flex min-w-0 flex-1 justify-center">
+    <header className="flex h-[60px] shrink-0 items-center gap-5 border-b border-line px-6">
+      <div className="flex min-w-0 flex-1">
         <MeetingTimeline />
       </div>
       <SourceControls />
-      {mode === "live" && <BenchSettings />}
-      <MoreMenu />
+      <BenchSettings />
     </header>
   );
 }

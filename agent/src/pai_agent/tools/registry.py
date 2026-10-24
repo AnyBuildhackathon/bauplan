@@ -548,7 +548,7 @@ SCHEMAS = [
     },
     {
         "name": "bom_build",
-        "description": "Builds the bill of materials from the chosen parts, including the STL path.",
+        "description": "Builds the bill of materials from the chosen parts, including the STL path. With ANTHROPIC_API_KEY set it searches live shop prices on the web; each line says price_source live or catalog.",
         "input_schema": {"type": "object", "properties": {}},
     },
     BUILD_GUIDE_SCHEMA,

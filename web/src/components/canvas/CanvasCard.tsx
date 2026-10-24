@@ -83,28 +83,42 @@ export function CanvasCard() {
   const showRender = tab === "modell" && look === "render";
 
   return (
-    <div className="card flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="flex shrink-0 flex-wrap items-center gap-3 px-4 pt-3.5 pb-3">
-        <Segmented
-          className="max-w-full flex-wrap"
-          value={tab}
-          onChange={setTab}
-          options={tabs.map((t) => ({
-            value: t.value,
-            target: `tab:${t.value}`,
-            label: (
-              <>
-                <t.icon className="h-4.5 w-4.5" />
-                {t.label}
-              </>
-            ),
-            badge: badges[t.value] ? <span className="h-1.5 w-1.5 rounded-full bg-agent" /> : undefined,
-          }))}
-        />
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex shrink-0 items-end gap-6 border-b border-line" role="tablist">
+        {tabs.map((t) => {
+          const active = t.value === tab;
+          return (
+            <button
+              key={t.value}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              data-target={`tab:${t.value}`}
+              onClick={() => setTab(t.value)}
+              className={`-mb-px flex items-center gap-2 border-b-2 px-0.5 pb-3 text-[16px] transition ${
+                active ? "border-ink font-semibold text-ink" : "border-transparent font-medium text-muted hover:text-ink"
+              }`}
+            >
+              <t.icon className="h-4.5 w-4.5" strokeWidth={1.8} />
+              {t.label}
+              {badges[t.value] && !active && <span className="h-1.5 w-1.5 rounded-full bg-agent" />}
+            </button>
+          );
+        })}
+      </div>
+
+      <div
+        className={`relative mt-5 min-h-0 flex-1 overflow-hidden rounded-[20px] ${
+          showRender
+            ? "bg-[radial-gradient(120%_90%_at_50%_15%,#f4f4f2_0%,#e2e2df_60%,#d6d6d2_100%)]"
+            : "bg-[radial-gradient(110%_80%_at_50%_10%,#ffffff_0%,#f3f3f0_60%,#e9e9e5_100%)]"
+        }`}
+        data-target="canvas viewport"
+      >
         {tab === "modell" && (
           <Segmented<ModelLook>
             size="sm"
-            className="ml-auto"
+            className="absolute top-3 right-3 z-10 bg-white/90 shadow-[var(--shadow-pill)] backdrop-blur"
             value={look}
             onChange={setLook}
             options={[
@@ -122,16 +136,6 @@ export function CanvasCard() {
             ]}
           />
         )}
-      </div>
-
-      <div
-        className={`relative mx-3 mb-3 min-h-0 flex-1 overflow-hidden rounded-[22px] ${
-          showRender
-            ? "bg-[radial-gradient(120%_90%_at_50%_15%,#f4f3f8_0%,#dcdbe5_55%,#c9c7d4_100%)]"
-            : "bg-[radial-gradient(110%_80%_at_50%_10%,#ffffff_0%,#f3f2f8_60%,#eae9f1_100%)]"
-        }`}
-        data-target="canvas viewport"
-      >
         {tab === "modell" && (showRender ? <RenderGallery /> : product === "drone" ? <ModelScene look="modell" /> : <PartModel />)}
         {tab === "cad" && <CadView />}
         {tab === "simulation" && <SimView />}
