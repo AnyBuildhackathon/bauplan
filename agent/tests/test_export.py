@@ -1,4 +1,4 @@
-"""Export: the CSV, the project ZIP with the CAD files and build guide, and the share id."""
+"""Export: the CSV, the order by shop, and the ZIP with the CAD files, guide, firmware and README."""
 
 import asyncio
 import csv
@@ -12,17 +12,19 @@ from pathlib import Path
 
 from pai_agent.bus import EventBus
 from pai_agent.context import Ctx
-from pai_agent.export import bom_csv, build_guide_md, project_zip, share, zip_name
+from pai_agent.export import bom_csv, build_guide_md, bundle, order
 from pai_agent.paths import SESSIONS_DIR
 from pai_agent.state import BuildState
 from pai_agent.tools.jamie import init_timeline
 
 BOM = {
     "items": [
-        {"name": "Motor 1103", "qty": 4, "unit_price_eur": 7.5, "weight_g": 3.6, "shop": "Shop A", "url": "https://a.example/m", "price_source": "live"},
-        {"name": "Frame", "qty": 1, "unit_price_eur": 12, "weight_g": 9, "shop": "Shop B", "url": "https://b.example/f"},
+        {"name": "Motor 1103", "qty": 4, "unit_price_eur": 7.5, "weight_g": 3.6, "shop": "Shop A", "url": "https://a.example/m", "price_source": "live", "availability": "in_stock"},
+        {"name": "Bolts", "qty": 10, "unit_price_eur": 0.05, "weight_g": 0.1, "shop": "Shop A", "url": "https://a.example/b"},
+        {"name": "Feet", "qty": 1, "unit_price_eur": 3.2, "weight_g": 2, "shop": "Shop B", "url": "https://b.example/f", "price_source": "estimated"},
+        {"name": "Base plate, printed PETG", "qty": 1, "unit_price_eur": 1.13, "weight_g": 45.2, "shop": "printed", "url": "/files/s/part-base.stl", "category": "base"},
     ],
-    "total_eur": 42,
+    "total_eur": 34.83,
     "stl_path": "",
 }
 GUIDE = {
@@ -44,17 +46,35 @@ def _stl_ok(data: bytes) -> bool:
     return data.lstrip().startswith(b"solid") and b"facet normal" in data
 
 
-class ExportTest(unittest.TestCase):
-    def _state(self) -> BuildState:
-        return BuildState(session_id="test", directory=Path(tempfile.mkdtemp()))
+def _state() -> BuildState:
+    return BuildState(session_id="test", directory=Path(tempfile.mkdtemp()))
 
-    def test_csv_has_line_totals_and_a_total_row(self):
-        rows = list(csv.reader(io.StringIO(bom_csv(BOM))))
-        self.assertEqual(rows[0][:4], ["name", "qty", "unit_price_eur", "line_eur"])
+
+class ExportTest(unittest.TestCase):
+    def test_csv_has_a_bom_line_totals_and_a_total_row(self):
+        text = bom_csv(BOM)
+        self.assertTrue(text.startswith("﻿"))
+        rows = list(csv.reader(io.StringIO(text.lstrip("﻿"))))
+        self.assertEqual(rows[0], ["name", "qty", "unit_price_eur", "line_total_eur", "weight_g", "shop", "url", "price_source", "availability", "checked_at"])
         self.assertEqual(rows[1][:4], ["Motor 1103", "4", "7.50", "30.00"])
-        self.assertEqual(rows[2][6], "catalog")
+        self.assertEqual(rows[1][8], "in_stock")
+        self.assertEqual(rows[2][7], "catalog")
         self.assertEqual(rows[-1][0], "Total")
-        self.assertEqual(rows[-1][3], "42.00")
+        self.assertEqual(rows[-1][3], "34.83")
+
+    def test_order_groups_by_shop_and_adds_up(self):
+        state = _state()
+        state.bom = BOM
+        state.built = {"base": {"material": "PETG"}}
+        plan = order(state)
+        self.assertEqual([g["shop"] for g in plan["shops"]], ["Shop A", "Shop B"])
+        self.assertEqual(plan["shops"][0]["total_eur"], 30.5)
+        self.assertTrue(plan["shops"][0]["live"])
+        self.assertFalse(plan["shops"][1]["live"])
+        self.assertEqual(plan["print"]["items"], [{"name": "Base plate, printed PETG", "qty": 1, "material": "PETG", "mass_g": 45.2}])
+        self.assertEqual(plan["print"]["filament_g"], 45.2)
+        total = sum(g["total_eur"] for g in plan["shops"]) + plan["print"]["cost_eur"]
+        self.assertAlmostEqual(total, BOM["total_eur"], delta=0.01)
 
     def test_guide_markdown_lists_every_step(self):
         text = build_guide_md(GUIDE, "drone")
@@ -63,37 +83,48 @@ class ExportTest(unittest.TestCase):
         self.assertIn("Tools: 1.5 mm hex", text)
         self.assertIn("## Step 2: Props on", text)
 
-    def test_zip_holds_cad_bom_guide_and_firmware(self):
-        state = self._state()
+    def test_bundle_holds_cad_scripts_guide_firmware_render_and_readme(self):
+        state = _state()
         state.bom = BOM
-        (state.directory / "frame.stl").write_bytes(b"solid x\nfacet normal 0 0 1\nendsolid x\n")
-        (state.directory / "frame.step").write_text("ISO-10303-21;")
-        (state.directory / "frame.glb").write_bytes(b"glb")
-        (state.directory / "fw.txt").write_text("set p_roll = 40")
-        events = [GUIDE, {"type": "firmware", "filename": "fw.txt"}]
-        names = zipfile.ZipFile(io.BytesIO(project_zip(state, events))).namelist()
-        folder = zip_name(state).removesuffix(".zip")
+        state.requirements = [{"id": "mass", "text": "Under 150 g", "_met": True, "_detail": "48 g"}]
+        state.metrics = {"weight_g": 48.3}
+        d = state.directory
+        (d / "frame.stl").write_bytes(b"solid x\nfacet normal 0 0 1\nendsolid x\n")
+        (d / "frame.step").write_text("ISO-10303-21;")
+        (d / "part-base.stl").write_bytes(b"solid y\nendsolid y\n")
+        (d / "part-base.py").write_text("import FreeCAD")
+        (d / "asm-base.stl").write_bytes(b"solid z\nendsolid z\n")
+        (d / "frame.glb").write_bytes(b"glb")
+        (d / "studio-v1.png").write_bytes(b"png1")
+        (d / "studio-v2.png").write_bytes(b"png2")
+        (d / "fw.txt").write_text("set p_roll = 40")
+        path = bundle(state, [GUIDE, {"type": "firmware", "filename": "fw.txt"}])
+        self.assertEqual(path.parent, d)
+        archive = zipfile.ZipFile(path)
+        names = sorted(n.split("/", 1)[1] for n in archive.namelist())
         self.assertEqual(
-            sorted(names),
-            sorted(f"{folder}/{n}" for n in ("cad/frame.step", "cad/frame.stl", "bom.csv", "build-guide.md", "firmware/fw.txt")),
+            names,
+            sorted(["cad/frame.step", "cad/frame.stl", "cad/part-base.stl", "scripts/part-base.py", "bom.csv", "build-guide.md", "firmware/fw.txt", "render.png", "README.md"]),
         )
+        folder = path.stem
+        self.assertEqual(archive.read(f"{folder}/render.png"), b"png2")
+        readme = archive.read(f"{folder}/README.md").decode()
+        self.assertIn("- pass: Under 150 g (48 g)", readme)
+        self.assertIn("Weight: 48.3 g", readme)
+        self.assertIn("PETG: 0.2 mm layers, 25 % infill", readme)
+        self.assertIn("## Missing files\n\n- part-base.step", readme)
 
-    def test_zip_needs_a_build(self):
-        with self.assertRaises(ValueError):
-            project_zip(self._state(), [])
-
-    def test_share_points_the_drone_at_its_code_reference(self):
-        state = self._state()
-        with self.assertRaises(ValueError):
-            share(state)
+    def test_bundle_writes_a_simple_guide_without_an_agent_guide(self):
+        state = _state()
         state.bom = BOM
-        self.assertEqual(share(state), {"id": "micro-drone", "saved": False})
+        path = bundle(state, [])
+        guide = zipfile.ZipFile(path).read(f"{path.stem}/build-guide.md").decode()
+        self.assertIn("1. Print 1 × Base plate, printed PETG in PETG (45.2 g)", guide)
+        self.assertIn("Fit 4 × Motor 1103", guide)
 
-    def test_share_needs_a_finished_spec_product(self):
-        state = self._state()
-        state.product = "generic"
+    def test_bundle_needs_a_bill_of_materials(self):
         with self.assertRaises(ValueError):
-            share(state)
+            bundle(_state(), [])
 
 
 class DroneExportTest(unittest.TestCase):
@@ -108,14 +139,14 @@ class DroneExportTest(unittest.TestCase):
         from pai_agent.mock_story import run_mock
 
         asyncio.run(run_mock(ctx))
-        archive = zipfile.ZipFile(io.BytesIO(project_zip(state, ctx.bus.events)))
-        names = archive.namelist()
-        stls = [n for n in names if n.endswith(".stl")]
-        self.assertTrue(stls, names)
-        self.assertTrue(any(n.endswith(".step") for n in names), names)
-        self.assertTrue(any(n.endswith("build-guide.md") for n in names), names)
-        for name in stls:
-            self.assertTrue(_stl_ok(archive.read(name)), name)
+        path = bundle(state, ctx.bus.events)
+        archive = zipfile.ZipFile(path)
+        names = [n.split("/", 1)[1] for n in archive.namelist()]
+        for expected in ("cad/frame.stl", "cad/frame.step", "bom.csv", "build-guide.md", "README.md", "firmware/anybuild-drone-v1-betaflight.txt"):
+            self.assertIn(expected, names)
+        self.assertTrue(_stl_ok(archive.read(f"{path.stem}/cad/frame.stl")))
+        plan = order(state)
+        self.assertAlmostEqual(sum(g["total_eur"] for g in plan["shops"]) + plan["print"]["cost_eur"], state.bom["total_eur"], delta=0.01)
 
 
 if __name__ == "__main__":

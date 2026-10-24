@@ -326,36 +326,36 @@ async def library_save(body: LibraryIn, request: Request) -> dict:
     return result
 
 
-@app.get("/api/export/project.zip")
-async def export_zip(request: Request) -> Response:
-    from pai_agent.export import project_zip, zip_name
-
-    session = request.app.state.session
-    try:
-        data = project_zip(session.state, session.bus.events)
-    except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    name = zip_name(session.state)
-    return Response(data, media_type="application/zip", headers={"Content-Disposition": f'attachment; filename="{name}"'})
+def _bom_state(request: Request):
+    state = request.app.state.session.state
+    if not state.bom:
+        raise HTTPException(status_code=404, detail="No bill of materials yet")
+    return state
 
 
 @app.get("/api/export/bom.csv")
 async def export_csv(request: Request) -> Response:
-    from pai_agent.export import bom_csv
+    from pai_agent.export import bom_csv, product_name
 
-    bom = request.app.state.session.state.bom
-    if not bom:
-        raise HTTPException(status_code=404, detail="No bill of materials yet")
-    return Response(bom_csv(bom), media_type="text/csv; charset=utf-8", headers={"Content-Disposition": 'attachment; filename="bom.csv"'})
+    state = _bom_state(request)
+    name = "anybuild-" + re.sub(r"[^a-z0-9]+", "-", product_name(state).lower()).strip("-") + "-bom.csv"
+    return Response(bom_csv(state.bom), media_type="text/csv; charset=utf-8", headers={"Content-Disposition": f'attachment; filename="{name}"'})
 
 
-@app.post("/api/export/share")
-async def export_share(request: Request) -> dict:
-    _require_json(request)
-    result = request.app.state.session.share()
-    if result.get("ok") is False:
-        raise HTTPException(status_code=409 if result.get("busy") else 400, detail=str(result["error"]))
-    return result
+@app.get("/api/export/bundle.zip")
+async def export_bundle(request: Request) -> FileResponse:
+    from pai_agent.export import bundle
+
+    session = request.app.state.session
+    path = bundle(_bom_state(request), session.bus.events)
+    return FileResponse(path, media_type="application/zip", filename=path.name)
+
+
+@app.get("/api/export/order")
+async def export_order(request: Request) -> dict:
+    from pai_agent.export import order
+
+    return {"ok": True, **order(_bom_state(request))}
 
 
 @app.get("/api/settings")
