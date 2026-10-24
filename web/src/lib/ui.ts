@@ -25,6 +25,10 @@ interface UiState {
   look: ModelLook;
   /** Version picked on the meeting timeline; null follows the newest. */
   selectedVersion: number | null;
+  /** The version history drawer, opened from the timeline. */
+  versionsOpen: boolean;
+  /** Two versions side by side in the Model tab, older first; null shows the single model. */
+  compare: [number, number] | null;
   /** Simulation run picked in the Simulation tab; null follows the newest run. */
   selectedRun: number | null;
   bomOpen: boolean;
@@ -48,6 +52,8 @@ interface UiState {
   setTab: (tab: CanvasTab) => void;
   setLook: (look: ModelLook) => void;
   selectVersion: (n: number | null) => void;
+  setVersionsOpen: (open: boolean) => void;
+  setCompare: (pair: [number, number] | null) => void;
   selectRun: (run: number | null) => void;
   setBomOpen: (open: boolean) => void;
   openLesson: (step: StepId) => void;
@@ -117,6 +123,8 @@ export const useUi = create<UiState>((set) => ({
   tab: initialTab(),
   look: params().get("tab") === "render" ? "render" : "3d",
   selectedVersion: null,
+  versionsOpen: false,
+  compare: null,
   selectedRun: null,
   bomOpen: params().has("bom"),
   lessonStep: initialLesson(),
@@ -142,6 +150,8 @@ export const useUi = create<UiState>((set) => ({
   setTab: (tab) => set({ tab }),
   setLook: (look) => set({ look, tab: "modell" }),
   selectVersion: (selectedVersion) => set({ selectedVersion }),
+  setVersionsOpen: (versionsOpen) => set({ versionsOpen }),
+  setCompare: (compare) => set(compare ? { compare, tab: "modell", look: "3d" } : { compare }),
   selectRun: (selectedRun) => set({ selectedRun }),
   setBomOpen: (bomOpen) => set({ bomOpen }),
   openLesson: (lessonStep) =>
@@ -167,5 +177,5 @@ export const useUi = create<UiState>((set) => ({
     }
     set({ voiceOn });
   },
-  resetUi: () => set({ selectedVersion: null, selectedRun: null, lessonStep: null, concepts: {}, bomOpen: false }),
+  resetUi: () => set({ selectedVersion: null, versionsOpen: false, compare: null, selectedRun: null, lessonStep: null, concepts: {}, bomOpen: false }),
 }));

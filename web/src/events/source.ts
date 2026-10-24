@@ -44,6 +44,8 @@ interface SourceState {
   references: ReferenceBuild[];
   /** Starts a fresh build from a reference; the chat then changes it. */
   startReference: (id: string) => Promise<void>;
+  /** Makes an old version current again by rebuilding it as a new version. */
+  restoreVersion: (n: number) => Promise<void>;
   demo: DemoState;
   notice: string | null;
   setMode: (mode: SourceMode) => void;
@@ -403,6 +405,24 @@ export const useSource = create<SourceState>((set, get) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
       } catch (err) {
         set({ notice: `The reference did not start (${err instanceof Error ? err.message : "error"}).` });
+      }
+    },
+
+    restoreVersion: async (n) => {
+      if (get().mode === "demo") return;
+      try {
+        const res = await fetch(apiUrl(`/api/versions/${n}/restore`), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: "{}",
+        });
+        if (res.status === 409) {
+          set({ notice: "Mechanic is building. Restore when the build is done." });
+          return;
+        }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      } catch (err) {
+        set({ notice: `The restore did not start (${err instanceof Error ? err.message : "error"}).` });
       }
     },
 

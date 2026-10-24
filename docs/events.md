@@ -24,7 +24,7 @@ A client that connects late receives the events already published, then the live
 `POST /api/reset` clears the session, the chat memory, and the event buffer, then publishes a `reset` event, a fresh tool snapshot, pending steps, and the timeline.
 Every stream starts with a `reset` event, so a client that reconnects replays onto an empty state.
 
-State-changing calls without a typed body (`/api/reset`, `/api/webhooks/jamie`, `/api/cad/params`, `/api/cad/open`) need `Content-Type: application/json`, else HTTP 415, so a web page cannot fire them as a plain cross-site form post.
+State-changing calls without a typed body (`/api/reset`, `/api/webhooks/jamie`, `/api/cad/params`, `/api/cad/open`, `/api/versions/{n}/restore`) need `Content-Type: application/json`, else HTTP 415, so a web page cannot fire them as a plain cross-site form post.
 
 `POST /api/webhooks/jamie` accepts a JSON body with `event` (or `type`), `meeting_id`, and `title`.
 `meeting.started` marks that meeting `live` on the timeline and builds nothing.
@@ -102,6 +102,13 @@ The response is like `POST /api/prompt`, with `reference`: `{"ok": true, "mode":
 `GET /api/library/{id}/thumbnail` returns the PNG, HTTP 404 without one.
 
 `POST /api/library` with `{"id": "...", "name": "...", "summary": "..."}` (all optional) saves the current product build as a project with its latest render as thumbnail and answers `{"ok": true, "item": {...}}`; HTTP 400 when there is no finished product build or the id is taken by a reference, 409 while Mechanic is building.
+
+### Versions
+
+`GET /api/versions` answers `{"ok": true, "versions": [...]}`, every version of the session in the `version` event shape without `type`.
+`POST /api/versions/{n}/restore` makes version `n` current: Mechanic rebuilds it through the same tools as any build (a product from the spec, part scripts, picks and checks saved with it; the drone by re-picking its catalog parts, the frame with its parameters, the hover test, the render and the bill of materials) and commits the result as a new version with `trigger` `restore` and `restored_from` `n`, so history only grows.
+It answers like `POST /api/prompt` with `restoring: n`; HTTP 404 for an unknown `n`, 409 while Mechanic is building.
+Versions live in the session; a reset clears them.
 
 ### Export
 
@@ -360,6 +367,15 @@ A finished build, attached to the meeting it came from.
 `diff` lists what changed against the previous version: `{key, label, before, after, unit}`.
 Number rows have a `unit`; part rows have `key` `part:{category}`, names in `before` and `after`, and an empty `unit`.
 `summary` is one line such as `48.4 g · 10.4 min · 117.60 €`.
+Every rebuild is a version: the drone's come from `version_commit`, every other product commits one after its `bom_build`.
+Each version is published once, with the fields below.
+`trigger` is `meeting`, `chat`, `library`, `check_failed` (a chat rebuild that makes a requirement pass that the last version failed) or `restore`; older recordings have none, read them as `meeting`.
+`product` is `drone`, `gripper` or `generic`; `label` names the trigger in one line (the meeting title, the chat request, `Restored v1`).
+For a non-drone product `meeting_id` is empty, `meeting_title` is the label, `weight_g` and `price_eur` are set, `thrust_to_weight` and `flight_time_min` are `null`, and `cards` are its metric cards as the last `metrics` event had them.
+`requirements` is `[{id, text, met, detail}]` at commit time, `params` the CAD parameters (`arm_length_mm` for the drone frame, `{part_id}.{param}` for a product), and `nodes` maps a product's part ids to the body names in its GLB.
+`files` is `{glb_url, render_url}`: a copy of the model made for this version (`/files/{session}/v{n}-frame.glb`, `v{n}-assembly.glb`, `v{n}-part-….glb`) and its studio render; either is `null` when there was none.
+`restored_from` is the version a restore rebuilt, else `null`; `at` is the local commit time.
+The diff also covers changed CAD parameters (key `param:{name}`) and requirements that flipped (key `req:{id}`, `before` and `after` are `pass` or `fail`).
 
 ### part
 

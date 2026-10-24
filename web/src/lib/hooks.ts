@@ -33,6 +33,8 @@ export interface Assembly {
 /** The kickoff's pack, the Tattu R-Line 1S 550 of the reference build. */
 const RLINE_550: [number, number, number] = [59, 18, 8];
 
+const NO_LOG: ReturnType<typeof useSession.getState>["log"] = [];
+
 /**
  * What the 3D model draws, in metres: the frame from the CAD parameters and the
  * battery that was chosen. With `atSeq` it is the build as it stood at that event
@@ -43,7 +45,8 @@ export function useAssembly(atSeq?: number | "latest"): Assembly {
   const cad = useSession((s) => s.cad);
   const parts = useSession((s) => s.parts);
   const byName = useSession((s) => s.partsByName);
-  const log = useSession((s) => s.log);
+  // Only a build at a given event reads the log; the others would re-render on every event.
+  const log = useSession((s) => (typeof atSeq === "number" ? s.log : NO_LOG));
   const selected = useUi((s) => s.selectedVersion);
   const versionsList = useSession((s) => s.versions);
   return useMemo(() => {

@@ -13,6 +13,9 @@ import type { CadEvent, CadNode, CadParam } from "../../events/types";
 import { assetUrl } from "../../lib/api";
 import { fmtNum } from "../../lib/format";
 import { useHighlight } from "../../lib/hooks";
+import { lookFor, materialKey, materialsFromTree, pbrMaterial } from "../../lib/materials";
+import { isLive } from "../../lib/motion";
+import { useAssemblyFlyIn } from "./AssemblyMotion";
 import { AnchorScope, useAnchor } from "./anchors";
 import { GridStage, usePrefersReducedMotion } from "./GridStage";
 
@@ -51,8 +54,9 @@ export function partColor(name: string): { color: string; opacity: number } {
   return hex.length === 9 ? { color: hex.slice(0, 7), opacity: parseInt(hex.slice(7), 16) / 255 } : { color: hex, opacity: 1 };
 }
 
-function Part({ url, zUp, onSize }: { url: string; zUp: boolean; onSize?: (size: number) => void }) {
+function Part({ url, zUp, onSize, edged, still }: { url: string; zUp: boolean; onSize?: (size: number) => void; edged: boolean; still: boolean }) {
   const gltf = useLoader(GLTFLoader, url);
+  const cad = useSession((s) => s.cad);
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
   const size = useThree((s) => s.size);
   const controls = useThree((s) => s.controls) as unknown as { target: THREE.Vector3; update: () => void } | null;
@@ -60,8 +64,12 @@ function Part({ url, zUp, onSize }: { url: string; zUp: boolean; onSize?: (size:
   const glow = highlight.has("frame");
   const staged = !!onSize;
 
-  // One calm CAD material plus crisp edges, whatever the exporter put in the file.
+  // A studio PBR material per part (lib/materials.ts), plus crisp edges in the CAD tab.
+  const tree = cad?.tree;
+  const single = cad?.part && !cad.assembly ? cad.part.material : "";
   const { object, center, radius, size: partSize, edges } = useMemo(() => {
+    const looks = materialsFromTree(tree ?? []);
+    const fallback = single ? materialKey(single) : null;
     const root = gltf.scene.clone(true);
     // Generated parts are modelled Z-up like FreeCAD; three.js is Y-up.
     if (zUp) {
@@ -81,17 +89,9 @@ function Part({ url, zUp, onSize }: { url: string; zUp: boolean; onSize?: (size:
       if (o instanceof THREE.Mesh) {
         // A generated part names its colors `pai:#rrggbb`; everything else gets the calm CAD grey.
         const { color, opacity } = partColor((o.material as THREE.Material | undefined)?.name ?? "");
-        o.material = new THREE.MeshStandardMaterial({
-          color,
-          roughness: 0.55,
-          metalness: 0.08,
-          emissive: AGENT,
-          emissiveIntensity: 0,
-          transparent: opacity < 1,
-          opacity,
-          depthWrite: opacity >= 1,
-        });
+        o.material = pbrMaterial(lookFor(o, looks, fallback), color, opacity, AGENT);
         o.castShadow = true;
+        if (!edged) return;
         const e = new THREE.LineSegments(new THREE.EdgesGeometry(o.geometry, 30), new THREE.LineBasicMaterial({ color: "#2b2d33", transparent: true, opacity: 0.55 }));
         e.matrixAutoUpdate = false;
         o.add(e);
@@ -100,7 +100,11 @@ function Part({ url, zUp, onSize }: { url: string; zUp: boolean; onSize?: (size:
     });
     const extent = box.getSize(new THREE.Vector3());
     return { object: root, center: sphere.center, radius: sphere.radius || 1, size: Math.max(extent.x, extent.y, extent.z) || 0.1, edges: lines };
-  }, [gltf, zUp, staged]);
+  }, [gltf, zUp, staged, edged, tree, single]);
+
+  // A live assembly flies together; a backlog replay, a seek or reduced motion just shows it.
+  const fly = !still && !!cad?.assembly && isLive(cad.at) && assetUrl(cad.glb_url) === url;
+  useAssemblyFlyIn(object, radius, fly);
 
   useEffect(() => {
     object.traverse((o) => {
@@ -154,7 +158,7 @@ export function CadScene({ url, zUp = false, stage = false }: { url: string; zUp
         )}
         {stage && size !== null && <GridStage size={size} shadowArea={size * 3} shadowReach={size * 0.8} />}
         <Suspense fallback={null}>
-          <Part url={url} zUp={zUp} onSize={stage ? setSize : undefined} />
+          <Part url={url} zUp={zUp} onSize={stage ? setSize : undefined} edged={!stage} still={still} />
         </Suspense>
         <OrbitControls makeDefault enablePan={false} autoRotate={!still} autoRotateSpeed={0.5} maxPolarAngle={stage ? Math.PI / 2.08 : Math.PI} />
       </AnchorScope>
