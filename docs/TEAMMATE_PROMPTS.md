@@ -36,9 +36,9 @@ Two-tier training architecture: this browser training is the quick check (1,024 
 - Use MuJoCo WASM (@mujoco/mujoco) in Web Workers (cores minus one) and an evolution strategy: 64 candidates x 16 generations = 1,024 rollouts.
 - What is trained depends on the product: for the drone, the hover/flight controller gains (stay level and hold position for 10 s); for a legged or gripper product later, its gait or grip parameters. Build a small interface so the product supplies the model (MJCF), the parameters and the fitness function.
 - Build the MJCF from the current product's parts and masses (the backend already computes them; read them from the SSE events or add a small endpoint).
-- UI: in the Simulation tab, a grid of 16 small simulations, a counter up to 1,024, a fitness curve climbing, and the best result replayed large. Emit the existing `training` SSE event shape (see docs/events.md) so Bolzen and the panel can react.
-- Add an agent tool `train_in_browser` in a new module so Bolzen can start it from chat ("train it").
-Done when: in mock mode, asking Bolzen to train starts the run, the grid and curve animate, and the final values land in the panel.
+- UI: in the Simulation tab, a grid of 16 small simulations, a counter up to 1,024, a fitness curve climbing, and the best result replayed large. Emit the existing `training` SSE event shape (see docs/events.md) so Mechanic and the panel can react.
+- Add an agent tool `train_in_browser` in a new module so Mechanic can start it from chat ("train it").
+Done when: in mock mode, asking Mechanic to train starts the run, the grid and curve animate, and the final values land in the panel.
 ```
 
 ## 2. Stress test with randomized physics (worktree bauplan-stress, ports 8122/5202)
@@ -47,7 +47,7 @@ Done when: in mock mode, asking Bolzen to train starts the run, the grid and cur
 Task: add a stress test that runs the best trained result in 50 randomized worlds and reports a robustness score, e.g. "Survived 47/50".
 - Randomize per run: mass +-15 %, motor strength -25..0 %, friction or wind gusts (for the drone: gusts up to 6 m/s), sensor noise.
 - Reuse the browser MuJoCo workers from the training module (coordinate with that branch; if it is not merged yet, build against a small interface and a stub).
-- UI: a compact result card with the score, the worst failure replayed, and one sentence from Bolzen explaining the weakest point. Emit an SSE event documented in docs/events.md.
+- UI: a compact result card with the score, the worst failure replayed, and one sentence from Mechanic explaining the weakest point. Emit an SSE event documented in docs/events.md.
 - Agent tool `stress_test` in a new module.
 Done when: after training, "stress test it" in chat shows the score and the worst-case replay.
 ```

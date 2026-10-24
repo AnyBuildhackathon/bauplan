@@ -132,7 +132,7 @@ export default function SidebarChat() {
           <MascotBust state={mascot.state} size={78} className="translate-y-[9px]" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-[19px] font-bold tracking-[-0.01em]">Bolzen</div>
+          <div className="text-[19px] font-bold tracking-[-0.01em]">Mechanic</div>
           <div className={`truncate text-[14px] font-semibold ${stateTone}`}>
             {MASCOT_LABEL[mascot.state]}
             {working && <span className="text-muted"> · {step.label}</span>}
@@ -141,8 +141,8 @@ export default function SidebarChat() {
         <button
           onClick={() => setVoiceOn(!voiceOn)}
           className={`rounded-full p-2 transition-colors hover:bg-tile ${voiceOn ? "text-agent-ink" : "text-faint hover:text-ink-2"}`}
-          title={voiceOn ? "Bolzen is speaking" : "Bolzen is muted"}
-          aria-label={voiceOn ? "Mute Bolzen" : "Let Bolzen speak"}
+          title={voiceOn ? "Mechanic is speaking" : "Mechanic is muted"}
+          aria-label={voiceOn ? "Mute Mechanic" : "Let Mechanic speak"}
           aria-pressed={voiceOn}
         >
           {voiceOn ? <Volume2 className="h-4.5 w-4.5" /> : <VolumeX className="h-4.5 w-4.5" />}

@@ -40,7 +40,7 @@ A `POST /api/prompt` while a question is open answers it when the text names an 
 `POST /api/cad/params` recomputes the current frame and emits a new `cad` event.
 The body is either `{"name": "arm_length_mm", "value": 30}` or a flat object `{"arm_length_mm": 30, "thickness_mm": 2, "motor_spacing_mm": 6.6}`.
 Missing names keep the last value, or the defaults 36 mm, 2 mm, and 6.6 mm.
-A value outside the limits is HTTP 400 and does not emit `cad`; while Bolzen is building it is HTTP 409.
+A value outside the limits is HTTP 400 and does not emit `cad`; while Mechanic is building it is HTTP 409.
 
 When the newest CAD build is a generated part (`cad_part`), the same call reruns that part's script with the new value, no model call needed, and any name from its `params` works within its slider limits.
 For the gripper, `grip_calc` then runs again, so a longer finger shows up as a lower finger force.
@@ -230,7 +230,7 @@ A part was chosen.
 
 ### question
 
-Bolzen asks before building, for example when two meetings disagree.
+Mechanic asks before building, for example when two meetings disagree.
 `id`, `text`, `options` (`[{id, label}]`), `default_id`, and `timeout_s`.
 `status` is `open`, then `answered` with `answer_id`.
 Without an answer the default applies after `timeout_s` (`PAI_ASK_TIMEOUT_S`, default 20).
@@ -317,12 +317,12 @@ It tries the FunFly anyway: the MuJoCo gust pushes it to the floor, the swap to 
 A 28 mm arm lets the 40 mm propellers touch, so the frame becomes 36 mm.
 v1 is 36.7 g, 11.7 min, 68.95 €.
 The review "Review 1" asks for 15 minutes and says last week's motor was too loud.
-Bolzen asks which flight time counts, resolves "last week's motor" to the 22000KV from the flight test, swaps to the quieter 18000KV and a 1S 1100 mAh pack.
+Mechanic asks which flight time counts, resolves "last week's motor" to the 22000KV from the flight test, swaps to the quieter 18000KV and a 1S 1100 mAh pack.
 v2 is 49.3 g, 15.6 min, 72.36 €, and the difference goes back to the review as a note.
 A later prompt in the same session does not rebuild.
 Reset starts the story over.
 A prompt that asks for a gripper (`gripper`, `claw`, `end effector`) plays the gripper story instead.
-Bolzen turns the request into checks, tries the 2.49 € SG90 first: 1.1 N per finger is a safety of 0.9×, and in MuJoCo the can slides out when the arm lifts.
+Mechanic turns the request into checks, tries the 2.49 € SG90 first: 1.1 N per finger is a safety of 0.9×, and in MuJoCo the can slides out when the arm lifts.
 The swap to the MG996R gives 6.0 N per finger and passes with 0.4 mm slip.
 FreeCAD builds the gripper headless from the library template with the servo pocket sized for the MG996R (58 g PLA), Blender renders it, and the bill of materials comes to 18.65 € and 128 g.
 The dashboard's `?demo` replays exactly the drone run from `web/src/events/recording.json`, written by `agent/scripts/record_demo.py`.

@@ -163,7 +163,7 @@ export default function SidebarChatInput({
             placeholder={placeholder}
             rows={1}
             name="prompt"
-            aria-label="Message to Bolzen"
+            aria-label="Message to Mechanic"
             data-target="chat_input eingabe"
             className={`min-w-0 flex-1 resize-none bg-transparent leading-snug text-ink outline-none placeholder:text-faint ${
               lg ? "text-[20px]" : "text-[15px]"

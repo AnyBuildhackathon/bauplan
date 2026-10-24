@@ -30,7 +30,7 @@ cd web && npm run dev -- --port 5180 --host 127.0.0.1
 
 Without `ANTHROPIC_API_KEY`, mock mode walks through the entire story using the same tools that Claude calls.
 The kickoff meeting builds version 1: specifications from Jamie, warning about the FunFly 4S, a flight simulation pushed to the ground by a downdraft gust in MuJoCo, battery swap to the Lava 1S 550, frame in FreeCAD, studio render in Blender, bill of materials, order tasks, and attaching the version to the meeting.
-The review meeting builds version 2: mascot Bolzen asks clarifying questions when contradictions occur, resolves "last week's motor" via Jamie, swaps the motor and battery, and writes the difference back as a note.
+The review meeting builds version 2: mascot Mechanic asks clarifying questions when contradictions occur, resolves "last week's motor" via Jamie, swaps the motor and battery, and writes the difference back as a note.
 Sending an additional prompt in the same session does not trigger a rebuild.
 `POST /api/reset` resets the session to start over.
 Setting `PAI_FORCE_MOCK=1` forces mock mode even when an Anthropic API key is configured.
@@ -124,11 +124,11 @@ cd agent && uv run python scripts/smoke_cad_part.py
 
 ## Voice Integration
 
-In the chat interface, press and hold the spacebar or microphone button to speak with mascot Bolzen and answer clarification questions.
+In the chat interface, press and hold the spacebar or microphone button to speak with mascot Mechanic and answer clarification questions.
 With `RESON8_API_KEY`, [Reson8](https://docs.reson8.dev) transcribes speech in real time: the backend vends a short-lived token (`POST /api/voice/token`) and the browser streams 16 kHz PCM audio to `wss://api.reson8.dev/v1/speech-to-text/realtime`.
 The API key stays securely on the backend.
 Without an API key, the browser uses its native Web Speech recognition, falling back to text typing.
-Bolzen speaks responses using the browser speech synthesis engine, or via ElevenLabs when `ELEVENLABS_API_KEY` is provided.
+Mechanic speaks responses using the browser speech synthesis engine, or via ElevenLabs when `ELEVENLABS_API_KEY` is provided.
 The speaker button in the chat header mutes audio output; loading with `?mute` starts muted.
 
 ## Environment Variables
@@ -149,11 +149,11 @@ Shell variables override values in `.env`.
 | `JAMIE_WEBHOOK_SECRET` | Secret token verified against `X-Jamie-Secret` header or `?secret=` when tunneling requests. |
 | `RESON8_API_KEY` | Reson8 API key for speech-to-text, leaving empty for browser speech recognition. |
 | `RESON8_LANGUAGE` | Language code for Reson8 speech-to-text, defaulting to `en`. |
-| `ELEVENLABS_API_KEY` | ElevenLabs API key for Bolzen speech synthesis, leaving empty for browser speech synthesis. |
+| `ELEVENLABS_API_KEY` | ElevenLabs API key for Mechanic speech synthesis, leaving empty for browser speech synthesis. |
 | `ELEVENLABS_VOICE_ID` | Optional English voice identifier for ElevenLabs audio generation. |
 | `FREECAD_GUI` | FreeCAD execution mode defaulting to `auto` (`auto` builds in open window, `launch` starts app, `off` forces headless). |
 | `FREECAD_MCP_URL` | FreeCAD MCP RPC server URL defaulting to `http://127.0.0.1:9875`. |
-| `PAI_ASK_TIMEOUT_S` | Seconds Bolzen waits for question response before choosing default option, defaulting to `20`. |
+| `PAI_ASK_TIMEOUT_S` | Seconds Mechanic waits for question response before choosing default option, defaulting to `20`. |
 | `RUNPOD_SSH_HOST` | Hostname or IP for RunPod GPU instance, leaving empty for offline fallback fixtures. |
 | `RUNPOD_SSH_PORT` | SSH port for RunPod pod, defaulting to `22`. |
 | `RUNPOD_SSH_USER` | SSH username for RunPod pod, defaulting to `root`. |

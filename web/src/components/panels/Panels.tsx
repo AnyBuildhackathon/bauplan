@@ -118,7 +118,7 @@ export function BuildPanel() {
         )}
       </div>
       {requirements.length === 0 ? (
-        <p className="py-2 text-[15px] leading-snug text-muted">They come from your meeting, once Bolzen has read it in Jamie.</p>
+        <p className="py-2 text-[15px] leading-snug text-muted">They come from your meeting, once Mechanic has read it in Jamie.</p>
       ) : (
         <ul className="-mx-2">
           {requirements.map((r) => (
@@ -138,7 +138,7 @@ export function BuildPanel() {
       {product !== "drone" && cards ? (
         <CardGrid cards={cards} busy={simRunning} />
       ) : product !== "drone" ? (
-        <p className="py-2 text-[15px] leading-snug text-muted">Appear once Bolzen has chosen the parts.</p>
+        <p className="py-2 text-[15px] leading-snug text-muted">Appear once Mechanic has chosen the parts.</p>
       ) : (
       <div className="grid grid-cols-2 gap-2.5">
         {METRICS.map((m) => {

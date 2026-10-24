@@ -149,7 +149,7 @@ class Session:
         from pai_agent.tools.cad import apply_param_body, cad_frame
 
         if self._busy():
-            message = "Bolzen is building. Try again in a moment."
+            message = "Mechanic is building. Try again in a moment."
             return {"ok": False, "error": message, "detail": message, "busy": True}
         if self._part_is_current():
             return await self._rebuild_part(body)

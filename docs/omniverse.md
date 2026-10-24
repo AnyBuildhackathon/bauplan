@@ -20,7 +20,7 @@ BACKEND_URL=http://localhost:8113 npm run dev -- --port 5193 --host 127.0.0.1
 ```
 
 Open `http://127.0.0.1:5193/?live&tab=omniverse&mute`.
-Ask Bolzen **“Test 8 m/s wind gusts with a 10 g camera in Omniverse.”**, **“Test hover stability in Omniverse.”**, or **“Train the reference quadcopter in Isaac Lab.”**
+Ask Mechanic **“Test 8 m/s wind gusts with a 10 g camera in Omniverse.”**, **“Test hover stability in Omniverse.”**, or **“Train the reference quadcopter in Isaac Lab.”**
 The tab's controls send the same chat requests.
 With an Anthropic key, Claude selects these tools through the existing tool loop.
 In mock mode, these requests go through the same tool registry without an LLM call.

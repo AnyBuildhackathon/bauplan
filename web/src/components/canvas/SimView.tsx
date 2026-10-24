@@ -57,7 +57,7 @@ function HoverSimView() {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
         <p className="text-[18px] font-semibold text-ink-2">No simulation run yet</p>
-        <p className="max-w-sm text-[15px] text-muted">Bolzen tests in MuJoCo once the parts and the frame are in. Every run plays back here.</p>
+        <p className="max-w-sm text-[15px] text-muted">Mechanic tests in MuJoCo once the parts and the frame are in. Every run plays back here.</p>
       </div>
     );
   }

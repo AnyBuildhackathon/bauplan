@@ -331,7 +331,7 @@ SCHEMAS = [
     },
     {
         "name": "mascot_say",
-        "description": "Bolzen changes expression and says one short sentence.",
+        "description": "Mechanic changes expression and says one short sentence.",
         "input_schema": {
             "type": "object",
             "properties": {

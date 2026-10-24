@@ -16,7 +16,7 @@ from pai_agent.tools.registry import SCHEMAS, call_tool
 
 log = logging.getLogger(__name__)
 
-_SYSTEM = """You are Bolzen, AnyBuild's engineering agent. Help develop physical products; the drone is the worked example.
+_SYSTEM = """You are Mechanic, AnyBuild's engineering agent. Help develop physical products; the drone is the worked example.
 Respond in English, in short sentences, including when the user speaks another language.
 You call tools instead of inventing numbers. Jamie is the team's memory: every decision hangs on a sentence from a meeting.
 

@@ -19,8 +19,8 @@ Parametric CAD tools build 3D components with exact geometric dimensions.
 Physics and aerodynamic simulators validate real-world performance against environmental forces.
 Rendering tools produce photorealistic studio visualizations for team review.
 Bill of materials calculators price orderable parts and sync purchasing tasks back into Jamie.
-Realtime speech-to-text with Reson8 enables spoken dialogue with mascot Bolzen during design reviews.
-Bolzen answers using browser speech synthesis or ElevenLabs.
+Realtime speech-to-text with Reson8 enables spoken dialogue with mascot Mechanic during design reviews.
+Mechanic answers using browser speech synthesis or ElevenLabs.
 Offline fallbacks run the complete workflow when API keys are absent.
 
 ## Worked Demo Example: Drone Design
@@ -36,10 +36,10 @@ AnyBuild extracts real measurements: CAD weight, thrust-to-weight ratio, flight 
 The meeting timeline attaches every drone version to its originating meeting.
 Every part links to a specific quote naming the speaker, timestamp, and meeting title.
 Earlier meeting notes surface as warnings before part selection.
-Contradictions between meetings trigger user questions from mascot Bolzen before building.
+Contradictions between meetings trigger user questions from mascot Mechanic before building.
 The agent creates the Jamie templates "Hardware-Anforderungen" and "Drohnen-Review" automatically.
 A live review follows requesting 15 minutes of flight time and noting that last week's motor was too loud.
-Bolzen asks for clarification on flight time requirements and resolves the motor reference.
+Mechanic asks for clarification on flight time requirements and resolves the motor reference.
 AnyBuild rebuilds to version 2, showing metrics differences, quotes, warnings, and updated order tasks.
 When a meeting ends, AnyBuild rebuilds the drone and posts differences back to Jamie as notes.
 Jamie tags mark drone versions on meetings.
@@ -66,7 +66,7 @@ The repository is structured into five main directories:
   - `web/src/events/store.ts`: Zustand event store for SSE updates, metric tracking, and version state.
   - `web/src/events/source.ts`: SSE stream consumer and demo playback controller.
   - `web/src/events/types.ts`: TypeScript interfaces for the wire protocol.
-  - `web/src/components/chat/`: Bolzen sidebar chat with audio controls and speech recognition.
+  - `web/src/components/chat/`: Mechanic sidebar chat with audio controls and speech recognition.
   - `web/src/components/timeline/`: Jamie meeting timeline showing kickoff and review milestones.
   - `web/src/components/canvas/`: 3D canvas tabs for model visualization, CAD views, and simulation.
   - `web/src/components/panels/`: Compact requirement checklist and four primary metrics.
@@ -173,7 +173,7 @@ All clients and backend tools must adhere to that specification.
 - `GET /api/events`: Subscribes to the Server-Sent Events stream.
 - `POST /api/reset`: Resets session state, event history, and timeline.
 - `POST /api/webhooks/jamie`: Receives Jamie meeting lifecycle webhooks.
-- `POST /api/answer`: Submits answers to mascot Bolzen's clarification questions.
+- `POST /api/answer`: Submits answers to mascot Mechanic's clarification questions.
 - `POST /api/tasks/{id}`: Toggles status of parts ordering tasks.
 - `POST /api/cad/params`: Recomputes frame parameters dynamically.
 - `POST /api/cad/open`: Launches FreeCAD GUI with the current CAD file.
@@ -198,7 +198,7 @@ The event stream emits typed JSON objects:
 - `render`: Provides studio render image URLs.
 - `draw`: Overlays visual annotations and guides on 3D scenes.
 - `bom`: Publishes the full bill of materials with prices and weights.
-- `mascot`: Changes Bolzen's expression state and dialogue bubble.
+- `mascot`: Changes Mechanic's expression state and dialogue bubble.
 - `jamie`: Records Jamie API actions and fallback outbox writes.
 - `meeting`: Updates meeting entries on the timeline.
 - `version`: Attaches completed drone builds to timeline meetings.
@@ -224,12 +224,12 @@ Never commit `.env` files or secret keys to the repository.
 - `JAMIE_WEBHOOK_SECRET`: Secret token validated against incoming Jamie webhook requests.
 - `RESON8_API_KEY`: API key for generating live Reson8 speech-to-text tokens.
 - `RESON8_LANGUAGE`: Language code for Reson8 speech-to-text; defaults to `de`.
-- `ELEVENLABS_API_KEY`: API key for Bolzen speech generation through ElevenLabs.
+- `ELEVENLABS_API_KEY`: API key for Mechanic speech generation through ElevenLabs.
 - `ELEVENLABS_VOICE_ID`: Custom voice identifier for ElevenLabs audio output.
 - `ELEVENLABS_MODEL`: Model identifier for ElevenLabs voice generation; defaults to `eleven_multilingual_v2`.
 - `FREECAD_GUI`: Determines FreeCAD execution mode (`auto` connects to open window, `launch` starts app, `off` forces headless).
 - `FREECAD_MCP_URL`: Target URL of the FreeCAD MCP RPC server; defaults to `http://127.0.0.1:9875`.
-- `PAI_ASK_TIMEOUT_S`: Seconds Bolzen waits for question input before adopting default option; defaults to `20`.
+- `PAI_ASK_TIMEOUT_S`: Seconds Mechanic waits for question input before adopting default option; defaults to `20`.
 - `RUNPOD_SSH_HOST`: Hostname or IP address of the RunPod GPU pod for Isaac Sim.
 - `RUNPOD_SSH_PORT`: SSH port for connecting to RunPod; defaults to `22`.
 - `RUNPOD_SSH_USER`: SSH username for RunPod pod; defaults to `root`.
