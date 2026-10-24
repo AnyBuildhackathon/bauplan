@@ -142,6 +142,9 @@ Shell variables override values in `.env`.
 | `ANTHROPIC_API_KEY` | Leave empty for mock mode, never committing secrets to the repository. |
 | `ANTHROPIC_MODEL` | Claude model identifier defaulting to `claude-sonnet-5-5`. |
 | `PAI_FORCE_MOCK` | Set to `1` to force mock mode execution. |
+| `PAI_LIVE_PRICES` | `0` keeps catalog prices in the bill of materials even with `ANTHROPIC_API_KEY` set. Live prices also run in mock mode. |
+| `PAI_PRICE_CACHE_S` | How long a live shop price is reused, default `900` seconds. |
+| `PAI_PRICE_TIMEOUT_S` | Time limit for one part's price search, default `45` seconds. |
 | `DEMO_PACE_S` | Pause delay between agent workflow steps in seconds, defaulting to `0`. |
 | `PORT` | Backend HTTP port, defaulting to `8100`. |
 | `JAMIE_MCP_TOKEN` | Bearer token for live Jamie MCP API, leaving empty for local mock fixtures and outbox. |
