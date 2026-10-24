@@ -1,32 +1,41 @@
-// The bench before anything has started: one big box asking what to build, with the prompt
-// field and the starting points, and Mechanic peeking over its top edge. The first prompt,
-// chip, spoken sentence, sketch, meeting or replay event fills the chat, and App swaps this
-// for the normal bench.
+// The bench before anything has started: one big box asking what to build, with a large
+// prompt field and one quiet line of suggestions, and Mechanic peeking over its top edge.
+// The first prompt, suggestion, spoken sentence, sketch, meeting or agent event fills the
+// chat, and App swaps this for the normal bench.
 import { useState, type CSSProperties } from "react";
-import { ImagePlus } from "lucide-react";
 import { useSource } from "../events/source";
 import SidebarChatInput from "../components/chat/SidebarChatInput";
 import { useSketchDrop } from "../components/chat/SketchDrop";
-import { useWindowWidth } from "../components/ui/ResizeHandle";
 import { EXAMPLES } from "../components/chat/examples";
 import { HEAD_ABOVE, MechanicPeek } from "../components/start/MechanicPeek";
 
-// Quiet starting points, so the prompt field stays the main thing.
-const chip = "h-7.5 rounded-full px-3 text-[13px] font-medium transition";
+/** The reference builds offered on the start screen, with short labels for the one-line row. */
+const SUGGESTED_REFERENCES: { id: string; label: string }[] = [
+  { id: "micro-drone", label: "Micro drone" },
+  { id: "robot-gripper", label: "Robot gripper" },
+  { id: "desk-lamp", label: "Desk lamp" },
+  { id: "pet-feeder", label: "Pet feeder" },
+];
+const SCRATCH = EXAMPLES.find((e) => e.label === "Phone stand") ?? EXAMPLES[0];
+
+const suggestion =
+  "h-8 shrink-0 rounded-full px-3.5 text-[13px] font-medium text-muted ring-1 ring-line transition hover:bg-tile hover:text-ink hover:ring-transparent focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:outline-none";
 
 export function StartScreen() {
   const sendPrompt = useSource((s) => s.sendPrompt);
   const sendSketch = useSource((s) => s.sendSketch);
-  const sendSampleSketch = useSource((s) => s.sendSampleSketch);
   const startReference = useSource((s) => s.startReference);
   const allReferences = useSource((s) => s.references);
   const live = useSource((s) => s.mode === "live");
-  const references = live ? allReferences : [];
+  const references = live
+    ? SUGGESTED_REFERENCES.flatMap((s) => {
+        const ref = allReferences.find((r) => r.id === s.id);
+        return ref ? [{ ...ref, label: s.label }] : [];
+      })
+    : [];
   const [input, setInput] = useState("");
   const [sketch, setSketch] = useState<File | null>(null);
   const drop = useSketchDrop(live, setSketch, (text) => useSource.setState({ notice: text }));
-  // On a phone the large field leaves no room to type beside its buttons.
-  const narrow = useWindowWidth() < 640;
 
   const send = () => {
     const text = input.trim();
@@ -36,32 +45,29 @@ export function StartScreen() {
   };
 
   return (
-    <div className="scroll-soft flex h-full overflow-x-hidden overflow-y-auto bg-page px-4 sm:px-8">
+    <div className="scroll-soft flex h-full overflow-x-hidden overflow-y-auto bg-page bg-[radial-gradient(ellipse_70%_55%_at_55%_42%,#ffffff_0%,rgb(255_255_255/0)_70%)] px-4 sm:px-8">
       <div
-        className="relative m-auto w-full max-w-[1040px] animate-rise py-6"
+        className="relative m-auto w-full max-w-[1000px] animate-rise py-6"
         style={{ "--u": "clamp(0.5px, min(0.08vw, 0.085vh), 1px)", paddingTop: `calc(var(--u) * ${HEAD_ABOVE} + 24px)` } as CSSProperties}
       >
         <div className="absolute inset-x-0 top-6 bottom-6">
           <MechanicPeek />
         </div>
         <section
-          className="relative z-10 rounded-[var(--radius-card)] bg-card px-6 pt-9 pb-8 shadow-[var(--shadow-float)] sm:px-12 sm:pt-12 sm:pb-10 lg:px-16"
           aria-labelledby="start-title"
+          className="relative z-10 rounded-[28px] bg-[linear-gradient(180deg,#ffffff_0%,#fcfcfa_100%)] px-5 pt-9 pb-6 shadow-[inset_0_1px_0_#ffffff,0_0_0_1px_rgb(26_26_24/0.06),0_1px_2px_rgb(26_26_24/0.04),0_12px_32px_-12px_rgb(26_26_24/0.14),0_48px_96px_-32px_rgb(26_26_24/0.2)] sm:px-12 sm:pt-12 sm:pb-9 lg:px-14"
           {...drop.handlers}
         >
           {drop.overlay}
-          <h1 id="start-title" className="text-[clamp(30px,4vw,56px)] leading-[1.04] font-semibold tracking-[-0.03em] text-balance text-ink">
+          <h1 id="start-title" className="text-[clamp(32px,4.3vw,60px)] leading-[1.02] font-semibold tracking-[-0.035em] text-balance text-ink">
             What are we building today?
           </h1>
-          {live && (
-            <p className="mt-3 max-w-[60ch] text-[clamp(16px,1.4vw,19px)] leading-snug text-muted">
-              Start from a reference build and change it, or describe any product from scratch.
-            </p>
-          )}
-          {/* Room for about two lines, with larger text than the chat; the shared field itself stays as it is. */}
-          <div className="mt-7 sm:mt-9 [&_textarea]:min-h-[44px] sm:[&_textarea]:min-h-[64px] sm:[&_textarea]:text-[22px]">
+          <p className="mt-3 max-w-[64ch] text-pretty text-[clamp(15px,1.3vw,18px)] leading-snug text-muted">
+            Start from a reference build and change it, or describe any product from scratch.
+          </p>
+          <div className="mt-7 sm:mt-9">
             <SidebarChatInput
-              size={narrow ? "md" : "lg"}
+              size="lg"
               value={input}
               onChange={setInput}
               onSubmit={send}
@@ -72,50 +78,30 @@ export function StartScreen() {
             />
           </div>
           {live && (
-            <div className="mt-6 grid gap-x-5 gap-y-2 sm:mt-7 sm:grid-cols-[max-content_minmax(0,1fr)] sm:items-baseline">
-              {references.length > 0 && (
-                <>
-                  <p className="text-[12.5px] font-medium text-faint sm:pt-1.5">From a reference</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {references.map((ref) => (
-                      <button
-                        key={ref.id}
-                        type="button"
-                        onClick={() => void startReference(ref.id)}
-                        title={ref.summary}
-                        data-target={`reference:${ref.id}`}
-                        className={`${chip} bg-accent-soft text-accent hover:brightness-95`}
-                      >
-                        {ref.name}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-              <p className="text-[12.5px] font-medium text-faint sm:pt-1.5">From scratch</p>
-              <div className="flex flex-wrap gap-1.5">
-                {EXAMPLES.map((example) => (
-                  <button
-                    key={example.label}
-                    type="button"
-                    onClick={() => void sendPrompt(example.prompt)}
-                    data-target={`example:${example.label}`}
-                    className={`${chip} bg-tile text-ink-2 hover:bg-track`}
-                  >
-                    {example.label}
-                  </button>
-                ))}
+            // One line only: on a narrow screen the row scrolls within itself.
+            <div className="mt-5 -mr-5 flex items-center gap-2 overflow-x-auto pr-5 [mask-image:linear-gradient(to_right,black_calc(100%-32px),transparent)] [scrollbar-width:none] sm:mr-0 sm:pr-0 sm:[mask-image:none]">
+              <span className="shrink-0 pr-1 text-[13px] text-faint">Try</span>
+              {references.map((ref) => (
                 <button
+                  key={ref.id}
                   type="button"
-                  onClick={() => void sendSampleSketch()}
-                  data-target="example:sketch"
-                  title="Build from a photo of a hand-drawn phone stand"
-                  className={`${chip} flex items-center gap-1.5 bg-tile text-ink-2 hover:bg-track`}
+                  onClick={() => void startReference(ref.id)}
+                  title={ref.name}
+                  data-target={`reference:${ref.id}`}
+                  className={suggestion}
                 >
-                  <ImagePlus className="h-3.5 w-3.5" />
-                  Phone stand sketch
+                  {ref.label}
                 </button>
-              </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => void sendPrompt(SCRATCH.prompt)}
+                title="Design it from scratch"
+                data-target={`example:${SCRATCH.label}`}
+                className={suggestion}
+              >
+                {SCRATCH.label}
+              </button>
             </div>
           )}
         </section>

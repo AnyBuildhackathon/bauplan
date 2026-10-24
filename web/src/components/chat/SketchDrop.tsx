@@ -39,11 +39,11 @@ export function SketchButton({ onPick, onError, large = false }: { onPick: (file
         type="button"
         data-target="sketch_upload"
         onClick={() => input.current?.click()}
-        className={`flex shrink-0 items-center justify-center rounded-full bg-tile text-ink-2 transition hover:bg-track hover:text-ink ${large ? "h-14 w-14" : "h-9 w-9"}`}
+        className={`flex shrink-0 items-center justify-center rounded-full bg-tile text-ink-2 transition hover:bg-track hover:text-ink ${large ? "h-11 w-11" : "h-9 w-9"}`}
         title="Build from a photo of a hand sketch (or drop or paste one)"
         aria-label="Attach a sketch photo"
       >
-        <ImagePlus className={large ? "h-6 w-6" : "h-4 w-4"} strokeWidth={2} />
+        <ImagePlus className={large ? "h-5 w-5" : "h-4 w-4"} strokeWidth={2} />
       </button>
     </>
   );
