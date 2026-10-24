@@ -251,6 +251,7 @@ Never commit `.env` files or secret keys to the repository.
 ## User Interface Guidelines
 
 - The user interface is strictly in English.
+- The captain owns visual styling and design polish; agents must not make visual design changes beyond what their task requires.
 - Visual styling follows the Bevel design system with rounded card surfaces, subtle borders, and soft drop shadows.
 - Maintain high projector readability on stage using dark ink text variants (`--color-agent-ink`, `--color-ok-ink`, `--color-fail-ink`) and tabular numbers.
 - Keep the display uncluttered with essentials only: chat on the left, at most three canvas tabs (`Model`, `CAD`, `Simulation`), a thin Jamie timeline, and one compact panel with requirement checks and four key numbers.
@@ -258,6 +259,7 @@ Never commit `.env` files or secret keys to the repository.
 ## Planned Next Work
 
 - Generalize beyond drones: generalize CAD generation for arbitrary product classes, expand hardware component catalogs, and support flexible multi-physics simulation domains.
+- Integrate teammate modules: 1,024 parallel browser MuJoCo simulations, physics stress testing, step-by-step exploded build guide, and firmware download with wiring table.
 - Translate user interface and agent dialogue to English: update UI labels, Bolzen spoken lines, agent chat messages, and configure default Reson8 language to English (`RESON8_LANGUAGE=en`).
 - Rename remaining user interface elements and repository paths from Bauplan to AnyBuild.
 - Connect NVIDIA Omniverse and Isaac Sim on RunPod RTX 4090 to load drone USD files, execute wind tests, run Isaac Lab training, and stream results to a dedicated tab.
