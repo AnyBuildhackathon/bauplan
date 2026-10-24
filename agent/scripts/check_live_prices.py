@@ -1,4 +1,4 @@
-"""Offline check for live BOM prices: stubs the Claude web search and checks merge, fallback and cache.
+"""Offline check for live BOM prices: stubs the Claude web search and checks merge, fallback, cache and deadline.
 
 Run: cd agent && uv run python scripts/check_live_prices.py
 """
@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import time
 
 from pai_agent.tools import parts_search
 
@@ -32,7 +33,7 @@ ANSWERS = {
 calls: list[str] = []
 
 
-def fake_ask(request: dict) -> str:
+def fake_ask(request: dict, deadline: float) -> str:
     text = request["messages"][0]["content"]
     name = text.splitlines()[0].removeprefix("Part: ")
     calls.append(name)
@@ -42,11 +43,7 @@ def fake_ask(request: dict) -> str:
 
 async def main() -> None:
     os.environ["ANTHROPIC_API_KEY"] = "stub"
-    os.environ.pop("PAI_LIVE_PRICES", None)
     assert parts_search.live_prices_enabled()
-    os.environ["PAI_LIVE_PRICES"] = "0"
-    assert not parts_search.live_prices_enabled()
-    os.environ.pop("PAI_LIVE_PRICES")
 
     assert parts_search._web_search_tool("claude-sonnet-5-5")["type"] == "web_search_20260209"
     assert parts_search._web_search_tool("claude-opus-4-6")["type"] == "web_search_20260209"
@@ -56,6 +53,10 @@ async def main() -> None:
     fenced = 'Prices {per piece} below.\n```json\n{"found": true, "price": 1, "meta": {"a": 1}}\n```'
     assert parts_search._parse(fenced) == {"found": True, "price": 1, "meta": {"a": 1}}
     assert parts_search._parse("no json here") is None
+
+    # A search whose deadline has passed sends no request.
+    request = parts_search._request(ITEMS[0], "claude-sonnet-5-5")
+    assert parts_search._ask_claude(request, time.monotonic() - 1) == ""
 
     parts_search._ask_claude = fake_ask
     lines = await parts_search.live_lines(ITEMS)
@@ -75,15 +76,21 @@ async def main() -> None:
     await parts_search.live_lines(ITEMS)
     assert len(calls) == before, calls
 
+    # Metric recomputes take the cached live price per piece, else the catalog one.
+    assert parts_search.unit_price_eur({"name": "BetaFPV 1102 22000KV", "unit_price_eur": 4.99}) == 5.49
+    assert parts_search.unit_price_eur({"name": "Gemfan 1635-3 40 mm", "unit_price_eur": 0.95}) == 0.95
+    assert parts_search.unit_price_eur({"name": "Gedruckter Whoop-Rahmen PLA", "unit_price_eur": 1.8}) == 1.8
+
     # A failing search falls back to the catalog line.
     parts_search._CACHE.clear()
 
-    def broken(request: dict) -> str:
+    def broken(request: dict, deadline: float) -> str:
         raise RuntimeError("network down")
 
     parts_search._ask_claude = broken
     lines = await parts_search.live_lines(ITEMS[:1])
     assert lines[0]["price_source"] == "catalog" and lines[0]["unit_price_eur"] == 4.99
+    assert parts_search.unit_price_eur({"name": "BetaFPV 1102 22000KV", "unit_price_eur": 4.99}) == 4.99
     print(json.dumps({"ok": True, "searched": sorted(set(calls))}))
 
 

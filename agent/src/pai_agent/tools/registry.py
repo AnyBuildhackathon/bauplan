@@ -25,7 +25,6 @@ from pai_agent.tools.jamie import (
     version_commit,
 )
 from pai_agent.tools.parts import parts_search
-from pai_agent.tools.parts_search import live_prices_enabled
 from pai_agent.tools.physics import physics_calc
 from pai_agent.tools.simulate import simulate_drone
 from pai_agent.tools.ui import mascot_say, ui_draw, ui_point_at
@@ -447,7 +446,6 @@ async def emit_connections(publish) -> None:
         ("cad_frame", "connected", cad_detail),
         ("cad_part", "connected" if find_freecadcmd() else "offline", "Generated parts, headless and sandboxed" if find_freecadcmd() else "freecadcmd is missing"),
         ("blender_render", blender_status, blender_detail),
-        ("bom_build", "connected", "Live shop prices via web search" if live_prices_enabled() else "Catalog prices, ANTHROPIC_API_KEY missing"),
         ("isaac_lab_train", isaac_status, isaac_detail),
         ("isaac_sim_render", isaac_status, isaac_detail),
     )

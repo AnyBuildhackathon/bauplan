@@ -2,8 +2,8 @@
 
 Claude with Anthropic's server-side web search finds each part at a real shop (EU first)
 and returns price, currency, shop, URL and availability. Results sit in a short in-memory
-cache. Without ANTHROPIC_API_KEY, with PAI_LIVE_PRICES=0, or when a search fails, the line
-keeps its catalog price and is labelled "catalog".
+cache. Without ANTHROPIC_API_KEY, or when a search fails, the line keeps its catalog price
+and is labelled "catalog".
 """
 
 from __future__ import annotations
@@ -21,7 +21,9 @@ from pai_agent.env import load_env, model_name
 log = logging.getLogger(__name__)
 
 _CACHE: dict[str, tuple[float, dict | None]] = {}
+_CACHE_TTL_S = 900.0
 _FAILED_TTL_S = 60.0
+_TIMEOUT_S = 45.0
 # A live price far away from the catalog sample is usually a multipack or a different part.
 _MAX_RATIO = 4.0
 
@@ -40,25 +42,7 @@ _ANSWER = (
 
 def live_prices_enabled() -> bool:
     load_env()
-    if os.environ.get("PAI_LIVE_PRICES", "").strip().lower() in {"0", "false", "no"}:
-        return False
     return bool(os.environ.get("ANTHROPIC_API_KEY", "").strip())
-
-
-def _cache_ttl() -> float:
-    raw = os.environ.get("PAI_PRICE_CACHE_S", "").strip() or "900"
-    try:
-        return max(0.0, float(raw))
-    except ValueError:
-        return 900.0
-
-
-def _timeout() -> float:
-    raw = os.environ.get("PAI_PRICE_TIMEOUT_S", "").strip() or "45"
-    try:
-        return max(1.0, float(raw))
-    except ValueError:
-        return 45.0
 
 
 def _version(model: str) -> tuple[str, float]:
@@ -107,17 +91,20 @@ def _request(item: dict, model: str) -> dict:
     return request
 
 
-def _ask_claude(request: dict) -> str:
+def _ask_claude(request: dict, deadline: float) -> str:
     """One blocking search conversation; returns the final text. Runs in a worker thread."""
 
     import anthropic
 
-    client = anthropic.Anthropic(timeout=_timeout(), max_retries=1)
+    client = anthropic.Anthropic(max_retries=0)
     messages = list(request["messages"])
     text = ""
     # Long searches pause the turn; send the partial answer back so the server continues it.
     for _round in range(3):
-        response = client.messages.create(**{**request, "messages": messages})
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        response = client.messages.create(**{**request, "messages": messages}, timeout=remaining)
         text = "".join(str(block.text) for block in response.content if getattr(block, "type", None) == "text")
         if response.stop_reason != "pause_turn":
             break
@@ -196,11 +183,12 @@ async def find_price(item: dict) -> dict | None:
     cached = _CACHE.get(key)
     if cached is not None:
         stored_at, quote = cached
-        if now - stored_at < (_cache_ttl() if quote else _FAILED_TTL_S):
+        if now - stored_at < (_CACHE_TTL_S if quote else _FAILED_TTL_S):
             return quote
     quote = None
     try:
-        text = await asyncio.wait_for(asyncio.to_thread(_ask_claude, _request(item, model_name())), _timeout())
+        deadline = time.monotonic() + _TIMEOUT_S
+        text = await asyncio.wait_for(asyncio.to_thread(_ask_claude, _request(item, model_name()), deadline), _TIMEOUT_S)
         quote = _clean(_parse(text), item)
         if quote is None:
             log.info("no usable live price for %s", item["name"])
@@ -208,6 +196,17 @@ async def find_price(item: dict) -> dict | None:
         log.warning("live price search failed for %s: %s", item["name"], exc)
     _CACHE[key] = (time.monotonic(), quote)
     return quote
+
+
+def unit_price_eur(part: dict) -> float:
+    """The fresh cached live price per piece for this part, else its catalog price."""
+
+    cached = _CACHE.get(part["name"].strip().lower())
+    if cached is not None:
+        stored_at, quote = cached
+        if quote and time.monotonic() - stored_at < _CACHE_TTL_S:
+            return float(quote["unit_price_eur"])
+    return float(part["unit_price_eur"])
 
 
 def catalog_line(item: dict) -> dict:

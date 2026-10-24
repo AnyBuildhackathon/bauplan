@@ -88,7 +88,7 @@ async def _priced_bom(ctx: Ctx, items: list[dict], catalog_detail: Callable[[flo
             bom["prices"] = "catalog"
         await ctx.emit({"type": "bom", **bom})
         await _sync_metrics(ctx, bom["total_eur"])
-        detail = "Bill of materials " + de(bom["total_eur"], 2) + " €, live prices for " + str(found) + " of " + str(len(items)) + " lines"
+        detail = "Bill of materials " + f"{bom['total_eur']:.2f}" + " €, live prices for " + str(found) + " of " + str(len(items)) + " lines"
     else:
         detail = catalog_detail(bom["total_eur"])
     return {"ok": True, "detail": detail, **bom}

@@ -18,6 +18,7 @@ import time
 
 from pai_agent.context import Ctx
 from pai_agent.paths import DATA_DIR
+from pai_agent.tools.parts_search import unit_price_eur
 
 GRAVITY = 9.80665
 HOLD_FRACTION = 0.7
@@ -198,7 +199,7 @@ def compute_grip(state) -> dict:
         if category == "pads" and part["shop"] == "printed":
             continue  # Printed with the body; its mass is in the CAD weight.
         weight += float(part["mass_g"]) * int(part["bom_qty"])
-        price += float(part["unit_price_eur"]) * int(part["bom_qty"])
+        price += unit_price_eur(part) * int(part["bom_qty"])
     opening = 76.0
     if state.part and "jaw_opening_mm" in state.part.get("params", {}):
         opening = float(state.part["params"]["jaw_opening_mm"])

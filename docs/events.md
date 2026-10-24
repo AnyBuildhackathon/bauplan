@@ -184,13 +184,13 @@ The tool pill stays `offline` when the recorded still is served.
 `url` may be an empty string for the printed frame.
 `total_eur` is the sum of `unit_price_eur * qty`.
 `prices` is `catalog`, `searching`, or `live`.
-With `ANTHROPIC_API_KEY` set (and `PAI_LIVE_PRICES` not `0`), `bom_build` first sends the catalog list with `prices: "searching"`, then a second `bom` with the live lines; the second replaces the first.
+With `ANTHROPIC_API_KEY` set, `bom_build` first sends the catalog list with `prices: "searching"`, then a second `bom` with the live lines; the second replaces the first.
 Without the key every line stays on the catalog and `prices` is `catalog`.
 `prices` is `live` when at least one line has a live price, else `catalog`.
 Each item also has `price_source` (`live` or `catalog`), `currency`, and `availability` (`in_stock`, `out_of_stock`, or `unknown`).
 A `live` item's `unit_price_eur`, `shop`, and `url` come from a web search (Claude with the server-side web search tool, EU shops first); it adds `price` and `currency` as the shop shows them, `pack_qty` when the shop sells a multipack, `catalog_price_eur`, and `checked_at` (ISO time).
 A line falls back to the catalog when the search fails, finds nothing, or returns a price more than four times off the catalog sample; the printed frame is never searched.
-Results are cached in memory for `PAI_PRICE_CACHE_S` seconds (default 900), so a rebuild only searches the changed parts.
+Results are cached in memory for 15 minutes, so a rebuild only searches the changed parts, and later `metrics` keep using the cached live prices in `price_eur`.
 Older recordings have no `prices` or `price_source`; read them as `catalog`.
 `stl_path` is the STL path relative to the repository root, or an empty string before CAD.
 

@@ -15,6 +15,7 @@ from __future__ import annotations
 from pai_agent.context import Ctx, de
 from pai_agent.scene import PART_CATEGORIES
 from pai_agent.state import BuildState
+from pai_agent.tools.parts_search import unit_price_eur
 
 _HOVER_TWR = 1.05
 _USABLE = 0.8
@@ -45,7 +46,7 @@ def compute(state: BuildState) -> dict:
         if category == "frame" and state.frame_mass_g is not None:
             mass = float(state.frame_mass_g)
         weight += mass * qty
-        price += float(part["unit_price_eur"]) * qty
+        price += unit_price_eur(part) * qty
         if category == "motor":
             thrust += float(part["thrust_g"]) * qty
 
