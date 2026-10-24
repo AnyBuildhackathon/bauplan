@@ -103,6 +103,8 @@ The response is like `POST /api/prompt`, with `reference`: `{"ok": true, "mode":
 
 `POST /api/library` with `{"id": "...", "name": "...", "summary": "..."}` (all optional) saves the current product build as a project with its latest render as thumbnail and answers `{"ok": true, "item": {...}}`; HTTP 400 when there is no finished product build or the id is taken by a reference, 409 while Mechanic is building.
 
+With `"kind": "reference"` the same call promotes the build into the registry (`agent/data/references/{id}/`, with its scripts, picks, checks and render), so it can be committed; that needs `PAI_ADMIN=1` in the backend environment and answers HTTP 403 without it.
+
 ### Versions
 
 `GET /api/versions` answers `{"ok": true, "versions": [...]}`, every version of the session in the `version` event shape without `type`.

@@ -1,0 +1,335 @@
+{
+  "id": "desk-lamp",
+  "name": "USB-C desk lamp",
+  "summary": "1 W LED in a printed shade on a 200 mm arm, weighted base, USB-C in and a rocker switch.",
+  "spec": {
+    "name": "USB-C Desk Lamp",
+    "function": "A small reading lamp powered over USB-C: a 1 W white LED in a printed shade hangs from a 200 mm horizontal arm on a square post, and a solid printed base keeps it standing with the head fully out over the desk.",
+    "quote": "Design a USB-C desk lamp with a 1 W LED on a 200 mm arm and a weighted base, under 25 euros and 450 g. It must not tip with the head fully out, and the arm must bend under 2 mm with a 3 N push.",
+    "assemblies": [],
+    "parts": [
+      {
+        "id": "base",
+        "name": "Weighted base",
+        "kind": "printed",
+        "qty": 1,
+        "assembly": null,
+        "description": "Plate 150 mm wide (X -75 to 75), from Y=40 forwards to Y=-135, 10 mm thick (Z 0 to 10), rounded vertical corners, hollowed from below in front of the post with a 3.5 mm top skin and a 5 mm rim. An 18 mm square socket 7 mm deep at X=0, Y=20 for the post, a 13 x 9 mm rocker switch cut-out near the front and a USB-C breakout pocket from below with the socket opening in the back face.",
+        "size_mm": [
+          150.0,
+          175.0,
+          10.0
+        ],
+        "position_mm": null,
+        "rotation_deg": null,
+        "material": "PETG",
+        "params": {
+          "width_mm": 150.0,
+          "depth_mm": 175.0,
+          "thickness_mm": 10.0
+        }
+      },
+      {
+        "id": "post",
+        "name": "Post",
+        "kind": "printed",
+        "qty": 1,
+        "assembly": null,
+        "description": "Square post 18 x 18 mm centred on X=0, Y=20, standing in the base socket from Z=3 to Z=275, with an 11 mm bore along its length for the LED wires.",
+        "size_mm": [
+          18.0,
+          18.0,
+          272.0
+        ],
+        "position_mm": null,
+        "rotation_deg": null,
+        "material": "PETG",
+        "params": {
+          "side_mm": 18.0,
+          "height_mm": 272.0,
+          "bore_mm": 11.0
+        }
+      },
+      {
+        "id": "arm",
+        "name": "Arm",
+        "kind": "printed",
+        "qty": 1,
+        "assembly": null,
+        "description": "Horizontal bar 16 mm wide and 13 mm tall on top of the post (Z 275 to 288), from Y=32 forwards to Y=-200, rounded long edges, with a 4 x 2.5 mm wire groove along the underside.",
+        "size_mm": [
+          16.0,
+          232.0,
+          13.0
+        ],
+        "position_mm": null,
+        "rotation_deg": null,
+        "material": "PETG",
+        "params": {
+          "width_mm": 16.0,
+          "thickness_mm": 13.0,
+          "reach_mm": 200.0
+        }
+      },
+      {
+        "id": "head",
+        "name": "Lamp head",
+        "kind": "printed",
+        "qty": 1,
+        "assembly": null,
+        "description": "Open-bottom square shade 64 x 64 x 32 mm with 2 mm walls, centred on X=0, Y=-185, hanging under the arm end from Z=243 to Z=275, with two vent slots in the roof beside the arm.",
+        "size_mm": [
+          64.0,
+          64.0,
+          32.0
+        ],
+        "position_mm": null,
+        "rotation_deg": null,
+        "material": "PETG",
+        "params": {
+          "width_mm": 64.0,
+          "height_mm": 32.0,
+          "wall_mm": 2.0
+        }
+      },
+      {
+        "id": "led",
+        "name": "1 W white LED",
+        "kind": "bought",
+        "qty": 1,
+        "assembly": null,
+        "description": "On its 20 mm star under the shade roof, facing down",
+        "size_mm": [
+          20.0,
+          20.0,
+          6.0
+        ],
+        "position_mm": [
+          0.0,
+          -185.0,
+          269.0
+        ],
+        "rotation_deg": null,
+        "mass_g": null,
+        "category": "light",
+        "query": "1 W white LED star"
+      },
+      {
+        "id": "resistor",
+        "name": "LED series resistor 5.6 ohm 2 W",
+        "kind": "bought",
+        "qty": 1,
+        "assembly": null,
+        "description": "Limits the LED to about 300 mA from 5 V",
+        "size_mm": null,
+        "position_mm": null,
+        "rotation_deg": null,
+        "mass_g": null,
+        "category": "resistor",
+        "query": "resistor 5.6 ohm 2 W"
+      },
+      {
+        "id": "usb-c",
+        "name": "USB-C socket breakout",
+        "kind": "bought",
+        "qty": 1,
+        "assembly": null,
+        "description": "In the pocket at the back of the base",
+        "size_mm": [
+          22.0,
+          22.0,
+          4.0
+        ],
+        "position_mm": [
+          0.0,
+          27.5,
+          2.0
+        ],
+        "rotation_deg": null,
+        "mass_g": null,
+        "category": "power",
+        "query": "USB-C breakout board"
+      },
+      {
+        "id": "switch",
+        "name": "Rocker switch",
+        "kind": "bought",
+        "qty": 1,
+        "assembly": null,
+        "description": "Snapped into the front cut-out",
+        "size_mm": [
+          15.0,
+          10.0,
+          12.0
+        ],
+        "position_mm": [
+          0.0,
+          -115.5,
+          6.5
+        ],
+        "rotation_deg": null,
+        "mass_g": null,
+        "category": "switch",
+        "query": "mini rocker switch"
+      },
+      {
+        "id": "power",
+        "name": "USB-C cable and 5 V wall adapter",
+        "kind": "bought",
+        "qty": 1,
+        "assembly": null,
+        "description": "Plugs into the socket at the back",
+        "size_mm": null,
+        "position_mm": null,
+        "rotation_deg": null,
+        "mass_g": null,
+        "category": "power",
+        "query": "USB-C cable and 5 V 2 A wall adapter"
+      },
+      {
+        "id": "feet",
+        "name": "Rubber feet",
+        "kind": "bought",
+        "qty": 4,
+        "assembly": null,
+        "description": "",
+        "size_mm": null,
+        "position_mm": null,
+        "rotation_deg": null,
+        "mass_g": null,
+        "category": "hardware",
+        "query": "rubber feet"
+      }
+    ],
+    "requirements": [
+      {
+        "id": "r_mass",
+        "text": "Weighs under 450 g",
+        "check": "mass",
+        "quote": "under 25 euros and 450 g",
+        "max": 450.0,
+        "unit": "g"
+      },
+      {
+        "id": "r_cost",
+        "text": "Parts under 25 euros",
+        "check": "cost",
+        "quote": "under 25 euros and 450 g",
+        "max": 25.0,
+        "unit": "eur"
+      },
+      {
+        "id": "r_tip",
+        "text": "Tips only beyond 15 degrees with the head fully out",
+        "check": "tip_over",
+        "quote": "It must not tip with the head fully out",
+        "min": 15.0,
+        "unit": "deg"
+      },
+      {
+        "id": "r_arm",
+        "text": "Arm bends under 2 mm with the head and a 3 N push",
+        "check": "deflection",
+        "quote": "the arm must bend under 2 mm with a 3 N push",
+        "max": 2.0,
+        "unit": "mm",
+        "part_id": "arm"
+      },
+      {
+        "id": "r_push",
+        "text": "Settles within 5 degrees after a 1 N push at the top",
+        "check": "stability",
+        "quote": "It must not tip with the head fully out",
+        "max": 5.0,
+        "unit": "deg"
+      },
+      {
+        "id": "r_print",
+        "text": "All printed parts are printable",
+        "check": "printable",
+        "quote": ""
+      }
+    ]
+  },
+  "scripts": {
+    "base": {
+      "file": "base.py",
+      "generated": true
+    },
+    "post": {
+      "file": "post.py",
+      "generated": true
+    },
+    "arm": {
+      "file": "arm.py",
+      "generated": true
+    },
+    "head": {
+      "file": "head.py",
+      "generated": true
+    }
+  },
+  "picks": {
+    "led": {
+      "select_id": "led-1w-white",
+      "reason": "About 100 lm at 1 W is enough for a reading spot and stays cool on its star."
+    },
+    "resistor": {
+      "estimate": {
+        "name": "Resistor 5.6 ohm 2 W",
+        "mass_g": 1.0,
+        "unit_price_eur": 0.3,
+        "shop": "estimate",
+        "url": "",
+        "note": "A standard metal-film resistor; the catalog has no resistors, so mass and price are estimates."
+      },
+      "reason": "The catalog has no resistors; (5 V - 3.2 V) / 0.3 A is about 5.6 ohm, 0.5 W, so a 2 W part runs cool. Estimated price."
+    },
+    "usb-c": {
+      "select_id": "usb-c-breakout-sol-333011",
+      "reason": "A bare USB-C socket with CC pins out, so the lamp takes any USB-C cable."
+    },
+    "switch": {
+      "select_id": "switch-rocker",
+      "reason": "Snaps into the 13 x 9 mm cut-out in the base."
+    },
+    "power": {
+      "select_id": "usb-c-cable",
+      "reason": "5 V 2 A covers the 1 W LED with a lot of margin."
+    },
+    "feet": {
+      "select_id": "rubber-feet-10mm",
+      "reason": "Four non-slip feet keep the base from sliding."
+    }
+  },
+  "checks": [
+    {
+      "tool": "check_totals",
+      "args": {}
+    },
+    {
+      "tool": "check_tip_over",
+      "args": {}
+    },
+    {
+      "tool": "check_deflection",
+      "args": {
+        "part_id": "arm",
+        "span_mm": 200,
+        "width_mm": 16,
+        "thickness_mm": 13,
+        "load_n": 3.4,
+        "support": "cantilever"
+      }
+    },
+    {
+      "tool": "simulate_assembly",
+      "args": {
+        "mode": "push",
+        "force_n": 1
+      }
+    }
+  ],
+  "kind": "reference",
+  "saved_at": "2026-10-24T15:17:04"
+}
