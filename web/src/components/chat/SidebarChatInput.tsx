@@ -1,11 +1,14 @@
 // Adapted from core-oss (github.com/10xapp/core-oss, Apache-2.0),
 // core-web/src/components/SidebarChat/SidebarChatInput.tsx. Modified: Bevel pill
-// styling, a push-to-talk mic button (hold the button or the space bar) in place
-// of attachments and mentions; speech goes to Reson8 or the browser (lib/voice.ts).
+// styling, a mic button in place of attachments and mentions: hands-free by default
+// (click to start a conversation; Reson8 hears when a turn ends and when the person
+// interrupts Mechanic), push-to-talk as the fallback (hold the button or the space
+// bar); speech goes to Reson8 or the browser (lib/voice.ts).
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowUp, Mic } from "lucide-react";
 import { useUi } from "../../lib/ui";
-import { startListening as listen, type Listener } from "../../lib/voice";
+import { hold, isEcho, isSpeaking, markTurnEnd, release, stopSpeaking, unlockAudio, warmUp } from "../../lib/speech";
+import { startHandsFree, startListening as listen, type HandsFree, type Listener } from "../../lib/voice";
 
 interface SidebarChatInputProps {
   value: string;
@@ -48,6 +51,11 @@ export default function SidebarChatInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const listening = useUi((s) => s.listening);
   const setListening = useUi((s) => s.setListening);
+  const micMode = useUi((s) => s.micMode);
+  const handsFree = useUi((s) => s.handsFree);
+  const setHandsFree = useUi((s) => s.setHandsFree);
+  const userTalking = useUi((s) => s.userTalking);
+  const setUserTalking = useUi((s) => s.setUserTalking);
   const [hint, setHint] = useState<string | null>(null);
   const lg = size === "lg";
 
@@ -71,6 +79,69 @@ export default function SidebarChatInput({
     setTimeout(() => setHint(null), 3600);
   }, []);
 
+  // --- hands-free -----------------------------------------------------------
+  const conversation = useRef<HandsFree | null>(null);
+  const starting = useRef(false);
+  const onVoiceRef = useRef(onVoice);
+  onVoiceRef.current = onVoice;
+  // Whether Mechanic was talking when this turn began; only then can the turn be his own echo.
+  const overMechanic = useRef(false);
+
+  const stopHandsFree = useCallback(() => {
+    conversation.current?.stop();
+    conversation.current = null;
+    setHandsFree(false);
+    setHeard("");
+  }, [setHandsFree]);
+
+  const startConversation = useCallback(async () => {
+    if (conversation.current || starting.current) return;
+    starting.current = true;
+    setHint(null);
+    unlockAudio();
+    setHandsFree(true);
+    const active = await startHandsFree({
+      onTurnStart: () => {
+        // Barge-in: Mechanic pauses mid-word the moment the person starts talking.
+        overMechanic.current = isSpeaking();
+        hold();
+        warmUp();
+        setUserTalking(true);
+        setHeard("");
+      },
+      onPartial: (text) => {
+        setHeard(text);
+        if (text && !(overMechanic.current && isEcho(text))) stopSpeaking();
+      },
+      onTurnEnd: (text) => {
+        setUserTalking(false);
+        setHeard("");
+        if (!text || (overMechanic.current && isEcho(text))) {
+          // Noise, or Mechanic hearing himself: he carries on.
+          release();
+          return;
+        }
+        stopSpeaking();
+        markTurnEnd();
+        onVoiceRef.current?.(text);
+      },
+      onError: flash,
+    });
+    starting.current = false;
+    if (!active || !useUi.getState().handsFree) {
+      active?.stop();
+      setHandsFree(false);
+      return;
+    }
+    conversation.current = active;
+  }, [setHandsFree, setUserTalking, flash]);
+
+  useEffect(() => () => conversation.current?.stop(), []);
+  useEffect(() => {
+    if (micMode === "ptt") stopHandsFree();
+  }, [micMode, stopHandsFree]);
+
+  // --- push-to-talk -----------------------------------------------------------
   const startListening = useCallback(() => {
     if (useUi.getState().listening) return;
     setHint(null);
@@ -115,6 +186,7 @@ export default function SidebarChatInput({
     const isTyping = (t: EventTarget | null) =>
       t instanceof HTMLElement && (t.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName));
     const down = (e: KeyboardEvent) => {
+      if (useUi.getState().micMode !== "ptt") return;
       if (e.code === "Space" && !e.repeat && !isTyping(e.target)) {
         e.preventDefault();
         startListening();
@@ -139,15 +211,25 @@ export default function SidebarChatInput({
   };
 
   const canSubmit = value.trim().length > 0 && !disabled;
+  const hearing = listening || (handsFree && userTalking);
+  const micHot = listening || handsFree;
+  const status =
+    stt === "none"
+      ? "Type and press Enter"
+      : micMode === "ptt"
+        ? "Hold space to speak"
+        : handsFree
+          ? "Hands-free · just talk"
+          : "Click the mic to talk hands-free";
 
   return (
     <div>
       <div
         className={`flex items-end gap-2 rounded-[24px] bg-card shadow-[var(--shadow-pill)] ring-1 transition ${
-          listening ? "ring-accent/50" : "ring-[#e2e2dd]"
+          micHot ? "ring-accent/50" : "ring-[#e2e2dd]"
         } ${lg ? "min-h-[80px] py-3 pr-3 pl-6" : "min-h-[96px] pt-4 pr-3 pb-3 pl-5"}`}
       >
-        {listening ? (
+        {hearing ? (
           <div className="flex flex-1 items-center gap-3 self-center">
             <Waveform active bars={lg ? 11 : 7} />
             <span className={`line-clamp-2 font-semibold ${heard ? "text-ink" : "text-accent"} ${lg ? "text-[20px]" : "text-[15px]"}`}>
@@ -160,7 +242,7 @@ export default function SidebarChatInput({
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={placeholder}
+            placeholder={handsFree ? "Listening. Just talk, or type" : placeholder}
             rows={1}
             name="prompt"
             aria-label="Message to Mechanic"
@@ -170,7 +252,7 @@ export default function SidebarChatInput({
             }`}
           />
         )}
-        {canSubmit && !listening && (
+        {canSubmit && !hearing && (
           <button
             type="button"
             onClick={onSubmit}
@@ -184,21 +266,28 @@ export default function SidebarChatInput({
           type="button"
           data-target="mic reson8_mic"
           onPointerDown={(e) => {
+            if (micMode !== "ptt") return;
             e.preventDefault();
             startListening();
           }}
-          onPointerUp={() => void stopListening()}
-          onPointerLeave={() => void stopListening()}
+          onPointerUp={() => micMode === "ptt" && void stopListening()}
+          onPointerLeave={() => micMode === "ptt" && void stopListening()}
+          onClick={() => {
+            if (micMode !== "handsfree") return;
+            if (handsFree) stopHandsFree();
+            else void startConversation();
+          }}
           className={`flex shrink-0 items-center justify-center rounded-full transition select-none ${
-            listening ? "scale-105 bg-accent text-white shadow-[0_0_0_8px_rgb(31_111_120/0.16)]" : "bg-tile text-ink-2 hover:bg-track hover:text-ink"
+            micHot ? "scale-105 bg-accent text-white shadow-[0_0_0_8px_rgb(31_111_120/0.16)]" : "bg-tile text-ink-2 hover:bg-track hover:text-ink"
           } ${lg ? "h-14 w-14" : "h-10 w-10"}`}
-          title="Hold to speak"
+          title={micMode === "ptt" ? "Hold to speak" : handsFree ? "Stop listening" : "Talk hands-free"}
+          aria-pressed={micMode === "handsfree" ? handsFree : undefined}
         >
           <Mic className={lg ? "h-6 w-6" : "h-4.5 w-4.5"} strokeWidth={2} />
         </button>
       </div>
       <div className={`mt-2 flex items-center justify-between px-2 text-[13px] ${hint ? "text-agent-ink" : "text-muted"}`}>
-        <span>{hint ?? (stt === "none" ? "Type and press Enter" : "Hold space to speak")}</span>
+        <span>{hint ?? status}</span>
         {!hint && <span>{stt === "reson8" ? "Reson8 · English" : stt === "browser" ? "Browser · English" : ""}</span>}
       </div>
     </div>

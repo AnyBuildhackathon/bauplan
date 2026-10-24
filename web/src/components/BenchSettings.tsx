@@ -1,6 +1,6 @@
 // The Settings panel behind the sliders icon. The dashboard shows only the essentials;
-// these toggles add the rest (agent steps, tool cards, Jamie activity, all metrics) and
-// switch to the recorded demo. In live mode it also holds the bench's model settings:
+// these toggles add the rest (agent steps, tool cards, Jamie activity, all metrics),
+// switch the mic from hands-free to push-to-talk, and switch to the recorded demo. In live mode it also holds the bench's model settings:
 // which Claude orchestrates, which runs the sub-agents, how hard each one thinks
 // (effort), and whether the orchestrator delegates. GET/POST /api/settings.
 import { useEffect, useRef, useState } from "react";
@@ -68,6 +68,8 @@ export function BenchSettings() {
   const display = useUi((s) => s.display);
   const setDisplay = useUi((s) => s.setDisplay);
   const resetUi = useUi((s) => s.resetUi);
+  const micMode = useUi((s) => s.micMode);
+  const setMicMode = useUi((s) => s.setMicMode);
   const mode = useSource((s) => s.mode);
   const live = mode === "live";
 
@@ -122,6 +124,13 @@ export function BenchSettings() {
           {DISPLAY.map((d) => (
             <Toggle key={d.key} label={d.label} hint={d.hint} on={display[d.key]} onChange={(on) => setDisplay({ [d.key]: on })} />
           ))}
+          <h3 className="eyebrow mt-3 mb-1 border-t border-line pt-3">Voice</h3>
+          <Toggle
+            label="Push-to-talk"
+            hint={micMode === "ptt" ? "Hold the mic or space while you speak" : "Off: click the mic once and just talk"}
+            on={micMode === "ptt"}
+            onChange={(on) => setMicMode(on ? "ptt" : "handsfree")}
+          />
           <h3 className="eyebrow mt-3 mb-1 border-t border-line pt-3">Source</h3>
           <Toggle
             label="Recorded demo"
