@@ -23,18 +23,21 @@ The architecture combines engineering software, physical simulation, AI models, 
 
 Two team members develop the project concurrently using independent agent sessions:
 
-- Workstream 1: Frontend, 3D Canvas, and Desktop Client
-  - Lead: Ansorjon Juraev (@TheWingTheWong)
-  - Directories: `web/` and `desktop/`
-  - Responsibilities: Bevel UI design system, React Three Fiber model viewers, Jamie timeline component, Bolzen voice chat, and Tauri bundle.
-- Workstream 2: Agent Backend, Tool Integrations, and Physical AI Pipeline
-  - Lead: Batu / Agent Workspace
-  - Directories: `agent/` and `docs/`
-  - Responsibilities: FastAPI application, SSE event publisher, Claude tool loop, MuJoCo physics simulation, FreeCAD connector, and Jamie MCP client.
-- Workstream 3: GPU Cloud Infrastructure and Isaac Sim Training
-  - Shared ownership
-  - Directories: `runpod/` and `agent/src/pai_agent/tools/isaac.py`
-  - Responsibilities: RunPod pod provisioning, Isaac Lab quadcopter training, policy checkpointing, and fallback video recording.
+- Workstream 1: Live Integrations, Parts Discovery, and Multimodal Inputs
+  - Owner: Ansorjon Juraev (@TheWingTheWong)
+  - Directories: `agent/src/pai_agent/tools/`, `agent/src/pai_agent/jamie_client.py`, `agent/src/pai_agent/voice.py`, and `web/src/components/chat/`
+  - Responsibilities: Live Jamie MCP integration with on-site credentials, live Reson8 streaming speech-to-text integration, live parts search (`parts_search*.py`), and sketch image input (`sketch*.py` with chat upload UI).
+- Workstream 2: General Physical AI, Simulation, Design System, and Deliverables
+  - Owner: Batu / Agent Workspace
+  - Directories: `agent/src/pai_agent/tools/cad.py`, `agent/src/pai_agent/freecad_run.py`, `runpod/`, `web/`, `desktop/`, and `docs/`
+  - Responsibilities: General CAD generation where Claude writes FreeCAD Python scripts for arbitrary parts, a second demonstration product, AnyBuild UI renaming and Bevel visual polish, NVIDIA Omniverse and Isaac Sim on RunPod, technical documentation, and stage demo video recording.
+
+## Parallel Development Interfaces
+
+Clear interfaces prevent merge conflicts while both sides build concurrently:
+
+- Tool Registry: `agent/src/pai_agent/tools/registry.py` is the single integration point where new tool definitions (`parts_search`, `sketch`, general CAD) register their schemas and async execution handlers.
+- SSE Event Contract: `docs/events.md` defines the authoritative JSON event stream wire contract; new event types or fields are coordinated in PR descriptions before client consumption.
 
 ## Day Timeline to Submission
 
