@@ -18,6 +18,8 @@ export default defineConfig({
     },
   },
   preview: { port: 5180, strictPort: true },
+  // MuJoCo WASM loads its .wasm next to itself; pre-bundling it would also reload the page mid-training.
+  optimizeDeps: { exclude: ["@mujoco/mujoco"] },
   // three.js is large on its own; the dashboard runs from localhost, so big chunks are fine.
   build: { chunkSizeWarningLimit: 2000 },
 });

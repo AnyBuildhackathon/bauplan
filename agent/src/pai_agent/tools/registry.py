@@ -8,6 +8,7 @@ from pai_agent.scene import DRAW_KINDS, MASCOT_STATES, PART_CATEGORIES, TARGETS
 from pai_agent.freecad_run import find_freecadcmd
 from pai_agent.tools.blender import blender_render, find_blender
 from pai_agent.tools.bom import bom_build
+from pai_agent.tools.browser_train import train_in_browser
 from pai_agent.tools.build_guide import SCHEMA as BUILD_GUIDE_SCHEMA, build_guide
 from pai_agent.tools.cad import cad_frame
 from pai_agent.tools.cad_part import cad_part
@@ -80,6 +81,7 @@ TOOLS = {
     "ui_point_at": ui_point_at,
     "ui_draw": ui_draw,
     "mascot_say": mascot_say,
+    "train_in_browser": train_in_browser,
 }
 
 # With delegation on, these belong to the sub-agents; the orchestrator reaches them through delegate.
@@ -115,6 +117,7 @@ _STEP = {
     "isaac_lab_status": "training",
     "bom_build": "stueckliste",
     "jamie_create_tasks": "stueckliste",
+    "train_in_browser": "training",
 }
 
 SCHEMAS = [
@@ -618,6 +621,11 @@ SCHEMAS = [
             "required": ["state", "say"],
         },
     },
+    {
+        "name": "train_in_browser",
+        "description": "Trains the current product's controller in 1,024 MuJoCo simulations in the open dashboard (64 candidates x 16 generations, evolution strategy). For the drone: altitude PID and position and attitude PD gains that stay level and hold position for 10 s with a payload and a side gust. For the gripper: squeeze force, ramp, settle and lift time that hold the part through the lift and shake with the least force. Waits for the run and returns the best gains and score.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
 ]
 
 
@@ -675,6 +683,8 @@ async def _advance(ctx: Ctx, name: str, result: dict, started: bool) -> None:
             await ctx.step("training", "done")
         elif result.get("status") == "offline":
             await ctx.step("training", "failed")
+    elif name == "train_in_browser" and result.get("training_status") == "done":
+        await ctx.step("training", "done")
     elif name == "isaac_lab_status" and result.get("training_status") == "done":
         await ctx.step("training", "done")
     elif name == "jamie_create_tasks":

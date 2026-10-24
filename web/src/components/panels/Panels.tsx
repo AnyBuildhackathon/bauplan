@@ -8,6 +8,7 @@ import { meets, type MetricKey } from "../../lib/derived";
 import { fmtEur, fmtGram, fmtMin, fmtNum, fmtRatio } from "../../lib/format";
 import { useShownBuild, useTargets } from "../../lib/hooks";
 import { useUi } from "../../lib/ui";
+import { TrainedGains } from "../training/TrainedGains";
 
 export function JamieMark({ className = "" }: { className?: string }) {
   return (
@@ -190,6 +191,8 @@ export function BuildPanel() {
           ))}
         </ul>
       )}
+
+      <TrainedGains />
 
       <button
         type="button"

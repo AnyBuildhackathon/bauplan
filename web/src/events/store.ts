@@ -131,6 +131,8 @@ export interface SessionState {
   jamie: JamieEntry[];
   training: (TrainingEvent & { at: number }) | null;
   omniverse: OmniverseEvent | null;
+  /** `training` events with `source: "browser"` (MuJoCo WASM in this dashboard), kept apart from Isaac Lab. */
+  browserTraining: (TrainingEvent & { at: number }) | null;
   /** Latest CAD part, and how many `cad` events arrived (a new one answers a parameter change). */
   cad: (CadEvent & { at: number; n: number }) | null;
   renders: (RenderEvent & { id: string; at: number })[];
@@ -276,6 +278,7 @@ function emptyState() {
     jamie: [] as JamieEntry[],
     training: null as SessionState["training"],
     omniverse: null as OmniverseEvent | null,
+    browserTraining: null as SessionState["browserTraining"],
     cad: null as SessionState["cad"],
     renders: [] as SessionState["renders"],
     meetings: [] as MeetingEvent[],
@@ -506,6 +509,8 @@ export const useSession = create<SessionState>((set, get) => ({
       case "firmware":
         return set({ log, firmware: ev });
       case "training": {
+        // Browser training is narrated by its tool card and Bolzen, not the Isaac Lab card.
+        if ((ev as { source?: string }).source === "browser") return set({ log, browserTraining: { ...ev, at } });
         const prev = s.training;
         let chat = s.chat;
         if (!prev || prev.status !== ev.status) {

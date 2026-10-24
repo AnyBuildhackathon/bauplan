@@ -101,6 +101,11 @@ The response is like `POST /api/prompt`, with `reference`: `{"ok": true, "mode":
 `POST /api/settings` with any of those five fields changes them for the next request and answers the same shape; HTTP 400 for an unknown effort or a model id that does not start with `claude-`.
 The defaults come from `PAI_ORCHESTRATOR_MODEL` (else `ANTHROPIC_MODEL`), `PAI_ORCHESTRATOR_EFFORT`, `PAI_SUBAGENT_MODEL`, `PAI_SUBAGENT_EFFORT` and `PAI_DELEGATION`.
 
+`POST /api/training/{job_id}/claim` with `{"client": "..."}` lets one dashboard tab take a queued browser training job; it returns the job's `spec`, `population`, and `generations`.
+It is HTTP 409 when another client already holds the job, and 404 for a job of an earlier session.
+`POST /api/training/{job_id}/progress` with `{"client", "status": "running"|"done"|"failed", "step", "generation", "best_score", "best_params", "best_metrics", "gains", "error"}` from the claiming client publishes a `training` event (`gains` is kept only with `status: "done"`); other clients get HTTP 409.
+`GET /api/training/browser` returns `{"ok": true, "job": {...}}` with the latest browser job of the session in the `training` event shape without `type`, or `job: null`.
+
 `GET /api/health` returns `{"ok": true, "mode": "mock"|"claude"}`.
 The dashboard calls it on start: when the backend answers it opens in live mode with an empty bench, and only without a backend (or with `?demo`) does it play the recording, with a notice saying so.
 
@@ -142,7 +147,7 @@ Apply the backlog without animations.
 ### step
 
 `id` is `meeting`, `teile`, `cad`, `render`, `simulation`, `training`, or `stueckliste`.
-The mock story does not use `training`.
+The mock story does not use `training`; a "train it" prompt does.
 `status` is `pending`, `running`, `done`, or `failed`.
 `label` is `Meeting`, `Parts`, `CAD`, `Render`, `Simulation`, `Training`, or `BOM`.
 
@@ -406,6 +411,21 @@ Gripper worlds add `friction_pct` (pad friction −40…+10), `shake_x` (shake a
 `worst` also has `hand` (`[[t, z], ...]`, as in `sim`).
 `weakest` is `friction`, `motor`, `mass`, `shake`, or `noise`.
 
+A browser run (`train_in_browser`) adds `source: "browser"` and these fields to the same shape:
+`job_id`; `product` (`drone` or `gripper`, from the session's product); `spec`, what the browser builds the MJCF from, with `product`, `label`, `nominal` (`true` when nothing was built yet), and `parts: [{category, name, qty, mass_g}]`;
+for the drone also `mass_g`, `thrust_g` (total maximum thrust of all motors), `motors`, and `arm_length_mm`; for the gripper `payload_g` and `width_mm` (the object from the brief), `max_force_n` (finger force the servo holds, per pad), and `friction` (pads); `population` (64), `generations` (16), `rollouts_total` (1024), `generation` (finished generations);
+`best_params`, the best controller gains so far (drone: `kp_z`, `ki_z`, `kd_z`, `kp_xy`, `kd_xy`, `kp_att`, `kd_att`), or `null`; `best_metrics` (drone: `rms_error_cm` after the first 2 s, `max_tilt_deg`, `survived_s`, `crashed`, `held`; gripper: `slip_mm`, `force_n`, `cycle_s`, `crashed` for a dropped part, `held` for at most 10 mm slip), or `null`; and `error` on `failed`.
+The gripper trains its grasp (`squeeze` as a share of `max_force_n`, `ramp_s`, `settle_s`, `lift_s`) in the grip test above: a held grasp scores for less force, a shorter cycle, and less slip.
+`step` counts finished rollouts and `reward` is the best score so far, 0–100; `curve` holds one point per generation.
+`best_params` are in the trainer's own units (drone: attitude gains divided by the roll inertia, 1/s² and 1/s).
+The `done` event also carries `gains`, the trained controller for other modules.
+For the drone it is `{kp_z, ki_z, kd_z, kp_xy, kd_xy, kp_att, kd_att, roll: {p, i}, pitch: {p, i}}`:
+`kp_z` (1/s²), `ki_z` (1/s³), `kd_z` (1/s), `kp_xy` (1/s²), and `kd_xy` (1/s) shape the commanded acceleration, `kp_att` (N m/rad) and `kd_att` (N m s/rad) are the attitude torque gains, and `roll` and `pitch` are Betaflight 4.4 rate P and I.
+Those are the Betaflight defaults (roll 45/80, pitch 47/84) scaled by the trained `kd_att` against 12 1/s and clamped to 0.5–2×, a starting point for the bench rather than a measured tune; yaw, D, and feed-forward are not trained and keep the firmware defaults.
+For the gripper `gains` is `{squeeze, grip_force_n, ramp_ms, settle_ms, lift_ms, cycle_ms}`, the grasp to put in the servo sketch.
+`queued` asks a dashboard to run it; `running` follows each generation; `done` carries the final gains.
+`failed` with `error: "no_browser"` means no dashboard claimed the job within `PAI_TRAIN_CLAIM_TIMEOUT_S` (default 20); a run that does not finish within `PAI_TRAIN_TIMEOUT_S` (default 240) fails with `error: "timeout"`, and a claimed run that reports nothing for `PAI_TRAIN_STALL_S` (default 30) fails with `error: "browser_gone"`, for example after the tab was closed or reloaded.
+
 ## Scene targets
 
 One catalog motor is instanced four times.
@@ -436,7 +456,7 @@ UI:
 
 ## Tools
 
-`jamie_templates`, `jamie_requirements`, `jamie_search`, `jamie_meeting`, `requirements_accept`, `ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `stress_test`, `cad_frame`, `cad_part`, `product_brief`, `product_spec`, `reference_load`, `delegate`, `part_pick`, `assemble`, `cad_update`, `check_totals`, `check_tip_over`, `check_deflection`, `check_torque`, `check_runtime`, `simulate_assembly`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `blender_render`, `bom_build`, `build_guide`, `firmware`, `jamie_create_tasks`, `version_commit`, `ui_point_at`, `ui_draw`, `mascot_say`.
+`jamie_templates`, `jamie_requirements`, `jamie_search`, `jamie_meeting`, `requirements_accept`, `ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `stress_test`, `cad_frame`, `cad_part`, `product_brief`, `product_spec`, `reference_load`, `delegate`, `part_pick`, `assemble`, `cad_update`, `check_totals`, `check_tip_over`, `check_deflection`, `check_torque`, `check_runtime`, `simulate_assembly`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `blender_render`, `bom_build`, `build_guide`, `firmware`, `jamie_create_tasks`, `version_commit`, `ui_point_at`, `ui_draw`, `mascot_say`, `train_in_browser`.
 
 ### Any product
 
@@ -484,6 +504,9 @@ Without `ANTHROPIC_API_KEY` only templates and passed scripts build.
 `catalog_search` reads `agent/data/catalogs/gripper.json` (`servo`, `pads`, `hardware`, `driver`).
 `grip_calc` gives the finger force `0.7 × stall torque / (2 × lever)`, where the lever runs from the gear axis to the pad centre, the holding force `2 × μ × F`, and the safety factor against the object weight; 2× is the requirement.
 `simulate_grip` runs the MuJoCo grip test above.
+
+`train_in_browser` queues a browser training job and waits until a dashboard tab finishes it; the result carries `best_params`, `best_metrics`, `best_score`, and `curve`.
+In mock mode a prompt containing "train" runs it after a short Bolzen line, and the `training` step goes `running`, then `done` or `failed`.
 
 `cad_frame` arguments are `arm_length_mm` (center to motor shaft), `thickness_mm`, and `motor_spacing_mm` (bolt-circle diameter of the motor screws).
 The 1103 mount is 6.6 mm.

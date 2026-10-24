@@ -14,6 +14,7 @@ from pai_agent.mock_gripper import run_gripper_mock, wants_gripper
 from pai_agent.mock_product import run_product_mock, wants_product
 from pai_agent.mock_story import run_mock, run_mock_followup, run_review
 from pai_agent.scene import STEPS
+from pai_agent.tools.browser_train import run_mock_training
 from pai_agent.tools.registry import DELEGATED, SCHEMAS, call_tool
 from pai_agent.tools.stress import run_stress_mock, wants_stress
 
@@ -109,6 +110,11 @@ async def _first(ctx: Ctx) -> bool:
 
 async def run_prompt(ctx: Ctx, text: str, messages: list[dict]) -> None:
     await ctx.chat("user", text)
+    # "Stress test the trained controller" is a stress test, not a training run.
+    if not claude_enabled() and _TRAIN.search(text) and not _OMNIVERSE.search(text) and not wants_stress(text, ctx.state.finished):
+        await _first(ctx)
+        await run_mock_training(ctx)
+        return
     if not claude_enabled() and await _mock_omniverse(ctx, text):
         return
     first = await _first(ctx)
@@ -159,6 +165,9 @@ async def _mock_omniverse(ctx: Ctx, text: str) -> bool:
     await ctx.chat("agent", explanation)
     return True
 
+
+_TRAIN = re.compile(r"\btrain|\btrainier", re.IGNORECASE)
+_OMNIVERSE = re.compile(r"\b(omniverse|isaac)\b", re.IGNORECASE)
 
 _REVIEW_DONE = re.compile(
     r"\b(review|meeting)\b.*\b(durch|vorbei|zu ende|fertig|beendet|aus|done|over|ended|finished)\b|\b(bau|baue|rebuild|build)\b.*\b(neu|again)\b",
