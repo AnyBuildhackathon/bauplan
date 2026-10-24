@@ -15,6 +15,7 @@ import { fmtEur, fmtGram, fmtNum } from "../lib/format";
 import { useTargets } from "../lib/hooks";
 import { useUi } from "../lib/ui";
 import { BuildGuideButton } from "./BuildGuide";
+import { ExportMenu, OrderView } from "./ExportMenu";
 
 function iconFor(name: string) {
   const n = name.toLowerCase();
@@ -149,6 +150,11 @@ export function BomDrawer() {
   const cadStl = useSession((s) => s.cad?.stl_url ?? null);
   const product = useSession((s) => s.product);
   const targets = useTargets();
+  const [ordering, setOrdering] = useState(false);
+
+  useEffect(() => {
+    if (!open) setOrdering(false);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -190,12 +196,14 @@ export function BomDrawer() {
             <Download className="h-4.5 w-4.5" /> {drone ? "Frame STL" : "Model STL"}
           </a>
           <BuildGuideButton />
+          <ExportMenu bom={bom} onOrder={() => setOrdering(true)} />
           <button type="button" onClick={() => setOpen(false)} className="rounded-full p-2.5 text-muted hover:bg-card" aria-label="Close">
             <X className="h-5 w-5" />
           </button>
         </div>
         <div className="scroll-soft min-h-0 flex-1 space-y-5 overflow-y-auto px-6 pb-6">
-          <ul className="space-y-2">
+          {ordering && <OrderView bom={bom} onBack={() => setOrdering(false)} />}
+          <ul className={ordering ? "hidden" : "space-y-2"}>
             {bom.items.map((item) => (
               <PartRow
                 key={item.name}
