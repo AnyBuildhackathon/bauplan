@@ -80,7 +80,16 @@ CODE_REFERENCES = {
         # The kickoff's studio render, written by agent/scripts/record_demo.py.
         "thumbnail": REPO_ROOT / "web" / "public" / "models" / "hero-drone.png",
     },
-    "robot-gripper": {"name": "Robot gripper", "product": "gripper", "summary": _gripper_summary, "build": _build_gripper, "printed": 1, "bought": 4},
+    "robot-gripper": {
+        "name": "Robot gripper",
+        "product": "gripper",
+        "summary": _gripper_summary,
+        "build": _build_gripper,
+        "printed": 1,
+        "bought": 4,
+        # Blender's studio render of the gripper flow's FreeCAD assembly.
+        "thumbnail": REPO_ROOT / "web" / "public" / "models" / "robot-gripper.png",
+    },
 }
 
 

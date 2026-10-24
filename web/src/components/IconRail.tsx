@@ -1,6 +1,6 @@
 // The slim icon rail on the far left: the logo, a new project, and the views. The
-// stage flow lives on the Workbench; Training and Logbook stay one click away.
-import { BookOpen, Box, Dumbbell, Plus } from "lucide-react";
+// stage flow lives on the Workbench; Library, Training and Logbook stay one click away.
+import { BookOpen, Box, Dumbbell, LayoutGrid, Plus } from "lucide-react";
 import { useSession } from "../events/store";
 import { useSource } from "../events/source";
 import { useUi, type View } from "../lib/ui";
@@ -9,6 +9,7 @@ import { Logo } from "./TopBar";
 
 const VIEWS: { value: View; label: string; icon: typeof Box }[] = [
   { value: "werkbank", label: "Workbench", icon: Box },
+  { value: "library", label: "Library", icon: LayoutGrid },
   { value: "training", label: "Training", icon: Dumbbell },
   { value: "logbuch", label: "Logbook", icon: BookOpen },
 ];

@@ -10,6 +10,7 @@ import { useBolzenVoice } from "./lib/bolzenVoice";
 import { useUi } from "./lib/ui";
 import { BomDrawer } from "./views/BomDrawer";
 import { LessonModal } from "./views/LessonModal";
+import { LibraryView } from "./views/LibraryView";
 import { LogbookView } from "./views/LogbookView";
 import { TrainingView } from "./views/TrainingView";
 import { WorkbenchView } from "./views/WorkbenchView";
@@ -54,7 +55,7 @@ export default function App() {
   return (
     <div className="flex h-full min-h-0">
       <IconRail />
-      {view === "werkbank" && (
+      {(view === "werkbank" || view === "library") && (
         <div className="h-full w-[400px] shrink-0 border-r border-line">
           <SidebarChat />
         </div>
@@ -63,6 +64,7 @@ export default function App() {
         <TopBar />
         <main className="min-h-0 flex-1">
           {view === "werkbank" && <WorkbenchView />}
+          {view === "library" && <LibraryView />}
           {view === "training" && <TrainingView />}
           {view === "logbuch" && <LogbookView />}
         </main>
