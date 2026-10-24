@@ -22,7 +22,7 @@ export const useGuide = create<GuideUi>((set) => ({
   open: false,
   index: 0,
   exploded: true,
-  show: (open) => set(open ? { open, index: 0 } : { open }),
+  show: (open) => set({ open, index: 0 }),
   go: (index) => set({ index }),
   setExploded: (exploded) => set({ exploded }),
 }));
@@ -52,6 +52,10 @@ export function BuildGuide() {
   const steps = guide?.steps ?? [];
   const at = Math.min(index, Math.max(0, steps.length - 1));
   const step = steps[at];
+
+  useEffect(() => {
+    if (!guide) show(false);
+  }, [guide, show]);
 
   const states = useMemo(() => {
     const out: Record<string, PartState> = {};
