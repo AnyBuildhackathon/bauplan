@@ -20,6 +20,8 @@ export interface ChatEvent {
   type: "chat";
   role: "user" | "agent";
   text: string;
+  /** A spoken line: the person's turn heard by Reson8 or the browser, or what Mechanic said aloud. */
+  voice?: boolean;
 }
 export interface ToolEvent {
   type: "tool";
@@ -461,13 +463,14 @@ export interface TaskItem {
 export interface AgentRunEvent {
   type: "agent";
   id: string;
-  role: "orchestrator" | "cad" | "parts" | "checks" | "pricing";
+  role: "orchestrator" | "cad" | "parts" | "checks" | "pricing" | "sketch";
   label: string;
   model: string;
   model_label: string;
   effort: string;
   task: string;
-  status: "running" | "done" | "error";
+  /** `queued` waits for another job of the same fan-out to finish first. */
+  status: "queued" | "running" | "done" | "error";
   /** Model calls so far. */
   rounds: number;
   input_tokens: number;
@@ -476,6 +479,23 @@ export interface AgentRunEvent {
   cost_usd: number;
   /** What it is doing now, or its report when done. */
   summary: string;
+  /** Server time in epoch seconds when this report was sent. Older backends omit it and the fields below. */
+  sent_at?: number;
+  /** The orchestrator run that delegated this job; null for the orchestrator. */
+  parent?: string | null;
+  /** Server time in epoch seconds when it started working, null while queued. */
+  started_at?: number | null;
+  /** Server time in epoch seconds when it finished, null while it works. */
+  ended_at?: number | null;
+  /** The tool it runs right now (`freecad`, `blender_render`, `simulate_assembly`, …), or null. */
+  tool?: string | null;
+  /** Its tool calls so far, newest last, at most 30. */
+  calls?: AgentToolCall[];
+}
+export interface AgentToolCall {
+  tool: string;
+  ok: boolean;
+  detail: string;
 }
 export interface TasksEvent {
   type: "tasks";
@@ -501,6 +521,39 @@ export interface BuildGuideEvent {
   version: number;
   steps: BuildGuideStep[];
   total_minutes: number;
+}
+export interface PrintWarning {
+  kind: "overhang" | "thin_wall" | "bed_size";
+  text: string;
+}
+/** One printed part of the print plan, for a single piece. */
+export interface PrintPart {
+  id: string;
+  name: string;
+  material: string;
+  qty: number;
+  orientation: "flat" | "upright" | "as_modeled";
+  size_mm: [number, number, number];
+  volume_cm3: number;
+  time_min: number;
+  filament_g: number;
+  filament_m: number;
+  cost_eur: number;
+  warnings: PrintWarning[];
+  stl_url: string;
+  /** Empty without a slicer: an estimate has no G-code. */
+  gcode_url: string;
+  source: "slicer" | "estimate";
+  slicer_error?: string;
+}
+/** Print plan from print_prep: a headless slicer when installed, else an estimate from the mesh. */
+export interface PrintEvent {
+  type: "print";
+  source: "slicer" | "estimate";
+  slicer: string;
+  profile: { printer: string; nozzle_mm: number; layer_height_mm: number; infill_pct: number; walls: number; bed_mm: number[] };
+  parts: PrintPart[];
+  totals: { parts: number; time_min: number; filament_g: number; cost_eur: number; warnings: number };
 }
 export interface WiringRow {
   component: string;
@@ -640,6 +693,7 @@ export type AgentEvent =
   | SketchEvent
   | RemixEvent
   | BuildGuideEvent
+  | PrintEvent
   | FirmwareEvent
   | ElectronicsEvent
   | AgentRunEvent
@@ -675,6 +729,7 @@ const EVENT_TYPES = new Set<AgentEvent["type"]>([
   "sketch",
   "remix",
   "build_guide",
+  "print",
   "firmware",
   "electronics",
   "agent",

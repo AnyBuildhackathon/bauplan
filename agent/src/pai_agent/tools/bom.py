@@ -92,6 +92,8 @@ async def _priced_bom(ctx: Ctx, items: list[dict], catalog_detail: Callable[[flo
         await _sync_metrics(ctx, bom["total_eur"])
         detail = "Bill of materials " + f"{bom['total_eur']:.2f}" + " €, live prices for " + str(found) + " of " + str(len(items)) + " lines"
     else:
+        if ctx.state.product == "generic":
+            await _sync_metrics(ctx, bom["total_eur"])
         detail = catalog_detail(bom["total_eur"])
     return {"ok": True, "detail": detail, **bom}
 
@@ -111,6 +113,12 @@ def _bom(ctx: Ctx, items: list[dict], prices: str) -> dict:
 async def _sync_metrics(ctx: Ctx, total: float) -> None:
     """The key numbers and the budget check follow the live total."""
 
+    if ctx.state.product == "generic":
+        # The cost card and the budget check read the bill of materials from now on.
+        from pai_agent.tools.product import emit_cards
+
+        await emit_cards(ctx)
+        return
     metrics = ctx.state.metrics
     if "price_eur" not in metrics or abs(float(metrics["price_eur"]) - total) < 0.005:
         return

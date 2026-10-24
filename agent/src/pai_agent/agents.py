@@ -5,7 +5,8 @@ jobs to smaller sub-agents (Sonnet 5.5 by default): one part's FreeCAD script, p
 bought parts, running the checks, pricing the bill of materials. Each sub-agent sees only the
 tools its job needs, works in its own short loop and reports back; the orchestrator reviews
 the report and integrates it. Every agent streams as an `agent` event: who, which model, what
-job, status, rounds, tokens and cost.
+job, status, rounds, tokens and cost, plus who delegated it, when it ran, the tool it runs now
+and its tool calls so far, which the Agents tab draws as a live graph.
 """
 
 from __future__ import annotations
@@ -13,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import time
 import uuid
 
 from pai_agent import settings
@@ -51,6 +53,8 @@ ROLES = {
     },
 }
 CAD_ROLE = {"label": "CAD agent"}
+# The tool-call log one `agent` event carries; older calls drop off the front.
+MAX_CALLS = 30
 
 
 class AgentRun:
@@ -64,10 +68,22 @@ class AgentRun:
         self.model = model
         self.effort = effort
         self.task = task
+        # A sub-agent hangs on the orchestrator run that is active when it starts.
+        self.parent = None if role == "orchestrator" else getattr(ctx, "lead_id", None)
         self.rounds = 0
         self.usage: dict = {}
+        self.started_at: float | None = None
+        self.ended_at: float | None = None
+        self.tool: str | None = None
+        self.calls: list[dict] = []
 
     async def emit(self, status: str, summary: str = "") -> None:
+        now = round(time.time(), 3)
+        if status != "queued" and self.started_at is None:
+            self.started_at = now
+        if status in ("done", "error"):
+            self.ended_at = now
+            self.tool = None
         await self.ctx.emit(
             {
                 "type": "agent",
@@ -85,8 +101,28 @@ class AgentRun:
                 "cache_read_tokens": self.usage.get("cache_read_tokens", 0),
                 "cost_usd": self.cost(),
                 "summary": summary,
+                "sent_at": now,
+                "parent": self.parent,
+                "started_at": self.started_at,
+                "ended_at": self.ended_at,
+                "tool": self.tool,
+                "calls": self.calls[-MAX_CALLS:],
             }
         )
+
+    async def use(self, tool: str, summary: str = "") -> None:
+        """Reports the tool it runs now, so the graph shows FreeCAD, Blender or MuJoCo at work."""
+
+        self.tool = tool
+        await self.emit("running", summary or tool)
+
+    def called(self, tool: str, result: dict) -> dict:
+        """Logs one finished tool call and clears the running tool."""
+
+        call = {"tool": tool, "ok": result.get("ok") is not False, "detail": str(result.get("detail") or result.get("error") or "")[:160]}
+        self.calls.append(call)
+        self.tool = None
+        return call
 
     def count(self, response) -> None:
         self.rounds += 1
@@ -141,7 +177,7 @@ async def run_subagent(ctx: Ctx, role: str, task: str) -> dict:
         "You are the " + spec["label"] + " on AnyBuild's engineering bench, working for the lead engineer. " + spec["prompt"]
         + " Units are millimetres, grams, newtons and euros. Finish with a short report in plain English: what you did, the numbers, open issues."
     )
-    calls: list[dict] = []
+    calls = run.calls
     await run.emit("running")
     report = ""
     try:
@@ -168,8 +204,9 @@ async def run_subagent(ctx: Ctx, role: str, task: str) -> dict:
             results = []
             for block in uses:
                 raw = block.input if isinstance(block.input, dict) else {}
+                await run.use(block.name)
                 result = await call_tool(ctx, block.name, raw)
-                calls.append({"tool": block.name, "ok": result.get("ok") is not False, "detail": str(result.get("detail") or result.get("error") or "")[:160]})
+                run.called(block.name, result)
                 results.append(
                     {
                         "type": "tool_result",

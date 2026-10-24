@@ -1,14 +1,16 @@
 @import "tailwindcss";
 
 /* AnyBuild look as tokens: an off-white, airy, almost borderless reading surface.
-   Inter Tight carries the interface; Mechanic's answers and the Jamie quotes use Inter,
-   the same family with more room, so long text reads calmly at a small size.
+   Inter Tight carries the interface. Reading text (Mechanic's answers, the Jamie quotes)
+   uses the system sans, as core.so's agent chat does, and Chivo Mono marks small labels,
+   numbers and tool lines in the chat.
    Colors carry meaning: agent (orange) = what the agent is doing right now, ok (green)
    = passed or met, fail (red) = failed, accent (teal) = send and source citations.
    The *-ink variants are darker text shades that stay readable on a projector. */
 @theme {
   --font-sans: "Inter Tight", "Inter Tight Fallback", -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
-  --font-read: "Inter", "Inter Tight", -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  --font-read: system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-label: "Chivo Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
   --font-hand: "Caveat", "Bradley Hand", cursive;
 
   --color-page: #fafaf8;
@@ -51,12 +53,22 @@
   --animate-rise: rise 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   --animate-spin-slow: spin 1.2s linear infinite;
   --animate-indeterminate: indeterminate 1.6s ease-in-out infinite;
+  /* Agents tab: the dashes of a working edge flow from the orchestrator to the sub-agent. */
+  --animate-edge-flow: edge-flow 0.9s linear infinite;
   /* Mechanic: breathing for every state, a slow sway on top that depends on the state. */
   --animate-mech-breathe: mech-breathe 4.8s ease-in-out infinite;
   --animate-mech-sway: mech-sway 9s ease-in-out infinite;
   --animate-mech-ponder: mech-sway 5.5s ease-in-out infinite;
   --animate-mech-bounce: mech-bounce 2.2s ease-in-out infinite;
 
+  @keyframes edge-flow {
+    from {
+      stroke-dashoffset: 16;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
   @keyframes indeterminate {
     from {
       left: -40%;

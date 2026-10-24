@@ -269,14 +269,20 @@ async def cad_part(ctx: Ctx, args: dict) -> dict:
                 await agent.emit("error", str(exc)[:160])
                 return _fail("Claude could not write the script: " + str(exc))
         await _progress(ctx, "freecadcmd builds " + name + (" (attempt " + str(attempt) + ")" if attempt > 1 else ""))
+        if agent is not None:
+            await agent.use("freecad", "FreeCAD builds " + name)
         try:
             async with _BUILD:
                 build, cached = await asyncio.to_thread(run_script_cached, script, params, directory, stem, material, expected_mm=expected)
             attempts.append({"attempt": attempt, "ok": True, **({"cached": True} if cached else {})})
+            if agent is not None:
+                agent.called("freecad", {"detail": name + " built" + (" (cached)" if cached else "")})
             break
         except (ScriptRejected, ScriptFailed, ValueError) as exc:
             error = str(exc)
             attempts.append({"attempt": attempt, "ok": False, "error": error[:300]})
+            if agent is not None:
+                agent.called("freecad", {"ok": False, "error": error.splitlines()[0][:160] if error else "FreeCAD failed"})
             await _progress(ctx, "Attempt " + str(attempt) + " failed: " + error.splitlines()[0][:90])
     if agent is not None:
         outcome = "built" if build is not None else "failed"
@@ -338,6 +344,7 @@ async def cad_part(ctx: Ctx, args: dict) -> dict:
             "last_error": error if fallback else None,
         }
         state.assembly_stale = True
+        state.bom = None
     state.cad_builds += 1
     n = state.cad_builds
     session = state.session_id

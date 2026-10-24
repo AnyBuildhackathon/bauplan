@@ -79,7 +79,7 @@ async def _command(command: list[str], timeout: float, script: str | None = None
 async def _fallback(ctx: Ctx, mode: str, requested: dict, reason: str) -> dict:
     fixture = json.loads((FALLBACK_DIR / "omniverse.json").read_text(encoding="utf-8"))[mode]
     result = {**fixture, "type": "omniverse", "mode": mode, "status": "recorded", "source": "recorded",
-              "requested": requested, "detail": reason + " Recorded illustrative run; no new GPU measurement.",
+              "requested": requested, "detail": reason + " GPU not connected; nothing was measured.",
               "video_url": "/files/fallback/omniverse.mp4", "json_url": "/files/fallback/omniverse.json"}
     ctx.state.omniverse_result = result
     await ctx.emit(result)
