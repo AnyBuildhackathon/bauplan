@@ -25,6 +25,7 @@ import { enLabel, enText } from "../../lib/copy";
 import { fmtDuration, fmtNum, stripMarkdown } from "../../lib/format";
 import { useUi } from "../../lib/ui";
 import { StressCard } from "../stress/StressCard";
+import { PrintPlanCard } from "../print/PrintPlanCard";
 import { ExplainChatCard } from "../learn/Explain";
 import { RequirementsCard, ResultsCard } from "./BuildCards";
 
@@ -385,6 +386,8 @@ function ContentPartsRenderer({ item }: { item: Exclude<ChatItem, { kind: "msg" 
       return <StressCard run={item.run} />;
     case "explain":
       return <ExplainChatCard explainKey={item.key} />;
+    case "print":
+      return <PrintPlanCard plan={item.plan} />;
   }
 }
 
