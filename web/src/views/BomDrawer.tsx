@@ -8,6 +8,7 @@ import { useSource } from "../events/source";
 import type { BomItem, PartEvent, TaskItem } from "../events/types";
 import { JamieMark, QuoteBubble } from "../components/panels/Panels";
 import { enText } from "../lib/copy";
+import { FirmwareSection } from "./FirmwareSection";
 import { meets } from "../lib/derived";
 import { assetUrl } from "../lib/api";
 import { fmtEur, fmtGram } from "../lib/format";
@@ -166,6 +167,7 @@ export function BomDrawer() {
             ))}
           </ul>
           <p className="text-[13px] text-faint">Prices are samples to check, not a live checkout.</p>
+          <FirmwareSection />
           {tasks && tasks.items.length > 0 && (
             <section className="card px-4 pt-4 pb-3" data-target="tasks bestellen">
               <div className="mb-1 flex items-center gap-2 px-2">

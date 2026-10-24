@@ -28,7 +28,7 @@ New build from the kickoff:
 5. cad_frame in FreeCAD. arm_length_mm is the distance from the center to the motor shaft. The propellers need clearance. motor_spacing_mm is the bolt circle of the motor screws. On the 1102 that is 6.6.
 6. physics_calc again, because the frame then has a real mass.
 7. blender_render.
-8. bom_build, jamie_create_tasks, then version_commit with the kickoff meeting_id.
+8. bom_build, firmware, jamie_create_tasks, then version_commit with the kickoff meeting_id.
 
 Rebuild after a review:
 1. jamie_meeting with the meeting_id.

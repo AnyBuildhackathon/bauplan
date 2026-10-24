@@ -6,6 +6,7 @@ import {
   type BomEvent,
   type CadEvent,
   type DrawEvent,
+  type FirmwareEvent,
   type RenderEvent,
   type MascotState,
   type MeetingEvent,
@@ -139,6 +140,7 @@ export interface SessionState {
   tasks: TasksEvent | null;
   /** The product this session builds; the drone until a `product` event says otherwise. */
   product: ProductEvent["id"];
+  firmware: FirmwareEvent | null;
   /** Reduces one contract event. `instant` marks events replayed in bulk (seek), so nothing animates for them. */
   apply: (ev: AgentEvent, opts?: { instant?: boolean }) => void;
   addLocalUserMessage: (text: string) => void;
@@ -256,6 +258,7 @@ function emptyState() {
     questions: {} as Record<string, QuestionEvent>,
     tasks: null as TasksEvent | null,
     product: "drone" as ProductEvent["id"],
+    firmware: null as FirmwareEvent | null,
   };
 }
 
@@ -431,8 +434,11 @@ export const useSession = create<SessionState>((set, get) => ({
           renders: [],
           parts: {},
           versions: [],
+          firmware: null,
         });
       }
+      case "firmware":
+        return set({ log, firmware: ev });
       case "training": {
         const prev = s.training;
         let chat = s.chat;

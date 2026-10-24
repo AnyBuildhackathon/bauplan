@@ -257,6 +257,19 @@ It does not guess from a screenshot.
 `video_url` is a backend path such as `/files/fallback/hover.mp4`, or `null` when there is no clip.
 A `done` event after an `offline` tool means the fallback file was played, not that a pod finished a job.
 
+### firmware
+
+The firmware and wiring for the built product, from the `firmware` tool after `bom_build`.
+`kind` is `betaflight` (a drone with a flight controller) or `arduino` (a servo product).
+`product` is the product name, such as `drone`.
+`filename` is the file name, such as `anybuild-drone-v1-betaflight.txt` or `anybuild_gripper_v1.ino`; `url` is its `/files/{session}/{filename}` path.
+`content` is the whole file, so a client can offer the download without the backend.
+The file is a fixed template filled from the chosen parts; only `explanation`, one or two sentences, may come from Claude.
+`gains` is `{roll, pitch, yaw}`, each `{p, i, d, f}` in Betaflight units, or `null` for an Arduino sketch.
+`gains_source` says where they came from: `tool call`, `training`, `defaults`, or `none`.
+`training` means the session's `controller_gains` or the `gains` field of the last `training` event, in the same shape; missing terms keep the defaults.
+`wiring` is a list of `{component, connects_to, pin, wire, note}`, one row per connection of a chosen part.
+
 ## Scene targets
 
 One catalog motor is instanced four times.
@@ -287,7 +300,7 @@ UI:
 
 ## Tools
 
-`jamie_templates`, `jamie_requirements`, `jamie_search`, `jamie_meeting`, `requirements_accept`, `ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `cad_frame`, `cad_part`, `product_brief`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `blender_render`, `bom_build`, `jamie_create_tasks`, `version_commit`, `ui_point_at`, `ui_draw`, `mascot_say`.
+`jamie_templates`, `jamie_requirements`, `jamie_search`, `jamie_meeting`, `requirements_accept`, `ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `cad_frame`, `cad_part`, `product_brief`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `blender_render`, `bom_build`, `firmware`, `jamie_create_tasks`, `version_commit`, `ui_point_at`, `ui_draw`, `mascot_say`.
 
 `cad_part` builds any part from `name`, `description`, `params` (mm, they become the CAD sliders), `material` (`PLA`, `PETG`, `ABS`, `ASA`, `NYLON`, `TPU`, `ALUMINIUM`, `STEEL`), and optionally `script` or `template` (`gripper`).
 Without a script Claude writes FreeCAD Python for the description; when FreeCAD reports an error, the script and the error go back to Claude for a fix, up to three attempts.
