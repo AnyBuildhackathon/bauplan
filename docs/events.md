@@ -536,6 +536,21 @@ When a training run finishes after the firmware was made and changes the gains, 
 The dashboard shows the source next to Download firmware: Isaac Lab gains, Browser-tuned gains, or Default gains.
 `wiring` is a list of `{component, connects_to, pin, wire, note}`, one row per connection of a chosen part.
 
+### electronics
+
+The wiring diagram and power budget of the built product, from the `electronics_plan` tool after `bom_build` (the drone story after `firmware`, every library build after its bill of materials).
+`product` is the product, such as `drone` or `product`.
+`ok` is `false` when any part is over its rating; `summary` is one line with parts, wires, peak current against the supply limit, headroom, average power and the runtime.
+`blocks` is a list of `{id, name, role, col, row, voltage_v, rating, qty}`: `role` is `supply`, `connector`, `switch`, `regulator`, `controller`, `driver`, `inline` (an LED resistor), `load` or `sensor`; `col` and `row` place it on the diagram, the power flowing from column 0 to the right; `rating` is a short text such as `1S max (4.35 V), ESC 12 A per motor`.
+`wires` is a list of `{id, from, to, from_pin, to_pin, kind, voltage_v, current_a, color, label}`: `from` and `to` are block ids, `kind` is `power`, `phase` (motor phase wires from an ESC) or `signal`; `voltage_v` and `current_a` (the peak) are `null` on signal wires.
+`color` groups wires by voltage for the diagram: `3v3`, `1s` (3.6 to 4.4 V), `5v`, `high` (above 5.5 V), `phase`, `signal` or `power`. Grounds are common and not listed.
+`budget` is `analysis_more.power_budget` for the supply: `{supply, supply_voltage_v, supply_limit_a, average_a, peak_a, average_w, peak_w, headroom, rails, loads, runtime_h?}`; each load is `{name, voltage_v, power_w, duty, peak_w, average_w, current_a}`. `runtime_h` is there for a battery only, with 80 % of its energy usable.
+Duty cycles come from the build's stored `check_runtime` or `check_power` arguments; a controller with `sleep_power_w` adds an `asleep` row for the rest of the time. The drone's motors draw their hover power (the physics_calc model: full-throttle power times the hover share of thrust to the 1.5) on average and their full-throttle power at the peak.
+`warnings` is a list of `{part, text, severity}`, `severity` `fail` (over a rating: more cells than the controller or motor takes, a part above its voltage, a bare LED on a higher rail, a resistor above its watts, a motor or pump on a controller pin, a driver, regulator or supply above its current) or `warn` (a part well under its voltage).
+`gaps` lists the ratings the catalog does not have and the default the plan used instead, such as `Regulator output limit assumed 1.0 A`.
+`wiring` is the drone's `firmware` wiring table (same rows), else empty.
+The dashboard draws it as an SVG in the bill-of-materials drawer under Firmware and wiring, with the budget table and the warnings.
+
 ### stress
 
 The stress test runs the current product in 50 randomized MuJoCo worlds (`stress_test`).
@@ -628,7 +643,7 @@ Closing buttons are tagged `{control}:close`, and `look:3d` is the 3D switch of 
 
 ## Tools
 
-`jamie_templates`, `jamie_requirements`, `jamie_search`, `jamie_meeting`, `requirements_accept`, `ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `stress_test`, `cad_frame`, `cad_part`, `product_brief`, `product_spec`, `sketch_to_spec`, `reference_load`, `delegate`, `part_pick`, `assemble`, `cad_update`, `check_totals`, `check_tip_over`, `check_deflection`, `check_torque`, `check_runtime`, `check_power`, `check_thermal`, `check_rollover`, `simulate_assembly`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `blender_render`, `bom_build`, `build_guide`, `firmware`, `jamie_create_tasks`, `version_commit`, `ui_point_at`, `ui_draw`, `ui_control`, `mascot_say`, `train_in_browser`.
+`jamie_templates`, `jamie_requirements`, `jamie_search`, `jamie_meeting`, `requirements_accept`, `ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `stress_test`, `cad_frame`, `cad_part`, `product_brief`, `product_spec`, `sketch_to_spec`, `reference_load`, `delegate`, `part_pick`, `assemble`, `cad_update`, `check_totals`, `check_tip_over`, `check_deflection`, `check_torque`, `check_runtime`, `check_power`, `check_thermal`, `check_rollover`, `simulate_assembly`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `blender_render`, `bom_build`, `build_guide`, `firmware`, `electronics_plan`, `jamie_create_tasks`, `version_commit`, `ui_point_at`, `ui_draw`, `ui_control`, `mascot_say`, `train_in_browser`.
 
 `ui_control` takes `control` (see Dashboard controls) and, as the control needs, `open`, `value`, `part`, `versions` and `say` (the bubble, a default otherwise).
 It checks the control against the build (no bill of materials yet, fewer than two versions, Omniverse for a non-drone product) and answers an error the model can act on; `run:test` and `run:rebuild` wait for the run and return its result.
@@ -719,6 +734,7 @@ Mechanic turns the request into checks, tries the 2.49 € SG90 first: 1.1 N per
 The swap to the MG996R gives 6.0 N per finger and passes with 0.4 mm slip.
 FreeCAD builds the gripper headless from the library template with the servo pocket sized for the MG996R (58 g PLA), Blender renders it, and the bill of materials comes to 18.65 € and 128 g.
 The drone and gripper stories call `firmware` right after `bom_build`: the drone gets a Betaflight CLI file, the gripper an Arduino sketch.
+The drone story calls `electronics_plan` right after `firmware`.
 A prompt that asks for a phone stand (`phone`, `tablet` with `stand`, `holder`, `dock` or `mount`) plays the generic story: Mechanic writes the spec, FreeCAD builds the base plate and the back rest from the phone stand reference build (`agent/data/references/phone-stand/`), the rubber feet come from the catalog, and the assembly with the 200 g phone tips at 0.35 N, under the 0.75 N tap it must take; the MuJoCo push knocks it over.
 Mechanic deepens the base from 60 to 110 mm with `cad_update`, every check runs again and passes (0.81 N, the push only rocks it), then Blender renders it and the bill of materials comes to 3.32 € and 116 g.
 The dashboard's `?demo` replays exactly the drone run from `web/src/events/recording.json`, written by `agent/scripts/record_demo.py`.

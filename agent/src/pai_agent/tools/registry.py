@@ -24,6 +24,7 @@ from pai_agent.tools.sketch import sketch_to_spec
 from pai_agent.agents import delegate
 from pai_agent.tools.gripper import catalog_search, grip_calc, product_brief, simulate_grip
 from pai_agent.tools.firmware import firmware, refresh_after_training
+from pai_agent.tools.electronics import electronics_plan
 from pai_agent.tools.isaac import isaac_lab_status, isaac_lab_train, isaac_sim_render, isaac_test, isaac_train, ssh_setting
 from pai_agent.tools.usd import product_usd
 from pai_agent.jamie_client import live_enabled
@@ -87,6 +88,7 @@ TOOLS = {
     "bom_build": bom_build,
     "build_guide": build_guide,
     "firmware": firmware,
+    "electronics_plan": electronics_plan,
     "jamie_create_tasks": jamie_create_tasks,
     "ui_point_at": ui_point_at,
     "ui_draw": ui_draw,
@@ -675,6 +677,15 @@ SCHEMAS = [
                 "explanation": {"type": "string"},
             },
         },
+    },
+    {
+        "name": "electronics_plan",
+        "description": (
+            "Wiring diagram and power budget from the chosen parts: the supply (battery or USB), switch, regulator, controller, drivers and loads (motors, ESCs, pumps, servos, fans, LEDs, sensors) "
+            "with pins, voltages and currents. Checks every part against its voltage and current rating (for example a 4S battery on a 1S controller, a bare LED on 5 V, a motor on a controller pin) "
+            "and gives average and peak draw, headroom and the runtime on a battery. Call it after bom_build for any product with electronics. explanation is your one sentence for the team."
+        ),
+        "input_schema": {"type": "object", "properties": {"explanation": {"type": "string"}}},
     },
     {
         "name": "jamie_create_tasks",
