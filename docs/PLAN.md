@@ -38,6 +38,7 @@ The team divides responsibilities across the captain, the teammate, and the agen
 - Workstream 1: Browser Simulation, Build Guides, and Live Sourcing
   - Owner: Ansorjon Juraev (@TheWingTheWong)
   - Directories: `web/src/components/`, `agent/src/pai_agent/tools/parts_search*.py`, and `agent/src/pai_agent/tools/build_guide*.py`
+  - Reference: Ready-to-paste prompts and worktree port pairs are documented in docs/TEAMMATE_PROMPTS.md.
   - Responsibilities:
     - 1,024 parallel browser simulations using MuJoCo WASM and Web Workers to train gaits with evolution strategy and learning curves.
     - Stress test with randomized physics evaluating gait survival across 50 trials with varied friction, mass, and motor torque.

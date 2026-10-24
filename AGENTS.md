@@ -77,6 +77,7 @@ The repository is structured into five main directories:
 - `docs/`: Technical specifications.
   - `docs/events.md`: Authoritative wire format contract for HTTP and SSE communication.
   - `docs/PLAN.md`: Day plan, workstream allocations, submission timeline, and tool stack.
+  - `docs/TEAMMATE_PROMPTS.md`: Copy-paste task prompts and port configurations for teammate agent sessions.
 - `runpod/`: Cloud GPU infrastructure scripts.
   - `runpod/setup.sh`: Setup script for NVIDIA Isaac Sim 6.2 and Isaac Lab 3.0 on an RTX 4090 pod.
 
@@ -280,6 +281,7 @@ Adhere strictly to the following collaboration rules:
 ### Git Worktree Recipe
 
 Use git worktrees to keep parallel tasks completely isolated without duplicate full clones.
+Pre-configured worktrees, prompts, and port pairs for teammate tasks are listed in docs/TEAMMATE_PROMPTS.md.
 Clone the repository once to your machine.
 Before starting a new task, fetch the latest default branch:
 
