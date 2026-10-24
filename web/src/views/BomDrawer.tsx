@@ -185,11 +185,13 @@ export function BomDrawer() {
         aria-label="Bill of materials"
       >
         <div className="flex shrink-0 items-center gap-4 px-6 pt-5 pb-4">
-          <div>
+          <div className="min-w-0">
             <h1 className="text-[30px] leading-none font-extrabold tracking-[-0.03em]">Bill of materials</h1>
             <p className="num mt-1.5 text-[16px] font-semibold text-muted">
-              <span className={priceOk ? "text-ok-ink" : "text-fail-ink"}>{fmtEur(bom.total_eur)}</span> of max {fmtEur(targets.price_eur.value)} ·{" "}
-              {fmtGram(weight)}
+              <span className="whitespace-nowrap">
+                <span className={priceOk ? "text-ok-ink" : "text-fail-ink"}>{fmtEur(bom.total_eur)}</span> of max {fmtEur(targets.price_eur.value)}
+              </span>{" "}
+              · <span className="whitespace-nowrap">{fmtGram(weight)}</span>
             </p>
           </div>
           <div className="ml-auto flex shrink-0 items-center gap-4 whitespace-nowrap">
