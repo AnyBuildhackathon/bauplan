@@ -1,7 +1,7 @@
 # Agent tools
 
 Claude builds products by calling tools; it never invents a number that a tool did not compute.
-The backend registers 51 tools in `agent/src/pai_agent/tools/registry.py`, with one schema list (`SCHEMAS`) and one dispatch (`call_tool`) shared by Claude and the offline mock.
+The backend registers 54 tools in `agent/src/pai_agent/tools/registry.py`, with one schema list (`SCHEMAS`) and one dispatch (`call_tool`) shared by Claude and the offline mock.
 This document lists every tool with its inputs, what it returns and emits, and the external software behind it.
 The inputs below are generated from `SCHEMAS`; "(required)" marks required fields.
 Event payloads are specified in [events.md](events.md#tools), and the step each tool lights up on the dashboard is in `_STEP` in the registry.
@@ -94,6 +94,14 @@ See [omniverse.md](omniverse.md) for the GPU host setup, the experiment contract
 | `blender_render` | none | A path-traced studio PNG of the assembled model on a workbench scene, one per version; emits `render`. | Blender headless |
 | `build_guide` | `steps` (required): array | The step-by-step build guide: which scene parts each step uses, tools and minutes; emits `build_guide`. | Claude writes it, the code checks coverage |
 | `firmware` | `explanation`: string | A Betaflight CLI configuration (motor order, rates, trained PID gains) for a drone or an Arduino sketch for a servo product, plus the wiring table; emits `firmware`. | Deterministic templates |
+| `electronics_plan` | `explanation`: string | The wiring diagram and power budget from the chosen parts: supply, switch, regulator, controller, drivers and loads with pins, voltages and currents; checks every part against its voltage and current rating and gives average and peak draw, headroom and battery runtime; emits `electronics`. | Python rules in `tools/electronics.py` and `analysis_more.power_budget` |
+
+## Design optimizer
+
+| Tool | Inputs | Returns and emits | Behind it |
+| --- | --- | --- | --- |
+| `optimize_design` | `goals` (required): array of `lighter`, `cheaper`, `longer_runtime`, `stronger`; `keep`: object (`min_flight_time_min`, `max_weight_g`, `max_price_eur`, `min_thrust_to_weight`, `min_arm_stiffness`); `count`: integer 4 to 8 | Explores drone variants (battery, arm length, plate thickness), each proposed by its own sub-agent in parallel and run through the CadQuery frame mass, `physics_calc`'s numbers, the MuJoCo gust test, prop clearance and the keep limits; returns every variant with pass or fail and the Pareto set; emits `optimize`. | Claude Sonnet 5.5 sub-agents (fixed strategies without a key), CadQuery, MuJoCo |
+| `optimize_apply` | `id`: string; `variant`: string | Builds one variant through `parts_search`, `cad_frame`, `physics_calc`, `simulate_drone`, `blender_render` and `bom_build`, and commits it as the next version. | The normal drone tools |
 
 ## Jamie meeting loop
 

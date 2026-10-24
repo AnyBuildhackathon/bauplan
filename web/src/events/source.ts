@@ -63,7 +63,7 @@ interface SourceState {
   toggleTask: (id: string, done: boolean) => Promise<void>;
   /** Stands in for Jamie's webhook: marks a meeting as running, or as ended (which rebuilds). */
   meetingWebhook: (event: "started" | "ended", meeting: { id: string; title: string }) => Promise<void>;
-  /** Answers Bolzen's question (a contradiction between meetings) with one of its options. */
+  /** Answers Mechanic's question (a contradiction between meetings) with one of its options. */
   answerQuestion: (id: string, answerId: string) => Promise<void>;
   /** Pauses, resumes or stops the build that runs now; it takes effect between tool calls. */
   controlRun: (action: "pause" | "resume" | "stop") => Promise<void>;
@@ -104,7 +104,7 @@ function openLive(onStatus: (s: LiveStatus) => void) {
   const es = new EventSource(apiStreamUrl("/api/events"));
   eventSource = es;
   watchStalls();
-  // The backlog a (re)connect replays is applied without animations or Bolzen speaking it again.
+  // The backlog a (re)connect replays is applied without animations or Mechanic speaking it again.
   let replaying = true;
   es.onopen = () => {
     // EventSource reconnects on its own too; each new connection starts with a backlog.

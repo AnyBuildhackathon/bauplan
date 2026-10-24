@@ -1,3 +1,10 @@
+// The dashboard shell. The access screen shows until the backend answers (and, on the public
+// deployment, the access code is accepted); then the bench: the icon rail, Mechanic's chat on
+// the left and the active view (workbench, library, community, training, logbook) on the right.
+// No component fetches build state itself: events/source.ts streams GET /api/events into the
+// session store (events/store.ts) and every view renders from that store. The hooks mounted in
+// Bench run the background jobs: the camera director, the browser training and stress runners
+// (MuJoCo WASM claims jobs the backend queues), Mechanic's dashboard pilot and learning mode.
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { IconRail } from "./components/IconRail";

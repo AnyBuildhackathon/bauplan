@@ -1,4 +1,10 @@
-"""Curated parts catalog."""
+"""`parts_search`: the curated drone parts catalog (`agent/data/parts.json`) and the choice of one part.
+
+A search filters one category; `select_id` binds a part to the build with a reason. Before a
+part is chosen, earlier Jamie meetings are searched for warnings about it (`tools/jamie.py`),
+so a complaint from a past meeting surfaces before the part is ordered again. Every catalog
+part carries its mass, price, shop link and the date the price was checked.
+"""
 
 from __future__ import annotations
 

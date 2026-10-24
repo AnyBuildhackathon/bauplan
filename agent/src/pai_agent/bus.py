@@ -1,9 +1,17 @@
-"""In-memory fan-out for Server-Sent Events."""
+"""In-memory fan-out for Server-Sent Events: the one channel from the backend to every dashboard.
+
+Every state change is published as one JSON event and kept in `events`, so a client that
+connects late (or reconnects after a drop) receives the whole backlog first and renders the
+same state as a client that watched live; the dashboard therefore never polls and never asks
+for state separately. `subscribe` puts a `replayed` marker after the backlog, only for that
+subscriber, so the client can apply the backlog without animations or speech. `keep=False`
+publishes live-only events that a reconnect must not replay.
+"""
 
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator
 
 
 class EventBus:
@@ -11,8 +19,6 @@ class EventBus:
         self.events: list[dict] = []
         self._subscribers: list[asyncio.Queue] = []
         self._lock = asyncio.Lock()
-        # Sees every published event, for the voice that speaks at build milestones.
-        self.observer: Callable[[dict], None] | None = None
 
     async def publish(self, event: dict, keep: bool = True) -> None:
         """`keep=False` is for live-only events (spoken text as it streams): a reconnect does not replay them."""
@@ -23,8 +29,6 @@ class EventBus:
             queues = list(self._subscribers)
         for queue in queues:
             queue.put_nowait(event)
-        if self.observer is not None:
-            self.observer(event)
 
     async def subscribe(self) -> asyncio.Queue:
         queue: asyncio.Queue = asyncio.Queue()

@@ -1,4 +1,32 @@
-"""Claude tool loop. Without a key, the mock story runs the same tools."""
+"""The Claude tool-use loop that drives a build, and the routing of every run type into it.
+
+`run_prompt`, `run_meeting`, `run_sketch`, `run_reference` and `run_remix` are the entry points
+the session calls. With `ANTHROPIC_API_KEY` they all end in `_run_claude`: the orchestrator
+model (Opus 5.5 by default, `settings.py`) gets Mechanic's system prompt, which lays out the
+engineering flow for any product and the worked drone and gripper flows, plus the tool
+schemas from `tools/registry.py`. `_lead_loop` then runs up to 40 rounds: each round's text is
+shown in the chat, each tool call goes through `call_tool`, and the JSON results go back as
+`tool_result` blocks (`is_error` when the tool returned `ok: false`, so the model reads the
+error and retries with corrected arguments).
+
+Design decisions:
+- The model plans and decides, the tools compute. The prompt forbids stating any number,
+  price or pass that a tool did not return, and requirement rows are recomputed from tool
+  output, not from model text.
+- With delegation on, the check, part-pick and pricing tools are removed from the
+  orchestrator's tool list (`DELEGATED`) and reached through `delegate`, so bounded jobs run on
+  a cheaper sub-agent model with only the tools they need (`agents.py`).
+- Several `cad_part` calls in one round run concurrently (`_PARALLEL`): each printed part's
+  script is written by its own CAD agent, so a four-part product does not wait four times.
+- The system prompt and tool list are identical every round and marked for prompt caching.
+- Every model call has a timeout (`PAI_MODEL_TIMEOUT_S`) and the loop a round limit, so a
+  stuck model ends the run with a message instead of freezing the stage.
+
+Without a key, the same entry points route by keywords to deterministic mock runners
+(`mock_story.py`, `mock_product.py`, `mock_gripper.py`, `mock_lamp.py`, `mock_categories.py`)
+that call the very same tools through the same `call_tool`, so offline runs exercise the real
+CAD, MuJoCo, Blender and Jamie code paths.
+"""
 
 from __future__ import annotations
 

@@ -4,7 +4,7 @@ The backend does not simulate here. `train_in_browser` publishes a queued `train
 event that carries the product spec (parts, masses, thrust, arm length). The first
 dashboard tab that sees it claims the job, builds the MJCF, runs an evolution
 strategy in Web Workers, and posts each generation back to `/api/training/...`.
-Those posts are re-published as `training` events, so every client, Bolzen and the
+Those posts are re-published as `training` events, so every client, Mechanic and the
 panel see the same curve. The final event carries the trained gains.
 """
 

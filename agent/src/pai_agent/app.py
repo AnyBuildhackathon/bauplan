@@ -1,4 +1,17 @@
-"""HTTP surface. Event shapes live in docs/events.md."""
+"""HTTP surface of the backend: FastAPI routes, the SSE stream, the access gate and file serving.
+
+Every route is thin. It validates the body, then hands the work to the one `Session`
+(`session.py`), which owns the build state and starts runs as background tasks; a route that
+starts a build returns `{"status": "started"}` at once and the result arrives as events on
+`GET /api/events`. That stream is the only channel from backend to dashboard: the bus
+(`bus.py`) replays the backlog to a new subscriber, then a `replayed` marker, then live
+events, with a keepalive comment every 15 s so proxies keep the connection open.
+
+Middleware order matters: `AccessGate` (`access.py`) is added before CORS, so it runs
+inside it and a 401 or 429 still carries CORS headers the browser can read. The Gemini Live
+WebSocket, browser training and stress routers live in their own modules and are mounted
+here. Event shapes are specified in docs/events.md, every route is indexed in docs/API.md.
+"""
 
 from __future__ import annotations
 

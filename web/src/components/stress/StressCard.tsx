@@ -1,5 +1,5 @@
 // Stress test result in the chat: the robustness score, one dot per randomized
-// world, the worst world replayed, and Bolzen's sentence on the weak point.
+// world, the worst world replayed, and Mechanic's sentence on the weak point.
 import { useMemo } from "react";
 import { ShieldCheck, Wind } from "lucide-react";
 import { useSession, type Run } from "../../events/store";

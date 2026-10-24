@@ -1,4 +1,11 @@
-"""Helpers shared by the orchestrator and the tools."""
+"""`Ctx`: the handle every tool and runner gets, the build state plus the event bus.
+
+Tools never touch HTTP or the session directly; they read and change `ctx.state`
+(`state.py`) and report through `ctx.emit`, `ctx.chat` and `ctx.step`. That keeps one tool
+implementation usable from the Claude loop, the offline mock runners, the sub-agents and the
+dashboard controls alike. `asker` lets a tool ask the people in the room (`ask_user`) and wait
+for the answer; `lead_id` links sub-agent events to the orchestrator run that spawned them.
+"""
 
 from __future__ import annotations
 

@@ -1,4 +1,14 @@
-"""FreeCAD builds: in the open FreeCAD window over freecad-mcp when it answers, else headless freecadcmd."""
+"""Runs the drone build script in FreeCAD: visibly in the open FreeCAD window, else headless.
+
+`build_in_gui` drives a running FreeCAD over the freecad-mcp XML-RPC add-on (`FREECAD_MCP_URL`,
+port 9875 by default) and builds the drone stage by stage so the audience watches it appear;
+a stage that does not answer in time falls back to headless. `build_with_freecad` runs the same
+`agent/freecad/frame_build.py` in `freecadcmd` with the parameters in a JSON file and reads the
+result (STEP, STL, GLB, FCStd and the FreeCAD-computed mass) back from the output directory.
+The caller (`tools/cad.py`) falls back to CadQuery when neither is available. Using real
+FreeCAD instead of a generated mesh means the output is an editable parametric model with
+real B-rep geometry and a mass computed from volume and density.
+"""
 
 from __future__ import annotations
 

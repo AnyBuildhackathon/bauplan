@@ -1,8 +1,8 @@
 // Adapted from core-oss (github.com/10xapp/core-oss, Apache-2.0),
 // core-web/src/components/SidebarChat/SidebarChat.tsx. Modified: driven by our SSE
-// session store instead of core.so's conversation API, Bolzen's state in the
+// session store instead of core.so's conversation API, Mechanic's state in the
 // header, tool cards inline with the messages (repeats grouped into one card), a
-// speaker toggle for Bolzen's voice, Bevel styling. The scroll handling is kept from core-oss.
+// speaker toggle for Mechanic's voice, Bevel styling. The scroll handling is kept from core-oss.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowDown, CornerDownRight, GitFork, ImagePlus, Maximize2, Minimize2, RotateCcw, Volume2, VolumeX } from "lucide-react";

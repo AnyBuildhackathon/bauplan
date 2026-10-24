@@ -1,4 +1,12 @@
-"""Pointer, drawings, the mascot, and the dashboard controls Mechanic operates. Targets match the 3D scene."""
+"""Tools that operate the dashboard: the 3D pointer, drawings, the mascot and the app controls.
+
+`ui_point_at` and `ui_draw` aim at named targets of the 3D scene (`scene.py`, mirrored in
+docs/events.md), so Mechanic can point at the part that failed a check. `ui_control` presses a
+real control (tabs, views, explode, compare, BOM): the dashboard flies a visible pointer to the
+control and clicks it, so the audience sees what the agent does. `run_test` and `run_rebuild`
+back the run buttons. Targets and controls are validated here and an unknown one returns an
+error the model can correct.
+"""
 
 from __future__ import annotations
 

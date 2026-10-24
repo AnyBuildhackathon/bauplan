@@ -26,3 +26,7 @@ packages = ["src/pai_agent"]
 
 [tool.hatch.build.targets.wheel.sources]
 "src/pai_agent" = "pai_agent"
+
+[tool.pytest.ini_options]
+# tests import the bench package next to src/, so pytest tests works from agent/.
+pythonpath = ["."]

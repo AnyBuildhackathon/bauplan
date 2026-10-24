@@ -1,4 +1,10 @@
-"""STL to GLB, and a tiny PNG writer for the recorded render stand-in."""
+"""Mesh conversion without external dependencies: STL to GLB for the browser, and a tiny PNG writer.
+
+The dashboard renders glTF binary (GLB) with Three.js, while FreeCAD and CadQuery write STL.
+`stl_to_glb` and `stls_to_glb` pack one or more STLs into a GLB with one named node per part,
+so the Model tab can highlight, point at and explode individual parts. `write_solid_png` writes
+the solid-colour stand-in used when no recorded render exists.
+"""
 
 from __future__ import annotations
 

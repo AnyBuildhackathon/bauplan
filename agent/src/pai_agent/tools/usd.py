@@ -1,4 +1,9 @@
-"""Portable USD assembly export. Blender handles meshes; the wrapper adds SI physics."""
+"""`product_usd`: exports the drone assembly as USD with per-part masses in SI units.
+
+Blender converts the meshes; this wrapper adds the physics data Isaac Sim needs (mass in kg,
+metres). The result is zipped because `/files/` serves a single directory level. The same
+export feeds the Isaac jobs in `tools/isaac.py`. Only the drone is supported today.
+"""
 
 from __future__ import annotations
 

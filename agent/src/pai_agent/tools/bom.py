@@ -1,4 +1,12 @@
-"""Bill of materials from the selected parts."""
+"""`bom_build`: the bill of materials from the chosen parts, with where each price comes from.
+
+The drone takes its lines from the selected catalog parts (with the FreeCAD-measured frame
+mass), the gripper from its catalog picks, a generic product from its spec's bought parts plus
+filament for the printed ones. The catalog list is emitted first; with a key, live shop prices
+(`tools/parts_search.py`) replace them line by line and the list is emitted again. Every line
+carries `price_source` (`live`, `catalog` or `estimate`) so the dashboard never shows an
+estimate as a quote.
+"""
 
 from __future__ import annotations
 
