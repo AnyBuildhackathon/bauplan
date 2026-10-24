@@ -1,6 +1,6 @@
 // The build guide: the steps the agent wrote for the bill of materials, one at a time,
 // next to the drone pulled apart. The step's parts glow, earlier parts stay solid and
-// later ones fade. Opened from the bill of materials; arrow keys page, Escape closes.
+// later ones fade. Opened from the bill of materials; Escape closes.
 import { useEffect, useMemo } from "react";
 import { create } from "zustand";
 import { ChevronLeft, ChevronRight, Clock, ListChecks, Package, Wrench, X } from "lucide-react";
@@ -12,19 +12,15 @@ interface GuideUi {
   open: boolean;
   /** Index into the guide's steps. */
   index: number;
-  exploded: boolean;
   show: (open: boolean) => void;
   go: (index: number) => void;
-  setExploded: (exploded: boolean) => void;
 }
 
 export const useGuide = create<GuideUi>((set) => ({
   open: false,
   index: 0,
-  exploded: true,
   show: (open) => set({ open, index: 0 }),
   go: (index) => set({ index }),
-  setExploded: (exploded) => set({ exploded }),
 }));
 
 /** The button the bill of materials shows once a guide exists. */
@@ -47,7 +43,7 @@ const fmtMinutes = (m: number) => `${Number.isInteger(m) ? m : m.toFixed(1)} min
 
 export function BuildGuide() {
   const guide = useSession((s) => s.buildGuide);
-  const { open, index, exploded, show, go, setExploded } = useGuide();
+  const { open, index, show, go } = useGuide();
   const build = useAssembly("latest");
   const steps = guide?.steps ?? [];
   const at = Math.min(index, Math.max(0, steps.length - 1));
@@ -70,17 +66,15 @@ export function BuildGuide() {
   useEffect(() => {
     if (!open) return;
     const key = (e: KeyboardEvent) => {
-      if (e.key === "Escape") show(false);
-      else if (e.key === "ArrowRight") go(Math.min(at + 1, steps.length - 1));
-      else if (e.key === "ArrowLeft") go(Math.max(at - 1, 0));
-      else return;
+      if (e.key !== "Escape") return;
+      show(false);
       // The bill of materials underneath also closes on Escape; this one goes first.
       e.stopImmediatePropagation();
       e.preventDefault();
     };
     window.addEventListener("keydown", key, { capture: true });
     return () => window.removeEventListener("keydown", key, { capture: true });
-  }, [open, at, steps.length, show, go]);
+  }, [open, show]);
 
   if (!open || !guide || !step) return null;
   const elapsed = steps.slice(0, at).reduce((sum, s) => sum + s.minutes, 0);
@@ -108,14 +102,7 @@ export function BuildGuide() {
 
         <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] gap-4 px-6 pb-4">
           <div className="card relative min-h-0 overflow-hidden" data-guide-parts={step.parts.join(" ")}>
-            <ExplodedScene build={build} states={states} explode={exploded ? 1 : 0} />
-            <button
-              type="button"
-              onClick={() => setExploded(!exploded)}
-              className="absolute top-3 right-3 h-9 rounded-full bg-card px-3.5 text-[14px] font-bold text-ink-2 shadow-[var(--shadow-pill)] hover:bg-page-2"
-            >
-              {exploded ? "Assemble" : "Explode"}
-            </button>
+            <ExplodedScene build={build} states={states} />
           </div>
 
           <div className="card scroll-soft flex min-h-0 flex-col overflow-y-auto px-6 pt-5 pb-5">
@@ -170,18 +157,15 @@ export function BuildGuide() {
           </button>
           <ol className="flex flex-1 items-center justify-center gap-2" aria-label="Steps">
             {steps.map((s, i) => (
-              <li key={s.n}>
-                <button
-                  type="button"
-                  onClick={() => go(i)}
-                  aria-label={`Step ${s.n}: ${s.title}`}
-                  aria-current={i === at ? "step" : undefined}
-                  className={`num h-9 min-w-9 rounded-full px-2 text-[14px] font-bold transition ${
-                    i === at ? "bg-agent text-white" : i < at ? "bg-ok-soft text-ok-ink" : "bg-tile text-muted hover:bg-track"
-                  }`}
-                >
-                  {s.n}
-                </button>
+              <li
+                key={s.n}
+                aria-label={`Step ${s.n}: ${s.title}`}
+                aria-current={i === at ? "step" : undefined}
+                className={`num flex h-9 min-w-9 items-center justify-center rounded-full px-2 text-[14px] font-bold transition ${
+                  i === at ? "bg-agent text-white" : i < at ? "bg-ok-soft text-ok-ink" : "bg-tile text-muted"
+                }`}
+              >
+                {s.n}
               </li>
             ))}
           </ol>

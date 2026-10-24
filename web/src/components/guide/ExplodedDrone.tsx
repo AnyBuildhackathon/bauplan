@@ -67,12 +67,12 @@ function useStateMaterial(color: string, state: PartState, opts: { metalness?: n
 }
 
 /** Eases a group from the assembled position to its exploded one. */
-function Floating({ to, explode, children }: { to: [number, number, number]; explode: number; children: ReactNode }) {
+function Floating({ to, children }: { to: [number, number, number]; children: ReactNode }) {
   const ref = useRef<THREE.Group>(null);
   const target = useMemo(() => new THREE.Vector3(), []);
   useFrame(() => {
     if (!ref.current) return;
-    target.set(to[0] * explode, to[1] * explode, to[2] * explode);
+    target.set(to[0], to[1], to[2]);
     ref.current.position.lerp(target, 0.12);
   });
   return <group ref={ref}>{children}</group>;
@@ -221,11 +221,9 @@ export interface ExplodedDroneProps {
   build: Assembly;
   /** State per scene part name; a part that is missing counts as done. */
   states: Record<string, PartState>;
-  /** 0 is assembled, 1 is fully exploded. */
-  explode: number;
 }
 
-export function ExplodedDrone({ build, states, explode }: ExplodedDroneProps) {
+export function ExplodedDrone({ build, states }: ExplodedDroneProps) {
   const { arm, thickness, battery, propDiameter } = build;
   const state = (name: string): PartState => states[name] ?? "done";
   const top = thickness / 2;
@@ -242,11 +240,11 @@ export function ExplodedDrone({ build, states, explode }: ExplodedDroneProps) {
         const propOut = out(SPREAD.propeller);
         return (
           <group key={c.corner} position={[x, top + MOTOR_H / 2, z]}>
-            <Floating to={[motorOut[0], LIFT.motor, motorOut[2]]} explode={explode}>
+            <Floating to={[motorOut[0], LIFT.motor, motorOut[2]]}>
               <Motor name={`motor_${c.corner}`} state={state(`motor_${c.corner}`)} />
             </Floating>
             <group position={[0, MOTOR_H / 2 + 0.002, 0]}>
-              <Floating to={[propOut[0], LIFT.propeller, propOut[2]]} explode={explode}>
+              <Floating to={[propOut[0], LIFT.propeller, propOut[2]]}>
                 <Propeller name={`propeller_${c.corner}`} state={state(`propeller_${c.corner}`)} radius={propDiameter / 2} dir={c.dir} />
               </Floating>
             </group>
@@ -254,12 +252,12 @@ export function ExplodedDrone({ build, states, explode }: ExplodedDroneProps) {
         );
       })}
       <group position={[0, fcY, 0]}>
-        <Floating to={[0, LIFT.flight_controller, 0]} explode={explode}>
+        <Floating to={[0, LIFT.flight_controller, 0]}>
           <FlightController state={state("flight_controller")} />
         </Floating>
       </group>
       <group position={[0, batteryY, 0]}>
-        <Floating to={[0, LIFT.battery, 0]} explode={explode}>
+        <Floating to={[0, LIFT.battery, 0]}>
           <Battery size={battery} state={state("battery")} />
         </Floating>
       </group>
