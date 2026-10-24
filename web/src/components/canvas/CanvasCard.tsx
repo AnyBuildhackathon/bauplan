@@ -60,7 +60,7 @@ function PartModel() {
       </div>
     );
   }
-  return <CadScene url={url} zUp />;
+  return <CadScene url={url} zUp stage />;
 }
 
 export function CanvasCard() {
