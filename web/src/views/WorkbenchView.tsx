@@ -1,13 +1,11 @@
-// Werkbank, the one main screen: Bolzen's chat on the left, the canvas in the
-// middle, and the compact build panel on the right.
-import SidebarChat from "../components/chat/SidebarChat";
+// Werkbank, the one main screen: Mechanic's chat sits beside it (App), the canvas
+// fills the middle, and the requirements and key numbers card stays on the right.
 import { CanvasCard } from "../components/canvas/CanvasCard";
 import { BuildPanel } from "../components/panels/Panels";
 
 export function WorkbenchView() {
   return (
-    <div className="grid h-full min-h-0 grid-cols-[400px_minmax(0,1fr)_380px] gap-4 px-4 pb-4">
-      <SidebarChat />
+    <div className="grid h-full min-h-0 grid-cols-[minmax(0,1fr)_360px] gap-6 px-6 pt-5 pb-5">
       <div className="min-h-0 min-w-0">
         <CanvasCard />
       </div>

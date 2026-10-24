@@ -24,7 +24,7 @@ export function Waveform({ active, bars = 7, className = "" }: { active: boolean
       {Array.from({ length: bars }, (_, i) => (
         <span
           key={i}
-          className="w-[3px] rounded-full bg-agent transition-[height]"
+          className="w-[3px] rounded-full bg-accent transition-[height]"
           style={{
             height: active ? undefined : 4,
             animation: active ? `wave 0.9s ${i * 0.09}s ease-in-out infinite` : undefined,
@@ -42,7 +42,7 @@ export default function SidebarChatInput({
   onSubmit,
   onVoice,
   disabled = false,
-  placeholder = "Say or type what to build or change",
+  placeholder = "Describe what you want to build",
   size = "md",
 }: SidebarChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -143,14 +143,14 @@ export default function SidebarChatInput({
   return (
     <div>
       <div
-        className={`flex items-center gap-2 rounded-[26px] bg-card shadow-[var(--shadow-pill)] ring-1 transition ${
-          listening ? "ring-agent/60" : "ring-line"
-        } ${lg ? "min-h-[72px] py-3 pr-3 pl-6" : "min-h-[60px] py-2.5 pr-2.5 pl-4.5"}`}
+        className={`flex items-end gap-2 rounded-[24px] bg-card shadow-[var(--shadow-pill)] ring-1 transition ${
+          listening ? "ring-accent/50" : "ring-[#e2e2dd]"
+        } ${lg ? "min-h-[80px] py-3 pr-3 pl-6" : "min-h-[96px] pt-4 pr-3 pb-3 pl-5"}`}
       >
         {listening ? (
-          <div className="flex flex-1 items-center gap-3">
+          <div className="flex flex-1 items-center gap-3 self-center">
             <Waveform active bars={lg ? 11 : 7} />
-            <span className={`line-clamp-2 font-semibold ${heard ? "text-ink" : "text-agent-ink"} ${lg ? "text-[20px]" : "text-[15px]"}`}>
+            <span className={`line-clamp-2 font-semibold ${heard ? "text-ink" : "text-accent"} ${lg ? "text-[20px]" : "text-[15px]"}`}>
               {heard || (stt === "reson8" ? "Reson8 is listening…" : "Listening…")}
             </span>
           </div>
@@ -165,8 +165,8 @@ export default function SidebarChatInput({
             name="prompt"
             aria-label="Message to Mechanic"
             data-target="chat_input eingabe"
-            className={`min-w-0 flex-1 resize-none bg-transparent leading-snug text-ink outline-none placeholder:text-faint ${
-              lg ? "text-[20px]" : "text-[15px]"
+            className={`min-w-0 flex-1 resize-none self-start bg-transparent leading-snug text-ink outline-none placeholder:text-muted ${
+              lg ? "text-[20px]" : "text-[17px]"
             }`}
           />
         )}
@@ -174,7 +174,7 @@ export default function SidebarChatInput({
           <button
             type="button"
             onClick={onSubmit}
-            className={`flex shrink-0 items-center justify-center rounded-full bg-ink text-white transition hover:bg-[#333] ${lg ? "h-12 w-12" : "h-10 w-10"}`}
+            className={`flex shrink-0 items-center justify-center rounded-full bg-accent text-white transition hover:brightness-110 ${lg ? "h-12 w-12" : "h-10 w-10"}`}
             title="Send"
           >
             <ArrowUp className={lg ? "h-5 w-5" : "h-4.5 w-4.5"} strokeWidth={2.5} />
@@ -189,15 +189,15 @@ export default function SidebarChatInput({
           }}
           onPointerUp={() => void stopListening()}
           onPointerLeave={() => void stopListening()}
-          className={`flex shrink-0 items-center justify-center rounded-full text-white transition select-none ${
-            listening ? "scale-105 bg-agent shadow-[0_0_0_8px_rgb(255_138_61/0.18)]" : "bg-agent shadow-[0_8px_20px_-8px_rgb(255_138_61/0.8)] hover:brightness-105"
+          className={`flex shrink-0 items-center justify-center rounded-full transition select-none ${
+            listening ? "scale-105 bg-accent text-white shadow-[0_0_0_8px_rgb(31_111_120/0.16)]" : "bg-tile text-ink-2 hover:bg-track hover:text-ink"
           } ${lg ? "h-14 w-14" : "h-10 w-10"}`}
           title="Hold to speak"
         >
-          <Mic className={lg ? "h-6 w-6" : "h-4.5 w-4.5"} strokeWidth={2.4} />
+          <Mic className={lg ? "h-6 w-6" : "h-4.5 w-4.5"} strokeWidth={2} />
         </button>
       </div>
-      <div className={`mt-2 flex items-center justify-between px-2 text-[13px] ${hint ? "text-agent-ink" : "text-faint"}`}>
+      <div className={`mt-2 flex items-center justify-between px-2 text-[13px] ${hint ? "text-agent-ink" : "text-muted"}`}>
         <span>{hint ?? (stt === "none" ? "Type and press Enter" : "Hold space to speak")}</span>
         {!hint && <span>{stt === "reson8" ? "Reson8 · English" : stt === "browser" ? "Browser · English" : ""}</span>}
       </div>

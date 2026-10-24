@@ -79,8 +79,8 @@ function ToolCallPartRenderer({ item }: { item: Extract<ChatItem, { kind: "tool"
   const duration = item.endedAt && !item.instant ? item.endedAt - item.at : null;
   return (
     <div
-      className={`flex items-center gap-2.5 rounded-2xl px-3 py-2.5 ${
-        item.phase === "running" ? "bg-agent-soft" : item.phase === "error" ? "bg-fail-soft" : "bg-tile"
+      className={`flex items-center gap-2.5 rounded-[14px] px-3 py-2.5 ${
+        item.phase === "running" ? "bg-agent-soft" : item.phase === "error" ? "bg-fail-soft" : "bg-page-2"
       }`}
     >
       <PhaseIcon phase={item.phase} />
@@ -97,7 +97,7 @@ function ToolCallPartRenderer({ item }: { item: Extract<ChatItem, { kind: "tool"
 
 function JamiePartRenderer({ item }: { item: Extract<ChatItem, { kind: "jamie" }> }) {
   return (
-    <div className="flex items-center gap-2.5 rounded-2xl bg-lavender/60 px-3 py-2.5">
+    <div className="flex items-center gap-2.5 rounded-[14px] bg-page-2 px-3 py-2.5 ring-1 ring-line">
       <PhaseIcon phase={item.phase} />
       <div className="min-w-0 flex-1">
         <div className="text-[14px] font-semibold text-ink-2">
@@ -143,7 +143,7 @@ function BomPartRenderer({ item }: { item: Extract<ChatItem, { kind: "bom" }> })
     <button
       type="button"
       onClick={() => setBomOpen(true)}
-      className="group flex w-full items-center gap-3 rounded-2xl bg-tile p-3 text-left"
+      className="group flex w-full items-center gap-3 rounded-[14px] bg-page-2 p-3 text-left"
     >
       <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white shadow-[var(--shadow-pill)]">
         <Boxes className="h-5 w-5 text-ink-2" />
@@ -162,7 +162,7 @@ function TrainingPartRenderer({ item }: { item: Extract<ChatItem, { kind: "train
   const phase = item.status === "done" ? "ok" : item.status === "failed" || item.status === "offline" ? "error" : "running";
   const title = { queued: "Training queued", running: "Training running", done: "Training done", failed: "Training stopped", offline: "Training offline" }[item.status];
   return (
-    <button type="button" onClick={() => setView("training")} className="group flex w-full items-center gap-2.5 rounded-2xl bg-tile px-3 py-2.5 text-left">
+    <button type="button" onClick={() => setView("training")} className="group flex w-full items-center gap-2.5 rounded-[14px] bg-page-2 px-3 py-2.5 text-left">
       <PhaseIcon phase={phase} />
       <div className="min-w-0 flex-1">
         <div className="text-[14px] font-semibold text-ink-2">{title}</div>
@@ -176,7 +176,7 @@ function TrainingPartRenderer({ item }: { item: Extract<ChatItem, { kind: "train
 function WarningPartRenderer({ item }: { item: Extract<ChatItem, { kind: "warning" }> }) {
   const w = item.warning;
   return (
-    <div className="rounded-2xl bg-agent-soft px-3 py-2.5">
+    <div className="rounded-[14px] bg-agent-soft px-3 py-2.5">
       <div className="flex items-center gap-2 text-[14px] font-bold text-agent-ink">
         <AlertTriangle className="h-4.5 w-4.5 shrink-0" /> Warning from {w.meeting_title}
       </div>
@@ -256,7 +256,7 @@ function VersionPartRenderer({ item }: { item: Extract<ChatItem, { kind: "versio
   if (!v) return null;
   const fmt = (value: number | string, unit: string) => (typeof value === "number" ? `${fmtNum(value, unit === "€" ? 2 : 1)} ${unit}` : value);
   return (
-    <button type="button" onClick={() => selectVersion(null)} className="w-full rounded-2xl bg-ok-soft p-3 text-left">
+    <button type="button" onClick={() => selectVersion(null)} className="w-full rounded-[14px] bg-card p-3 text-left ring-1 ring-line">
       <div className="flex items-center gap-2 text-[14px] font-bold text-ok-ink">
         <GitCompareArrows className="h-4.5 w-4.5" /> Version {v.n} · from {v.meeting_title}
       </div>
@@ -291,7 +291,7 @@ function VersionPartRenderer({ item }: { item: Extract<ChatItem, { kind: "versio
 /** Consecutive finished calls of one tool, such as the five part choices, as one card. */
 export function ToolGroupRenderer({ items }: { items: Extract<ChatItem, { kind: "tool" }>[] }) {
   return (
-    <div className="rounded-2xl bg-tile px-3 py-2.5">
+    <div className="rounded-[14px] bg-page-2 px-3 py-2.5">
       <div className="mb-1 flex items-center gap-2.5">
         <PhaseIcon phase="ok" />
         <span className="text-[14px] font-semibold text-ink-2">{getToolLabel(items[0].name, "ok")}</span>
@@ -308,11 +308,24 @@ export function ToolGroupRenderer({ items }: { items: Extract<ChatItem, { kind: 
   );
 }
 
+/** Tool calls in a row, folded into one quiet progress line while tool details are hidden. */
+export function ProgressLineRenderer({ items }: { items: Extract<ChatItem, { kind: "tool" }>[] }) {
+  const running = items.filter((i) => i.phase === "running").at(-1);
+  const failed = items.some((i) => i.phase === "error");
+  const names = [...new Set(items.map((i) => i.name))];
+  return (
+    <div className="flex min-w-0 items-center gap-2 py-0.5 pl-9 text-[13px] text-muted" data-target="tool_progress">
+      <PhaseIcon phase={running ? "running" : failed ? "error" : "ok"} />
+      <span className="truncate">{running ? getToolLabel(running.name, "running") : names.join(" · ")}</span>
+    </div>
+  );
+}
+
 /** Several Jamie writes in a row (tags, note, tasks) as one card. */
 export function JamieGroupRenderer({ items }: { items: Extract<ChatItem, { kind: "jamie" }>[] }) {
   const local = items.some((item) => /lokale Outbox|local outbox/.test(item.detail));
   return (
-    <div className="rounded-2xl bg-lavender/60 px-3 py-2.5">
+    <div className="rounded-[14px] bg-page-2 px-3 py-2.5 ring-1 ring-line">
       <div className="mb-1 flex items-center gap-2 text-[14px] font-bold text-jamie">
         <NotebookPen className="h-4 w-4" /> Jamie
         {local && <span className="ml-auto rounded-full bg-white/70 px-2 py-0.5 text-[12px] font-semibold text-muted">local outbox</span>}
@@ -342,10 +355,10 @@ function AgentPartRenderer({ item }: { item: Extract<ChatItem, { kind: "agent" }
   const phase = agent.status === "running" ? "running" : agent.status === "error" ? "error" : "ok";
   const lead = agent.role === "orchestrator";
   return (
-    <div className={`rounded-2xl px-3 py-2.5 ${lead ? "bg-lavender/60" : "bg-tile"}`} data-target={`agent:${agent.role}`}>
+    <div className={`rounded-[14px] px-3 py-2.5 ${lead ? "bg-card ring-1 ring-line" : "bg-page-2"}`} data-target={`agent:${agent.role}`}>
       <div className="flex items-center gap-2">
         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white shadow-[var(--shadow-pill)]">
-          <Icon className={`h-4 w-4 ${lead ? "text-jamie" : "text-ink-2"}`} />
+          <Icon className={`h-4 w-4 ${lead ? "text-accent" : "text-ink-2"}`} />
         </span>
         <div className="min-w-0 flex-1">
           <div className="truncate text-[14px] font-bold text-ink">

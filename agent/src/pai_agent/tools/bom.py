@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from pai_agent.context import Ctx, de
 from pai_agent.scene import PART_CATEGORIES
+from pai_agent.tools.parts_search import catalog_line, live_lines, live_prices_enabled
 
 
 async def bom_build(ctx: Ctx, args: dict) -> dict:
@@ -32,16 +35,7 @@ async def bom_build(ctx: Ctx, args: dict) -> dict:
                 "url": part["url"],
             }
         )
-    total = round(sum(item["unit_price_eur"] * item["qty"] for item in items), 2)
-    bom = {
-        "items": items,
-        "total_eur": total,
-        "stl_path": ctx.state.stl_path or "",
-    }
-    ctx.state.bom = bom
-    await ctx.emit({"type": "bom", **bom})
-    detail = "Bill of materials €" + de(total, 2) + ", prices are samples"
-    return {"ok": True, "detail": detail, **bom}
+    return await _priced_bom(ctx, items, lambda total: "Bill of materials €" + de(total, 2) + ", prices are samples")
 
 
 async def _gripper_bom(ctx: Ctx) -> dict:
@@ -79,11 +73,62 @@ async def _gripper_bom(ctx: Ctx) -> dict:
                 "url": part["url"],
             }
         )
-    total = round(sum(item["unit_price_eur"] * item["qty"] for item in items), 2)
-    bom = {"items": items, "total_eur": total, "stl_path": state.stl_path or ""}
-    state.bom = bom
+    return await _priced_bom(ctx, items, lambda total: "Bill of materials " + f"{total:.2f}" + " €, prices are samples")
+
+
+async def _priced_bom(ctx: Ctx, items: list[dict], catalog_detail: Callable[[float], str]) -> dict:
+    """Emit the catalog list first, then the live-priced one when a key is set."""
+
+    live = live_prices_enabled()
+    bom = _bom(ctx, [catalog_line(item) for item in items], "searching" if live else "catalog")
     await ctx.emit({"type": "bom", **bom})
-    return {"ok": True, "detail": "Bill of materials " + f"{total:.2f}" + " €, prices are samples", **bom}
+    if live:
+        await ctx.emit({"type": "tool", "name": "bom_build", "status": "running", "detail": "Searching shop prices"})
+        bom = _bom(ctx, await live_lines(items), "live")
+        found = sum(1 for item in bom["items"] if item["price_source"] == "live")
+        if not found:
+            bom["prices"] = "catalog"
+        await ctx.emit({"type": "bom", **bom})
+        await _sync_metrics(ctx, bom["total_eur"])
+        detail = "Bill of materials " + f"{bom['total_eur']:.2f}" + " €, live prices for " + str(found) + " of " + str(len(items)) + " lines"
+    else:
+        detail = catalog_detail(bom["total_eur"])
+    return {"ok": True, "detail": detail, **bom}
+
+
+def _bom(ctx: Ctx, items: list[dict], prices: str) -> dict:
+    total = round(sum(item["unit_price_eur"] * item["qty"] for item in items), 2)
+    bom = {
+        "items": items,
+        "total_eur": total,
+        "stl_path": ctx.state.stl_path or "",
+        "prices": prices,
+    }
+    ctx.state.bom = bom
+    return bom
+
+
+async def _sync_metrics(ctx: Ctx, total: float) -> None:
+    """The key numbers and the budget check follow the live total."""
+
+    metrics = ctx.state.metrics
+    if "price_eur" not in metrics or abs(float(metrics["price_eur"]) - total) < 0.005:
+        return
+    metrics["price_eur"] = total
+    if ctx.state.product == "gripper":
+        from pai_agent.tools.gripper import emit_grip_metrics
+
+        await emit_grip_metrics(ctx)
+        return
+    await ctx.emit(
+        {
+            "type": "metrics",
+            "weight_g": metrics["weight_g"],
+            "thrust_to_weight": metrics["thrust_to_weight"],
+            "flight_time_min": metrics["flight_time_min"],
+            "price_eur": total,
+        }
+    )
 
 
 async def _generic_bom(ctx: Ctx) -> dict:
@@ -133,12 +178,10 @@ async def _generic_bom(ctx: Ctx) -> dict:
                     "category": part["id"],
                 }
             )
-    total = round(sum(item["unit_price_eur"] * item["qty"] for item in items), 2)
-    bom = {"items": items, "total_eur": total, "stl_path": state.stl_path or ""}
-    state.bom = bom
-    await ctx.emit({"type": "bom", **bom})
     estimated = sum(1 for item in items if item["price_source"] == "estimated" and item["shop"] != "printed")
-    detail = "Bill of materials " + f"{total:.2f}" + " €, catalog prices are samples"
-    if estimated:
-        detail += ", " + str(estimated) + " estimated"
-    return {"ok": True, "detail": detail, **bom}
+
+    def detail(total: float) -> str:
+        text = "Bill of materials " + f"{total:.2f}" + " €, catalog prices are samples"
+        return text + (", " + str(estimated) + " estimated" if estimated else "")
+
+    return await _priced_bom(ctx, items, detail)
