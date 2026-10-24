@@ -7,6 +7,7 @@ import { fmtNum } from "../../lib/format";
 import { useSelectedVersion, useVersions } from "../../lib/hooks";
 import { TrendChart } from "../ui/TrendChart";
 import { GripSimView } from "./GripSimView";
+import { RigidSimView } from "./RigidSimView";
 import { SimScene, trajectoryBounds } from "./Scenes";
 import { seek, setPlaying, useSimClockDriver, useSimTime } from "./simClock";
 
@@ -39,8 +40,9 @@ function useWidth<T extends HTMLElement>() {
 }
 
 export function SimView() {
-  const grip = useSelectedVersion()?.run.kind === "grip";
-  return grip ? <GripSimView /> : <HoverSimView />;
+  const kind = useSelectedVersion()?.run.kind;
+  if (kind === "rigid") return <RigidSimView />;
+  return kind === "grip" ? <GripSimView /> : <HoverSimView />;
 }
 
 function HoverSimView() {
@@ -57,7 +59,7 @@ function HoverSimView() {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
         <p className="text-[18px] font-semibold text-ink-2">No simulation run yet</p>
-        <p className="max-w-sm text-[15px] text-muted">Mechanic tests in MuJoCo once the parts and the frame are in. Every run plays back here.</p>
+        <p className="max-w-sm text-[15px] text-muted">Mechanic tests the build in MuJoCo once the parts stand. Every run plays here.</p>
       </div>
     );
   }

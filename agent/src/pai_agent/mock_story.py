@@ -1,19 +1,33 @@
 """Deterministic demo. Same tools as the Claude loop, fixed choices.
 
-run_mock builds v1 from the kickoff, run_review builds the next version from a review.
+The kickoff arrives at the reference micro build, the $59 toothpick from Mediocre Nerd's
+"Build a Micro FPV Drone" video: Twiglet 2" carbon frame, 1103 15000KV motors, Gemfan 2020
+four-blade props, Caddx Ant camera, BetaFPV Matrix 1S 5in1 AIO, canopy with battery holder,
+M1.4 bolts and a 1S pack. run_mock builds v1 from the kickoff, run_review builds the next
+version from a review.
 """
 
 from __future__ import annotations
 
 import asyncio
-import math
 
-from pai_agent.context import Ctx, de
 from pai_agent.env import pace_seconds
+from pai_agent.context import Ctx
 from pai_agent.meetings import fmt_number, short_date
 from pai_agent.tools.registry import call_tool
 
 _UNITS = {"Minuten": "min", "minutes": "min"}
+
+# The Twiglet's arm, centre to motor shaft, from its ~85 mm wheelbase: 2" props need 39 mm.
+TWIGLET_ARM_MM = 42.5
+# What the agent tries first, to keep the quad compact; the 51 mm props touch there.
+COMPACT_ARM_MM = 34.0
+FRAME_PLATE_MM = 2.0
+MOTOR_BOLT_CIRCLE_MM = 6.6
+
+
+def en(value: float, digits: int) -> str:
+    return f"{value:.{digits}f}"
 
 
 async def _beat() -> None:
@@ -36,13 +50,14 @@ async def _say(ctx: Ctx, state: str, say: str, chat: str | None = None) -> None:
 
 def _numbers(metrics: dict) -> str:
     return (
-        de(metrics["weight_g"], 1)
+        en(metrics["weight_g"], 1)
         + " g, thrust-to-weight "
-        + de(metrics["thrust_to_weight"], 2)
+        + en(metrics["thrust_to_weight"], 2)
         + ", "
-        + de(metrics["flight_time_min"], 1)
-        + " min, €"
-        + de(metrics["price_eur"], 2)
+        + en(metrics["flight_time_min"], 1)
+        + " min, "
+        + en(metrics["price_eur"], 2)
+        + " €"
     )
 
 
@@ -56,10 +71,17 @@ def _unit(raw: str) -> str:
     return _UNITS.get(raw, raw)
 
 
-def _tip_speed(part: dict) -> float:
-    """Idle blade-tip speed in m/s: KV times volts is rpm, times the propeller circumference."""
+def _part(part_id: str) -> dict:
+    from pai_agent.tools.parts import catalog
 
-    return float(part["kv"]) * 3.8 * math.pi * 0.040 / 60.0
+    return next(p for p in catalog()["parts"] if p["id"] == part_id)
+
+
+async def _pick(ctx: Ctx, category: str, query: str, part_id: str, reason: str, because: str = "") -> None:
+    args = {"category": category, "query": query, "select_id": part_id, "reason": reason}
+    if because:
+        args["because"] = because
+    await _need(ctx, "parts_search", args)
 
 
 async def _build_tail(ctx: Ctx, meeting_id: str, label: str) -> dict:
@@ -72,24 +94,34 @@ async def _build_tail(ctx: Ctx, meeting_id: str, label: str) -> dict:
         await _say(
             ctx,
             "erklaert",
-            "Frame in FreeCAD. Compact first.",
-            "Now the frame in FreeCAD: 28 mm from the center to the motor shaft, 2 mm thick, 6.6 mm bolt circle for the 1102s.",
+            "The frame in FreeCAD. Compact first.",
+            "Now the Twiglet frame in FreeCAD: "
+            + en(COMPACT_ARM_MM, 0)
+            + " mm from the centre to the motor shaft, "
+            + en(FRAME_PLATE_MM, 0)
+            + " mm carbon, a "
+            + en(MOTOR_BOLT_CIRCLE_MM, 1)
+            + " mm bolt circle for the 1103s.",
         )
-        tight = await call_tool(ctx, "cad_frame", {"arm_length_mm": 28, "thickness_mm": 2, "motor_spacing_mm": 6.6})
+        tight = await call_tool(ctx, "cad_frame", {"arm_length_mm": COMPACT_ARM_MM, "thickness_mm": FRAME_PLATE_MM, "motor_spacing_mm": MOTOR_BOLT_CIRCLE_MM})
         if tight.get("ok") is False:
-            await _say(ctx, "besorgt", "Too tight. The propellers hit each other.", tight["error"] + " I will use 36 mm, which leaves 11 mm of clearance.")
-        arm = 36.0
-    cad = await _need(ctx, "cad_frame", {"arm_length_mm": arm, "thickness_mm": 2, "motor_spacing_mm": 6.6})
+            await _say(
+                ctx,
+                "besorgt",
+                "Too tight. The props would hit each other.",
+                tight["error"] + " I take the Twiglet's " + en(TWIGLET_ARM_MM, 1) + " mm arm, the 2-inch frame from the video.",
+            )
+        arm = TWIGLET_ARM_MM
+    cad = await _need(ctx, "cad_frame", {"arm_length_mm": arm, "thickness_mm": FRAME_PLATE_MM, "motor_spacing_mm": MOTOR_BOLT_CIRCLE_MM})
     await ctx.step("cad", "done")
-    await _need(ctx, "ui_point_at", {"target": "frame", "label": "Frame " + de(cad["mass_g"], 1) + " g"})
+    await _need(ctx, "ui_point_at", {"target": "frame", "label": "Frame " + en(cad["mass_g"], 1) + " g"})
     metrics = await _need(ctx, "physics_calc", {})
     await ctx.chat(
         "agent",
-        "The frame weighs "
-        + de(cad["mass_g"], 1)
-        + " g of PLA according to "
-        + ("FreeCAD" if cad["source"] == "freecad" else "CadQuery")
-        + ". With the real parts: "
+        ("FreeCAD" if cad["source"] == "freecad" else "CadQuery")
+        + " weighs the carbon frame at "
+        + en(cad["mass_g"], 1)
+        + " g. With the real parts: "
         + _numbers(metrics)
         + ".",
     )
@@ -99,7 +131,7 @@ async def _build_tail(ctx: Ctx, meeting_id: str, label: str) -> dict:
     rendered = await _need(ctx, "blender_render", {})
     await ctx.step("render", "done")
     if rendered.get("status") == "offline":
-        await _say(ctx, "ruhig", "Blender is missing here. The STL is enough to print.")
+        await _say(ctx, "ruhig", "Blender is missing here. The STEP is enough to check the frame.")
     else:
         await _say(ctx, "erklaert", "Blender rendered " + label + " in the studio.")
 
@@ -117,7 +149,7 @@ async def _build_tail(ctx: Ctx, meeting_id: str, label: str) -> dict:
 async def run_mock(ctx: Ctx, meeting_id: str = "") -> None:
     await _beat()
     await ctx.step("meeting", "running")
-    await _say(ctx, "denkt", "Meeting first. Otherwise we optimize into the blue.")
+    await _say(ctx, "denkt", "The meeting first. Otherwise we optimise blind.")
     await _need(ctx, "jamie_templates", {})
     requirements = await _need(ctx, "jamie_requirements", {"meeting_id": meeting_id})
     kickoff_id = requirements["meeting_id"]
@@ -126,71 +158,51 @@ async def run_mock(ctx: Ctx, meeting_id: str = "") -> None:
         str(len(requirements["requirements"]))
         + " requirements from “"
         + requirements["title"]
-        + "”. Budget, flight time and weight sit in the Hardware requirements template, each with the sentence and who said it. I created the kickoff and review templates in Jamie myself.",
+        + "”. Budget, flight time and weight are in the Hardware-Anforderungen template, each with the sentence and who said it. I created the kickoff and review templates in Jamie myself.",
     )
     await _need(ctx, "ui_point_at", {"target": "requirements", "label": requirements["title"]})
-    motors = await _need(ctx, "jamie_search", {"query": "1102"})
+    motors = await _need(ctx, "jamie_search", {"query": "1103"})
     funfly = await _need(ctx, "jamie_search", {"query": "FunFly"})
     warned = any(meeting["quotes"] for meeting in funfly["meetings"])
     if motors["meetings"] and warned:
         await _say(
             ctx,
             "erklaert",
-            "Last week the 22000KV flew cleanly. Someone warned about the FunFly.",
-            "Jamie has it: in the flight test on 17 Oct the 1102 at 22000KV hovered cleanly. In the workshop note from 2 Sep, Lea warns against the FunFly 4S on the 1102s. I will run the numbers once anyway, or nobody believes it.",
+            "Last week the 1103s hovered cleanly. Lea warned about the FunFly.",
+            "Jamie has it: in the flight test on 17.10. the 1103 15000KV with Gemfan 2020 props hovered cleanly. In the workshop note from 2.9. Lea warns against the FunFly 4S on the 1103s. I run the numbers anyway, or nobody believes it.",
         )
     else:
         await _say(
             ctx,
             "denkt",
-            "No old notes on these parts. I will check every number.",
-            "Jamie has no earlier meetings about the 1102s or the FunFly. Then I check every part myself.",
+            "No earlier notes on these parts. I check everything myself.",
+            "Jamie has no earlier meetings on the 1103s or the FunFly. Then I check every part myself.",
         )
     await ctx.step("meeting", "done")
 
     await _beat()
     await ctx.step("teile", "running")
-    await _say(ctx, "denkt", "Ten minutes sounds like a big battery. That is the trap.")
-    await _need(
+    await _say(ctx, "denkt", "Eight minutes sounds like a big battery. That is the trap.")
+    motor = _part("generic-1103-15000kv")
+    await _pick(ctx, "motor", "1103", motor["id"], "Hovered cleanly in last week's flight test, " + en(float(motor["thrust_g"]), 0) + " g thrust per motor.")
+    await _pick(ctx, "propeller", "2020", "gemfan-2020-4", "The 2-inch four-blade the 1103 thrust figure is measured with.")
+    await _pick(ctx, "battery", "FunFly", "tattu-funfly-4s-1300", "1300 mAh looks like plenty of flight time. I check that.", "flight_time")
+    controller = _part("betafpv-matrix-1s-5in1-v2")
+    await _pick(
         ctx,
-        "parts_search",
-        {"category": "motor", "query": "22000", "select_id": "betafpv-1102-22000kv", "reason": "Flew cleanly in last week's flight test, 46.3 g of thrust per motor."},
+        "flight_controller",
+        "Matrix",
+        controller["id"],
+        "Flight controller, four ESCs, ELRS receiver and video transmitter on one board, " + en(float(controller["mass_g"]), 1) + " g.",
+        "weight",
     )
-    await _need(
-        ctx,
-        "parts_search",
-        {"category": "propeller", "query": "1635", "select_id": "gemfan-1635-3", "reason": "BetaFPV measures the 1102 thrust on this propeller."},
-    )
-    await _need(
-        ctx,
-        "parts_search",
-        {
-            "category": "battery",
-            "query": "FunFly",
-            "select_id": "tattu-funfly-4s-1300",
-            "because": "flight_time",
-            "reason": "1300 mAh looks like ten minutes. I will check it.",
-        },
-    )
-    await _need(
-        ctx,
-        "parts_search",
-        {
-            "category": "flight_controller",
-            "query": "AIO",
-            "select_id": "betafpv-f4-1s-12a-aio-v3",
-            "because": "weight",
-            "reason": "Controller and four ESCs on one board, 4.7 g.",
-        },
-    )
-    await _need(
-        ctx,
-        "parts_search",
-        {"category": "frame", "query": "frame", "select_id": "printed-whoop-frame", "because": "printable", "reason": "Comes off your printer, as an STL."},
-    )
+    await _pick(ctx, "frame", "Twiglet", "twiglet-2in-carbon", "The 2-inch carbon toothpick frame; I model it in FreeCAD for STL and STEP.", "printable")
+    await _pick(ctx, "camera", "Caddx", "caddx-ant", "Nano FPV camera that fits the canopy.")
+    await _pick(ctx, "canopy", "canopy", "toothpick-canopy-holder", "Holds the camera and the 1S pack under the frame.")
+    await _pick(ctx, "hardware", "M1.4", "m14-bolts", "Motor bolts, 3 mm, so they stop short of the windings.")
     first = await _need(ctx, "physics_calc", {})
     battery_g = float(ctx.state.selected["battery"]["mass_g"])
-    await ctx.chat("agent", "First pass: " + _numbers(first) + ". The battery alone weighs " + de(battery_g, 1) + " g. " + " ".join(first["warnings"]))
+    await ctx.chat("agent", "First pass: " + _numbers(first) + ". The battery alone weighs " + en(battery_g, 1) + " g. " + " ".join(first["warnings"]))
 
     await _beat()
     await ctx.step("simulation", "running")
@@ -199,44 +211,41 @@ async def run_mock(ctx: Ctx, meeting_id: str = "") -> None:
     await _say(
         ctx,
         "besorgt",
-        "The gust pushes it into the ground. The battery is the lump.",
+        "The gust pushes it to the floor. The battery is the brick.",
         ("Lea was right: " if warned else "")
-        + "At a thrust-to-weight of "
-        + de(failed["thrust_to_weight"], 2)
-        + " there is no reserve for the gust. The battery is the lump.",
+        + "at thrust-to-weight "
+        + en(failed["thrust_to_weight"], 2)
+        + " there is no reserve for the gust. The battery is the brick.",
     )
     await _need(ctx, "ui_point_at", {"target": "battery", "label": ctx.state.selected["battery"]["name"]})
     await _need(ctx, "ui_draw", {"kind": "halo", "target": "battery", "text": "too heavy"})
-    await _need(ctx, "ui_draw", {"kind": "arrow", "target": "battery", "text": de(battery_g, 1) + " g"})
-    await _need(ctx, "ui_draw", {"kind": "circle", "target": "battery", "text": "4S on a 1S motor"})
+    await _need(ctx, "ui_draw", {"kind": "arrow", "target": "battery", "text": en(battery_g, 1) + " g"})
+    await _need(ctx, "ui_draw", {"kind": "circle", "target": "battery", "text": "4S on 1S motors"})
     await _need(
         ctx,
         "ui_draw",
-        {"kind": "note", "target": "battery", "text": "Thrust " + de(first["thrust_g"], 0) + " g, mass " + de(first["weight_g"], 0) + " g"},
+        {"kind": "note", "target": "battery", "text": "thrust " + en(first["thrust_g"], 0) + " g, mass " + en(first["weight_g"], 0) + " g"},
     )
 
     await _beat()
     await ctx.step("teile", "running")
+    pack = _part("tattu-rline-1s-550")
     await _say(
         ctx,
         "erklaert",
-        "Off 4S. Same motors, different battery.",
-        "I only swap the battery: Lava 1S 550, 14 g, 3.8 V. The 1102s stay. Their datasheet thrust is for exactly this voltage.",
+        "Down from 4S. Same motors, other battery.",
+        "I only swap the battery: "
+        + pack["name"]
+        + ", "
+        + en(float(pack["mass_g"]), 1)
+        + " g, "
+        + en(float(pack["voltage_v"]), 1)
+        + " V. The 1103s stay; their thrust figure is for exactly this voltage.",
     )
-    await _need(
-        ctx,
-        "parts_search",
-        {
-            "category": "battery",
-            "query": "Lava",
-            "select_id": "betafpv-lava-1s-550",
-            "because": "weight",
-            "reason": "14 g instead of 150 g, and 1S matches the motors.",
-        },
-    )
+    await _pick(ctx, "battery", "R-Line", pack["id"], en(float(pack["mass_g"]), 0) + " g instead of 150 g, and 1S suits the motors.", "weight")
     second = await _need(ctx, "physics_calc", {})
     await ctx.step("teile", "done")
-    await ctx.chat("agent", "Updated: " + _numbers(second) + ". Flight time is a datasheet estimate, not a flight log.")
+    await ctx.chat("agent", "New: " + _numbers(second) + ". The flight time is a hover estimate from the data sheets, not a logbook.")
 
     await _beat()
     await ctx.step("simulation", "running")
@@ -248,16 +257,16 @@ async def run_mock(ctx: Ctx, meeting_id: str = "") -> None:
     await _need(ctx, "ui_draw", {"kind": "halo", "target": "battery", "text": "fits"})
 
     version = await _build_tail(ctx, kickoff_id, "v1")
-    await _need(ctx, "ui_point_at", {"target": "timeline", "label": "v1 is on the kickoff"})
+    await _need(ctx, "ui_point_at", {"target": "timeline", "label": "v1 hangs on the kickoff"})
     await _say(
         ctx,
         "freut_sich",
-        "v1 is in. Note, tags and tasks are in Jamie.",
+        "v1 is done. Note, tags and tasks are in Jamie.",
         "Version 1 hangs on the kickoff: "
         + version["detail"].split(" · ", 1)[-1]
-        + ". Jamie has a note, the tags drohne and drohne-v1, and "
+        + ". Jamie has a note, the tags drohne and drohne-v1 and "
         + str(version["tasks"]["task_count"])
-        + " order tasks for Lea and Ben. Prices are samples. Check them before ordering.",
+        + " order tasks for Lea and Ben. Prices are samples; check them before ordering.",
     )
     ctx.state.finished = True
 
@@ -266,7 +275,7 @@ async def run_review(ctx: Ctx, meeting_id: str) -> None:
     ctx.state.finished = False
     await _beat()
     await ctx.step("meeting", "running")
-    await _say(ctx, "denkt", "The review is over. I am reading what changed.")
+    await _say(ctx, "denkt", "The review is over. I read what changed.")
     review = await _need(ctx, "jamie_meeting", {"meeting_id": meeting_id})
     lines = []
     for change in review["changes"]:
@@ -279,7 +288,7 @@ async def run_review(ctx: Ctx, meeting_id: str) -> None:
     accept: list[str] = [change["id"] for change in review["changes"]]
     for conflict in review["conflicts"]:
         old, new = conflict["old"], conflict["new"]
-        await _need(ctx, "mascot_say", {"state": "denkt", "say": "That contradicts the kickoff. I had better ask."})
+        await _need(ctx, "mascot_say", {"state": "denkt", "say": "That contradicts the kickoff. Better ask."})
         new_value = fmt_number(float(new["limit"])) + " " + _unit(conflict["unit"])
         old_value = fmt_number(float(old["limit"])) + " " + _unit(conflict["unit"])
         answer = await _need(
@@ -319,114 +328,79 @@ async def run_review(ctx: Ctx, meeting_id: str) -> None:
         await _say(
             ctx,
             "erklaert",
-            "“The motor from last week” is the 22000KV from the flight test.",
-            "“The motor from last week”: Jamie has the flight test from "
+            "“Last week's motor” is the one from the flight test.",
+            "“Last week's motor”: Jamie has the flight test on "
             + short_date(refers["date"])
             + ", "
             + _who(refers["quote"])
             + ": “"
             + refers["quote"]["text"]
-            + "” That is the "
+            + "” That is "
             + refers["name"]
-            + ", the same motor in v1.",
-        )
-    elif complaint and complaint["last_week"]:
-        await _say(
-            ctx,
-            "denkt",
-            "I cannot find a meeting from last week. They probably mean the v1 motor.",
-            "Jamie has no meeting from last week that names a motor. I will assume they mean the motor from v1: "
-            + ctx.state.selected["motor"]["name"]
-            + ".",
+            + ", the motor in v1.",
         )
     await ctx.step("meeting", "done")
 
     await _beat()
     await ctx.step("teile", "running")
-    if complaint:
-        old_motor = ctx.state.selected["motor"]
-        await _need(ctx, "parts_search", {"category": "motor", "query": "1102"})
-        from pai_agent.tools.parts import catalog
-
-        quiet = next(p for p in catalog()["parts"] if p["id"] == "betafpv-1102-18000kv")
-        await _need(
-            ctx,
-            "parts_search",
-            {
-                "category": "motor",
-                "query": "18000",
-                "select_id": quiet["id"],
-                "because": "complaint",
-                "reason": "Lower speed: blade tip "
-                + de(_tip_speed(quiet), 0)
-                + " instead of "
-                + de(_tip_speed(old_motor), 0)
-                + " m/s, so quieter, and 2.11 instead of 1.90 g/W.",
-            },
-        )
-        await _need(ctx, "ui_point_at", {"target": "motor_front_left", "label": "18000KV, quieter"})
     target = next((r for r in ctx.state.requirements if r["id"] == "flight_time"), None)
-    if target and float(target.get("min", 10)) > 12:
+    if target and float(target.get("min", 0)) > float(ctx.state.metrics.get("flight_time_min", 0)):
         await _need(ctx, "parts_search", {"category": "battery", "query": ""})
+        bigger = _part("betafpv-lava-1s-680")
         await _say(
             ctx,
             "denkt",
-            "More flight time means more battery. Not the FunFly.",
+            "More flight time means more battery. But not the FunFly.",
             "For "
-            + de(float(target["min"]), 0)
-            + " minutes I need more capacity. The FunFly would have it, but Jamie still has Lea's warning. I stay on 1S and take 1100 mAh.",
+            + en(float(target["min"]), 0)
+            + " minutes I need more capacity. The FunFly would have it, but Jamie reminds me of Lea's warning. I stay at 1S and take the "
+            + bigger["name"]
+            + ", the other pack from the video.",
         )
-        await _need(
+        await _pick(
             ctx,
-            "parts_search",
-            {
-                "category": "battery",
-                "query": "1100",
-                "select_id": "lihv-1s-1100",
-                "because": "flight_time",
-                "reason": "1100 mAh for " + de(float(target["min"]), 0) + " minutes, 26 g, stays on 1S.",
-            },
+            "battery",
+            "680",
+            bigger["id"],
+            en(float(bigger["capacity_mah"]), 0) + " mAh for " + en(float(target["min"]), 0) + " minutes, " + en(float(bigger["mass_g"]), 1) + " g, still 1S.",
+            "flight_time",
         )
     metrics = await _need(ctx, "physics_calc", {})
     await ctx.step("teile", "done")
-    await ctx.chat("agent", "Calculated: " + _numbers(metrics) + ".")
+    await ctx.chat("agent", "Computed: " + _numbers(metrics) + ".")
 
     await _beat()
     await ctx.step("simulation", "running")
     run = await _need(ctx, "simulate_drone", {})
     await ctx.step("simulation", "done" if run["result"] == "pass" else "failed")
     if run["result"] == "pass":
-        await _say(ctx, "freut_sich", "Quieter, longer in the air, and it still holds the gust.")
+        await _say(ctx, "freut_sich", "Longer in the air, and it still holds the gust.")
     else:
-        await _say(ctx, "besorgt", "This does not hold the gust. I will look at the parts again.")
+        await _say(ctx, "besorgt", "That does not hold the gust. I look at the parts again.")
 
     version = await _build_tail(ctx, meeting_id, "v" + str(len(ctx.state.versions) + 1))
-    changes = [
-        item
-        for item in version["diff"]
-        if item["key"] in {"weight_g", "flight_time_min", "price_eur"}
-    ]
+    changes = [item for item in version["diff"] if item["key"] in {"weight_g", "flight_time_min", "price_eur"}]
     digits = {"weight_g": 1, "flight_time_min": 1, "price_eur": 2}
     parts = ", ".join(
-        item["label"] + " " + de(item["before"], digits[item["key"]]) + " → " + de(item["after"], digits[item["key"]]) + " " + item["unit"]
+        item["label"] + " " + en(item["before"], digits[item["key"]]) + " → " + en(item["after"], digits[item["key"]]) + " " + item["unit"]
         for item in changes
     )
     await _need(ctx, "ui_point_at", {"target": "metrics", "label": "v" + str(version["version"])})
     await _say(
         ctx,
         "freut_sich",
-        "v" + str(version["version"]) + " is in. The difference is a note in Jamie.",
+        "v" + str(version["version"]) + " is done. The difference is a note in Jamie.",
         "Version "
         + str(version["version"])
         + " hangs on “"
         + review["title"]
         + "”: "
         + parts
-        + ". The difference is a note on the meeting, "
+        + ". The difference is a note on the meeting; order tasks: "
         + str(version["tasks"]["new"])
-        + " new order tasks are open, "
+        + " new, "
         + str(version["tasks"]["closed"])
-        + " old ones are closed.",
+        + " closed.",
     )
     ctx.state.finished = True
 
@@ -437,12 +411,13 @@ async def run_mock_followup(ctx: Ctx) -> None:
             ctx,
             "besorgt",
             "The last run stopped halfway. Reset once.",
-            "Reset the session and send the sentence again. I will not build on a half-finished state.",
+            "Reset the session and send the sentence again. I do not build on half a state.",
         )
         return
     await _say(
         ctx,
         "ruhig",
-        "This version is in. The next Jamie review builds the next one.",
-        "This version is in. As soon as the next review ends in Jamie, I rebuild and write the difference back.",
+        "The version is done. The next review in Jamie builds the next one.",
+        "The version is done. As soon as the next review in Jamie ends, I rebuild and write the difference back.",
     )
+

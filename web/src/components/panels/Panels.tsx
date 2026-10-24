@@ -1,5 +1,5 @@
-// The one compact panel on the right: the Jamie requirements as checks, the four
-// key numbers, and the button that opens the bill of materials.
+// The one compact panel on the right: the requirements as checks (from Jamie or the chat
+// request), the four key numbers, and the button that opens the bill of materials.
 import { useState } from "react";
 import { ChevronRight, Quote as QuoteIcon } from "lucide-react";
 import { useSession } from "../../events/store";
@@ -48,6 +48,7 @@ function RequirementRow({ r, open, onToggle }: { r: RequirementEvent; open: bool
         <span className="min-w-0 flex-1">
           <span className={`block text-[16px] leading-snug font-semibold ${r.met === false ? "text-fail-ink" : "text-ink"}`}>{r.text}</span>
           {r.changed_from && <span className="block text-[13px] font-semibold text-muted line-through decoration-faint">{r.changed_from}</span>}
+          {r.detail && <span className={`num block text-[13px] font-semibold ${r.met === false ? "text-fail-ink" : "text-muted"}`}>{r.detail}</span>}
         </span>
       </button>
       {open && (
@@ -80,11 +81,11 @@ function CardGrid({ cards, busy }: { cards: MetricCard[]; busy: boolean }) {
       {cards.map((c) => (
         <div key={c.key} data-target={`metric:${c.key} ${c.key}`} className="rounded-[20px] bg-page-2 px-3.5 pt-2.5 pb-3">
           <div className="flex items-center gap-1.5 text-[14px] font-semibold text-ink-2">
-            <span className={`h-2 w-2 rounded-full ${c.ok ? "bg-ok" : "bg-fail"}`} />
+            <span className={`h-2 w-2 rounded-full ${c.pending ? "bg-track" : c.ok ? "bg-ok" : "bg-fail"}`} />
             {c.label}
           </div>
-          <div className={`num mt-1 flex items-baseline gap-1 ${busy ? "text-agent-ink" : c.ok ? "text-ink" : "text-fail-ink"}`}>
-            <span className="text-[30px] leading-none font-extrabold tracking-[-0.02em]">{fmtNum(c.value, c.digits)}</span>
+          <div className={`num mt-1 flex items-baseline gap-1 ${c.pending ? "text-faint" : busy ? "text-agent-ink" : c.ok ? "text-ink" : "text-fail-ink"}`}>
+            <span className="text-[30px] leading-none font-extrabold tracking-[-0.02em]">{c.pending ? "–" : fmtNum(c.value, c.digits)}</span>
             <span className="text-[15px] font-bold text-muted">{c.unit}</span>
           </div>
           <div className="num mt-1 truncate text-[13px] font-semibold text-muted">{c.limit || "\u00a0"}</div>
@@ -110,7 +111,11 @@ export function BuildPanel() {
     <aside className="card scroll-soft flex min-h-0 flex-col overflow-y-auto px-5 pt-4 pb-5">
       <div className="mb-1.5 flex items-center gap-2" data-target="requirements anforderungen">
         <h2 className="text-[18px] font-bold text-ink">Requirements</h2>
-        {product === "drone" ? <JamieMark /> : <span className="inline-flex h-6 items-center rounded-full bg-tile px-2.5 text-[12px] font-bold text-ink-2">Chat brief</span>}
+        {product === "drone" ? (
+          <JamieMark />
+        ) : product ? (
+          <span className="inline-flex h-6 items-center rounded-full bg-tile px-2.5 text-[12px] font-bold text-ink-2">Chat request</span>
+        ) : null}
         {requirements.length > 0 && (
           <span className="num ml-auto text-[14px] font-semibold text-muted">
             {met} / {requirements.length}
@@ -118,7 +123,7 @@ export function BuildPanel() {
         )}
       </div>
       {requirements.length === 0 ? (
-        <p className="py-2 text-[15px] leading-snug text-muted">They come from your meeting, once Mechanic has read it in Jamie.</p>
+        <p className="py-2 text-[15px] leading-snug text-muted">Describe any product in the chat, or end a Jamie meeting. Mechanic turns it into checks here.</p>
       ) : (
         <ul className="-mx-2">
           {requirements.map((r) => (

@@ -16,7 +16,7 @@ from pai_agent.state import BuildState
 from pai_agent.tools.firmware import DEFAULT_GAINS, firmware
 
 CATALOG = {part["id"]: part for part in json.loads((Path(__file__).resolve().parents[1] / "data" / "parts.json").read_text())["parts"]}
-V1 = ("betafpv-1102-22000kv", "gemfan-1635-3", "betafpv-lava-1s-550", "betafpv-f4-1s-12a-aio-v3", "printed-whoop-frame")
+V1 = ("generic-1103-15000kv", "gemfan-2020-4", "tattu-rline-1s-550", "betafpv-matrix-1s-5in1-v2", "twiglet-2in-carbon", "caddx-ant")
 
 _SETTINGS = {
     "yaw_motors_reversed",
@@ -71,7 +71,8 @@ def test_betaflight_file_uses_known_cli_lines(tmp_path):
         setting = re.fullmatch(r"set (\w+) = \S+", line)
         assert (setting and setting[1] in _SETTINGS) or any(re.fullmatch(c, line) for c in _COMMANDS), line
     assert event["content"].rstrip().endswith("save")
-    assert "board_name BETAFPVF411" in event["content"]
+    assert "board_name BETAFPVG473" in event["content"]
+    assert "set serialrx_provider = CRSF" in event["content"]
     assert (tmp_path / event["filename"]).read_text() == event["content"]
 
 
@@ -79,15 +80,17 @@ def test_wiring_matches_the_parts(tmp_path):
     ctx = _ctx(tmp_path)
     _, event = _run(ctx)
     motors = [row for row in event["wiring"] if row["pin"] in {"M1", "M2", "M3", "M4"}]
-    assert len(motors) == CATALOG["betafpv-1102-22000kv"]["bom_qty"]
-    assert all(row["component"].startswith("BetaFPV 1102 22000KV") for row in motors)
-    battery = [row for row in event["wiring"] if row["component"] == "BetaFPV Lava 1S 550mAh 75C"]
+    assert len(motors) == CATALOG["generic-1103-15000kv"]["bom_qty"]
+    assert all(row["component"].startswith(CATALOG["generic-1103-15000kv"]["name"]) for row in motors)
+    battery = [row for row in event["wiring"] if row["component"] == CATALOG["tattu-rline-1s-550"]["name"]]
     assert {row["pin"]: row["wire"] for row in battery} == {"VBAT+": "red", "GND": "black"}
     assert not [row for row in event["wiring"] if row["component"] == "Check"]
+    camera = {row["pin"]: row["wire"] for row in event["wiring"] if row["component"] == CATALOG["caddx-ant"]["name"]}
+    assert camera == {"CAM video": "yellow", "5V": "red", "GND": "black"}
 
 
 def test_too_many_cells_is_flagged(tmp_path):
-    ids = ("betafpv-1102-22000kv", "gemfan-1635-3", "tattu-funfly-4s-1300", "betafpv-f4-1s-12a-aio-v3", "printed-whoop-frame")
+    ids = ("generic-1103-15000kv", "gemfan-2020-4", "tattu-funfly-4s-1300", "betafpv-matrix-1s-5in1-v2", "twiglet-2in-carbon")
     _, event = _run(_ctx(tmp_path, ids))
     assert "# WARNING:" in event["content"]
     assert any(row["component"] == "Check" for row in event["wiring"])

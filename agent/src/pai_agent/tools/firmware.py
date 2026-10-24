@@ -9,12 +9,18 @@ from __future__ import annotations
 from pai_agent.context import Ctx
 
 # Betaflight targets for the flight controllers in the catalog. An unknown board gets no
-# board_name line and a serial receiver, so the config stays generic.
+# board_name line and a serial receiver on UART1, so the config stays generic.
 _BOARDS = {
     "betafpv-f4-1s-12a-aio-v3": {
         "board_name": "BETAFPVF411",
         "manufacturer_id": "BEFH",
         "receiver": "ExpressLRS 2.4 GHz on board (SPI)",
+        "battery_plug": "BT2.0",
+    },
+    "betafpv-matrix-1s-5in1-v2": {
+        "board_name": "BETAFPVG473",
+        "manufacturer_id": "BEFH",
+        "receiver": "ExpressLRS 2.4 GHz on board (UART, CRSF)",
         "battery_plug": "BT2.0",
     },
 }
@@ -126,14 +132,19 @@ def drone_wiring(ctx: Ctx) -> list[dict]:
                 "note": "",
             }
         )
+    camera = _part(ctx, "camera")
+    if camera and fc:
+        for pin, wire in (("CAM video", "yellow"), ("5V", "red"), ("GND", "black")):
+            rows.append({"component": camera["name"], "connects_to": f"{fc_name} camera pads", "pin": pin, "wire": wire, "note": ""})
     if fc:
+        receiver = board.get("receiver", "")
         rows.append(
             {
                 "component": "Receiver",
                 "connects_to": fc_name,
-                "pin": "SPI RX",
-                "wire": "on board",
-                "note": board.get("receiver", "Wire a serial receiver to UART1."),
+                "pin": "SPI RX" if receiver.endswith("(SPI)") else "UART RX",
+                "wire": "on board" if receiver else "TX to RX1, RX to TX1",
+                "note": receiver or "Wire a CRSF receiver to UART1.",
             }
         )
         rows.append(
@@ -193,6 +204,9 @@ def betaflight_cli(ctx: Ctx, gains: dict, gains_source: str) -> str:
     ]
     if board.get("receiver", "").endswith("(SPI)"):
         lines += ["feature RX_SPI", "set rx_spi_protocol = EXPRESSLRS"]
+    elif board:
+        # The on-board receiver's UART is already assigned by the board's own config.
+        lines += ["feature RX_SERIAL", "set serialrx_provider = CRSF"]
     else:
         lines += ["feature RX_SERIAL", "serial 0 64 115200 57600 0 115200", "set serialrx_provider = CRSF"]
     lines += ["aux 0 0 0 1700 2100 0 0", "", "profile 0", ""]

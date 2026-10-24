@@ -124,7 +124,7 @@ def _assert_story(events: list[dict]) -> None:
     if not all(item["met"] is True for item in requirements.values()):
         raise SystemExit("Nicht alle Vorgaben sind grün: " + str({k: v["met"] for k, v in requirements.items()}))
     flight = requirements["flight_time"]
-    if "15" not in flight["text"] or not flight.get("changed_from") or flight.get("meeting_title") != "Review 1":
+    if "10" not in flight["text"] or not flight.get("changed_from") or flight.get("meeting_title") != "Review 1":
         raise SystemExit("Die Flugzeit aus dem Review fehlt: " + str(flight))
     if not all(item.get("speaker") and item.get("time") for item in requirements.values()):
         raise SystemExit("Zitate ohne Person oder Uhrzeit.")
@@ -133,18 +133,18 @@ def _assert_story(events: list[dict]) -> None:
         raise SystemExit("Die Rückfrage zum Widerspruch fehlt: " + str(questions[-1:]))
     versions = [event for event in events if event.get("type") == "version"]
     first, second = versions[0], versions[1]
-    if first["weight_g"] > 50 or first["price_eur"] > 80 or first["flight_time_min"] < 10:
+    if first["weight_g"] > 50 or first["price_eur"] > 120 or first["flight_time_min"] < 8:
         raise SystemExit("v1 verfehlt das Kickoff: " + str(first))
-    if second["weight_g"] > 50 or second["price_eur"] > 80 or second["flight_time_min"] < 15:
+    if second["weight_g"] > 50 or second["price_eur"] > 120 or second["flight_time_min"] < 10:
         raise SystemExit("v2 verfehlt das Review: " + str(second))
     keys = {item["key"] for item in second["diff"]}
-    if not {"weight_g", "flight_time_min", "price_eur", "part:motor", "part:battery"} <= keys:
+    if not {"weight_g", "flight_time_min", "price_eur", "part:battery"} <= keys:
         raise SystemExit("Differenz unvollständig: " + str(sorted(keys)))
     metrics = [event for event in events if event.get("type") == "metrics"][-1]
     if metrics["weight_g"] != second["weight_g"] or metrics["price_eur"] != second["price_eur"]:
         raise SystemExit("Kennzahlen und Version weichen ab.")
     bom = [event for event in events if event.get("type") == "bom"][-1]
-    if abs(bom["total_eur"] - second["price_eur"]) > 0.01 or len(bom["items"]) != 5:
+    if abs(bom["total_eur"] - second["price_eur"]) > 0.01 or len(bom["items"]) != 8:
         raise SystemExit("Stückliste passt nicht zur Version: " + str(bom["total_eur"]))
     weight = round(sum(item["weight_g"] * item["qty"] for item in bom["items"]), 1)
     if abs(weight - second["weight_g"]) > 0.15:
@@ -165,12 +165,12 @@ def _assert_story(events: list[dict]) -> None:
                 parts[event["category"]] = event
     if any(not item.get("why") for item in parts.values()):
         raise SystemExit("Teil ohne Warum: " + str([k for k, v in parts.items() if not v.get("why")]))
-    if parts["motor"]["why"]["meeting_title"] != "Review 1":
-        raise SystemExit("Der Motortausch zitiert nicht das Review.")
+    if parts["battery"]["why"]["meeting_title"] != "Review 1":
+        raise SystemExit("Der Akkutausch zitiert nicht das Review.")
     if warnings < 2:
         raise SystemExit("Warnungen aus früheren Meetings fehlen.")
     tasks = [event for event in events if event.get("type") == "tasks"][-1]
-    if len(tasks["items"]) != 5 or not all(task["assignee"] and task["due"] for task in tasks["items"]):
+    if len(tasks["items"]) != 8 or not all(task["assignee"] and task["due"] for task in tasks["items"]):
         raise SystemExit("Aufgaben pro Person fehlen: " + str(tasks))
     jamie = {event.get("action") for event in events if event.get("type") == "jamie"}
     needed = {"upsert_template", "requirements", "search", "get_meeting", "create_tasks", "update_tasks", "create_tag", "add_tag_to_meetings", "note"}

@@ -4,11 +4,26 @@
 // cards instead of core.so's message content parts; markdown, display cards and
 // actions were removed.
 import { memo, useEffect, useState } from "react";
-import { AlertTriangle, ArrowRight, Boxes, CircleCheck, CircleX, Cpu, GitCompareArrows, MessageCircleQuestion, NotebookPen } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  Boxes,
+  CircleCheck,
+  CircleX,
+  Cpu,
+  DraftingCompass,
+  Gauge,
+  GitCompareArrows,
+  MessageCircleQuestion,
+  Network,
+  NotebookPen,
+  Package,
+  Receipt,
+} from "lucide-react";
 import { useSession, type ChatItem } from "../../events/store";
 import { useSource } from "../../events/source";
 import { enLabel, enText } from "../../lib/copy";
-import { fmtDuration, fmtEur, fmtNum } from "../../lib/format";
+import { fmtDuration, fmtEur, fmtNum, stripMarkdown } from "../../lib/format";
 import { useUi } from "../../lib/ui";
 
 const TOOL_LABELS: Record<string, { running: string; done: string }> = {
@@ -314,6 +329,40 @@ export function JamieGroupRenderer({ items }: { items: Extract<ChatItem, { kind:
   );
 }
 
+const AGENT_ICON = { orchestrator: Network, cad: DraftingCompass, parts: Package, checks: Gauge, pricing: Receipt } as const;
+
+const fmtTokens = (n: number) => (n >= 1000 ? `${fmtNum(n / 1000, n >= 10000 ? 0 : 1)}k` : fmtNum(n));
+
+/** The orchestrator or a sub-agent: who, which model, what job, status, tokens and cost. */
+function AgentPartRenderer({ item }: { item: Extract<ChatItem, { kind: "agent" }> }) {
+  const agent = useSession((s) => s.agents[item.agentId]);
+  if (!agent) return null;
+  const Icon = AGENT_ICON[agent.role] ?? Cpu;
+  const phase = agent.status === "running" ? "running" : agent.status === "error" ? "error" : "ok";
+  const lead = agent.role === "orchestrator";
+  return (
+    <div className={`rounded-2xl px-3 py-2.5 ${lead ? "bg-lavender/60" : "bg-tile"}`} data-target={`agent:${agent.role}`}>
+      <div className="flex items-center gap-2">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white shadow-[var(--shadow-pill)]">
+          <Icon className={`h-4 w-4 ${lead ? "text-jamie" : "text-ink-2"}`} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-[14px] font-bold text-ink">
+            {agent.label} <span className="font-semibold text-muted">· {agent.model_label} · {agent.effort}</span>
+          </div>
+          <div className="truncate text-[13px] text-ink-2">{agent.task}</div>
+        </div>
+        <PhaseIcon phase={phase} />
+      </div>
+      {agent.summary && <p className="mt-1.5 line-clamp-2 text-[13px] leading-snug text-muted">{stripMarkdown(agent.summary).replace(/\s+/g, " ")}</p>}
+      <div className="num mt-1 text-[12px] font-semibold text-faint">
+        {agent.rounds} call{agent.rounds === 1 ? "" : "s"} · {fmtTokens(agent.input_tokens + agent.cache_read_tokens)} in · {fmtTokens(agent.output_tokens)} out · $
+        {fmtNum(agent.cost_usd, agent.cost_usd < 0.1 ? 3 : 2)}
+      </div>
+    </div>
+  );
+}
+
 function ContentPartsRenderer({ item }: { item: Exclude<ChatItem, { kind: "msg" }> }) {
   switch (item.kind) {
     case "tool":
@@ -332,6 +381,8 @@ function ContentPartsRenderer({ item }: { item: Exclude<ChatItem, { kind: "msg" 
       return <QuestionPartRenderer item={item} />;
     case "version":
       return <VersionPartRenderer item={item} />;
+    case "agent":
+      return <AgentPartRenderer item={item} />;
   }
 }
 

@@ -49,6 +49,9 @@ function group(chat: ChatItem[]): Row[] {
 
 /** Starting points that show AnyBuild builds more than the drone. */
 const EXAMPLES = [
+  { label: "Phone stand", prompt: "Design a phone stand for my desk that holds my phone for video calls. It must not tip when I tap the screen and cost under 6 €." },
+  { label: "Desk fan", prompt: "Design a small USB desk fan that stands stable on the desk, under 300 g and 25 €." },
+  { label: "Plant-watering robot", prompt: "Design a plant-watering robot for one pot: a water tank, a pump and a soil sensor, running a month on a battery, under 40 €." },
   { label: "Drone", prompt: "Build the small drone from the kickoff." },
   { label: "Robot gripper", prompt: "Design a robot gripper for our arm that picks up a 200 g soda can, 66 mm wide. Keep it under 150 g and 30 €." },
 ];
@@ -67,6 +70,10 @@ export default function SidebarChat() {
   const mascot = useSession((s) => s.mascot);
   const steps = useSession((s) => s.steps);
   const sendPrompt = useSource((s) => s.sendPrompt);
+  const startReference = useSource((s) => s.startReference);
+  const allReferences = useSource((s) => s.references);
+  const live = useSource((s) => s.mode === "live");
+  const references = live ? allReferences : [];
   const resetSession = useSource((s) => s.resetSession);
   const resetUi = useUi((s) => s.resetUi);
   const voiceOn = useUi((s) => s.voiceOn);
@@ -166,8 +173,41 @@ export default function SidebarChat() {
           <div className="flex flex-1 flex-col items-center justify-center gap-3 px-8 text-center">
             <MascotBust state="ruhig" size={150} />
             <p className="text-[17px] font-semibold text-ink-2">“So. What are we building?”</p>
-            <p className="text-[15px] text-muted">Say it or type it.</p>
-            <div className="mt-1 flex flex-wrap justify-center gap-2">
+            {!live ? (
+              <>
+                <p className="text-[15px] text-muted">This is the recorded drone run, not a live build. Start the backend to build any product.</p>
+                <button
+                  type="button"
+                  onClick={() => useSource.getState().play()}
+                  className="mt-1 h-9 rounded-full bg-ink px-4 text-[14px] font-semibold text-white transition hover:bg-[#333]"
+                >
+                  Play the recording
+                </button>
+              </>
+            ) : (
+              <p className="text-[15px] text-muted">Start from a reference build and change it, or describe any product from scratch.</p>
+            )}
+            {references.length > 0 && (
+              <div className="mt-1 w-full">
+                <p className="eyebrow mb-1.5">From a reference</p>
+                <div className="flex flex-wrap justify-center gap-2">
+                  {references.map((ref) => (
+                    <button
+                      key={ref.id}
+                      type="button"
+                      onClick={() => void startReference(ref.id)}
+                      title={ref.summary}
+                      data-target={`reference:${ref.id}`}
+                      className="h-9 rounded-full bg-lavender px-4 text-[14px] font-semibold text-jamie transition hover:brightness-95"
+                    >
+                      {ref.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {live && <p className="eyebrow mt-2 -mb-1.5">From scratch</p>}
+            <div className={`mt-1 flex-wrap justify-center gap-2 ${live ? "flex" : "hidden"}`}>
               {EXAMPLES.map((example) => (
                 <button
                   key={example.label}

@@ -3,6 +3,7 @@ import { archiveChat } from "../lib/archive";
 import {
   STEP_IDS,
   type AgentEvent,
+  type AgentRunEvent,
   type BomEvent,
   type CadEvent,
   type DrawEvent,
@@ -82,7 +83,8 @@ export type ChatItem =
   | { kind: "training"; id: string; seq: number; at: number; status: TrainingEvent["status"]; detail: string }
   | { kind: "warning"; id: string; seq: number; at: number; part: string; warning: PartWarning }
   | { kind: "question"; id: string; seq: number; at: number; questionId: string }
-  | { kind: "version"; id: string; seq: number; at: number; n: number };
+  | { kind: "version"; id: string; seq: number; at: number; n: number }
+  | { kind: "agent"; id: string; seq: number; at: number; agentId: string };
 
 export interface Run extends SimEvent {
   seq: number;
@@ -138,9 +140,12 @@ export interface SessionState {
   partsByName: Record<string, PartEvent>;
   questions: Record<string, QuestionEvent>;
   tasks: TasksEvent | null;
-  /** The product this session builds; the drone until a `product` event says otherwise. */
+  /** The orchestrator and its sub-agents by id, as they last reported. */
+  agents: Record<string, AgentRunEvent & { at: number }>;
+  /** The product this session builds: empty on a fresh bench, set by a `product` event or by the first drone event. */
   product: ProductEvent["id"];
   firmware: FirmwareEvent | null;
+  productLabel: string;
   /** Reduces one contract event. `instant` marks events replayed in bulk (seek), so nothing animates for them. */
   apply: (ev: AgentEvent, opts?: { instant?: boolean }) => void;
   addLocalUserMessage: (text: string) => void;
@@ -183,6 +188,16 @@ const TOOL_ALIASES: Record<string, string> = {
   catalog_search: "Teile",
   grip_calc: "Physik",
   product_brief: "Brief",
+  product_spec: "Spec",
+  part_pick: "Parts",
+  assemble: "Assembly",
+  cad_update: "FreeCAD",
+  check_totals: "Analysis",
+  check_tip_over: "Analysis",
+  check_deflection: "Analysis",
+  check_torque: "Analysis",
+  check_runtime: "Analysis",
+  simulate_assembly: "MuJoCo",
   simulate_drone: "MuJoCo",
   blender_render: "Blender",
   isaac_sim_render: "Isaac Sim",
@@ -219,6 +234,7 @@ const SILENT_TOOLS = new Set([
   "physics_calc",
   "grip_calc",
   "product_brief",
+  "delegate",
 ]);
 
 /** Tool names from the backend may differ in case or spacing ("isaac_lab", "Isaac Lab"). */
@@ -258,12 +274,24 @@ function emptyState() {
     partsByName: {} as Record<string, PartEvent>,
     questions: {} as Record<string, QuestionEvent>,
     tasks: null as TasksEvent | null,
-    product: "drone" as ProductEvent["id"],
     firmware: null as FirmwareEvent | null,
+    agents: {} as SessionState["agents"],
+    product: "" as ProductEvent["id"],
+    productLabel: "Any product",
   };
 }
 
 const meetingOrder = (m: MeetingEvent) => `${m.date}T${m.time}`;
+
+const DRONE_PARTS = new Set(["motor", "propeller", "battery", "flight_controller", "frame"]);
+
+function isDroneEvent(ev: AgentEvent): boolean {
+  if (ev.type === "metrics") return !ev.cards;
+  if (ev.type === "part") return DRONE_PARTS.has(ev.category);
+  if (ev.type === "sim") return !ev.kind || ev.kind === "hover";
+  if (ev.type === "cad") return !ev.part;
+  return ev.type === "version";
+}
 
 /** Finds the newest still-running chat card of a tool or Jamie action so its result updates it in place. */
 function findOpenCard(chat: ChatItem[], kind: "tool" | "jamie", key: string): number {
@@ -284,6 +312,8 @@ export const useSession = create<SessionState>((set, get) => ({
     if (ev.type === "replayed") return;
     const at = opts?.instant ? Date.now() - INSTANT_AGE_MS : Date.now();
     const seq = ++seqCounter;
+    // The drone flow (Jamie kickoff, recordings) sends no product event; its own events name it.
+    if (get().product === "" && isDroneEvent(ev)) set({ product: "drone", productLabel: "Drone" });
     const s = get();
     const log = [...s.log, { seq, at, ev }];
 
@@ -419,12 +449,24 @@ export const useSession = create<SessionState>((set, get) => ({
       }
       case "tasks":
         return set({ log, tasks: ev });
+      case "agent": {
+        // One card per agent, updated in place as it reports tokens, cost and its result.
+        const known = !!s.agents[ev.id];
+        const agents = { ...s.agents, [ev.id]: { ...ev, at: known ? s.agents[ev.id].at : at } };
+        const chat: ChatItem[] = known ? s.chat : [...s.chat, { kind: "agent", id: nextId("agent"), seq, at, agentId: ev.id }];
+        return set({ log, agents, chat });
+      }
       case "product": {
-        if (ev.id === s.product) return set({ log });
+        if (ev.id === s.product) {
+          const keep = ev.requirements;
+          const requirements = keep ? s.requirements.filter((r) => keep.includes(r.id)) : s.requirements;
+          return set({ log, productLabel: ev.label || s.productLabel, requirements });
+        }
         // A new product starts its own build: drop the other product's numbers, parts and runs.
         return set({
           log,
           product: ev.id,
+          productLabel: ev.label,
           requirements: [],
           metrics: null,
           omniverse: null,

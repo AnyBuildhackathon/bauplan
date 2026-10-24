@@ -26,6 +26,7 @@ from pai_agent.meetings import (
     week_before,
 )
 from pai_agent.requirements import emit_requirement, met_for
+from pai_agent.scene import PART_CATEGORIES
 from pai_agent.state import BuildState
 from pai_agent.tools.parts import catalog
 
@@ -50,8 +51,11 @@ _CATEGORY_LABEL = {
     "battery": "Akku",
     "flight_controller": "Flugregler",
     "frame": "Rahmen",
+    "camera": "Kamera",
+    "canopy": "Canopy",
+    "hardware": "Schrauben",
 }
-_DEFAULT_OWNER = {"motor": "Lea", "flight_controller": "Lea", "battery": "Ben", "propeller": "Ben", "frame": "Ben"}
+_DEFAULT_OWNER = {"motor": "Lea", "flight_controller": "Lea", "battery": "Ben", "propeller": "Ben", "frame": "Ben", "camera": "Lea", "canopy": "Ben", "hardware": "Ben"}
 
 _clients: dict[str, LocalJamie | LiveJamie] = {}
 
@@ -455,7 +459,7 @@ async def jamie_create_tasks(ctx: Ctx, args: dict) -> dict:
     keep = {task["part_id"]: task for task in ctx.state.tasks}
     tasks = []
     new = []
-    for category in ("motor", "propeller", "battery", "flight_controller", "frame"):
+    for category in PART_CATEGORIES:
         part = ctx.state.selected.get(category)
         if part is None:
             continue
@@ -463,7 +467,7 @@ async def jamie_create_tasks(ctx: Ctx, args: dict) -> dict:
             tasks.append(keep.pop(part["id"]))
             continue
         qty = int(part["bom_qty"])
-        title = ("Drucken: " + part["name"]) if category == "frame" else ("Bestellen: " + part["name"] + (f" ({qty}×)" if qty > 1 else ""))
+        title = ("Drucken: " + part["name"]) if part.get("printed") else ("Bestellen: " + part["name"] + (f" ({qty}×)" if qty > 1 else ""))
         task = {
             "id": f"t{len(ctx.state.tasks) + len(new) + 1}-{category}",
             "title": title,
