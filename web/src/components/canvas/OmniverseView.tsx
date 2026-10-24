@@ -26,7 +26,11 @@ function conditions(params: Record<string, string | number>) {
 }
 
 export function OmniverseView() {
-  const result = useSession((s) => s.omniverse);
+  // Without a GPU pod the backend answers with a recorded fixture; its synthetic values
+  // are not shown, the tab says calmly that no GPU is connected instead.
+  const latest = useSession((s) => s.omniverse);
+  const offline = latest?.source === "recorded";
+  const result = offline ? null : latest;
   const { metrics: shownMetrics, version: shownVersion } = useShownBuild();
   const sendPrompt = useSource((s) => s.sendPrompt);
   const [wind, setWind] = useState(6);
@@ -44,7 +48,6 @@ export function OmniverseView() {
   }, [result?.mode]);
   useEffect(() => setVideoError(false), [result?.video_url]);
   const busy = submitting || result?.status === "running";
-  const recorded = result?.source === "recorded";
   const video = assetUrl(result?.video_url);
   const curve = result?.curve ?? [];
   const values = curve.map((p) => p[1]);
@@ -62,8 +65,8 @@ export function OmniverseView() {
       <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
         <div><p className="text-xs font-bold tracking-widest text-muted uppercase">NVIDIA Omniverse</p>
           <h2 className="mt-1 text-xl font-bold">Test the next possibility.</h2></div>
-        <span className={`rounded-full px-3 py-1.5 text-xs font-semibold ${recorded ? "bg-agent-soft text-agent-ink" : "bg-tile text-muted"}`}>
-          {busy ? "GPU job running" : recorded ? "Recorded result" : result ? "GPU result" : "GPU experiments"}
+        <span className="rounded-full bg-tile px-3 py-1.5 text-xs font-semibold text-muted">
+          {busy ? "GPU job running" : offline ? "GPU not connected" : result ? "GPU result" : "GPU experiments"}
         </span>
       </div>
 
@@ -90,14 +93,16 @@ export function OmniverseView() {
           className="rounded-full bg-white px-3 py-2 text-xs font-semibold text-ink-2 disabled:opacity-40">Train reference policy</button>
       </div>
       {error && <p role="alert" className="mb-3 text-sm text-fail-ink">{error}</p>}
-      {!result && <div className="flex min-h-48 flex-1 flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-line p-6 text-center">
+      {!result && (offline ? <div className="flex min-h-48 flex-1 flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-line p-6 text-center" role="status">
+        <Cloud className="h-9 w-9 text-faint" /><h3 className="font-semibold">GPU not connected</h3>
+        <p className="max-w-sm text-sm leading-relaxed text-muted">Omniverse tests run on a GPU pod. Once one is connected, the video and values of this test appear here. The MuJoCo checks in the Simulation tab work without it.</p>
+      </div> : <div className="flex min-h-48 flex-1 flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-line p-6 text-center">
         <Cloud className="h-9 w-9 text-agent" /><h3 className="font-semibold">From CAD to a GPU experiment</h3>
         <p className="max-w-sm text-sm leading-relaxed text-muted">Ask Mechanic to test gusty wind, add a 10 g camera, or train a reference policy. A finished video and values appear here.</p>
-      </div>}
+      </div>)}
       {result && <>
-        <div role="status" className={`mb-3 rounded-2xl p-3 text-sm leading-relaxed ${recorded ? "bg-agent-soft text-agent-ink" : "bg-white text-ink-2"}`}>
+        <div role="status" className="mb-3 rounded-2xl bg-white p-3 text-sm leading-relaxed text-ink-2">
           {result.detail}
-          {recorded && <p className="mt-1 font-semibold">Illustrative recording and synthetic values. This request has not been simulated.</p>}
           {result.mode === "train" && <p className="mt-1 text-xs">Isaac-Quadcopter-Direct-v0 · Stock Crazyflie reference, separate from the CAD product.</p>}
         </div>
         {busy && <ol aria-label="Experiment progress" className="mb-3 grid grid-cols-4 gap-1 text-center text-[11px] font-semibold">
@@ -105,10 +110,8 @@ export function OmniverseView() {
             className={`rounded-full py-1.5 capitalize ${result.stage === stage ? "bg-agent-soft text-agent-ink" : "bg-white text-muted"}`}>{stage}</li>)}
         </ol>}
         <p className="mb-2 text-xs leading-relaxed text-muted">Requested: {conditions(result.requested)}</p>
-        {recorded && result.parameters && <p className="mb-3 text-xs leading-relaxed text-agent-ink">Recorded fixture: {conditions(result.parameters)}</p>}
-        {recorded && <p className="mb-3 text-xs font-semibold text-agent-ink">The values below describe the recorded reference, separate from the displayed assembly.</p>}
         {video && !videoError ? <video key={video} src={video} controls autoPlay muted playsInline loop onError={() => setVideoError(true)}
-          aria-label={recorded ? "Recorded illustrative quadcopter demo" : "Completed Omniverse run"}
+          aria-label="Completed Omniverse run"
           className="mb-3 aspect-video max-h-56 w-full shrink-0 rounded-2xl bg-ink object-contain" />
           : <div className="mb-3 flex min-h-32 items-center justify-center gap-2 rounded-2xl bg-tile p-4 text-sm text-muted">
             {busy ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Play className="h-5 w-5" />}
@@ -122,7 +125,7 @@ export function OmniverseView() {
         {result.passed !== undefined && <p className={`mb-3 text-sm font-semibold ${result.passed ? "text-ok-ink" : "text-fail-ink"}`}>
           {result.passed ? "Hover criteria passed" : "Hover criteria failed"}</p>}
         {curve.length > 0 && <div ref={chart} className="mb-3 min-w-0 rounded-2xl bg-white p-3">
-          <p className="mb-2 text-sm font-semibold">{recorded ? "Illustrative learning curve" : "Learning curve"}</p>
+          <p className="mb-2 text-sm font-semibold">Learning curve</p>
           <div className="overflow-hidden"><TrendChart width={width} height={130} series={[{ points: curve, color: "#ff8a3d", area: true }]}
             xDomain={[0, Math.max(curve.at(-1)?.[0] ?? 1, 1)]} yDomain={[Math.min(0, ...values), Math.max(1, ...values)]}
             yTicks={[Math.min(0, ...values), Math.max(1, ...values)]} formatY={(v) => v.toFixed(1)} /></div>

@@ -61,6 +61,9 @@ interface UiState {
   setSettingsOpen: (open: boolean) => void;
   setLibraryPick: (id: string | null) => void;
   setClicky: (on: boolean) => void;
+  /** The chat fills the window beside the icon rail instead of sitting in its column. */
+  chatExpanded: boolean;
+  setChatExpanded: (on: boolean) => void;
   setDisplay: (patch: Partial<Display>) => void;
   setView: (view: View) => void;
   /** The community project to show selected when the Community view opens next. */
@@ -178,6 +181,8 @@ export const useUi = create<UiState>((set) => ({
     }
     set({ clicky });
   },
+  chatExpanded: false,
+  setChatExpanded: (chatExpanded) => set({ chatExpanded }),
   setDisplay: (patch) =>
     set((s) => {
       const display = { ...s.display, ...patch };
@@ -189,9 +194,9 @@ export const useUi = create<UiState>((set) => ({
       return { display };
     }),
   stt: "SpeechRecognition" in window || "webkitSpeechRecognition" in window ? "browser" : "none",
-  setView: (view) => set({ view }),
+  setView: (view) => set({ view, chatExpanded: false }),
   communityFocus: null,
-  openCommunity: (communityFocus) => set({ view: "community", communityFocus }),
+  openCommunity: (communityFocus) => set({ view: "community", communityFocus, chatExpanded: false }),
   setTab: (tab) => set({ tab }),
   setLook: (look) => set({ look, tab: "modell" }),
   selectVersion: (selectedVersion) => set({ selectedVersion }),

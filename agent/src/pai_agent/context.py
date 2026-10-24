@@ -18,8 +18,8 @@ class Ctx:
     async def emit(self, event: dict) -> None:
         await self.bus.publish(event)
 
-    async def chat(self, role: str, text: str) -> None:
-        await self.emit({"type": "chat", "role": role, "text": text})
+    async def chat(self, role: str, text: str, voice: bool = False) -> None:
+        await self.emit({"type": "chat", "role": role, "text": text, **({"voice": True} if voice else {})})
 
     async def step(self, step_id: str, status: str) -> None:
         await self.emit(

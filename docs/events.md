@@ -6,7 +6,7 @@ This file is the only copy of the wire format.
 
 ## HTTP
 
-`POST /api/prompt` with `{"text": "..."}` starts or continues the one local session.
+`POST /api/prompt` with `{"text": "..."}` starts or continues the one local session; `"voice": true` marks the text as a spoken turn.
 The response is `{"ok": true, "mode": "mock"|"claude", "status": "started"|"already_running"|"answered"|"ui"}`.
 `mode` is `mock` when `ANTHROPIC_API_KEY` is empty or `PAI_FORCE_MOCK` is `1`.
 
@@ -254,7 +254,7 @@ Mechanic's spoken line, live only: it is never kept in the backlog, so a reconne
 `id` names the line, `kind` is `reply` (the fast answer to a prompt) or `update` (a build milestone).
 While the line is written, events carry `delta` (the next piece of text) and `done: false`.
 The last event has `done: true` and the whole `text`; `cancelled: true` means a newer prompt replaced the reply mid-way.
-A reply is also published as a normal agent `chat` event once it is done; updates are only spoken.
+Every finished line, reply or update, is also published as an agent `chat` event with `voice: true`, so the conversation stays readable in the chat.
 Updates follow `sim`, `cad`, `version` and failed `step` events of a running build, never slider changes, and wait until the reply is finished.
 
 ### explain
@@ -284,6 +284,7 @@ The tool pill still shows `offline`.
 
 `role` is `user` or `agent`.
 `text` is the utterance.
+`voice: true` marks a spoken line: a user turn heard by Reson8 or the browser, or a line Mechanic said aloud (a `say` reply or update).
 
 ### tool
 

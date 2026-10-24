@@ -27,13 +27,12 @@ import { WorkbenchView } from "./views/WorkbenchView";
 
 const NOTICE_MS = 5000;
 
-// Column widths around the canvas. The canvas keeps at least CANVAS_MIN; the rest of
-// the window is shared by the icon rail, the chat and the right panel.
+// The chat column's width. The canvas keeps at least CANVAS_MIN; the rest of the
+// window is shared by the icon rail and the chat.
 const RAIL = 64;
-const CANVAS_MIN = 380;
-const WORKBENCH_GUTTERS = 72;
-const CHAT = { initial: 400, min: 320, max: 760 };
-const PANEL = { initial: 360, min: 300, max: 520 };
+const CANVAS_MIN = 480;
+const WORKBENCH_GUTTERS = 48;
+const CHAT = { initial: 420, min: 320, max: 860 };
 
 const fit = (wanted: number, min: number, max: number) => Math.round(Math.max(min, Math.min(max, wanted)));
 
@@ -77,50 +76,43 @@ export default function App() {
 
 function Bench() {
   const view = useUi((s) => s.view);
+  const chatExpanded = useUi((s) => s.chatExpanded);
   useBolzenVoice();
   useBrowserTraining();
   useBrowserStress();
   useAutoExplain();
   const vw = useWindowWidth();
   const chatPane = usePaneWidth("anybuild.chatWidth", CHAT.initial);
-  const panelPane = usePaneWidth("anybuild.panelWidth", PANEL.initial);
-  // The panel only sits on the workbench; when the window is narrow the chat gives way first.
-  const room = vw - RAIL - WORKBENCH_GUTTERS - CANVAS_MIN;
-  const hasPanel = view === "werkbank";
-  const panelWidth = hasPanel ? fit(panelPane.wanted, PANEL.min, Math.min(PANEL.max, room - CHAT.min)) : 0;
-  const chatMax = Math.min(CHAT.max, room - panelWidth);
+  const hasChat = view === "werkbank" || view === "library" || view === "community";
+  const chatMax = Math.min(CHAT.max, vw - RAIL - WORKBENCH_GUTTERS - CANVAS_MIN);
   const chatWidth = fit(chatPane.wanted, CHAT.min, chatMax);
-  const panel = {
-    width: panelWidth,
-    min: PANEL.min,
-    max: Math.min(PANEL.max, room - chatWidth),
-    onChange: panelPane.set,
-    onReset: panelPane.reset,
-  };
   usePilotRunner();
   return (
     <div className="flex h-full min-h-0">
       <IconRail />
-      {(view === "werkbank" || view === "library" || view === "community") && (
+      {hasChat && (
         <>
-          <div className="h-full shrink-0 border-r border-line" style={{ width: chatWidth }}>
+          {/* Expanded, the chat takes the whole window; the bench stays mounted behind it. */}
+          <div className={chatExpanded ? "h-full min-w-0 flex-1" : "h-full shrink-0 border-r border-line"} style={chatExpanded ? undefined : { width: chatWidth }}>
             <SidebarChat />
           </div>
-          <ResizeHandle
+          {!chatExpanded && (
+            <ResizeHandle
             width={chatWidth}
             min={CHAT.min}
             max={chatMax}
             onChange={chatPane.set}
             onReset={chatPane.reset}
-            side="before"
-            label="Resize the chat"
-          />
+              side="before"
+              label="Resize the chat"
+            />
+          )}
         </>
       )}
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <div className={`min-h-0 min-w-0 flex-1 flex-col ${hasChat && chatExpanded ? "hidden" : "flex"}`}>
         <TopBar />
         <main className="min-h-0 flex-1">
-          {view === "werkbank" && <WorkbenchView panel={panel} />}
+          {view === "werkbank" && <WorkbenchView />}
           {view === "library" && <LibraryView />}
           {view === "community" && <CommunityView />}
           {view === "training" && <TrainingView />}

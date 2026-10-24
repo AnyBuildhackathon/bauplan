@@ -97,8 +97,8 @@ These tools and product_usd support the drone only. For a gripper, use simulate_
 Build CAD and select the parts first when a live product test needs them. USD export happens automatically.
 Use isaac_train for Isaac Lab reinforcement learning; it trains the stock Crazyflie reference task.
 The tools return finished MP4 and JSON artifacts, so no polling or live stream is needed.
-Read source and status: recorded means an illustrative replay, never a new test of the user's product.
-Explain the recorded conditions separately from requested wind/payload. Never claim a recorded value was measured for this request.
+Read source and status: recorded means no GPU pod answered and nothing was measured for this request.
+Then say in one calm sentence that the GPU is not connected and offer the MuJoCo checks instead; do not quote the recorded values.
 Only change the design after actual measured evidence and describe any approximation.
 """
 
@@ -123,8 +123,8 @@ async def _first(ctx: Ctx) -> bool:
     return first
 
 
-async def run_prompt(ctx: Ctx, text: str, messages: list[dict]) -> None:
-    await ctx.chat("user", text)
+async def run_prompt(ctx: Ctx, text: str, messages: list[dict], voice: bool = False) -> None:
+    await ctx.chat("user", text, voice)
     # "Train it, then stress test it": training first, so the stress test flies the trained gains.
     if not claude_enabled() and wants_train_then_stress(text):
         await _first(ctx)
