@@ -327,7 +327,7 @@ A finished build, attached to the meeting it came from.
 Number rows have a `unit`; part rows have `key` `part:{category}`, names in `before` and `after`, and an empty `unit`.
 `summary` is one line such as `48.4 g · 10.4 min · 117.60 €`.
 Every rebuild is a version: the drone's come from `version_commit`, every other product commits one after its `bom_build`.
-A drone version is published a second time with the fields below once its snapshot is taken (same `n`, so it replaces the first).
+Each version is published once, with the fields below.
 `trigger` is `meeting`, `chat`, `library`, `check_failed` (a chat rebuild that makes a requirement pass that the last version failed) or `restore`; older recordings have none, read them as `meeting`.
 `product` is `drone`, `gripper` or `generic`; `label` names the trigger in one line (the meeting title, the chat request, `Restored v1`).
 For a non-drone product `meeting_id` is empty, `meeting_title` is the label, `weight_g` and `price_eur` are set, `thrust_to_weight` and `flight_time_min` are `null`, and `cards` are its metric cards as the last `metrics` event had them.

@@ -249,18 +249,32 @@ async def commit(ctx: Ctx, label: str | None = None, restored_from: int | None =
     return version
 
 
-async def after_tool(ctx: Ctx, name: str, args: dict, result: dict) -> None:
-    """Hooked into call_tool: the drone's version_commit gets its snapshot, any other product commits after its BOM."""
+async def commit_with_snapshot(ctx: Ctx, function, args: dict) -> dict:
+    """Runs the drone's version_commit so its one `version` event already carries the snapshot fields."""
 
     state = ctx.state
-    if name == "version_commit" and state.versions:
-        version = state.versions[-1]
-        previous = state.versions[-2] if len(state.versions) > 1 else None
-        trigger = getattr(ctx, "trigger", None) or "meeting"
-        snapshot(ctx, version, trigger, restored_from=getattr(ctx, "restored_from", None))
-        version["diff"] = diff(previous, version)
-        await ctx.emit({"type": "version", **version})
-    elif name == "bom_build" and state.product != "drone":
+    emit = ctx.emit
+
+    async def enriched(event: dict) -> None:
+        if event.get("type") == "version" and state.versions and state.versions[-1]["n"] == event.get("n"):
+            version = state.versions[-1]
+            previous = state.versions[-2] if len(state.versions) > 1 else None
+            snapshot(ctx, version, getattr(ctx, "trigger", None) or "meeting", restored_from=getattr(ctx, "restored_from", None))
+            version["diff"] = diff(previous, version)
+            event = {"type": "version", **version}
+        await emit(event)
+
+    ctx.emit = enriched
+    try:
+        return await function(ctx, args)
+    finally:
+        ctx.emit = emit
+
+
+async def after_tool(ctx: Ctx, name: str, args: dict, result: dict) -> None:
+    """Hooked into call_tool: any product other than the drone commits a version after its bill of materials."""
+
+    if name == "bom_build" and ctx.state.product != "drone":
         await commit(ctx, label=getattr(ctx, "label", None), restored_from=getattr(ctx, "restored_from", None))
 
 

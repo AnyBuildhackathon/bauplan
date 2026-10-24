@@ -705,7 +705,12 @@ async def call_tool(ctx: Ctx, name: str, args: dict | None) -> dict:
     )
     await _advance(ctx, name, {}, started=True)
     try:
-        result = await function(ctx, payload)
+        if name == "version_commit":
+            from pai_agent.versions import commit_with_snapshot
+
+            result = await commit_with_snapshot(ctx, function, payload)
+        else:
+            result = await function(ctx, payload)
     except Exception as exc:
         result = {"ok": False, "error": str(exc)}
     status = "error"
@@ -720,7 +725,7 @@ async def call_tool(ctx: Ctx, name: str, args: dict | None) -> dict:
         await refresh_requirements(ctx)
         if name in {"train_in_browser", "isaac_train", "isaac_lab_train"}:
             await refresh_after_training(ctx)
-        if name in {"version_commit", "bom_build"}:
+        if name == "bom_build":
             from pai_agent.versions import after_tool
 
             await after_tool(ctx, name, payload, result)
