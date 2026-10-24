@@ -28,6 +28,8 @@ _SECTION_II_CELL_WH = 20.0
 # Contact with a closing gripper above this force starts to hurt a hand; ISO/TS 15066 Annex A gives 140 N transient for the hand.
 _PINCH_INFO_N = 10.0
 _HAND_TRANSIENT_N = 140.0
+# Pitch radius of the gripper template's gears, where a finger can get between the teeth.
+_GEAR_RADIUS_MM = 10.0
 
 _MAINS = re.compile(
     r"\b(230|240|220|120|110|100)\s*-?\s*v(olts?)?\b(?!\s*dc)|\bmains\b|\bwall (socket|outlet|plug)\b|\bschuko\b|\bE(27|14)\b|\b(110|230)\s*v\s*ac\b",
@@ -135,15 +137,17 @@ def gripper_findings(state) -> list[dict]:
         return []
     force = float(grip["grip_force_n"])
     opening = float(grip.get("opening_mm") or 0)
-    severity = "warning" if force >= _PINCH_INFO_N else "info"
-    servo = state.selected.get("servo", {}).get("name", "the servo")
+    servo = state.selected.get("servo", {})
+    # Near the axis the same stall torque pinches much harder than at the fingertips.
+    mesh = float(servo.get("stall_torque_kgcm") or 0) * 9.81 / 100.0 / (_GEAR_RADIUS_MM / 1000.0)
+    severity = "warning" if max(force, mesh) >= _PINCH_INFO_N else "info"
     return [
         _finding(
             "pinch-point",
             severity,
-            f"Pinch point: jaws close with {force:.0f} N",
-            f"{servo} drives two meshing gears and the fingers close with about {force:.0f} N on a {opening:.0f} mm opening. "
-            "A finger between the gear teeth or the jaws gets crushed; open gears give no warning.",
+            f"Pinch point: about {mesh:.0f} N at the gear mesh",
+            f"{servo.get('name', 'The servo')} drives two meshing gears. The fingertips close with about {force:.0f} N on a {opening:.0f} mm opening, "
+            f"but between the gear teeth, about {_GEAR_RADIUS_MM:.0f} mm from the axis, the stall torque pinches with about {mesh:.0f} N, enough to hurt a finger.",
             f"EN ISO 13857 and ISO 13854 minimum gaps (25 mm for fingers); ISO/TS 15066 Annex A hand contact limit {_HAND_TRANSIENT_N:.0f} N",
             "Print a cover over the gear mesh, limit the servo travel in the firmware so the jaws stop 4 mm apart when empty, and add a stop button on the arm.",
         )

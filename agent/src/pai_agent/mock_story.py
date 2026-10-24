@@ -56,7 +56,7 @@ async def _safety(ctx: Ctx, context: str = "") -> dict:
     top = result.get("top")
     if top:
         mood = "besorgt" if top["severity"] == "danger" else "erklaert"
-        await _say(ctx, mood, top["title"] + ".", "Safety check before ordering: " + top["title"] + ". " + top["reason"] + " Fix: " + top["fix"] + " (" + top["rule"] + "; a hint, not legal advice.)")
+        await _say(ctx, mood, top["title"] + ".", "Safety check before ordering: " + top["title"] + ". " + top["fix"] + " A hint, not legal advice; the card names the rule.")
     return result
 
 
