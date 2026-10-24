@@ -35,7 +35,7 @@ function unavailable(detail: string): IntegrationStatus {
 
 export const usePartners = create<IntegrationStatus>(() => unavailable("Waiting for backend status."));
 
-/** Mounted once in the top bar; the GPU header shares the same status and polling loop. */
+/** Mounted once from the top bar; the Omniverse panel shares this polling loop. */
 export function usePartnerStatus() {
   const live = useSource((s) => s.live);
   useEffect(() => {
