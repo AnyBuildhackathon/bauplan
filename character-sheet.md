@@ -6,6 +6,60 @@ The visual bible for **Mechanic**, AnyBuild's mascot. Personality and voice live
 
 ---
 
+## How to use this file
+
+**Short version:** copy a prompt from §4, paste it into an image generator, and generate. Every prompt is text only: no reference images, no uploads, and the full character description is already inside each one.
+
+### Step by step
+
+1. **Pick a tool** (table below). If you're unsure, use **ChatGPT (GPT-image)**. It's the easiest and handles text in images best.
+2. **Start with prompt 4.0.** It creates the complete character sheet in one image. Regenerate until the face looks right: that's your Mechanic.
+3. **Keep going in the same place:** the same ChatGPT chat, or the same Midjourney seed. Then generate whatever you need from the "which prompt for what" table.
+4. **Only edit the SCENE / OUTFIT / POSES part** of a prompt. Never change the character description, or his face will drift.
+5. **On Stable Diffusion, Flux or Leonardo,** paste the negative prompt from the end of §4 into the negative field.
+6. **Save the winners** into the repo and share them with the team.
+
+### Which tool to use
+
+| Tool | Best for | Why |
+|---|---|---|
+| **ChatGPT (GPT-image)** | 4.0 full sheet, 4.2 expressions, 4.14 stickers, anything with labels or text | Follows long prompts best, renders labels and "SIM 0847 / 1024" text cleanly, stays consistent within one chat |
+| **Midjourney v7** | 4.4–4.6 hero shots, 4.11 garage environment | Most cinematic, best lighting and mood |
+| **Flux** (Replicate, fal, ComfyUI) | 4.1 turnaround, 4.7 suit details, 4.10 props | Precise, clean model sheets, good at following layout |
+| **Leonardo / Ideogram** | 4.13 app icon, 4.14 stickers | Fast, good flat and icon styles, free tier |
+
+### Which prompt for what
+
+| You need… | Use prompt | Aspect ratio | Where it goes |
+|---|---|---|---|
+| The whole character in one image, for the pitch deck or the team | **4.0** Complete character sheet | 21:9 | Pitch slide, README, team reference |
+| Front, side and back views (for 3D modelers or animators) | **4.1** Turnaround | 21:9 | 3D model, animation |
+| His faces and emotions | **4.2** Expressions | 1:1 | Chat bubbles, mascot states |
+| All three outfits compared | **4.3** Outfit sheet | 16:9 | Design reference |
+| Main mascot picture | **4.4** Garage hero | 16:9 | Onboarding, landing page |
+| The "1024 simulations" reveal moment | **4.5** Keynote reveal | 16:9 | Simulation results screen, demo slide |
+| Big hero / celebration art | **4.6** Tech suit hero | 16:9 or 9:16 | Launch screen, "build complete" |
+| Close-up suit details | **4.7** Suit detail sheet | 16:9 | Design reference |
+| The simulation-screen visual | **4.8** HUD close-up | 16:9 | Loading / simulating screen |
+| Body poses for different screens | **4.9** Pose sheet | 16:9 | Every app screen |
+| His tools and gadgets | **4.10** Props sheet | 16:9 | UI icons, build steps |
+| His workshop background | **4.11** Garage environment | 16:9 | App backgrounds |
+| The hologram / simulation effect | **4.12** Hologram FX sheet | 16:9 | Simulation animation, UI effects |
+| App icon or profile picture | **4.13** Avatar | 1:1 | App icon, chat avatar, favicon |
+| Small fun stickers | **4.14** Sticker pack | 1:1 | Chat reactions, loaders, empty states |
+
+### Hackathon fast path (about 15 minutes)
+
+You only need four images for the demo:
+1. **4.0** for the pitch slide
+2. **4.13** for the in-app avatar
+3. **4.2** for the mascot expressions in the chat
+4. **4.5** for the simulation reveal moment
+
+Everything else is optional polish.
+
+---
+
 ## 1. Fixed design (never changes)
 
 The canonical description. Every prompt in §4 already contains it, so you don't need to paste it yourself.
