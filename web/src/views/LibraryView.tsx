@@ -22,7 +22,7 @@ const RECORDED: ReferenceBuild[] = [
     printed: 0,
     bought: 8,
     requirements: null,
-    thumbnail_url: "/models/hero-drone.png",
+    thumbnail_url: "/models/hero-drone-thumb.jpg",
     saved_at: null,
   },
   {
@@ -35,7 +35,7 @@ const RECORDED: ReferenceBuild[] = [
     printed: 1,
     bought: 4,
     requirements: null,
-    thumbnail_url: "/models/robot-gripper.png",
+    thumbnail_url: "/models/robot-gripper-thumb.jpg",
     saved_at: null,
   },
   ...(

@@ -211,7 +211,7 @@
     ],
     "versions": [],
     "files": [],
-    "thumbnail_url": "/models/robot-gripper.png"
+    "thumbnail_url": "/models/robot-gripper-thumb.jpg"
   },
   {
     "id": "micro-fpv-toothpick",
@@ -302,6 +302,6 @@
       }
     ],
     "files": [],
-    "thumbnail_url": "/models/hero-drone.png"
+    "thumbnail_url": "/models/hero-drone-thumb.jpg"
   }
 ]

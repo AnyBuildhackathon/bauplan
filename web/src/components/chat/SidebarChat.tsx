@@ -9,7 +9,7 @@ import { ArrowDown, CornerDownRight, GitFork, ImagePlus, Maximize2, Minimize2, R
 import { currentStep, useSession } from "../../events/store";
 import { useSource } from "../../events/source";
 import { useUi, type Display } from "../../lib/ui";
-import { MASCOT_LABEL, MascotLive } from "../mascot/Mascot";
+import { MASCOT_LABEL, MascotFull } from "../mascot/Mascot";
 import type { ChatItem } from "../../events/store";
 import ContentPartsRenderer, { JamieGroupRenderer, ProgressLineRenderer, ToolGroupRenderer } from "./ContentPartsRenderer";
 import ChatMessage from "./SidebarChatMessage";
@@ -225,9 +225,15 @@ export default function SidebarChat() {
 
       {/* Content */}
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+        {/* Expanded, the wide chat has room for Mechanic head to toe beside the column. */}
+        {expanded && !isEmpty && (
+          <div className="pointer-events-none absolute bottom-2 left-6 hidden min-[1300px]:block">
+            <MascotFull state={mascot.state} height={360} />
+          </div>
+        )}
         {isEmpty ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 px-8 text-center">
-            <MascotLive state={mascot.state} size={200} className="rounded-[32px]" />
+            <MascotFull state={mascot.state} height={220} />
             <p className="text-[17px] font-semibold text-ink-2">“So. What are we building?”</p>
             {live && <p className="text-[15px] text-muted">Start from a reference build and change it, or describe any product from scratch.</p>}
             {references.length > 0 && (

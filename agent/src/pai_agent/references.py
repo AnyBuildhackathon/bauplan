@@ -78,7 +78,7 @@ CODE_REFERENCES = {
         "printed": 0,
         "bought": 8,
         # The kickoff's studio render, written by agent/scripts/record_demo.py.
-        "thumbnail": REPO_ROOT / "web" / "public" / "models" / "hero-drone.png",
+        "thumbnail": REPO_ROOT / "web" / "public" / "models" / "hero-drone-thumb.jpg",
     },
     "robot-gripper": {
         "name": "Robot gripper",
@@ -88,7 +88,7 @@ CODE_REFERENCES = {
         "printed": 1,
         "bought": 4,
         # Blender's studio render of the gripper flow's FreeCAD assembly.
-        "thumbnail": REPO_ROOT / "web" / "public" / "models" / "robot-gripper.png",
+        "thumbnail": REPO_ROOT / "web" / "public" / "models" / "robot-gripper-thumb.jpg",
     },
 }
 
@@ -118,6 +118,16 @@ def folder_of(ref_id: str) -> Path | None:
         if (folder / "reference.json").is_file():
             return folder
     return None
+
+
+def name_of(ref_id: str) -> str:
+    """The library item's display name, or the id itself when there is none."""
+
+    code = CODE_REFERENCES.get(_slug(ref_id))
+    if code is not None:
+        return code["name"]
+    ref = _read(ref_id)
+    return str(ref.get("name") or ref_id) if ref else ref_id
 
 
 def _read(ref_id: str) -> dict | None:

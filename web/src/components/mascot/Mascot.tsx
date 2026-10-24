@@ -4,7 +4,9 @@
 // (talking-closed.webp). MascotLive brings the stills to life: it breathes, sways in a
 // way that fits the state, blinks now and then, moves its mouth and bobs with the
 // loudness of Mechanic's voice while he speaks, and cross-fades when the state changes.
-// MascotHead and MascotBust are the plain stills for small and static places.
+// MascotFull is the whole figure (full-<clip>.webp, cut out, same scale and head position
+// in every state) with the same breathing, sway, cross-fade and voice bob, without blink
+// or mouth overlays. MascotHead and MascotBust are the plain stills for small and static places.
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { MascotState } from "../../events/types";
 import { useSpeech } from "../../lib/speech";
@@ -180,6 +182,53 @@ export function MascotLive({
                 </div>
               );
             })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** The full figures are 640 × 820. */
+const FULL_ASPECT = 640 / 820;
+
+/** Mechanic head to toe, alive: the talking pose while his voice is audible, otherwise the state's own. */
+export function MascotFull({ state, height, className = "" }: { state: MascotState; height: number; className?: string }) {
+  const speaking = useSpeech((s) => s.speaking);
+  const reduced = usePrefersReducedMotion();
+  const active = mascotClip(state, speaking);
+  const bob = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (reduced) return;
+    const apply = (level: number) => {
+      if (bob.current) bob.current.style.transform = `translateY(${-level * 1.6}%) rotate(${level * 1.2}deg)`;
+    };
+    apply(useSpeech.getState().level);
+    return useSpeech.subscribe((s) => apply(s.level));
+  }, [reduced]);
+
+  return (
+    <div
+      role="img"
+      aria-label={`Mechanic ${speaking ? "talking" : MASCOT_LABEL[state]}`}
+      className={`relative shrink-0 select-none ${className}`}
+      style={{ width: Math.round(height * FULL_ASPECT), height }}
+    >
+      <div className="absolute inset-0 origin-[50%_98%] animate-mech-breathe motion-reduce:animate-none">
+        <div ref={bob} className="absolute inset-0 origin-[50%_95%] transition-transform duration-100 ease-out">
+          <div className={`absolute inset-0 origin-[50%_98%] motion-reduce:animate-none ${SWAY[active]}`}>
+            {CLIPS.map((clip) => (
+              <img
+                key={clip}
+                src={asset(`full-${clip}.webp`)}
+                alt=""
+                draggable={false}
+                className={`absolute inset-0 h-full w-full transition-opacity duration-[350ms] ease-out motion-reduce:transition-none ${
+                  clip === active ? "opacity-100" : "opacity-0"
+                }`}
+              />
+            ))}
           </div>
         </div>
       </div>

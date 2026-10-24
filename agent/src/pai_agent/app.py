@@ -417,7 +417,7 @@ async def library_thumbnail(item_id: str) -> FileResponse:
     path = thumbnail_of(item_id)
     if path is None:
         raise HTTPException(status_code=404, detail="no thumbnail")
-    return FileResponse(path, media_type="image/png")
+    return FileResponse(path)
 
 
 @app.post("/api/library")
@@ -557,7 +557,7 @@ async def community_thumbnail(entry_id: str) -> FileResponse:
     path = thumbnail(entry_id)
     if path is None:
         raise HTTPException(status_code=404, detail="no thumbnail")
-    return FileResponse(path, media_type="image/png")
+    return FileResponse(path)
 
 
 @app.get("/api/community/{entry_id}/files/{name}")

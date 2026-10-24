@@ -5,7 +5,8 @@ import { Box, Boxes, Camera, Cloud, DraftingCompass, Network, Play, Rocket } fro
 import { useSource } from "../../events/source";
 import { useSession } from "../../events/store";
 import { useUi, type CanvasTab, type ModelLook } from "../../lib/ui";
-import { MascotHead } from "../mascot/Mascot";
+import { MascotFull } from "../mascot/Mascot";
+import { useSpeech } from "../../lib/speech";
 import { Segmented } from "../ui/primitives";
 import { assetUrl } from "../../lib/api";
 import { fmtEur } from "../../lib/format";
@@ -29,9 +30,11 @@ const TABS: { value: CanvasTab; label: string; icon: typeof Box }[] = [
   { value: "agents", label: "Agents", icon: Network },
 ];
 
-/** Bolzen's current line, as a caption at the bottom of the canvas. */
+/** Bolzen's current line, as a caption at the bottom of the canvas, with his full figure in the corner while he talks. */
 function SpokenLine({ lifted, overSlider }: { lifted: boolean; overSlider: boolean }) {
   const mascot = useSession((s) => s.mascot);
+  const speaking = useSpeech((s) => s.speaking);
+  const figureOn = useUi((s) => s.display.mascot);
   const [visible, setVisible] = useState(false);
   useEffect(() => {
     if (!mascot.say) return setVisible(false);
@@ -41,15 +44,23 @@ function SpokenLine({ lifted, overSlider }: { lifted: boolean; overSlider: boole
     const id = setTimeout(() => setVisible(false), 12000 - age);
     return () => clearTimeout(id);
   }, [mascot]);
-  if (!visible) return null;
+  const figure = figureOn && (visible || speaking || mascot.state === "erklaert");
   return (
-    <div
-      key={mascot.at}
-      className={`pointer-events-none absolute left-1/2 z-10 ${lifted ? "bottom-[112px]" : overSlider ? "bottom-[68px]" : "bottom-5"} flex w-max max-w-[86%] -translate-x-1/2 animate-rise items-center gap-3 rounded-[24px] bg-white/95 py-2.5 pr-6 pl-2.5 shadow-[var(--shadow-float)] backdrop-blur`}
-    >
-      <MascotHead size={44} state={mascot.state} />
-      <span className="line-clamp-2 text-[19px] leading-snug font-semibold text-ink">“{mascot.say}”</span>
-    </div>
+    <>
+      {figure && (
+        <div className={`pointer-events-none absolute right-4 z-10 animate-rise ${lifted ? "bottom-[150px]" : "bottom-2"}`}>
+          <MascotFull state={mascot.state} height={150} />
+        </div>
+      )}
+      {visible && (
+        <div
+          key={mascot.at}
+          className={`pointer-events-none absolute left-1/2 z-10 ${lifted ? "bottom-[112px]" : overSlider ? "bottom-[68px]" : "bottom-5"} flex w-max ${figure ? "max-w-[calc(100%-280px)]" : "max-w-[86%]"} -translate-x-1/2 animate-rise items-center rounded-[24px] bg-white/95 px-6 py-3 shadow-[var(--shadow-float)] backdrop-blur`}
+        >
+          <span className="line-clamp-2 text-[19px] leading-snug font-semibold text-ink">“{mascot.say}”</span>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -61,7 +72,10 @@ function PartModel() {
   if (!url) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 px-8 text-center">
-        <img src={`${import.meta.env.BASE_URL}logo-full.webp`} alt="" draggable={false} className="h-44 w-44 select-none" />
+        {/* Mechanic already stands in the chat; the empty canvas shows only what will appear here. */}
+        <span className="mb-2 flex h-20 w-20 items-center justify-center rounded-[24px] bg-tile text-faint">
+          <Box className="h-9 w-9" strokeWidth={1.6} />
+        </span>
         <p className="text-[18px] font-semibold text-ink-2">{running ? "FreeCAD is building the part …" : "No model yet"}</p>
         <p className="max-w-sm text-[15px] text-muted">The assembly shows up here once FreeCAD has built it.</p>
       </div>

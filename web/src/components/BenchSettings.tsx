@@ -16,6 +16,7 @@ const DISPLAY: { key: keyof Display; label: string; hint: string; control?: stri
   { key: "tools", label: "Show tool details", hint: "FreeCAD, Blender, MuJoCo cards", control: "setting:tools" },
   { key: "jamie", label: "Show Jamie activity", hint: "Tags, notes and tasks written to Jamie", control: "setting:jamie" },
   { key: "allMetrics", label: "Show all metrics", hint: "Thrust to weight and the rest", control: "setting:all_metrics" },
+  { key: "mascot", label: "Show Mechanic on the canvas", hint: "His full figure in the corner while he speaks or explains" },
   { key: "learning", label: "Learning mode", hint: "Mechanic explains each decision with the physics; the logbook shows what you learned" },
 ];
 
