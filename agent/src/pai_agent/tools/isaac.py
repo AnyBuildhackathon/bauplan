@@ -115,6 +115,9 @@ def _validate_result(result: dict, mode: str, directory: Path) -> None:
 
 
 async def _job(ctx: Ctx, mode: str, args: dict) -> dict:
+    if ctx.state.product != "drone" or (ctx.state.stl_path and Path(ctx.state.stl_path).name.startswith("part-")):
+        message = "Omniverse hover tests and Crazyflie training support the drone only. Use simulate_grip for the gripper lift-and-shake test."
+        return {"ok": False, "error": message, "detail": message}
     try:
         params = _parameters(mode, args)
     except (ValueError, TypeError, OverflowError) as exc:

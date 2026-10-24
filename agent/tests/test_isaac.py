@@ -66,6 +66,39 @@ class IsaacTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["parameters"]["payload_g"], 10)
         self.assertFalse(result["product_tested"])
         self.assertIn("Waiting for pod", result["detail"])
+        self.assertEqual(result["metrics"]["assembly_mass_g"], 36.7)
+        self.assertAlmostEqual(result["metrics"]["total_mass_g"], result["metrics"]["assembly_mass_g"] + result["parameters"]["payload_g"])
+
+    async def test_gripper_never_uploads_or_replays_drone_results(self):
+        self.ctx.state.product = "gripper"
+        with patch.object(isaac, "_command") as runner:
+            for configured in (True, False):
+                if not configured:
+                    os.environ.pop("RUNPOD_SSH_HOST")
+                for tool in (isaac.isaac_test, isaac.isaac_train):
+                    result = await tool(self.ctx, {})
+                    self.assertFalse(result["ok"])
+                    self.assertIn("simulate_grip", result["detail"])
+                    self.assertNotIn("video_url", result)
+            runner.assert_not_called()
+        self.assertIsNone(self.ctx.state.omniverse_result)
+
+    async def test_product_switch_clears_drone_result(self):
+        from pai_agent.tools.gripper import product_brief
+
+        self.ctx.state.omniverse_result = {"source": "recorded"}
+        self.ctx.state.training_video = "old-drone.mp4"
+        result = await product_brief(self.ctx, {"product": "gripper"})
+        self.assertTrue(result["ok"])
+        self.assertIsNone(self.ctx.state.omniverse_result)
+        self.assertIsNone(self.ctx.state.training_video)
+
+    async def test_generic_cad_part_cannot_use_drone_controller(self):
+        self.ctx.state.stl_path = "agent/runs/sessions/fakejob/part-bracket.stl"
+        with patch.object(isaac, "_command") as runner:
+            result = await isaac.isaac_test(self.ctx, {})
+            self.assertFalse(result["ok"])
+            runner.assert_not_called()
 
     async def test_upload_execution_and_download(self):
         result, runner = await self.execute()

@@ -52,6 +52,7 @@ Ruf mascot_say, wenn du etwas erklärst. state ist ruhig, denkt, erklaert, freut
 Wenn ein Werkzeug einen Fehler zurückgibt, lies ihn und ruf es mit korrigierten Argumenten noch einmal auf.
 
 Omniverse requests: use isaac_test for gusty wind, a camera/payload mass or hover stability.
+These tools and product_usd support the drone only. For a gripper, use simulate_grip and explain that the GPU hover controller does not support it.
 Build CAD and select the parts first when a live product test needs them. USD export happens automatically.
 Use isaac_train for Isaac Lab reinforcement learning; it trains the stock Crazyflie reference task.
 The tools return finished MP4 and JSON artifacts, so no polling or live stream is needed.

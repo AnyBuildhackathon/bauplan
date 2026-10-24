@@ -3,11 +3,13 @@ import { useEffect, useRef, useState } from "react";
 import { useSession } from "../../events/store";
 import { useSource } from "../../events/source";
 import { assetUrl } from "../../lib/api";
+import { useShownBuild } from "../../lib/hooks";
 import { TrendChart } from "../ui/TrendChart";
 
 const METRICS: Record<string, [string, string]> = {
   hover_rmse_m: ["Hover error", "m"], max_tilt_deg: ["Peak tilt", "°"], max_drift_m: ["Lateral drift", "m"],
-  min_altitude_m: ["Min. altitude", "m"], total_mass_g: ["Assembly mass", "g"], peak_wind_m_s: ["Peak wind", "m/s"],
+  min_altitude_m: ["Min. altitude", "m"], assembly_mass_g: ["Assembly mass", "g"],
+  total_mass_g: ["Test mass incl. payload", "g"], peak_wind_m_s: ["Peak wind", "m/s"],
   payload_g: ["Added payload", "g"], first_failure_wind_m_s: ["Wind at first failure", "m/s"],
   final_reward: ["Final reward", ""], iterations: ["Iterations", ""], parallel_envs: ["Parallel environments", ""],
 };
@@ -25,6 +27,7 @@ function conditions(params: Record<string, string | number>) {
 
 export function OmniverseView() {
   const result = useSession((s) => s.omniverse);
+  const { metrics: shownMetrics, version: shownVersion } = useShownBuild();
   const sendPrompt = useSource((s) => s.sendPrompt);
   const [wind, setWind] = useState(6);
   const [payload, setPayload] = useState(10);
@@ -64,12 +67,16 @@ export function OmniverseView() {
         </span>
       </div>
 
+      {shownMetrics && <p className="mb-3 text-xs font-semibold text-muted">
+        Displayed assembly{shownVersion ? ` · v${shownVersion.n}` : " · current build"}: {shownMetrics.weight_g.toFixed(1)} g before added payload.
+      </p>}
+
       <div className="mb-4 flex flex-wrap items-end gap-2 rounded-2xl border border-line bg-white p-3">
         <label className="min-w-0 flex-1 text-xs font-semibold text-muted">Wind (m/s)
-          <input aria-label="Wind in metres per second" type="number" min="0" max="20" step="0.5" value={wind}
+          <input name="wind_m_s" aria-label="Wind in metres per second" type="number" min="0" max="20" step="0.5" value={wind}
             onChange={(e) => setWind(Number(e.target.value))} className="mt-1 block w-full rounded-lg bg-tile px-3 py-2 text-sm text-ink" /></label>
         <label className="min-w-0 flex-1 text-xs font-semibold text-muted">Payload (g)
-          <input aria-label="Payload in grams" type="number" min="0" max="500" value={payload}
+          <input name="payload_g" aria-label="Payload in grams" type="number" min="0" max="500" value={payload}
             onChange={(e) => setPayload(Number(e.target.value))} className="mt-1 block w-full rounded-lg bg-tile px-3 py-2 text-sm text-ink" /></label>
         <button type="button" disabled={busy || wind < 0 || wind > 20 || payload < 0 || payload > 500}
           onClick={() => void run(`Test the product in Omniverse with ${wind} m/s wind gusts and a ${payload} g payload.`)}
@@ -100,6 +107,7 @@ export function OmniverseView() {
         </ol>}
         <p className="mb-2 text-xs leading-relaxed text-muted">Requested: {conditions(result.requested)}</p>
         {recorded && result.parameters && <p className="mb-3 text-xs leading-relaxed text-agent-ink">Recorded fixture: {conditions(result.parameters)}</p>}
+        {recorded && <p className="mb-3 text-xs font-semibold text-agent-ink">The values below describe the recorded reference, separate from the displayed assembly.</p>}
         {video && !videoError ? <video key={video} src={video} controls autoPlay muted playsInline loop onError={() => setVideoError(true)}
           aria-label={recorded ? "Recorded illustrative quadcopter demo" : "Completed Omniverse run"}
           className="mb-3 aspect-video max-h-56 w-full shrink-0 rounded-2xl bg-ink object-contain" />
@@ -109,7 +117,7 @@ export function OmniverseView() {
         <div className="mb-3 grid grid-cols-2 gap-2 xl:grid-cols-3">
           {Object.entries(result.metrics).map(([key, value]) => <div key={key} className="rounded-2xl bg-white px-4 py-3">
             <p className="text-xs text-muted">{METRICS[key]?.[0] ?? key.replaceAll("_", " ")}</p>
-            <p className="mt-1 text-xl font-semibold tabular-nums">{Number(value.toFixed(3))} <span className="text-sm text-muted">{METRICS[key]?.[1]}</span></p>
+            <p className="mt-1 text-xl font-semibold tabular-nums">{Number(value.toFixed(key.endsWith("mass_g") ? 1 : 3))} <span className="text-sm text-muted">{METRICS[key]?.[1]}</span></p>
           </div>)}
         </div>
         {result.passed !== undefined && <p className={`mb-3 text-sm font-semibold ${result.passed ? "text-ok-ink" : "text-fail-ink"}`}>

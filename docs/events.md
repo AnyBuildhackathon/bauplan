@@ -339,5 +339,7 @@ The dashboard's `?demo` replays exactly the drone run from `web/src/events/recor
 `detail` explains progress, the result or fallback reason; `passed` is present only for a live product test.
 `product_tested: false` identifies reference training and illustrative replays.
 A recorded result is never evidence that the requested product or conditions were simulated.
+`assembly_mass_g` excludes payload; `total_mass_g` includes it.
+Recorded fixture masses stay fixed and are identified separately from the displayed build version.
 The tools `product_usd`, `isaac_test`, and `isaac_train` are documented in [Omniverse experiments](omniverse.md).
 

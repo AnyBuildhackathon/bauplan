@@ -2,7 +2,7 @@
   "test": {
     "engine": "Illustrative demo",
     "parameters": {"scenario": "wind", "wind_m_s": 6, "payload_g": 10, "duration_s": 8},
-    "metrics": {"hover_rmse_m": 0.08, "max_tilt_deg": 28, "max_drift_m": 0.18, "total_mass_g": 46.7},
+    "metrics": {"hover_rmse_m": 0.08, "max_tilt_deg": 28, "max_drift_m": 0.18, "assembly_mass_g": 36.7, "total_mass_g": 46.7, "payload_g": 10},
     "curve": [],
     "product_tested": false,
     "note": "Synthetic fixture values and a recorded browser animation, not Isaac Sim measurements. These fixed conditions do not change with the request."

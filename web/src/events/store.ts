@@ -423,6 +423,7 @@ export const useSession = create<SessionState>((set, get) => ({
           product: ev.id,
           requirements: [],
           metrics: null,
+          omniverse: null,
           runs: [],
           draws: [],
           bom: null,

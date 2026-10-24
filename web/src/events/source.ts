@@ -237,6 +237,10 @@ export const useSource = create<SourceState>((set, get) => {
         if (omniverse) {
           const session = useSession.getState();
           session.addLocalUserMessage(trimmed);
+          if (session.product !== "drone" || session.cad?.script_url) {
+            session.apply({ type: "chat", role: "agent", text: "Omniverse hover tests and Crazyflie training support the drone only. Use the Simulation tab for the gripper lift-and-shake test." });
+            return;
+          }
           session.apply(omniverse);
           session.apply({ type: "chat", role: "agent", text: "Here is the recorded Omniverse demo. Its values and learning curve are illustrative; this request has not been simulated." });
           useUi.getState().setTab("omniverse");

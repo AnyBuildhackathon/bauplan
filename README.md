@@ -161,11 +161,10 @@ Shell variables override values in `.env`.
 
 ## Omniverse GPU experiments
 
-The **Omniverse** tab runs wind, payload and hover experiments in NVIDIA Isaac Sim and reference Crazyflie training in Isaac Lab over SSH.
+For drones, the **Omniverse** tab runs wind, payload and hover experiments in NVIDIA Isaac Sim and reference Crazyflie training in Isaac Lab over SSH.
 Blender exports the current CAD assembly as USD with per-part masses.
 Without a working GPU pod, the app plays a clearly labelled recorded demo with synthetic fixture values.
 See [Omniverse setup, tools, limitations and verification](docs/omniverse.md) for the full contract, including local ports 8113 and 5193.
-
 
 ## Smoke Test
 

@@ -71,19 +71,25 @@ export function CanvasCard() {
   const renders = useSession((s) => s.renders.length);
   const product = useSession((s) => s.product);
   const omniverse = useSession((s) => s.omniverse);
+  const supportsOmniverse = product === "drone" && !cad?.script_url;
   useEffect(() => {
-    if (omniverse) setTab("omniverse");
-  }, [omniverse, setTab]);
+    if (supportsOmniverse && omniverse) setTab("omniverse");
+  }, [omniverse, supportsOmniverse, setTab]);
+  useEffect(() => {
+    if (!supportsOmniverse && tab === "omniverse") setTab("simulation");
+  }, [supportsOmniverse, tab, setTab]);
+  const tabs = TABS.filter((t) => t.value !== "omniverse" || supportsOmniverse);
   const badges: Partial<Record<CanvasTab, boolean>> = { cad: !!cad, simulation: runs > 0, omniverse: !!omniverse };
   const showRender = tab === "modell" && look === "render";
 
   return (
     <div className="card flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="flex shrink-0 items-center gap-3 px-4 pt-3.5 pb-3">
+      <div className="flex shrink-0 flex-wrap items-center gap-3 px-4 pt-3.5 pb-3">
         <Segmented
+          className="max-w-full flex-wrap"
           value={tab}
           onChange={setTab}
-          options={TABS.map((t) => ({
+          options={tabs.map((t) => ({
             value: t.value,
             target: `tab:${t.value}`,
             label: (
@@ -129,7 +135,7 @@ export function CanvasCard() {
         {tab === "modell" && (showRender ? <RenderGallery /> : product === "drone" ? <ModelScene look="modell" /> : <PartModel />)}
         {tab === "cad" && <CadView />}
         {tab === "simulation" && <SimView />}
-        {tab === "omniverse" && <OmniverseView />}
+        {tab === "omniverse" && supportsOmniverse && <OmniverseView />}
         {tab !== "cad" && tab !== "omniverse" && <SpokenLine lifted={(tab === "simulation" && runs > 0) || (showRender && renders > 1)} />}
       </div>
     </div>

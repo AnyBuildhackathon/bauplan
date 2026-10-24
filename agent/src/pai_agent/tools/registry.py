@@ -84,12 +84,12 @@ _STEP = {
 SCHEMAS = [
     {
         "name": "product_usd",
-        "description": "Export the current CAD product through Blender as a portable USD assembly with per-part masses in kilograms. Build CAD and select all parts first.",
+        "description": "Drone only: export the current CAD product through Blender as a portable USD assembly with per-part masses in kilograms. Build CAD and select all parts first.",
         "input_schema": {"type": "object", "properties": {}},
     },
     {
         "name": "isaac_test",
-        "description": "Test the current exported product in NVIDIA Isaac Sim on an SSH GPU host. Returns a completed video and JSON measurements for wind gusts, added payload or hover stability. Without a working host, returns an explicitly recorded illustrative demo whose numbers do not describe this request.",
+        "description": "Drone only: test the current exported product in NVIDIA Isaac Sim on an SSH GPU host. Returns a completed video and JSON measurements for wind gusts, added payload or hover stability. Without a working host, returns an explicitly recorded illustrative demo whose numbers do not describe this request.",
         "input_schema": {"type": "object", "properties": {
             "scenario": {"type": "string", "enum": ["wind", "payload", "hover"]},
             "wind_m_s": {"type": "number", "minimum": 0, "maximum": 20},
@@ -99,7 +99,7 @@ SCHEMAS = [
     },
     {
         "name": "isaac_train",
-        "description": "Train Isaac Lab's reference Crazyflie task Isaac-Quadcopter-Direct-v0 on an SSH GPU host. Returns video and learning curve. This trains the stock reference robot, not the CAD product. Recorded fallback is illustrative, never a fresh training result.",
+        "description": "Drone only: train Isaac Lab's reference Crazyflie task Isaac-Quadcopter-Direct-v0 on an SSH GPU host. Returns video and learning curve. This trains the stock reference robot, not the CAD product. Recorded fallback is illustrative, never a fresh training result.",
         "input_schema": {"type": "object", "properties": {
             "iterations": {"type": "integer", "minimum": 1, "maximum": 1000},
             "num_envs": {"type": "integer", "minimum": 1, "maximum": 256},

@@ -15,6 +15,8 @@ from pai_agent.tools.blender import _assembly, find_blender
 
 
 def export_product(state: BuildState, directory: Path) -> dict:
+    if state.product != "drone" or (state.stl_path and Path(state.stl_path).name.startswith("part-")):
+        raise ValueError("USD assembly export currently supports the drone only.")
     binary = find_blender()
     if not binary:
         raise RuntimeError("Blender is required for USD export. Install Blender on this Mac.")

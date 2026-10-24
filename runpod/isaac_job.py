@@ -156,7 +156,8 @@ def _simulate(request: dict) -> dict:
     passed = bool(position_array[:, 2].min() >= 0.15 and max(angles) < 45 and drift.max() < 0.5)
     metrics = {"hover_rmse_m": float(np.sqrt(np.mean(error ** 2))), "max_tilt_deg": max(angles),
                "max_drift_m": float(drift.max()), "min_altitude_m": float(position_array[:, 2].min()),
-               "total_mass_g": mass * 1000, "peak_wind_m_s": params["wind_m_s"], "payload_g": params["payload_g"]}
+               "assembly_mass_g": product["mass_kg"] * 1000, "total_mass_g": mass * 1000,
+               "peak_wind_m_s": params["wind_m_s"], "payload_g": params["payload_g"]}
     if first_failure_wind is not None:
         metrics["first_failure_wind_m_s"] = first_failure_wind
     return {"parameters": params, "metrics": metrics, "curve": [], "passed": passed,

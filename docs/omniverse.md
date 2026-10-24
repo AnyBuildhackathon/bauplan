@@ -1,6 +1,6 @@
 # Omniverse experiments
 
-AnyBuild exports the current product from CAD through Blender to USD and runs finished experiments on an NVIDIA RTX machine over plain SSH (RunPod or NVIDIA Brev).
+For the drone demo, AnyBuild exports the current product from CAD through Blender to USD and runs finished experiments on an NVIDIA RTX machine over plain SSH (RunPod or NVIDIA Brev).
 The Mac runs the app and USD export; Isaac Sim and Isaac Lab run on the GPU pod.
 The fourth canvas tab, **Omniverse**, shows a completed MP4, measured values, result JSON, and a learning curve for training.
 There is no live streaming dependency.
@@ -33,6 +33,9 @@ The recording is an eight-second browser replay of the existing local simulation
 The accompanying wind values and learning curve are synthetic fixture data, not Isaac measurements or proof that the current CAD product passed.
 Requested conditions and fixed recorded conditions are displayed separately.
 Recorded values must never trigger claims about the current product or automatic design changes.
+The fixed wind fixture describes drone v1: 36.7 g before payload, 10 g added payload, and 46.7 g total test mass.
+The displayed assembly weight follows the same selected version as the key numbers panel; fixture values remain fixed when that selection changes.
+Live results report `assembly_mass_g` before added payload and `total_mass_g` including it.
 
 `agent/runs/fallback/omniverse.json` is the canonical fixture.
 Its public copy and video under `web/public/demo/` support the static deployment with `?demo&tab=omniverse` and no backend.
@@ -107,6 +110,8 @@ Wind is a ramped gust using a constant projected area, drag coefficient 1.1, and
 Added payload changes centred mass; it does not model a camera's shape, offset centre of gravity, or structural mounting.
 This is a simplified rigid-body experiment, not CFD, a structural simulation, or flight certification.
 The current assembly exporter and controller support the drone demo geometry; other product types need their own assembly builders and experiment controllers.
+The Omniverse tab is hidden for the robot gripper and other generated parts, and backend tools reject unsupported products before replay or SSH.
+The gripper keeps its MuJoCo lift-and-shake test in the Simulation tab.
 
 A live test passes when altitude stays at least 0.15 m, peak tilt stays below 45 degrees, and maximum lateral drift stays below 0.5 m.
 The hover target is 0.5 m.
