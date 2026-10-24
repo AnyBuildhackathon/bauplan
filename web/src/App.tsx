@@ -29,6 +29,7 @@ import { TrainingView } from "./views/TrainingView";
 import { WorkbenchView } from "./views/WorkbenchView";
 
 const NOTICE_MS = 5000;
+const HANDOVER_MS = 650;
 
 // The chat column's width. The canvas keeps at least CANVAS_MIN; the rest of the
 // window is shared by the icon rail and the chat.
@@ -95,13 +96,30 @@ function Bench() {
   // step or version (from any source) brings the normal bench.
   const started = useSession((s) => s.chat.length > 0 || s.versions.length > 0 || Object.values(s.steps).some((st) => st.status !== "pending"));
   const starting = view === "werkbank" && !started;
+  // Leaving the start screen is a short hand-over: the box fades and settles in place while
+  // the chat column and the canvas rise in. With reduced motion the bench simply appears.
+  const [wasStarting, setWasStarting] = useState(starting);
+  const [handover, setHandover] = useState(false);
+  if (wasStarting !== starting) {
+    setWasStarting(starting);
+    setHandover(!starting && view === "werkbank" && !window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  }
+  useEffect(() => {
+    if (!handover) return;
+    const done = setTimeout(() => setHandover(false), HANDOVER_MS);
+    return () => clearTimeout(done);
+  }, [handover]);
+  const riseIn = handover ? "animate-rise [animation-duration:450ms]" : "";
   return (
     <div className="flex h-full min-h-0">
       <IconRail />
       {hasChat && !starting && (
         <>
           {/* Expanded, the chat takes the whole window; the bench stays mounted behind it. */}
-          <div className={chatExpanded ? "h-full min-w-0 flex-1" : "h-full shrink-0 border-r border-line"} style={chatExpanded ? undefined : { width: chatWidth }}>
+          <div
+            className={`${chatExpanded ? "h-full min-w-0 flex-1" : "h-full shrink-0 border-r border-line"} ${riseIn} [animation-delay:80ms]`}
+            style={chatExpanded ? undefined : { width: chatWidth }}
+          >
             <SidebarChat />
           </div>
           {!chatExpanded && (
@@ -120,8 +138,12 @@ function Bench() {
       <div className={`min-h-0 min-w-0 flex-1 flex-col ${hasChat && chatExpanded && !starting ? "hidden" : "flex"}`}>
         <TopBar />
         <main className="min-h-0 flex-1">
-          {starting && <StartScreen />}
-          {view === "werkbank" && !starting && <WorkbenchView />}
+          {(starting || handover) && <StartScreen leaving={handover} />}
+          {view === "werkbank" && !starting && (
+            <div className={`h-full ${riseIn} [animation-delay:160ms]`}>
+              <WorkbenchView />
+            </div>
+          )}
           {view === "library" && <LibraryView />}
           {view === "community" && <CommunityView />}
           {view === "training" && <TrainingView />}

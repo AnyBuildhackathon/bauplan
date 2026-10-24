@@ -2,7 +2,7 @@
 // prompt field and one quiet line of suggestions, and Mechanic peeking over its top edge.
 // The first prompt, suggestion, spoken sentence, sketch, meeting or agent event fills the
 // chat, and App swaps this for the normal bench.
-import { useState, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { useSource } from "../events/source";
 import SidebarChatInput from "../components/chat/SidebarChatInput";
 import { useSketchDrop } from "../components/chat/SketchDrop";
@@ -21,7 +21,23 @@ const SCRATCH = EXAMPLES.find((e) => e.label === "Phone stand") ?? EXAMPLES[0];
 const suggestion =
   "h-8 shrink-0 rounded-full px-3.5 text-[13px] font-medium text-muted ring-1 ring-line transition hover:bg-tile hover:text-ink hover:ring-transparent focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:outline-none";
 
-export function StartScreen() {
+/** `leaving`: the bench is taking over; the box stays where it was, fades and settles, then App drops it. */
+export function StartScreen({ leaving = false }: { leaving?: boolean }) {
+  const root = useRef<HTMLDivElement>(null);
+  // Where the screen sat before the bench took the room, so it can fade out in place.
+  const place = useRef<DOMRect | null>(null);
+  useLayoutEffect(() => {
+    if (!leaving && root.current) place.current = root.current.getBoundingClientRect();
+  });
+  useEffect(() => {
+    if (!leaving) return;
+    root.current?.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateY(-10px) scale(0.985)" }], {
+      duration: 420,
+      easing: "cubic-bezier(0.4, 0, 0.2, 1)",
+      fill: "forwards",
+    });
+  }, [leaving]);
+  const at = leaving ? place.current : null;
   const sendPrompt = useSource((s) => s.sendPrompt);
   const sendSketch = useSource((s) => s.sendSketch);
   const startReference = useSource((s) => s.startReference);
@@ -45,7 +61,11 @@ export function StartScreen() {
   };
 
   return (
-    <div className="scroll-soft flex h-full overflow-x-hidden overflow-y-auto bg-page bg-[radial-gradient(ellipse_70%_55%_at_55%_42%,#ffffff_0%,rgb(255_255_255/0)_70%)] px-4 sm:px-8">
+    <div
+      ref={root}
+      aria-hidden={leaving || undefined}
+      style={at ? { position: "fixed", left: at.left, top: at.top, width: at.width, height: at.height, zIndex: 40, pointerEvents: "none" } : undefined}
+      className="scroll-soft flex h-full overflow-x-hidden overflow-y-auto bg-page bg-[radial-gradient(ellipse_70%_55%_at_55%_42%,#ffffff_0%,rgb(255_255_255/0)_70%)] px-4 sm:px-8">
       <div
         className="relative m-auto w-full max-w-[1000px] animate-rise py-6"
         style={{ "--u": "clamp(0.5px, min(0.08vw, 0.085vh), 1px)", paddingTop: `calc(var(--u) * ${HEAD_ABOVE} + 24px)` } as CSSProperties}
