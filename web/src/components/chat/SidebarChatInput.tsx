@@ -75,9 +75,9 @@ export default function SidebarChatInput({
   const adjustHeight = useCallback(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
-    const min = lg ? 28 : 22;
+    const min = lg ? 112 : 22;
     textarea.style.height = `${min}px`;
-    textarea.style.height = `${Math.min(Math.max(textarea.scrollHeight, min), 120)}px`;
+    textarea.style.height = `${Math.min(Math.max(textarea.scrollHeight, min), lg ? 240 : 120)}px`;
   }, [lg]);
 
   useEffect(() => {
@@ -248,12 +248,14 @@ export default function SidebarChatInput({
     <div>
       {sketch && onSketchChange && <SketchChip file={sketch} onRemove={() => onSketchChange(null)} />}
       <div
-        className={`flex items-end gap-2 rounded-[24px] bg-card shadow-[var(--shadow-pill)] ring-1 transition ${
-          micHot ? "ring-accent/50" : "ring-[#e2e2dd]"
-        } ${lg ? "min-h-[80px] py-3 pr-3 pl-6" : "min-h-[64px] py-3 pr-3 pl-4"}`}
+        className={`flex bg-card ring-1 transition ${micHot ? "ring-accent/50" : "ring-[#e2e2dd]"} ${
+          lg
+            ? "flex-col gap-3 rounded-[26px] pt-5 pr-4 pb-4 pl-6 shadow-[0_1px_2px_rgb(26_26_24/0.04),0_10px_30px_-12px_rgb(26_26_24/0.16)] focus-within:ring-accent/40 focus-within:shadow-[0_0_0_5px_rgb(31_111_120/0.08),0_10px_30px_-12px_rgb(26_26_24/0.16)] sm:pl-7"
+            : "min-h-[64px] items-end gap-2 rounded-[24px] py-3 pr-3 pl-4 shadow-[var(--shadow-pill)]"
+        }`}
       >
         {hearing ? (
-          <div className="flex flex-1 items-center gap-3 self-center">
+          <div className={`flex flex-1 items-center gap-3 ${lg ? "min-h-[112px]" : "self-center"}`}>
             <Waveform active bars={lg ? 11 : 7} />
             <span className={`line-clamp-2 font-medium ${heard ? "text-ink" : "text-accent"} ${lg ? "text-[20px]" : "text-[15px]"}`}>
               {heard || (stt === "reson8" ? "Reson8 is listening…" : "Listening…")}
@@ -278,16 +280,17 @@ export default function SidebarChatInput({
             name="prompt"
             aria-label="Message to Mechanic"
             data-target="chat_input eingabe"
-            className={`min-w-0 flex-1 resize-none self-center bg-transparent font-read leading-snug text-ink outline-none placeholder:text-faint ${
-              lg ? "text-[20px]" : "text-[15px]"
+            className={`min-w-0 resize-none bg-transparent font-read text-ink outline-none placeholder:text-faint ${
+              lg ? "w-full text-[19px] leading-[1.5] sm:text-[22px]" : "flex-1 self-center text-[15px] leading-snug"
             }`}
           />
         )}
+        <div className={lg ? "flex items-center justify-end gap-2" : "contents"}>
         {canSubmit && !hearing && (
           <button
             type="button"
             onClick={submit}
-            className={`flex shrink-0 items-center justify-center rounded-full bg-accent text-white transition hover:brightness-110 ${lg ? "h-12 w-12" : "h-9 w-9"}`}
+            className={`flex shrink-0 items-center justify-center rounded-full bg-accent text-white transition hover:brightness-110 ${lg ? "h-11 w-11" : "h-9 w-9"}`}
             title="Send"
           >
             <ArrowUp className={lg ? "h-5 w-5" : "h-4.5 w-4.5"} strokeWidth={2.5} />
@@ -312,12 +315,13 @@ export default function SidebarChatInput({
           }}
           className={`flex shrink-0 items-center justify-center rounded-full transition select-none ${
             micHot ? "scale-105 bg-accent text-white shadow-[0_0_0_8px_rgb(31_111_120/0.16)]" : "bg-tile text-ink-2 hover:bg-track hover:text-ink"
-          } ${lg ? "h-14 w-14" : "h-9 w-9"}`}
+          } ${lg ? "h-11 w-11" : "h-9 w-9"}`}
           title={stt === "none" ? "No speech recognition in this browser" : micMode === "ptt" ? "Hold to speak, or hold space" : handsFree ? "Stop listening" : "Talk hands-free"}
           aria-pressed={micMode === "handsfree" ? handsFree : undefined}
         >
-          <Mic className={lg ? "h-6 w-6" : "h-4 w-4"} strokeWidth={2} />
+          <Mic className={lg ? "h-5 w-5" : "h-4 w-4"} strokeWidth={2} />
         </button>
+        </div>
       </div>
       {hint && <p className="mt-1.5 px-2 text-[12px] text-agent-ink">{hint}</p>}
     </div>
@@ -337,9 +341,9 @@ function ClickyToggle({ size }: { size: "sm" | "lg" }) {
       title={clicky ? "HeyClicky on: Mechanic points and operates the app" : "HeyClicky off: actions happen without the pointer"}
       className={`flex shrink-0 items-center justify-center rounded-full transition ${
         clicky ? "bg-agent-soft text-agent-ink hover:brightness-95" : "bg-tile text-faint hover:bg-track hover:text-ink-2"
-      } ${size === "lg" ? "h-14 w-14" : "h-10 w-10"}`}
+      } ${size === "lg" ? "h-11 w-11" : "h-10 w-10"}`}
     >
-      <MousePointer2 className={size === "lg" ? "h-5.5 w-5.5" : "h-4.5 w-4.5"} strokeWidth={2} fill={clicky ? "currentColor" : "none"} />
+      <MousePointer2 className={size === "lg" ? "h-5 w-5" : "h-4.5 w-4.5"} strokeWidth={2} fill={clicky ? "currentColor" : "none"} />
     </button>
   );
 }
