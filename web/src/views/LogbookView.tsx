@@ -3,14 +3,14 @@
 // line; it opens to the full difference and the note written back to Jamie. Saved
 // chats fold away below, the learned concepts show only in learning mode, and Export
 // downloads the whole logbook as Markdown.
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronDown, Download, MessageSquareText, NotebookPen } from "lucide-react";
 import { MascotHead } from "../components/mascot/Mascot";
 import { Chip, PillButton } from "../components/ui/primitives";
 import { MeetingTimeline } from "../components/timeline/MeetingTimeline";
 import { STEP_IDS, type MeetingEvent, type VersionDiff, type VersionEvent } from "../events/types";
 import { useSession } from "../events/store";
-import { loadSavedChats } from "../lib/archive";
+import { loadHistory, loadTranscript, whenText, type SavedChat, type Transcript } from "../lib/history";
 import { fmtClock, fmtEur, fmtGram, fmtNum, stripMarkdown } from "../lib/format";
 import { enLabel, enText } from "../lib/copy";
 import { LESSONS } from "../lib/lessons";
@@ -140,10 +140,23 @@ function Section({ title, meta, children }: { title: string; meta?: string; chil
 
 function Chats() {
   const chat = useSession((s) => s.chat);
-  const saved = useMemo(() => loadSavedChats(), []);
+  const [saved, setSaved] = useState<SavedChat[]>([]);
+  useEffect(() => {
+    void loadHistory().then((h) => setSaved(h.items.filter((c) => c.id !== h.current)));
+  }, []);
   const current = chat.flatMap((c) => (c.kind === "msg" ? [{ role: c.role, text: stripMarkdown(c.text) }] : []));
-  const [open, setOpen] = useState<"current" | number>("current");
-  const shown = open === "current" ? current : (saved[open]?.messages ?? []);
+  const [open, setOpen] = useState<"current" | string>("current");
+  const [transcript, setTranscript] = useState<Transcript | null>(null);
+  useEffect(() => {
+    if (open === "current") return;
+    let live = true;
+    void loadTranscript(open).then((t) => live && setTranscript(t));
+    return () => {
+      live = false;
+    };
+  }, [open]);
+  const earlier = transcript && transcript.id === open ? transcript.chat.map((m) => ({ ...m, text: stripMarkdown(m.text) })) : [];
+  const shown = open === "current" ? current : earlier;
   const meetings = useSession((s) => s.meetings);
   const live = useSource((s) => s.mode) === "live";
   const [meetingId, setMeetingId] = useState("");
@@ -176,14 +189,15 @@ function Chats() {
         >
           Now · {current.length} messages
         </button>
-        {saved.map((s, i) => (
+        {saved.map((s) => (
           <button
-            key={s.at + i}
+            key={s.id}
             type="button"
-            onClick={() => setOpen(i)}
-            className={`h-7 rounded-full px-3 text-[12px] font-semibold ${open === i ? "bg-ink text-white" : "bg-tile text-ink-2 hover:bg-track"}`}
+            onClick={() => setOpen(s.id)}
+            title={s.title}
+            className={`h-7 max-w-[260px] truncate rounded-full px-3 text-[12px] font-semibold ${open === s.id ? "bg-ink text-white" : "bg-tile text-ink-2 hover:bg-track"}`}
           >
-            {fmtClock(s.at)} · {s.result}
+            {whenText(s.updated_at)} · {s.title}
           </button>
         ))}
       </div>

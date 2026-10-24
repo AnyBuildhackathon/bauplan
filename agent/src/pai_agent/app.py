@@ -475,6 +475,35 @@ async def versions_restore(n: int, request: Request) -> dict:
     return result
 
 
+@app.get("/api/history")
+async def history_list(request: Request) -> dict:
+    from pai_agent import history
+
+    session = request.app.state.session
+    # The open chat is saved after each run; saving now lists its latest title and counts too.
+    session.save_chat()
+    return {"ok": True, "current": session.state.session_id, "items": history.list_chats()}
+
+
+@app.get("/api/history/{chat_id}")
+async def history_get(chat_id: str) -> dict:
+    from pai_agent import history
+
+    row = history.transcript(chat_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="unknown chat")
+    return {"ok": True, "item": row}
+
+
+@app.post("/api/history/{chat_id}/open")
+async def history_open(chat_id: str, request: Request) -> dict:
+    _require_json(request)
+    result = await request.app.state.session.open_chat(chat_id)
+    if result.get("ok") is False:
+        raise HTTPException(status_code=409 if result.get("busy") else 404, detail=str(result["error"]))
+    return result
+
+
 @app.post("/api/optimize/apply")
 async def optimize_apply(request: Request) -> dict:
     _require_json(request)

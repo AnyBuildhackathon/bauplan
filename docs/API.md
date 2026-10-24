@@ -50,7 +50,7 @@ It has no OpenAPI page; FastAPI's generated docs are turned off on purpose for t
 | `GET` | `/api/artifacts/fallback-training.mp4` | Alias: the offline training clip. | | [Access](events.md#access) |
 | `GET` | `/api/artifacts/training.mp4` | Alias: a training video copied back from the GPU host. | | [Access](events.md#access) |
 
-### Library, versions and export
+### Library, versions, history and export
 
 | Method | Path | Purpose | Limit | Spec |
 | --- | --- | --- | --- | --- |
@@ -60,6 +60,9 @@ It has no OpenAPI page; FastAPI's generated docs are turned off on purpose for t
 | `POST` | `/api/library` | Save the current product build as a project. | | [Library](events.md#library) |
 | `GET` | `/api/versions` | Every version of the session. | | [Versions](events.md#versions) |
 | `POST` | `/api/versions/{n}/restore` | Rebuild version `n` and commit it as a new version. | build | [Versions](events.md#versions) |
+| `GET` | `/api/history` | Saved chats, newest first, and the `current` chat id. | | [Chat history](events.md#chat-history) |
+| `GET` | `/api/history/{id}` | One saved chat with its chat lines. | | [Chat history](events.md#chat-history) |
+| `POST` | `/api/history/{id}/open` | Reopen a saved chat on the bench: its messages, product and Claude memory; 409 while building. | | [Chat history](events.md#chat-history) |
 | `GET` | `/api/export/bom.csv` | The bill of materials as CSV (UTF-8 with BOM, Excel friendly). | | [Export](events.md#export) |
 | `GET` | `/api/export/bundle.zip` | CAD files, FreeCAD scripts, BOM, build guide, firmware, render and a README in one ZIP. | | [Export](events.md#export) |
 | `GET` | `/api/export/order` | The order list grouped by shop, plus the print list with filament mass and cost. | | [Export](events.md#export) |

@@ -1,8 +1,9 @@
-// The slim icon rail on the far left: the logo (which starts a new chat) and the views. The
+// The slim icon rail on the far left: the logo (which starts a new chat), the chat history, and the views. The
 // stage flow lives on the Workbench; Library, Community, Training and Logbook stay one click away.
 import { BookOpen, Box, Dumbbell, LayoutGrid, Users } from "lucide-react";
 import { useSource } from "../events/source";
 import { useUi, type View } from "../lib/ui";
+import { HistoryMenu } from "./HistoryMenu";
 import { Logo } from "./TopBar";
 
 const VIEWS: { value: View; label: string; icon: typeof Box; control: string }[] = [
@@ -69,6 +70,7 @@ export function IconRail() {
         >
           <Logo size={52} />
         </button>
+        <HistoryMenu />
         {VIEWS.map((v) => (
           <RailButton key={v.value} label={v.label} active={view === v.value} onClick={() => setView(v.value)} target={`nav:${v.value}`} control={v.control}>
             <v.icon className="h-5 w-5" strokeWidth={1.8} />

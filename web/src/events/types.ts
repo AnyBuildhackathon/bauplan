@@ -373,6 +373,8 @@ export interface RemixEvent {
 /** Starts every stream and follows every server reset: drop all session state. */
 export interface ResetEvent {
   type: "reset";
+  /** A reopened saved chat (POST /api/history/{id}/open): its backlog follows, up to `replayed`. */
+  replay?: boolean;
 }
 /** The build on the bench: `pausing` and `stopping` wait for the tool that runs now to finish. */
 export type RunStatus = "idle" | "running" | "pausing" | "paused" | "stopping";

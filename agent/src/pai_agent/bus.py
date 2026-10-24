@@ -50,6 +50,19 @@ class EventBus:
             for queue in self._subscribers:
                 _drain(queue)
 
+    async def load(self, events: list[dict]) -> None:
+        """Replaces the log with a saved one; every client gets it as a backlog, like a reconnect."""
+
+        async with self._lock:
+            self.events = list(events)
+            for queue in self._subscribers:
+                _drain(queue)
+                # `replay` tells the client a backlog follows, so nothing animates or speaks again.
+                queue.put_nowait({"type": "reset", "replay": True})
+                for event in self.events:
+                    queue.put_nowait(event)
+                queue.put_nowait({"type": "replayed"})
+
     async def stream(self) -> AsyncIterator[dict | None]:
         queue = await self.subscribe()
         try:
