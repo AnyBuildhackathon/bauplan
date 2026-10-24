@@ -29,6 +29,8 @@ class BuildState:
     meetings: dict[str, dict] = field(default_factory=dict)
     meeting_cache: dict[str, dict] = field(default_factory=dict)
     versions: list[dict] = field(default_factory=list)
+    # What restoring a version needs beyond its event (catalog ids, frame params, the saved build), by n.
+    version_files: dict[int, dict] = field(default_factory=dict)
     reasons: dict[str, dict] = field(default_factory=dict)
     tasks: list[dict] = field(default_factory=list)
     tags: set[str] = field(default_factory=set)

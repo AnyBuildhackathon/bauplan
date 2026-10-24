@@ -726,7 +726,10 @@ async def call_tool(ctx: Ctx, name: str, args: dict | None) -> dict:
     seconds = limit(name)
     started = time.perf_counter()
     try:
-        result = await asyncio.wait_for(function(ctx, payload), seconds)
+        from pai_agent.versions import commit_with_snapshot
+
+        call = commit_with_snapshot(ctx, function, payload) if name == "version_commit" else function(ctx, payload)
+        result = await asyncio.wait_for(call, seconds)
     except TimeoutError:
         # A stuck tool ends here with a message the room can read, not a frozen run.
         message = timed_out(name, seconds or 0)
@@ -753,6 +756,10 @@ async def call_tool(ctx: Ctx, name: str, args: dict | None) -> dict:
         await refresh_requirements(ctx)
         if name in {"train_in_browser", "isaac_train", "isaac_lab_train"}:
             await refresh_after_training(ctx)
+        if name == "bom_build":
+            from pai_agent.versions import after_tool
+
+            await after_tool(ctx, name, payload, result)
     return result
 
 

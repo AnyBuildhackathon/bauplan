@@ -2,6 +2,7 @@
 // version each meeting produced, as name and version chip; dates sit in the tooltip.
 // Clicking a meeting shows that version's numbers.
 import { Fragment, useMemo } from "react";
+import { History } from "lucide-react";
 import { useSession } from "../../events/store";
 import { useSource } from "../../events/source";
 import type { MeetingEvent, VersionEvent } from "../../events/types";
@@ -42,6 +43,7 @@ export function MeetingTimeline() {
   const log = useSession((s) => s.log);
   const selected = useUi((s) => s.selectedVersion);
   const selectVersion = useUi((s) => s.selectVersion);
+  const setVersionsOpen = useUi((s) => s.setVersionsOpen);
   const fallbackTitle = useMemo(() => meetingTitle(log), [log]);
   const meetingWebhook = useSource((s) => s.meetingWebhook);
   const building = useSession((s) => Object.values(s.steps).some((step) => step.status === "running"));
@@ -129,6 +131,17 @@ export function MeetingTimeline() {
           </Fragment>
         );
       })}
+      {versions.length > 0 && (
+        <button
+          type="button"
+          data-target="versions"
+          onClick={() => setVersionsOpen(true)}
+          className="ml-3 inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-card px-3 text-[13px] font-bold text-ink-2 shadow-[var(--shadow-pill)] transition hover:bg-page-2"
+          title="Version history"
+        >
+          <History className="h-4 w-4" /> History
+        </button>
+      )}
     </nav>
   );
 }
