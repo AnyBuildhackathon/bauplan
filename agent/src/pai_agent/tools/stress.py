@@ -473,7 +473,14 @@ async def stress_test(ctx: Ctx, args: dict, rollout: Rollout | None = None) -> d
     }
 
 
-STRESS_REQUEST = re.compile(r"\b(stress|robust)", re.IGNORECASE)
+_STRESS = re.compile(r"\bstress", re.IGNORECASE)
+_ROBUST = re.compile(r"\brobust", re.IGNORECASE)
+
+
+def wants_stress(text: str, finished: bool) -> bool:
+    """'Stress' asks for the stress test at any time; 'robust' only once a build has finished."""
+
+    return bool(_STRESS.search(text) or (finished and _ROBUST.search(text)))
 
 
 async def run_stress_mock(ctx: Ctx) -> None:

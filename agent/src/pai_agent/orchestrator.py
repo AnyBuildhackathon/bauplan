@@ -15,7 +15,7 @@ from pai_agent.mock_product import run_product_mock, wants_product
 from pai_agent.mock_story import run_mock, run_mock_followup, run_review
 from pai_agent.scene import STEPS
 from pai_agent.tools.registry import DELEGATED, SCHEMAS, call_tool
-from pai_agent.tools.stress import STRESS_REQUEST, run_stress_mock
+from pai_agent.tools.stress import run_stress_mock, wants_stress
 
 log = logging.getLogger(__name__)
 
@@ -120,13 +120,13 @@ async def run_prompt(ctx: Ctx, text: str, messages: list[dict]) -> None:
             await run_product_mock(ctx, text)
             return
         review = _next_review(ctx) if ctx.state.finished and _REVIEW_DONE.search(text) else None
-        if STRESS_REQUEST.search(text):
-            await run_stress_mock(ctx)
-        elif review is not None:
+        if review is not None:
             # "The review is done" by voice or text does what the meeting-ended webhook does.
             review["status"] = "done"
             await ctx.emit({"type": "jamie", "action": "meeting_ended", "status": "ok", "detail": review["title"] + " ended"})
             await run_review(ctx, review["id"])
+        elif wants_stress(text, ctx.state.finished):
+            await run_stress_mock(ctx)
         elif ctx.state.finished or (not first and (ctx.state.sim_run or ctx.state.selected)):
             await run_mock_followup(ctx)
         else:

@@ -458,7 +458,8 @@ The review "Review 1" asks for 10 minutes.
 Mechanic asks which flight time counts and swaps to the BetaFPV LAVA II 1S 680, the other pack from the video.
 v2 is 48.4 g, 10.4 min, 115.12 €, and the difference goes back to the review as a note.
 A later prompt in the same session does not rebuild.
-A prompt that asks for a stress test ("stress test it", "how robust is it?") runs `stress_test` on the current build instead; without a build Bolzen asks for the kickoff first.
+A prompt with the word "stress" ("stress test it") runs `stress_test` on the current build instead; without a build Mechanic asks for the kickoff first.
+Once a build has finished, "robust" asks for it too ("how robust is it?"); a prompt that ends a review still runs the review first.
 Reset starts the story over.
 A prompt that asks for a gripper (`gripper`, `claw`, `end effector`) plays the gripper story instead.
 Mechanic turns the request into checks, tries the 2.49 € SG90 first: 1.1 N per finger is a safety of 0.9×, and in MuJoCo the can slides out when the arm lifts.
