@@ -10,55 +10,31 @@
   to { opacity: 1; transform: none; }
 }
 
-/* AnyBuild look as tokens, tuned toward Foundable's type and surfaces.
-   Plus Jakarta Sans carries the interface, reading text and the small grey meta lines.
-   Inter Tight stays loaded for canvas labels that name it directly. Caveat stays the hand.
+/* AnyBuild look as tokens: an off-white, airy, almost borderless reading surface.
+   Inter Tight carries the interface. Reading text (Mechanic's answers, the Jamie quotes)
+   uses the system sans, as core.so's agent chat does, and Chivo Mono marks small labels,
+   numbers and tool lines in the chat.
    Colors carry meaning: agent (orange) = what the agent is doing right now, ok (green)
    = passed or met, fail (red) = failed, accent (teal) = send and source citations.
-   The *-ink variants are darker text shades that stay readable on a projector.
-   Neutrals are cool. The page sits on a pale sky; the chat is frosted glass. */
+   The *-ink variants are darker text shades that stay readable on a projector. */
 @theme {
-  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-read: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-label: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-sans: "Inter Tight", "Inter Tight Fallback", -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  --font-read: system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-label: "Chivo Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
   --font-hand: "Caveat", "Bradley Hand", cursive;
 
-  --font-weight-normal: 400;
-  --font-weight-medium: 500;
-  --font-weight-semibold: 600;
-  --font-weight-bold: 650;
-  --font-weight-extrabold: 700;
-  --font-weight-reading: 400;
-  --font-weight-control: 500;
-  --font-weight-heading: 600;
-
-  --tracking-tighter: -0.03em;
-  --tracking-tight: -0.02em;
-  --tracking-normal: -0.011em;
-  --tracking-wide: 0.04em;
-
-  /* Foundable's app scale: caption 12/16, secondary 13/20, body 15/22, heading 18/24. */
-  --text-caption: 12px;
-  --text-caption--line-height: 16px;
-  --text-secondary: 13px;
-  --text-secondary--line-height: 20px;
-  --text-body: 15px;
-  --text-body--line-height: 22px;
-  --text-heading: 18px;
-  --text-heading--line-height: 24px;
-
-  --color-page: #f3f7fb;
-  --color-page-2: #e7eef6;
+  --color-page: #fafaf8;
+  --color-page-2: #f3f3f0;
   --color-card: #ffffff;
-  --color-ink: #1c1f26;
-  --color-ink-2: #3c4250;
-  --color-muted: #5c6170;
-  /* A step under muted that still clears ~4.5:1 on the page and on white cards. */
-  --color-faint: #656b7a;
-  --color-line: #d5dee8;
-  --color-tile: #eef2f6;
-  --color-track: #e1e6ee;
-  --color-stage: #e7edf4;
+  --color-ink: #1a1a18;
+  --color-ink-2: #3a3a36;
+  --color-muted: #66665f;
+  /* Darkest grey that still reads as a tier below muted; ~4.4:1 on page, 4.6:1 on cards. */
+  --color-faint: #76766f;
+  --color-line: #ecece8;
+  --color-tile: #f0f0ec;
+  --color-track: #e4e4df;
+  --color-stage: #e8e8e6;
 
   --color-accent: #1f6f78;
   --color-accent-soft: #e3eff0;
@@ -76,13 +52,12 @@
   --color-sky: #6fa8ff;
   --color-jamie: #6b4fd8;
 
-  --radius-card: 24px;
-  --radius-tile: 16px;
-  --radius-sm: 8px;
+  --radius-card: 20px;
+  --radius-tile: 14px;
 
-  --shadow-card: inset 0 0 0 1px rgb(25 30 40 / 0.06), 0 1px 3px rgb(25 30 40 / 0.04), 0 8px 20px -12px rgb(37 60 89 / 0.22);
-  --shadow-float: 0 1px 2px rgb(37 60 89 / 0.08), 0 14px 38px -8px rgb(37 60 89 / 0.22);
-  --shadow-pill: 0 1px 2px rgb(37 60 89 / 0.08), 0 6px 16px -8px rgb(37 60 89 / 0.18);
+  --shadow-card: 0 0 0 1px var(--color-line);
+  --shadow-float: 0 2px 6px rgb(26 26 24 / 0.06), 0 18px 40px -12px rgb(26 26 24 / 0.2);
+  --shadow-pill: 0 1px 2px rgb(26 26 24 / 0.06), 0 4px 12px -6px rgb(26 26 24 / 0.12);
 
   --animate-pulse-soft: pulse-soft 1.4s ease-in-out infinite;
   --animate-rise: rise 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
@@ -190,32 +165,9 @@
     height: 100%;
   }
   body {
-    @apply text-ink font-sans antialiased;
-    font-size: var(--text-body);
-    /* Unitless so 12px labels do not inherit a 22px line box and stretch panels. */
-    line-height: 1.47;
-    font-weight: var(--font-weight-reading);
-    letter-spacing: -0.011em;
-    font-feature-settings: "kern";
+    @apply bg-page text-ink font-sans antialiased;
+    font-feature-settings: "ss01", "cv11";
     overflow: hidden;
-    background-color: #d4e6f8;
-    background-image:
-      radial-gradient(980px 520px at 10% -8%, rgb(255 255 255 / 0.92), transparent 58%),
-      radial-gradient(760px 440px at 100% 110%, rgb(255 255 255 / 0.5), transparent 52%),
-      linear-gradient(180deg, #c5daf4 0%, #d9e8f8 40%, #eef3f8 100%);
-  }
-  h1,
-  h2,
-  h3 {
-    font-weight: var(--font-weight-heading);
-    letter-spacing: -0.02em;
-  }
-  button,
-  input,
-  textarea,
-  select {
-    font-weight: var(--font-weight-control);
-    letter-spacing: -0.011em;
   }
   button {
     cursor: pointer;
@@ -232,10 +184,7 @@
 
 @layer components {
   .card {
-    @apply rounded-[var(--radius-card)] shadow-[var(--shadow-card)];
-    background: color-mix(in srgb, var(--color-card) 88%, transparent);
-    -webkit-backdrop-filter: blur(16px) saturate(1.45);
-    backdrop-filter: blur(16px) saturate(1.45);
+    @apply bg-card rounded-[var(--radius-card)] shadow-[var(--shadow-card)];
   }
   .tile {
     @apply bg-tile rounded-[var(--radius-tile)];
@@ -305,48 +254,6 @@
   .scroll-soft {
     scrollbar-width: thin;
     scrollbar-color: var(--color-track) transparent;
-  }
-}
-
-/* Chat column: frosted panel on the sky. Layout stays the existing column. */
-[data-target="chat"] {
-  background: color-mix(in srgb, #fff 70%, transparent) !important;
-  -webkit-backdrop-filter: blur(22px) saturate(1.75);
-  backdrop-filter: blur(22px) saturate(1.75);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.92),
-    inset -1px 0 0 rgb(255 255 255 / 0.4);
-}
-[data-target="chat"] .bg-tile {
-  background-color: #fff;
-  box-shadow: inset 0 0 0 1px rgb(32 36 42 / 0.08);
-}
-[data-target="chat"] .rounded-\[24px\]:not(.ring-accent\/50) {
-  background-color: transparent;
-  background-image: linear-gradient(180deg, #ffffffe6, #f4faffd6);
-  box-shadow:
-    inset 0 1px 0 #fff,
-    0 0 0 1px rgb(255 255 255 / 0.7),
-    0 1px 2px rgb(37 60 89 / 0.08),
-    0 10px 24px -12px rgb(37 60 89 / 0.32);
-}
-nav[aria-label="AnyBuild"] {
-  background: color-mix(in srgb, #f7fbff 72%, transparent);
-  -webkit-backdrop-filter: blur(18px) saturate(1.4);
-  backdrop-filter: blur(18px) saturate(1.4);
-  box-shadow: inset -1px 0 0 rgb(255 255 255 / 0.55);
-}
-
-@media (prefers-reduced-transparency: reduce) {
-  body {
-    background: var(--color-page);
-  }
-  [data-target="chat"],
-  .card,
-  nav[aria-label="AnyBuild"] {
-    background: var(--color-card) !important;
-    -webkit-backdrop-filter: none !important;
-    backdrop-filter: none !important;
   }
 }
 
