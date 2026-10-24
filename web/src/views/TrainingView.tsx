@@ -1,8 +1,9 @@
 // Training page: a browser quick check (1,024 MuJoCo sims), Isaac Lab on a GPU host,
 // and the latest stress test. Isaac data is read from session events only.
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { DroneSpec } from "../sim/drone";
 import type { GripperSpec } from "../sim/gripper";
+import { productFor } from "../sim/products";
 import { GRID_SIZE, REPLAY_SPEED, runLocalTraining, useTrainer, type Tile } from "../sim/trainer";
 import { canonicalToolName, formatSteps, useSession } from "../events/store";
 import { useSource } from "../events/source";
@@ -176,20 +177,24 @@ function SimTiles({ tiles, tilesAt, productId, spec, live }: { tiles: Tile[]; ti
   }, [tiles, tilesAt, draw, live, productId, reduced]);
 
   return (
-    <div className="grid grid-cols-2 gap-2 min-[900px]:grid-cols-4" data-target="training:tiles">
+    <div className="grid grid-cols-4 gap-2" data-target="training:tiles">
       {Array.from({ length: GRID_SIZE }, (_, k) => {
-        const tile = tiles[k];
+        const tile = live ? tiles[k] : undefined;
+        const outcome = tile ? tileOutcome(tile) : null;
         const label = `Sim #${padSim(tile?.rank ?? k + 1)}`;
         return (
           <div
             key={k}
-            title={label}
-            className="group relative aspect-square overflow-hidden rounded-lg bg-tile transition-transform duration-150 ease-out hover:z-10 hover:scale-[1.04] motion-reduce:transition-none motion-reduce:hover:scale-100"
+            title={tile ? `${label} · ${outcomeLabels(productId)[outcome!]} · fitness ${fmtNum(tile.score, 1)}` : label}
+            className={`group relative aspect-square overflow-hidden rounded-xl transition-[transform,background-color] duration-300 ease-out hover:z-10 hover:scale-[1.04] motion-reduce:transition-none motion-reduce:hover:scale-100 ${
+              outcome ? OUTCOME_TILE[outcome] : "bg-tile"
+            } ${tile && k === 0 ? "ring-2 ring-accent ring-offset-2 ring-offset-card" : ""}`}
           >
             <canvas ref={(el) => void (canvases.current[k] = el)} className="absolute inset-0 h-full w-full" aria-hidden />
-            <span className="pointer-events-none absolute inset-x-1 bottom-1 rounded-md bg-ink/90 px-1.5 py-0.5 text-center text-[13px] font-semibold text-white opacity-0 transition-opacity duration-150 group-hover:opacity-100 motion-reduce:transition-none">
-              {label}
+            <span className="num pointer-events-none absolute top-1.5 left-2 text-[12px] font-semibold text-muted">
+              {tile && k === 0 ? "Best" : `#${padSim(tile?.rank ?? k + 1)}`}
             </span>
+            {outcome && <span className={`pointer-events-none absolute top-2 right-2 h-2 w-2 rounded-full ${OUTCOME_DOT[outcome]}`} />}
           </div>
         );
       })}
@@ -197,49 +202,17 @@ function SimTiles({ tiles, tilesAt, productId, spec, live }: { tiles: Tile[]; ti
   );
 }
 
-function FitnessSpark({ points }: { points: [number, number][] }) {
-  const reduced = usePrefersReducedMotion();
-  const uid = useId().replace(/:/g, "");
-  if (points.length < 2) {
-    return <div className="flex h-[88px] items-end text-[13px] text-muted">Fitness appears as generations finish.</div>;
-  }
-  const w = 280;
-  const h = 88;
-  const vals = points.map((p) => p[1]);
-  const min = Math.min(...vals);
-  const max = Math.max(...vals, min + 1);
-  const sx = (i: number) => (i / (points.length - 1)) * w;
-  const sy = (v: number) => 8 + (1 - (v - min) / (max - min)) * (h - 16);
-  let line = `M${sx(0)},${sy(points[0][1])}`;
-  for (let i = 1; i < points.length; i++) line += ` L${sx(i)},${sy(points[i][1])}`;
-  const area = `${line} L${w},${h} L0,${h} Z`;
-  return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="h-[88px] w-full" role="img" aria-label="Fitness curve">
-      <path d={area} fill={`url(#${uid})`} />
-      <path
-        d={line}
-        fill="none"
-        stroke="var(--color-fail)"
-        strokeWidth="2"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-        pathLength={1}
-        strokeDasharray={1}
-        strokeDashoffset={reduced ? 0 : 1}
-        className={reduced ? undefined : "animate-spark-draw motion-reduce:animate-none"}
-      />
-      <defs>
-        <linearGradient id={uid} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="var(--color-fail)" stopOpacity="0.08" />
-          <stop offset="1" stopColor="var(--color-fail)" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-    </svg>
-  );
+type Outcome = "held" | "drifted" | "crashed";
+
+function tileOutcome(tile: Tile): Outcome {
+  return tile.crashed ? "crashed" : tile.held ? "held" : "drifted";
 }
 
-function QuickCheck({ delay }: { delay: number }) {
-  const reduced = usePrefersReducedMotion();
+const OUTCOME_TILE: Record<Outcome, string> = { held: "bg-ok-soft", drifted: "bg-agent-soft", crashed: "bg-fail-soft" };
+const OUTCOME_DOT: Record<Outcome, string> = { held: "bg-ok", drifted: "bg-agent", crashed: "bg-fail" };
+
+/** Shared view of the quick check: this tab's own run, or the one another tab reports over SSE. */
+function useQuickCheck() {
   const local = useTrainer();
   const sse = useBrowserTrainingEvent();
   const mode = useSource((s) => s.mode);
@@ -251,11 +224,12 @@ function QuickCheck({ delay }: { delay: number }) {
   const generations = (here ? local.generations : sse?.generations) ?? 16;
   const total = (here ? population * generations : sse?.rollouts_total) ?? population * generations;
   const rollouts = here ? local.rollouts : sse?.step ?? 0;
+  const generation = here ? local.generation : sse?.generation ?? 0;
   const curve = here ? local.curve : sse?.curve ?? [];
+  const meanCurve = here ? local.meanCurve : [];
   const status = here ? local.status : sse?.status ?? "idle";
-  const running = status === "running" || status === "claiming" || status === "queued" || local.status === "elsewhere";
-  const liveTiles = here && local.tiles.length > 0;
-  const motion = rise(delay, reduced);
+  const settled = status === "done" || status === "failed";
+  const running = status === "running" || status === "claiming" || status === "queued" || (local.status === "elsewhere" && !settled);
   const busy = local.status === "running" || local.status === "claiming";
 
   function start() {
@@ -264,48 +238,224 @@ function QuickCheck({ delay }: { delay: number }) {
     else void runLocalTraining("drone", NOMINAL_DRONE);
   }
 
-  const statusLine = running
+  return { local, sse, spec, productId, population, generations, total, rollouts, generation, curve, meanCurve, status, running, busy, start, liveTiles: here && local.tiles.length > 0 };
+}
+
+type QuickCheckState = ReturnType<typeof useQuickCheck>;
+
+function productNames(productId: string, spec: unknown): { product: string; controller: string } {
+  const label = (spec as { label?: string; nominal?: boolean } | null)?.nominal ? null : (spec as { label?: string } | null)?.label;
+  let controller = "Controller";
+  try {
+    controller = productFor(productId).label;
+  } catch {
+    // An unknown product still shows its name.
+  }
+  const product = label || (productId === "gripper" ? "Gripper" : productId === "drone" ? "Drone" : productId);
+  return { product: product.charAt(0).toUpperCase() + product.slice(1), controller };
+}
+
+function outcomeLabels(productId: string): Record<Outcome, string> {
+  return productId === "gripper"
+    ? { held: "Held", drifted: "Slipped", crashed: "Dropped" }
+    : { held: "On target", drifted: "Drifted", crashed: "Crashed" };
+}
+
+function StartButton({ q }: { q: QuickCheckState }) {
+  const again = q.status === "done" || q.status === "failed";
+  return (
+    <button
+      type="button"
+      disabled={q.busy}
+      onClick={q.start}
+      className="inline-flex h-11 shrink-0 items-center gap-2 rounded-full bg-accent pr-5 pl-4 text-[15px] font-semibold text-white shadow-[var(--shadow-pill)] transition hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-45"
+    >
+      {q.busy ? (
+        <span className="h-3.5 w-3.5 animate-spin-slow rounded-full border-2 border-white/40 border-t-white motion-reduce:animate-none" aria-hidden />
+      ) : again ? (
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+          <path d="M13 8a5 5 0 1 1-1.5-3.6M13 2.5V5h-2.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      ) : (
+        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden>
+          <path d="M5 3.2v9.6a.6.6 0 0 0 .9.5l7.6-4.8a.6.6 0 0 0 0-1L5.9 2.7a.6.6 0 0 0-.9.5Z" fill="currentColor" />
+        </svg>
+      )}
+      {q.busy ? "Training…" : again ? "Run quick check again" : "Start quick check"}
+    </button>
+  );
+}
+
+function Hero({ q, task }: { q: QuickCheckState; task: string | null }) {
+  const reduced = usePrefersReducedMotion();
+  const head = rise(0, reduced);
+  const { product, controller } = productNames(q.productId, q.spec);
+  const tiles = q.liveTiles ? q.local.tiles : [];
+  const holding = tiles.filter((t) => tileOutcome(t) === "held").length;
+  const best = q.curve.at(-1)?.[1];
+  const firstBest = q.curve[0]?.[1];
+  const stats: { label: string; value: string; of?: string; note?: string; tone?: string }[] = [
+    { label: "Simulations", value: fmtNum(q.rollouts), of: fmtNum(q.total), note: "MuJoCo rollouts" },
+    { label: "Generation", value: fmtNum(q.generation), of: fmtNum(q.generations), note: `${fmtNum(q.population)} candidates each` },
+    {
+      label: "Best fitness",
+      value: best !== undefined ? fmtNum(best, 1) : "–",
+      note: best !== undefined && firstBest !== undefined && q.curve.length > 1 ? `${best >= firstBest ? "+" : ""}${fmtNum(best - firstBest, 1)} since gen 1` : "Higher is steadier",
+      tone: best !== undefined && firstBest !== undefined && best > firstBest ? "text-ok-ink" : undefined,
+    },
+    {
+      label: outcomeLabels(q.productId).held,
+      value: tiles.length ? fmtNum(holding) : "–",
+      of: tiles.length ? fmtNum(tiles.length) : undefined,
+      note: "Sampled sims this generation",
+    },
+  ];
+  return (
+    <header className={`flex flex-col gap-5 ${head.className}`} style={head.style}>
+      <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
+        <div className="min-w-0 flex-1">
+          <p className="inline-flex h-7 items-center gap-2 rounded-full bg-accent-soft px-3 text-[13px] font-semibold text-accent">
+            <span className={`h-1.5 w-1.5 rounded-full bg-accent ${q.running ? "animate-pulse-soft motion-reduce:animate-none" : ""}`} />
+            {product} · {controller}
+          </p>
+          <h1 className="mt-3 text-[28px] leading-none font-semibold tracking-[-0.02em] text-ink min-[900px]:text-[32px]">Training</h1>
+          <p className="mt-2 max-w-[44rem] text-[15px] leading-snug text-muted">
+            Mechanic tunes the {controller.toLowerCase()} across {fmtNum(q.total)} MuJoCo simulations in your browser, then Isaac Lab trains the final policy on a cloud GPU.
+            {task ? ` ${task}.` : ""}
+          </p>
+        </div>
+        <StartButton q={q} />
+      </div>
+      <div className="card grid grid-cols-2 min-[900px]:grid-cols-4" data-target="training:stats">
+        {stats.map((s, i) => (
+          <div
+            key={s.label}
+            className={`min-w-0 px-5 py-4 ${i % 2 ? "border-l border-line" : ""} ${i >= 2 ? "border-t border-line min-[900px]:border-t-0" : ""} ${i === 2 ? "min-[900px]:border-l" : ""}`}
+          >
+            <p className="text-[13px] font-semibold text-muted">{s.label}</p>
+            <p className="num mt-1.5 text-[28px] leading-none font-bold tracking-[-0.03em] text-ink" data-target={i === 0 ? "training:counter" : undefined}>
+              {s.value}
+              {s.of && <span className="text-[17px] font-semibold text-faint"> / {s.of}</span>}
+            </p>
+            {s.note && <p className={`mt-1.5 truncate text-[13px] ${s.tone ?? "text-muted"}`}>{s.note}</p>}
+          </div>
+        ))}
+      </div>
+    </header>
+  );
+}
+
+function FitnessChart({ curve, mean, total }: { curve: [number, number][]; mean: [number, number][]; total: number }) {
+  const [ref, size] = useSize<HTMLDivElement>();
+  const all = [...curve, ...mean].map((p) => p[1]);
+  const lo = all.length ? Math.min(...all) : 0;
+  const hi = all.length ? Math.max(...all, lo + 1) : 1;
+  const pad = (hi - lo) * 0.08;
+  return (
+    <div ref={ref} className="relative min-h-[200px] flex-1">
+      {curve.length > 1 ? (
+        <TrendChart
+          series={[
+            ...(mean.length > 1 ? [{ points: mean, color: "var(--color-faint)", dashed: true, glow: false }] : []),
+            { points: curve, color: "var(--color-accent)", area: true },
+          ]}
+          width={Math.max(160, size.w)}
+          height={Math.max(200, size.h)}
+          xDomain={[0, Math.max(total, curve.at(-1)?.[0] ?? 1)]}
+          yDomain={[lo - pad, hi + pad]}
+          yTicks={[lo, (lo + hi) / 2, hi]}
+          formatY={(v) => fmtNum(v, 1)}
+        />
+      ) : (
+        <div className="absolute inset-0 flex flex-col justify-between py-2.5 pr-[54px]" aria-hidden>
+          {[0, 1, 2].map((k) => (
+            <div key={k} className="border-t border-dashed border-track" />
+          ))}
+          <p className="absolute inset-x-0 top-1/2 -translate-y-1/2 pr-[54px] text-center text-[13px] text-muted">The curve draws as each generation finishes.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function OutcomeBar({ tiles, productId }: { tiles: Tile[]; productId: string }) {
+  const labels = outcomeLabels(productId);
+  const counts: Record<Outcome, number> = { held: 0, drifted: 0, crashed: 0 };
+  tiles.forEach((t) => counts[tileOutcome(t)]++);
+  const order: Outcome[] = ["held", "drifted", "crashed"];
+  return (
+    <div>
+      <div className="flex h-2 overflow-hidden rounded-full bg-track">
+        {tiles.length > 0 &&
+          order.map((o) => (
+            <div key={o} className={`h-full transition-[width] duration-500 ease-out ${OUTCOME_DOT[o]}`} style={{ width: `${(counts[o] / tiles.length) * 100}%` }} />
+          ))}
+      </div>
+      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-muted">
+        {order.map((o) => (
+          <span key={o} className="inline-flex items-center gap-1.5">
+            <span className={`h-2 w-2 rounded-full ${OUTCOME_DOT[o]}`} />
+            {labels[o]}
+            <span className="num font-semibold text-ink-2">{tiles.length ? counts[o] : "–"}</span>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function QuickCheck({ q, delay }: { q: QuickCheckState; delay: number }) {
+  const reduced = usePrefersReducedMotion();
+  const motion = rise(delay, reduced);
+  const statusLine = q.running
     ? "Running in your browser"
-    : status === "done"
+    : q.status === "done"
       ? "Finished in your browser"
-      : status === "failed"
+      : q.status === "failed"
         ? "Stopped in your browser"
         : "Ready in your browser";
+  const tiles = q.liveTiles ? q.local.tiles : [];
 
   return (
     <Card className={`p-6 ${motion.className}`} style={motion.style} data-target="training:quick">
-      <div className="flex flex-wrap items-center gap-2">
-        <h2 className="text-[13px] font-semibold tracking-[0.08em] text-muted uppercase">Quick check</h2>
-        <span className="ml-auto inline-flex items-center gap-2 text-[13px] font-semibold text-ink-2">
-          <span className={`h-2 w-2 rounded-full ${running ? "animate-pulse-soft bg-fail motion-reduce:animate-none" : "bg-track"}`} />
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-2">
+        <h2 className="text-[17px] font-semibold tracking-[-0.01em] text-ink">Quick check</h2>
+        <p className="text-[13px] text-muted">
+          {fmtNum(GRID_SIZE)} of {fmtNum(q.population)} sims per generation, best to worst
+        </p>
+        <span className="ml-auto inline-flex h-7 items-center gap-2 self-center rounded-full bg-tile px-3 text-[13px] font-semibold text-ink-2">
+          <span
+            className={`h-2 w-2 rounded-full ${q.running ? "animate-pulse-soft bg-accent motion-reduce:animate-none" : q.status === "done" ? "bg-ok" : q.status === "failed" ? "bg-fail" : "bg-track"}`}
+          />
           {statusLine}
         </span>
       </div>
-      <div className="mt-5 grid items-start gap-6 min-[900px]:grid-cols-[minmax(0,2fr)_minmax(200px,1fr)]">
-        <SimTiles tiles={local.tiles} tilesAt={local.tilesAt} productId={productId} spec={spec} live={liveTiles} />
-        <div className="flex min-w-0 flex-col min-[900px]:sticky min-[900px]:top-4 min-[900px]:self-start">
-          <div className="num text-[40px] leading-none font-bold tracking-[-0.03em] text-ink" data-target="training:counter">
-            {fmtNum(rollouts)}
-            <span className="text-[22px] font-semibold text-muted"> / {fmtNum(total)}</span>
+      <div className="mt-5 grid gap-6 min-[900px]:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <SimTiles tiles={q.local.tiles} tilesAt={q.local.tilesAt} productId={q.productId} spec={q.spec} live={q.liveTiles} />
+        <div className="flex min-w-0 flex-col rounded-xl bg-page px-5 pt-4 pb-5 ring-1 ring-line">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <p className="text-[15px] font-semibold text-ink">Fitness</p>
+            <span className="ml-auto inline-flex items-center gap-1.5 text-[13px] text-muted">
+              <span className="h-0.5 w-4 rounded-full bg-accent" />
+              Best
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-[13px] text-muted">
+              <span className="w-4 border-t-2 border-dotted border-faint" />
+              Mean
+            </span>
           </div>
-          <p className="mt-3 text-[13px] leading-snug text-muted">Fitness climbing — quick sanity check, not the final policy.</p>
-          <div className="mt-3">
-            <FitnessSpark points={curve} />
+          <p className="mt-0.5 text-[13px] text-muted">A quick sanity check, not the final policy.</p>
+          <div className="mt-3 flex min-h-0 flex-1 flex-col">
+            <FitnessChart curve={q.curve} mean={q.meanCurve} total={q.total} />
           </div>
-          {local.status === "elsewhere" && (
-            <p className="mt-2 text-[13px] text-muted">Replay is in the tab that claimed this run. The counter still follows it.</p>
+          <div className="mt-4 border-t border-line pt-4">
+            <p className="mb-2 text-[13px] font-semibold text-muted">This generation</p>
+            <OutcomeBar tiles={tiles} productId={q.productId} />
+          </div>
+          {q.local.status === "elsewhere" && q.running && (
+            <p className="mt-3 text-[13px] text-muted">Replay is in the tab that claimed this run. The counter still follows it.</p>
           )}
-          {(local.error || sse?.error) && status === "failed" && (
-            <p className="mt-2 text-[13px] text-fail-ink">{local.error || sse?.error}</p>
-          )}
-          <button
-            type="button"
-            disabled={busy}
-            onClick={start}
-            className="mt-4 h-10 self-start rounded-lg bg-fail px-4 text-[15px] font-semibold text-white transition hover:bg-fail-ink disabled:cursor-not-allowed disabled:opacity-45"
-          >
-            {status === "done" || status === "failed" ? "Run quick check again" : "Start quick check"}
-          </button>
+          {(q.local.error || q.sse?.error) && q.status === "failed" && <p className="mt-3 text-[13px] text-fail-ink">{q.local.error || q.sse?.error}</p>}
         </div>
       </div>
     </Card>
@@ -351,9 +501,9 @@ function DeepTraining({ delay }: { delay: number }) {
     trainOmni?.status === "done";
 
   return (
-    <Card className={`p-6 ${motion.className}`} style={motion.style} data-target="training:deep">
+    <Card className={`p-6 ${showBoard ? "min-[900px]:col-span-2" : ""} ${motion.className}`} style={motion.style} data-target="training:deep">
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className="text-[13px] font-semibold tracking-[0.08em] text-muted uppercase">Deep training</h2>
+        <h2 className="text-[17px] font-semibold tracking-[-0.01em] text-ink">Deep training</h2>
         {showBoard && hostUp && (
           <span className="ml-auto inline-flex items-center gap-2 rounded-full bg-tile px-3 py-1 text-[13px] font-semibold text-ink-2">
             <span className="h-2 w-2 rounded-full bg-ok" />
@@ -376,7 +526,7 @@ function DeepTraining({ delay }: { delay: number }) {
 
       {!showBoard && (
         <div className="mt-4 flex items-center gap-3 rounded-xl bg-tile px-4 py-3" role="status">
-          <span className={`h-2 w-2 shrink-0 rounded-full ${hostUp ? "bg-ok" : "bg-track"}`} />
+          <span className={`h-2 w-2 shrink-0 rounded-full ${hostUp ? "bg-ok" : "bg-faint"}`} />
           <div className="min-w-0">
             <p className="text-[15px] font-semibold text-ink">{hostUp ? `${name} · Connected` : "GPU not connected"}</p>
             <p className="text-[13px] leading-snug text-muted">
@@ -398,7 +548,7 @@ function DeepTraining({ delay }: { delay: number }) {
               <div ref={chartRef} className="mt-2 h-[260px] min-w-0">
                 {curve.length > 1 ? (
                   <TrendChart
-                    series={[{ points: curve, color: "#e5484d", area: true }]}
+                    series={[{ points: curve, color: "var(--color-accent)", area: true }]}
                     width={Math.max(160, chart.w)}
                     height={260}
                     xDomain={[0, Math.max(curve.at(-1)?.[0] ?? 1, 1)]}
@@ -440,7 +590,7 @@ function DeepTraining({ delay }: { delay: number }) {
                 </div>
               )}
               <p className="mt-2 text-[13px] leading-snug text-muted">
-                Latest trained flight — Isaac Lab{envs ? `, ${fmtNum(envs)} envs` : ""}
+                Latest trained flight, Isaac Lab{envs ? `, ${fmtNum(envs)} envs` : ""}
               </p>
             </div>
           </div>
@@ -473,8 +623,8 @@ function StressSection({ delay }: { delay: number }) {
   const circ = 2 * Math.PI * r;
 
   return (
-    <Card className={`w-full p-6 min-[900px]:max-w-[540px] ${motion.className}`} style={motion.style} data-target="training:stress">
-      <h2 className="text-[13px] font-semibold tracking-[0.08em] text-muted uppercase">Stress test</h2>
+    <Card className={`p-6 ${motion.className}`} style={motion.style} data-target="training:stress">
+      <h2 className="text-[17px] font-semibold tracking-[-0.01em] text-ink">Stress test</h2>
       {!ev && (
         <p className="mt-3 text-[15px] leading-snug text-ink-2">No stress test yet. It runs after a build, across randomized wind, obstacles, and payload.</p>
       )}
@@ -488,7 +638,7 @@ function StressSection({ delay }: { delay: number }) {
                 cy="34"
                 r={r}
                 fill="none"
-                stroke="var(--color-fail)"
+                stroke="var(--color-ok)"
                 strokeWidth="4"
                 strokeLinecap="round"
                 strokeDasharray={circ}
@@ -555,22 +705,17 @@ function useIsaacTaskLine() {
 }
 
 export function TrainingView() {
-  const reduced = usePrefersReducedMotion();
   const task = useIsaacTaskLine();
-  const head = rise(0, reduced);
+  const q = useQuickCheck();
   return (
     <div className="h-full min-h-0 overflow-y-auto scroll-soft">
       <div className="mx-auto flex w-full max-w-[1120px] flex-col gap-4 px-6 py-8 min-[900px]:px-8">
-        <header className={head.className} style={head.style}>
-          <h1 className="text-[28px] leading-none font-semibold tracking-[-0.02em] text-ink min-[900px]:text-[32px]">Training</h1>
-          <p className="mt-2 max-w-[46rem] text-[15px] leading-snug text-muted">
-            Teach the controller to fly — quick check in your browser, deep training in the cloud.
-            {task ? ` ${task}.` : ""}
-          </p>
-        </header>
-        <QuickCheck delay={80} />
-        <DeepTraining delay={160} />
-        <StressSection delay={240} />
+        <Hero q={q} task={task} />
+        <QuickCheck q={q} delay={80} />
+        <div className="grid items-stretch gap-4 min-[900px]:grid-cols-2">
+          <DeepTraining delay={160} />
+          <StressSection delay={240} />
+        </div>
       </div>
     </div>
   );
