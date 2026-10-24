@@ -61,7 +61,8 @@ interface SourceState {
   setSpeed: (speed: number) => void;
   seekToMarker: (marker: string) => void;
   skipToEnd: () => void;
-  sendPrompt: (text: string) => Promise<void>;
+  /** voice: the text is a spoken turn, shown with a mic marker. */
+  sendPrompt: (text: string, voice?: boolean) => Promise<void>;
   /** Starts a new product from a photo of a hand sketch, with what the user typed next to it. */
   sendSketch: (image: Blob, note?: string) => Promise<void>;
   /** Sends the sample phone stand sketch the backend ships with. */
@@ -341,7 +342,7 @@ export const useSource = create<SourceState>((set, get) => {
       set((s) => ({ demo: { ...s.demo, playing: false } }));
     },
 
-    sendPrompt: async (text) => {
+    sendPrompt: async (text, voice = false) => {
       const trimmed = text.trim();
       if (!trimmed) return;
       const { mode, demo } = get();
@@ -349,7 +350,7 @@ export const useSource = create<SourceState>((set, get) => {
         const omniverse = await recordedOmniverse(trimmed);
         if (omniverse) {
           const session = useSession.getState();
-          session.addLocalUserMessage(trimmed);
+          session.addLocalUserMessage(trimmed, voice);
           if (session.product !== "drone" || session.cad?.script_url) {
             session.apply({ type: "chat", role: "agent", text: "Omniverse hover tests and Crazyflie training support the drone only. Use the Simulation tab for the gripper lift-and-shake test." });
             return;
@@ -362,7 +363,7 @@ export const useSource = create<SourceState>((set, get) => {
         const open = Object.values(useSession.getState().questions).find((q) => q.status === "open");
         const answer = open ? matchAnswer(trimmed, open) : null;
         if (open && answer) {
-          useSession.getState().addLocalUserMessage(trimmed);
+          useSession.getState().addLocalUserMessage(trimmed, voice);
           void get().answerQuestion(open.id, answer);
           return;
         }
@@ -372,7 +373,7 @@ export const useSource = create<SourceState>((set, get) => {
           return;
         }
         const session = useSession.getState();
-        session.addLocalUserMessage(trimmed);
+        session.addLocalUserMessage(trimmed, voice);
         setTimeout(() => {
           session.apply({
             type: "chat",
@@ -382,12 +383,12 @@ export const useSource = create<SourceState>((set, get) => {
         }, 700);
         return;
       }
-      useSession.getState().addLocalUserMessage(trimmed);
+      useSession.getState().addLocalUserMessage(trimmed, voice);
       try {
         const res = await apiFetch("/api/prompt", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: trimmed }),
+          body: JSON.stringify({ text: trimmed, voice }),
         });
         await ensureOk(res);
       } catch (err) {

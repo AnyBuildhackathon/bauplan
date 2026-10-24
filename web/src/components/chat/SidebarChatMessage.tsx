@@ -6,7 +6,7 @@ import { memo, useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Components } from "react-markdown";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, Mic, Volume2 } from "lucide-react";
 import type { MascotState } from "../../events/types";
 import { enText } from "../../lib/copy";
 import { MascotHead } from "../mascot/Mascot";
@@ -14,6 +14,8 @@ import { MascotHead } from "../mascot/Mascot";
 interface ChatMessageProps {
   role: "user" | "agent";
   content: string;
+  /** Spoken: the person's voice turn (mic marker) or a line Mechanic said aloud (speaker marker). */
+  voice?: boolean;
   /** Reveal word by word (true only for messages that just arrived). */
   animate: boolean;
   mascot: MascotState;
@@ -66,18 +68,30 @@ function useWordReveal(text: string, animate: boolean, onProgress?: () => void):
   return { shown: segments.slice(0, count).join(""), streaming: true };
 }
 
-function UserMessage({ content }: { content: string }) {
+/** The small marker under a spoken message. */
+function Spoken({ by }: { by: "user" | "agent" }) {
+  const Icon = by === "user" ? Mic : Volume2;
+  return (
+    <span className="mt-0.5 inline-flex items-center gap-1 font-label text-[11px] text-faint" title={by === "user" ? "Spoken" : "Said aloud"}>
+      <Icon className="h-3 w-3" aria-hidden />
+      {by === "user" ? "spoken" : "said aloud"}
+    </span>
+  );
+}
+
+function UserMessage({ content, voice }: { content: string; voice?: boolean }) {
   const isShort = content.length <= 48 && !content.includes("\n");
   return (
     <div className="flex flex-col items-end py-1.5 pl-10">
       <div className={`bg-tile px-3.5 py-2 ${isShort ? "rounded-full" : "rounded-[20px] rounded-br-md"}`}>
         <p className="font-read text-[15px] leading-[1.5] whitespace-pre-wrap text-ink">{content}</p>
       </div>
+      {voice && <Spoken by="user" />}
     </div>
   );
 }
 
-function AssistantMessage({ content, animate, mascot, onRevealProgress }: Omit<ChatMessageProps, "role">) {
+function AssistantMessage({ content, voice, animate, mascot, onRevealProgress }: Omit<ChatMessageProps, "role">) {
   const [copied, setCopied] = useState(false);
   const { shown, streaming } = useWordReveal(content, animate, onRevealProgress);
 
@@ -101,6 +115,7 @@ function AssistantMessage({ content, animate, mascot, onRevealProgress }: Omit<C
           </ReactMarkdown>
           {streaming && <span className="ml-0.5 inline-block h-3.5 w-1.5 translate-y-0.5 animate-pulse rounded-sm bg-accent" />}
         </div>
+        {voice && !streaming && <Spoken by="agent" />}
         {!streaming && (
           <div className="absolute -right-2 -bottom-3 opacity-0 transition-opacity group-hover:opacity-100">
             <button
@@ -119,7 +134,7 @@ function AssistantMessage({ content, animate, mascot, onRevealProgress }: Omit<C
 
 function SidebarChatMessage({ role, content, ...rest }: ChatMessageProps) {
   const text = enText(content);
-  if (role === "user") return <UserMessage content={text} />;
+  if (role === "user") return <UserMessage content={text} voice={rest.voice} />;
   return <AssistantMessage content={text} {...rest} />;
 }
 

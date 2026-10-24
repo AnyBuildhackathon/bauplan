@@ -83,7 +83,7 @@ export interface ToolState {
 export type Phase = "running" | "ok" | "error";
 
 export type ChatItem =
-  | { kind: "msg"; id: string; seq: number; at: number; role: "user" | "agent"; text: string; local?: boolean }
+  | { kind: "msg"; id: string; seq: number; at: number; role: "user" | "agent"; text: string; local?: boolean; voice?: boolean }
   | { kind: "tool"; id: string; seq: number; at: number; name: string; phase: Phase; detail: string; endedAt?: number; instant?: boolean }
   | { kind: "jamie"; id: string; seq: number; at: number; action: string; phase: Phase; detail: string; endedAt?: number }
   | { kind: "sim"; id: string; seq: number; at: number; run: number; result: "pass" | "fail"; summary: string }
@@ -172,7 +172,7 @@ export interface SessionState {
   ui: (UiEvent & { at: number }) | null;
   /** Reduces one contract event. `instant` marks events replayed in bulk (seek), so nothing animates for them. */
   apply: (ev: AgentEvent, opts?: { instant?: boolean }) => void;
-  addLocalUserMessage: (text: string) => void;
+  addLocalUserMessage: (text: string, voice?: boolean) => void;
   reset: () => void;
 }
 
@@ -368,11 +368,11 @@ export const useSession = create<SessionState>((set, get) => ({
           if (echo >= 0) {
             const chat = s.chat.slice();
             const item = chat[echo];
-            if (item.kind === "msg") chat[echo] = { ...item, local: false };
+            if (item.kind === "msg") chat[echo] = { ...item, local: false, voice: item.voice || ev.voice };
             return set({ log, chat });
           }
         }
-        const chat: ChatItem[] = [...s.chat, { kind: "msg", id: nextId("msg"), seq, at, role: ev.role, text: ev.text }];
+        const chat: ChatItem[] = [...s.chat, { kind: "msg", id: nextId("msg"), seq, at, role: ev.role, text: ev.text, voice: ev.voice }];
         return set({ log, chat });
       }
       case "tool": {
@@ -562,10 +562,10 @@ export const useSession = create<SessionState>((set, get) => ({
     }
   },
 
-  addLocalUserMessage: (text) => {
+  addLocalUserMessage: (text, voice) => {
     const at = Date.now();
     set((s) => ({
-      chat: [...s.chat, { kind: "msg", id: nextId("msg"), seq: ++seqCounter, at, role: "user", text, local: true }],
+      chat: [...s.chat, { kind: "msg", id: nextId("msg"), seq: ++seqCounter, at, role: "user", text, local: true, voice }],
     }));
   },
 

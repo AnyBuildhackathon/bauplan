@@ -305,6 +305,7 @@ export default function SidebarChat() {
                       <ChatMessage
                         role={item.role}
                         content={item.text}
+                        voice={item.voice}
                         animate={item.role === "agent" && Date.now() - item.at < FRESH_MS}
                         mascot={mascot.state}
                         onRevealProgress={onRevealProgress}
@@ -366,7 +367,7 @@ export default function SidebarChat() {
             }}
             onVoice={(text) => {
               stickToBottom.current = true;
-              void sendPrompt(text);
+              void sendPrompt(text, true);
             }}
           />
         </div>

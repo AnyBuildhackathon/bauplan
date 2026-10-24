@@ -86,6 +86,7 @@ class VoiceTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(says[-1]["text"], "On it, building now.")
         # Spoken pieces are live only; the finished reply is kept as a chat line.
         self.assertEqual([e["type"] for e in self.bus.events], ["chat"])
+        self.assertEqual(self.bus.events[-1], {"type": "chat", "role": "agent", "text": "On it, building now.", "voice": True})
         self.assertEqual(self.voice._client.messages.calls[0]["thinking"], {"type": "disabled"})
 
     async def test_updates_only_while_building(self):
@@ -101,6 +102,9 @@ class VoiceTest(unittest.IsolatedAsyncioTestCase):
         # Milestones that land together become one sentence.
         self.assertEqual(len(done), 1)
         self.assertEqual(done[0]["kind"], "update")
+        # The spoken update is also written into the chat, once.
+        spoken = [e for e in self.bus.events if e["type"] == "chat" and e.get("voice")]
+        self.assertEqual([e["text"] for e in spoken], ["The simulation passed."])
 
     async def test_model_failure_falls_back(self):
         class Broken:

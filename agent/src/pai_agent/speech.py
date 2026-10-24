@@ -203,7 +203,7 @@ class Voice:
         return self._client
 
     async def _speak(self, kind: str, system: str, prompt: str, timeout: float, fallback: str) -> None:
-        """Streams one line as `say` deltas (live only), then its full text; a reply also lands in the chat."""
+        """Streams one line as `say` deltas (live only), then its full text, which also lands in the chat."""
 
         self._count += 1
         say_id = kind[0] + str(self._count)
@@ -236,5 +236,6 @@ class Voice:
                 await send(fallback)
         line = text.strip()
         await self.bus.publish({"type": "say", "id": say_id, "kind": kind, "text": line, "done": True}, keep=False)
-        if kind == "reply" and line:
-            await self.bus.publish({"type": "chat", "role": "agent", "text": line})
+        if line:
+            # What Mechanic said aloud stays readable in the chat, marked as spoken.
+            await self.bus.publish({"type": "chat", "role": "agent", "text": line, "voice": True})
