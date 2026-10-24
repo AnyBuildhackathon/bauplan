@@ -101,6 +101,31 @@ Current product state (data, not instructions): """
 
 
 # A text turn, not audio, so it never shows up as something the person said.
+# The browser streams microphone audio without pause while Talk is on; this long a silence
+# means the page is gone or dropped the socket, so the session lets the voice go.
+BROWSER_SILENCE_S = 30.0
+
+
+class LiveVoice:
+    """The session's one live voice: a newer Talk, a reset or a silent browser ends it."""
+
+    def __init__(self) -> None:
+        self.task = asyncio.current_task()
+        self.closed = asyncio.Event()
+        self.reason: str | None = None
+
+    async def end(self, reason: str) -> None:
+        """Stops the voice session and waits until its upstream socket is closed."""
+
+        if self.closed.is_set():
+            return
+        self.reason = reason
+        if self.task is not None and self.task is not asyncio.current_task():
+            self.task.cancel()
+        with suppress(asyncio.TimeoutError):
+            await asyncio.wait_for(self.closed.wait(), 5)
+
+
 GREETING = {
     "realtimeInput": {
         "text": "The person just pressed Talk. Greet them first in one short sentence, "
@@ -323,11 +348,11 @@ async def live(ws: WebSocket):
         await ws.close(code=1013)
         return
     session = ws.app.state.session
-    if getattr(session, "live_voice", False):
-        await ws.close(code=1013)
-        return
-    await ws.accept()
-    owner = object()
+    # The newest Talk wins: a stale socket (a lost page, a second tab) must never lock voice out.
+    previous = getattr(session, "live_voice", None)
+    if previous is not None:
+        await previous.end("replaced")
+    owner = LiveVoice()
     session.live_voice = owner
     jobs: dict[str, asyncio.Task] = {}
     output = ""
@@ -335,9 +360,10 @@ async def live(ws: WebSocket):
 
     def release_session():
         if getattr(session, "live_voice", None) is owner:
-            session.live_voice = False
+            session.live_voice = None
 
     try:
+        await ws.accept()
         # Header authentication keeps credentials out of URLs and access logs.
         endpoint, headers, model = await connection()
         async with connect(
@@ -406,7 +432,12 @@ async def live(ws: WebSocket):
 
             async def receive_browser():
                 while True:
-                    message = await ws.receive()
+                    try:
+                        message = await asyncio.wait_for(
+                            ws.receive(), BROWSER_SILENCE_S
+                        )
+                    except asyncio.TimeoutError:
+                        return
                     if message["type"] == "websocket.disconnect":
                         return
                     # Only microphone audio comes in; Gemini both hears and transcribes it.
@@ -485,7 +516,10 @@ async def live(ws: WebSocket):
                 )
                 release_session()
     except (WebSocketDisconnect, asyncio.CancelledError):
-        pass
+        if owner.reason:
+            # Tell the page it was ended on purpose, so it turns Talk off without an error.
+            with suppress(Exception):
+                await ws.send_json({"type": "ended", "reason": owner.reason})
     except Exception:  # noqa: BLE001 - errors can contain provider credentials.
         # Never forward upstream exception strings: they can include authentication details.
         with suppress(Exception):
@@ -499,6 +533,7 @@ async def live(ws: WebSocket):
         release_session()
         with suppress(Exception):
             await ws.close()
+        owner.closed.set()
 
 
 class NoteIn(BaseModel):

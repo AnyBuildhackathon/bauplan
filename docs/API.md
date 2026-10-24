@@ -84,7 +84,7 @@ It has no OpenAPI page; FastAPI's generated docs are turned off on purpose for t
 | --- | --- | --- | --- | --- |
 | `GET` | `/api/voice` | Capabilities: `gemini_live` availability (Mechanic's only voice), STT (`reson8` or `browser`), Reson8 endpoints, language, phrase list. | | [HTTP](events.md#http) |
 | `POST` | `/api/voice/token` | A short-lived Reson8 token for the browser's WebSocket; 503 without `RESON8_API_KEY`. | stt | [HTTP](events.md#http) |
-| `WS` | `/api/voice/live` | Server-proxied Gemini Live audio and engineering tool calls; Vertex OAuth or AI Studio, with credentials kept on the backend. | One active session | [Realtime voice](GEMINI_LIVE.md#websocket-protocol) |
+| `WS` | `/api/voice/live` | Server-proxied Gemini Live audio and engineering tool calls; Vertex OAuth or AI Studio, with credentials kept on the backend. | One active session; the newest replaces it | [Realtime voice](GEMINI_LIVE.md#websocket-protocol) |
 | `POST` | `/api/voice/note` | Send a displayed conversation to a selected Jamie meeting, with offline outbox fallback. | | [Realtime voice](GEMINI_LIVE.md#websocket-protocol) |
 
 ### Learning mode, settings and training jobs
