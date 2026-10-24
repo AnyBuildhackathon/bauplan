@@ -216,7 +216,7 @@ async def _kickoff(ctx: Ctx, meeting_id: str, team: MockTeam) -> None:
             ctx,
             "erklaert",
             "Last week the 1103s hovered cleanly. Lea warned about the FunFly.",
-            "Jamie has it: in the flight test on 17.10. the 1103 15000KV with Gemfan 2020 props hovered cleanly. In the workshop note from 2.9. Lea warns against the FunFly 4S on the 1103s. I run the numbers anyway, or nobody believes it.",
+            "Jamie has it: in the flight test on Oct 17 the 1103 15000KV with Gemfan 2020 props hovered cleanly. In the workshop note from Sep 2 Lea warns against the FunFly 4S on the 1103s. I run the numbers anyway, or nobody believes it.",
         )
     else:
         await _say(

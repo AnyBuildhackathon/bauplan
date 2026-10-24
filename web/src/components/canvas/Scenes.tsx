@@ -11,6 +11,7 @@ import { AnchorScope } from "./anchors";
 import { GridStage, stageObstacles, usePrefersReducedMotion } from "./GridStage";
 import { ExplodeCamera } from "./explode";
 import { HeroDrone, useDroneUrl } from "./HeroDrone";
+import { IntroTurn } from "./IntroTurn";
 import { sampleAt, simClock } from "./simClock";
 
 function useSpin() {
@@ -83,11 +84,10 @@ export function ModelScene({ look }: { look: "modell" | "render" }) {
           </Suspense>
         </group>
         {!render && <ExplodeCamera maxDistance={0.45} />}
+        <IntroTurn disabled={still} />
         <GridStage size={DRONE_SIZE} lights={false} shadowArea={0.35} shadowReach={0.12} shadowOpacity={render ? 0.6 : 0.5} />
         <OrbitControls
           makeDefault
-          autoRotate={!still}
-          autoRotateSpeed={render ? 1.1 : 0.55}
           enablePan={false}
           minDistance={0.09}
           maxDistance={0.45}

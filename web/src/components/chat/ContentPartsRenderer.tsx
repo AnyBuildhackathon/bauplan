@@ -298,7 +298,7 @@ export function ProgressLineRenderer({ items }: { items: Extract<ChatItem, { kin
   const failed = items.some((i) => i.phase === "error");
   const names = [...new Set(items.map((i) => i.name))];
   return (
-    <div className="flex min-w-0 items-center gap-1.5 pl-8 font-label text-[12px] text-faint" data-target="tool_progress">
+    <div className="flex min-w-0 items-center gap-1.5 font-label text-[12px] text-faint" data-target="tool_progress">
       <PhaseIcon phase={running ? "running" : failed ? "error" : "ok"} small />
       <span className="truncate">{running ? getToolLabel(running.name, "running") : names.join(" · ")}</span>
     </div>

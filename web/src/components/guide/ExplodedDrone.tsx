@@ -254,7 +254,7 @@ export function ExplodedScene(props: ExplodedDroneProps) {
       <hemisphereLight args={["#ffffff", "#d9d6e8", 0.6]} />
       <directionalLight position={[0.4, 0.8, 0.3]} intensity={1.8} />
       <ExplodedDrone {...props} />
-      <OrbitControls makeDefault autoRotate autoRotateSpeed={0.5} enablePan={false} minDistance={0.12} maxDistance={0.6} target={[0, 0.03, 0]} />
+      <OrbitControls makeDefault enablePan={false} minDistance={0.12} maxDistance={0.6} target={[0, 0.03, 0]} />
     </Canvas>
   );
 }

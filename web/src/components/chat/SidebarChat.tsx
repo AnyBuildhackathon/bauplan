@@ -169,9 +169,6 @@ export default function SidebarChat() {
       {drop.overlay}
       {/* Header */}
       <div className="mx-5 flex h-[56px] shrink-0 items-center gap-3 border-b border-line">
-        <div data-target="mascot bolzen" className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-tile">
-          <MascotLive state={mascot.state} size={40} crop="head" />
-        </div>
         <div className="min-w-0 flex-1 leading-tight">
           <div className="truncate text-[15px] font-semibold text-ink">{productLabel || "Mechanic"}</div>
           <div className={`truncate font-label text-[11px] ${stateTone}`}>
@@ -307,7 +304,6 @@ export default function SidebarChat() {
                         content={item.text}
                         voice={item.voice}
                         animate={item.role === "agent" && Date.now() - item.at < FRESH_MS}
-                        mascot={mascot.state}
                         onRevealProgress={onRevealProgress}
                       />
                     ) : (
