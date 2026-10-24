@@ -184,7 +184,8 @@ export function BrowserTraining() {
         </p>
       </div>
 
-      <div className="flex min-h-0 min-w-0 flex-col gap-2">
+      {/* Leaves room for the canvas's Hover test / Training switch in the top right. */}
+      <div className="flex min-h-0 min-w-0 flex-col gap-2 pt-10">
         <div className="relative min-h-0 flex-[1.4] overflow-hidden rounded-[16px] bg-white/80">
           <canvas ref={big} className="absolute inset-0 h-full w-full" />
           <div className="absolute top-2.5 left-3 text-[13px] font-bold text-ink-2">
