@@ -1,15 +1,13 @@
 // Adapted from core-oss (github.com/10xapp/core-oss, Apache-2.0),
 // core-web/src/components/SidebarChat/SidebarChatMessage.tsx. Modified: Bevel
-// styling, core.so's system sans, Bolzen's head on agent messages, a "gesprochen" hint on user messages,
+// styling, core.so's system sans, plain left-aligned agent messages, a "gesprochen" hint on user messages,
 // and the word-by-word reveal from core-oss SidebarChat moved into the message.
 import { memo, useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Components } from "react-markdown";
 import { Check, Copy, Mic, Volume2 } from "lucide-react";
-import type { MascotState } from "../../events/types";
 import { enText } from "../../lib/copy";
-import { MascotHead } from "../mascot/Mascot";
 
 interface ChatMessageProps {
   role: "user" | "agent";
@@ -18,7 +16,6 @@ interface ChatMessageProps {
   voice?: boolean;
   /** Reveal word by word (true only for messages that just arrived). */
   animate: boolean;
-  mascot: MascotState;
   onRevealProgress?: () => void;
 }
 
@@ -91,7 +88,7 @@ function UserMessage({ content, voice }: { content: string; voice?: boolean }) {
   );
 }
 
-function AssistantMessage({ content, voice, animate, mascot, onRevealProgress }: Omit<ChatMessageProps, "role">) {
+function AssistantMessage({ content, voice, animate, onRevealProgress }: Omit<ChatMessageProps, "role">) {
   const [copied, setCopied] = useState(false);
   const { shown, streaming } = useWordReveal(content, animate, onRevealProgress);
 
@@ -106,9 +103,8 @@ function AssistantMessage({ content, voice, animate, mascot, onRevealProgress }:
   };
 
   return (
-    <div className="group relative flex items-start gap-2.5 py-1.5">
-      <MascotHead size={24} state={mascot} className="mt-0.5 self-start" />
-      <div className="min-w-0 flex-1">
+    <div className="group relative py-1.5">
+      <div className="min-w-0">
         <div className="font-read text-[15px] leading-[1.5] text-ink">
           <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdown}>
             {shown}

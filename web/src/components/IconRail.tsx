@@ -57,7 +57,7 @@ export function IconRail() {
     <nav className="flex h-full w-16 shrink-0 flex-col items-center justify-between bg-page-2 py-4" aria-label="AnyBuild">
       <div className="flex flex-col items-center gap-1.5">
         {/* Mechanic once, alive, at the top of the rail; it leads back to the workbench. */}
-        <button type="button" onClick={() => setView("werkbank")} title="AnyBuild" aria-label="AnyBuild" className="mb-4">
+        <button type="button" onClick={() => setView("werkbank")} title="AnyBuild" aria-label="AnyBuild" data-target="mascot bolzen" className="mb-4">
           <MascotLive state={mascot.state} size={52} crop="head" className="rounded-[16px] shadow-[0_0_0_1px_rgb(26_26_24_/_0.06)]" />
         </button>
         <RailButton
