@@ -19,8 +19,8 @@ The architecture combines engineering software, physical simulation, AI models, 
 - Parametric CAD: FreeCAD with `freecad-mcp` for live interactive building in GUI, falling back to headless `freecadcmd` and CadQuery.
 - Photorealistic rendering: Blender with EEVEE headless rendering for studio product presentations.
 - Fast physics simulation: MuJoCo for aerodynamics and downdraft gust stability evaluation.
-- In-browser physics: MuJoCo WASM (`@mujoco/mujoco`) with Web Workers for parallel rollouts without GPU dependencies.
-- High-fidelity GPU simulation: NVIDIA Isaac Sim 6.2 and Isaac Lab 3.0 on a RunPod RTX 4090 for quadcopter reinforcement learning.
+- In-browser physics: MuJoCo WASM (`@mujoco/mujoco`) with Web Workers for parallel rollouts without GPU dependencies (quick check: 1,024 simulations in seconds live on stage).
+- High-fidelity GPU simulation: NVIDIA Isaac Sim 6.2 and Isaac Lab 3.0 on a RunPod RTX 4090 for deep controller policy training in the GPU cloud (feeds firmware, with recorded fallback).
 - Backend server: FastAPI and Uvicorn running on Python 3.12 with Server-Sent Events.
 - Frontend dashboard: React, Vite, Tailwind CSS, Zustand, and React Three Fiber.
 - Desktop wrapper: Tauri 2 for native macOS presentation.
@@ -40,10 +40,10 @@ The team divides responsibilities across the captain, the teammate, and the agen
   - Directories: `web/src/components/`, `agent/src/pai_agent/tools/parts_search*.py`, and `agent/src/pai_agent/tools/build_guide*.py`
   - Reference: Ready-to-paste prompts and worktree port pairs are documented in docs/TEAMMATE_PROMPTS.md.
   - Responsibilities:
-    - 1,024 parallel browser simulations using MuJoCo WASM and Web Workers to train gaits with evolution strategy and learning curves.
-    - Stress test with randomized physics evaluating gait survival across 50 trials with varied friction, mass, and motor torque.
+    - Two-tier training architecture: 1,024 parallel browser simulations using MuJoCo WASM and Web Workers for a fast stage check in seconds, complementing cloud GPU Isaac Lab training.
+    - Browser stress test with randomized physics evaluating gait and flight survival across 50 trials with varied friction, mass, and motor torque (reusing the browser MuJoCo workers).
     - Step-by-step build guide with interactive exploded 3D model view highlighting components per step.
-    - Firmware generation (.ino Arduino sketch download) and hardware wiring table.
+    - Firmware generation (.ino Arduino sketch download or Betaflight CLI) using Isaac Lab trained controller gains when available, falling back to browser-tuned values, plus hardware wiring table.
     - Live component web prices and purchasing links.
     - Stretch goal: Sketch image input integration.
 
@@ -56,7 +56,7 @@ The team divides responsibilities across the captain, the teammate, and the agen
     - Code implementation for live Jamie MCP client and live Reson8 streaming STT (credentials entered on site by captain).
     - English UI translation task (translating Bolzen spoken dialogue, agent chat messages, and web labels, setting default `RESON8_LANGUAGE=en`).
     - Project rebranding from Bauplan to AnyBuild across codebase and UI text.
-    - NVIDIA Omniverse and Isaac Sim training on RunPod RTX 4090 with fallback video playback.
+    - NVIDIA Omniverse and Isaac Sim training on RunPod RTX 4090 for deep policy training feeding real firmware parameters, with fallback video playback.
     - Technical documentation, architecture maintenance, and demo video recording.
 
 ## Integration Points
