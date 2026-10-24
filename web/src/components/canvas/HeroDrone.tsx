@@ -13,7 +13,7 @@ import { assetUrl } from "../../lib/api";
 import { useAnchor } from "./anchors";
 import { ExplodeLayer, useExplodeHover, type PieceSpec } from "./explode";
 
-/** The kickoff build, written by agent/scripts/record_demo.py. */
+/** The reference drone shown before the first CAD event. */
 export const DEFAULT_DRONE_URL = `${import.meta.env.BASE_URL}models/hero-drone.glb`;
 
 const CORNERS = ["front_left", "front_right", "rear_left", "rear_right"] as const;

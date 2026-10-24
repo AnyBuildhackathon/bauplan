@@ -171,7 +171,7 @@ export async function runBrowserTraining(jobId: string, fallback: { productId: s
 }
 
 /**
- * A run that never reaches the backend (static demo, backend down): same pool, ES and
+ * A run that never reaches the backend (backend down): same pool, ES and
  * local store as a claimed job, but no claim and no progress POSTs, so no job_id.
  */
 export async function runLocalTraining(productId: string, spec: unknown, population = 64, generations = 16) {

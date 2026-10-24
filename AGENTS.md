@@ -20,7 +20,7 @@ Physics and aerodynamic simulators validate real-world performance against envir
 Rendering tools produce photorealistic studio visualizations for team review.
 Bill of materials calculators price orderable parts and sync purchasing tasks back into Jamie.
 Realtime speech-to-text with Reson8 enables spoken dialogue with mascot Mechanic during design reviews.
-Mechanic answers with the ElevenLabs voice (pre-rendered clips in the static demo) and stays silent, showing text, without it.
+Mechanic answers with the ElevenLabs voice and stays silent, showing text, without it.
 Offline fallbacks run the complete workflow when API keys are absent.
 
 ## Worked Demo Example: Drone Design
@@ -44,7 +44,7 @@ AnyBuild rebuilds to version 2, showing metrics differences, quotes, warnings, a
 When a meeting ends, AnyBuild rebuilds the drone and posts differences back to Jamie as notes.
 Jamie tags mark drone versions on meetings.
 Order tasks with assignees and due dates appear in Jamie.
-A public static demo of the recorded drone run is available at https://anybuild-demo.vercel.app.
+The public web app is at https://anybuild-demo.vercel.app and talks to the live backend.
 
 ## Repository Map
 
@@ -60,11 +60,10 @@ The repository is structured into five main directories:
   - `agent/src/pai_agent/jamie_client.py`: Streamable HTTP client for the Jamie MCP server.
   - `agent/src/pai_agent/voice.py`: Reson8 STT token management and ElevenLabs TTS audio synthesis.
   - `agent/scripts/smoke_sse.py`: End-to-end SSE mock verification script.
-  - `agent/scripts/record_demo.py`: Demo run recorder creating static playback fixtures.
 - `web/`: Vite, React, and Three.js frontend dashboard.
   - `web/src/App.tsx`: Top-level application layout containing chat, timeline, canvas, and panels.
   - `web/src/events/store.ts`: Zustand event store for SSE updates, metric tracking, and version state.
-  - `web/src/events/source.ts`: SSE stream consumer and demo playback controller.
+  - `web/src/events/source.ts`: SSE stream consumer.
   - `web/src/events/types.ts`: TypeScript interfaces for the wire protocol.
   - `web/src/components/chat/`: Mechanic sidebar chat with audio controls and speech recognition.
   - `web/src/components/timeline/`: Jamie meeting timeline showing kickoff and review milestones.
@@ -146,16 +145,11 @@ Verify the backend and SSE mock pipeline with the standalone smoke script.
 cd agent && uv run python scripts/smoke_sse.py
 ```
 
-### Demo URL Parameters
+### URL Parameters
 
-The frontend accepts URL parameters to control playback and view states:
+The frontend accepts URL parameters to set the initial view:
 
-- `?demo`: Plays the recorded mock session from static fixtures without requiring a backend; playback starts on load and the UI shows no playback controls.
-- `?live`: Forces connection to the live backend server.
 - `?mute`: Disables audio synthesis playback on initial load.
-- `?speed=N`: Multiplies playback speed in demo mode (for example `?speed=2`).
-- `?seek=MARKER`: Jumps directly to a named event marker in demo playback.
-- `?end`: Renders the final completed state immediately in demo mode.
 - `?view=werkbank|training|logbuch`: Sets the active main view.
 - `?tab=modell|cad|simulation`: Selects the initial 3D canvas tab.
 - `?bom`: Opens the Bill of Materials drawer on startup.
@@ -251,7 +245,7 @@ Never commit `.env` files or secret keys to the repository.
 - Jamie MCP: Connects via Streamable HTTP; writes to local session outbox `jamie_outbox.json` and loads fixture meetings when unauthenticated or offline.
 - Reson8: Realtime streaming speech-to-text; vends short-lived session tokens from backend; falls back to browser Web Speech API.
 - Tauri app: Desktop wrapper in `desktop/` providing a native macOS window for the web dashboard.
-- Vercel static demo: Hosted static deployment at `https://anybuild-demo.vercel.app` replaying recorded event runs without backend dependencies.
+- Vercel: Hosts the web app at `https://anybuild-demo.vercel.app`, which talks to the live backend.
 
 ## User Interface Guidelines
 

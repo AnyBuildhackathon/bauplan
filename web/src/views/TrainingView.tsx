@@ -160,7 +160,6 @@ function StatusCard() {
   const tools = useSession((s) => s.tools);
   const isaac = useIsaacRun();
   const mascot = useSession((s) => s.mascot);
-  const mode = useSource((s) => s.mode);
   const sendPrompt = useSource((s) => s.sendPrompt);
   const status = training?.status ?? "offline";
   const title = { queued: "Waiting for a GPU", running: "Training running", done: "Training done", failed: "Stopped", offline: "Not started" }[status];
@@ -206,9 +205,8 @@ function StatusCard() {
         <PillButton
           variant="secondary"
           className="w-full"
-          disabled={status !== "running" || mode !== "live"}
+          disabled={status !== "running"}
           onClick={() => void sendPrompt("Stop the training.")}
-          title={mode !== "live" ? "Live mode only" : undefined}
         >
           Stop training
         </PillButton>

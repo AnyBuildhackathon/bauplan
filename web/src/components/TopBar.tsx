@@ -3,7 +3,7 @@ import { BenchSettings } from "./BenchSettings";
 import { MeetingTimeline } from "./timeline/MeetingTimeline";
 import { StatusDot } from "./ui/primitives";
 
-/** The app logo: Mechanic leaning on the workbench cube, cropped to his head and the cube corner so it reads at small sizes. */
+/** The app logo: the workbench cube, shown full. */
 export function Logo({ size = 40 }: { size?: number }) {
   return (
     <img
@@ -17,13 +17,10 @@ export function Logo({ size = 40 }: { size?: number }) {
   );
 }
 
-/** Where the bench gets its events: the live backend and whether Claude or the mock runs it.
- * The recorded run (?demo) shows nothing here; it plays on its own. */
+/** Where the bench gets its events: the live backend and whether Claude or the mock runs it. */
 function SourceStatus() {
-  const mode = useSource((s) => s.mode);
   const live = useSource((s) => s.live);
   const backend = useSource((s) => s.backend);
-  if (mode === "demo") return null;
   return (
     <span
       title={backend === "mock" ? "No Anthropic API key: the backend runs its scripted mock build" : undefined}

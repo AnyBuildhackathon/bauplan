@@ -1,6 +1,6 @@
 // Export on the bill of materials: the list as CSV, one ZIP with every STL and STEP file, the
 // build guide, firmware and README (GET /api/export/bundle.zip), the order by shop, and a share
-// link that reopens the build from the library (?project=<id>). Without a backend (?demo) the
+// link that reopens the build from the library (?project=<id>). Without a backend the
 // CSV is built here from the bom event and ZIP and Share are hidden.
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, FileArchive, FileSpreadsheet, Link2, ShoppingCart } from "lucide-react";

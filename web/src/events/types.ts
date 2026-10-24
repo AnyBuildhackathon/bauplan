@@ -174,7 +174,7 @@ export interface MascotEvent {
   type: "mascot";
   state: MascotState;
   say: string;
-  /** Pre-rendered audio of `say` (the recorded demo has no backend to speak it). */
+  /** Optional pre-rendered audio of `say`. */
   voice?: string;
 }
 export interface JamieEvent {
@@ -448,7 +448,7 @@ export interface QuestionEvent {
   timeout_s: number;
   status: "open" | "answered";
   answer_id: string | null;
-  /** Pre-rendered audio of the question's last sentence (the recorded demo only). */
+  /** Optional pre-rendered audio of the question's last sentence. */
   voice?: string;
 }
 export interface TaskItem {
@@ -570,7 +570,7 @@ export interface FirmwareEvent {
   product: string;
   filename: string;
   url: string;
-  /** The whole file, so the download also works in the static demo. */
+  /** The whole file, so the download does not need a second request. */
   content: string;
   gains: FirmwareGains | null;
   /** Isaac Lab training, then the browser training, then the Betaflight defaults; `none` for an Arduino sketch. */
