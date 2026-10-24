@@ -45,29 +45,66 @@ _RATES = {"rc_rate": 7, "srate": 67, "expo": 0}
 
 _SERVO_PINS = (9, 10, 11, 6, 5, 3)
 
+_SOURCE_TEXT = {
+    "isaac": "the Isaac Lab trained controller",
+    "browser": "the browser-tuned controller (1,024 MuJoCo runs)",
+    "defaults": "Betaflight starting values for a 1S whoop",
+}
+
+
+def _betaflight_gains(raw) -> dict | None:
+    """{roll, pitch, yaw: {p, i, d, f}} in Betaflight units, clamped; missing terms keep the defaults. None without any number."""
+
+    if not isinstance(raw, dict):
+        return None
+    found = False
+    merged = {}
+    for axis, defaults in DEFAULT_GAINS.items():
+        terms = raw.get(axis)
+        merged[axis] = {}
+        for term, default in defaults.items():
+            value = terms.get(term) if isinstance(terms, dict) else None
+            if isinstance(value, (int, float)) and not isinstance(value, bool):
+                found = True
+            else:
+                value = default
+            merged[axis][term] = int(round(min(max(float(value), 0.0), _GAIN_LIMITS[term])))
+    return merged if found else None
+
+
+def _is_isaac(event: dict) -> bool:
+    # Only a finished live Isaac Lab training; a recorded replay is no measurement of this build.
+    return event.get("type") == "omniverse" and event.get("mode") == "train" and event.get("source") == "live" and event.get("status") == "done"
+
+
+def _is_browser(event: dict) -> bool:
+    return event.get("type") == "training" and event.get("source") == "browser" and event.get("status") == "done"
+
 
 def trained_gains(ctx: Ctx) -> tuple[dict, str]:
-    """Gains from the last training event's {roll, pitch, yaw: {p, i, d, f}} in Betaflight units, else defaults."""
+    """Isaac Lab gains from the last live `omniverse` training, else the browser training's, else the defaults."""
 
-    for event in reversed(ctx.bus.events):
-        if event.get("type") != "training" or not isinstance(event.get("gains"), dict):
-            continue
-        found = False
-        merged = {}
-        for axis, defaults in DEFAULT_GAINS.items():
-            terms = event["gains"].get(axis)
-            merged[axis] = {}
-            for term, default in defaults.items():
-                value = terms.get(term) if isinstance(terms, dict) else None
-                if isinstance(value, (int, float)) and not isinstance(value, bool):
-                    found = True
-                else:
-                    value = default
-                merged[axis][term] = int(round(min(max(float(value), 0.0), _GAIN_LIMITS[term])))
-        if found:
-            return merged, "training"
-        break
+    for source, matches in (("isaac", _is_isaac), ("browser", _is_browser)):
+        for event in reversed(ctx.bus.events):
+            if matches(event) and isinstance(event.get("gains"), dict):
+                gains = _betaflight_gains(event["gains"])
+                if gains:
+                    return gains, source
+                break
     return {axis: dict(terms) for axis, terms in DEFAULT_GAINS.items()}, "defaults"
+
+
+async def refresh_after_training(ctx: Ctx) -> None:
+    """Rebuild the drone firmware when a training run changed the gains it was built with."""
+
+    from pai_agent.tools.registry import call_tool
+
+    last = next((event for event in reversed(ctx.bus.events) if event.get("type") == "firmware"), None)
+    if not last or last.get("kind") != "betaflight" or "flight_controller" not in ctx.state.selected:
+        return
+    gains, source = trained_gains(ctx)
+    if (gains, source) != (last.get("gains"), last.get("gains_source")):
+        await call_tool(ctx, "firmware", {})
 
 
 def _part(ctx: Ctx, category: str) -> dict | None:
@@ -175,7 +212,7 @@ def betaflight_cli(ctx: Ctx, gains: dict, gains_source: str) -> str:
         "# Motors: " + (motor["name"] if motor else "unknown"),
         "# Propellers: " + (propeller["name"] if propeller else "unknown"),
         "# Battery: " + (battery["name"] if battery else "unknown"),
-        "# PID gains: " + ("trained controller" if gains_source == "training" else gains_source),
+        "# PID gains: " + _SOURCE_TEXT.get(gains_source, gains_source),
         "# Paste into the Betaflight Configurator CLI tab and press Enter. The board saves and reboots.",
         "# A motor that spins the wrong way: swap any two of its phase wires, or reverse it in the Motors tab.",
     ]
@@ -325,7 +362,7 @@ def arduino_sketch(ctx: Ctx, product: str) -> str:
 def _default_explanation(kind: str, ctx: Ctx, gains_source: str, wiring: list[dict]) -> str:
     if kind == "betaflight":
         fc = _part(ctx, "flight_controller")
-        source = "the trained controller" if gains_source == "training" else "Betaflight starting values for a 1S whoop"
+        source = _SOURCE_TEXT.get(gains_source, gains_source)
         return (
             f"Betaflight CLI for the {fc['name'] if fc else 'flight controller'}: Quad X motor order, DShot300, "
             f"actual rates 70/670 deg/s, PID gains from {source}. "
