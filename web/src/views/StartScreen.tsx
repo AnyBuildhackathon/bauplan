@@ -11,7 +11,8 @@ import { useWindowWidth } from "../components/ui/ResizeHandle";
 import { EXAMPLES } from "../components/chat/examples";
 import { HEAD_ABOVE, MechanicPeek } from "../components/start/MechanicPeek";
 
-const chip = "h-9 rounded-full px-4 text-[14px] font-semibold transition";
+// Quiet starting points, so the prompt field stays the main thing.
+const chip = "h-7.5 rounded-full px-3 text-[13px] font-medium transition";
 
 export function StartScreen() {
   const sendPrompt = useSource((s) => s.sendPrompt);
@@ -57,7 +58,8 @@ export function StartScreen() {
               Start from a reference build and change it, or describe any product from scratch.
             </p>
           )}
-          <div className="mt-7 sm:mt-9">
+          {/* Room for about two lines, with larger text than the chat; the shared field itself stays as it is. */}
+          <div className="mt-7 sm:mt-9 [&_textarea]:min-h-[44px] sm:[&_textarea]:min-h-[64px] sm:[&_textarea]:text-[22px]">
             <SidebarChatInput
               size={narrow ? "md" : "lg"}
               value={input}
@@ -70,11 +72,11 @@ export function StartScreen() {
             />
           </div>
           {live && (
-            <div className="mt-7 grid gap-x-6 gap-y-3 sm:mt-8 sm:grid-cols-[max-content_minmax(0,1fr)] sm:items-baseline">
+            <div className="mt-6 grid gap-x-5 gap-y-2 sm:mt-7 sm:grid-cols-[max-content_minmax(0,1fr)] sm:items-baseline">
               {references.length > 0 && (
                 <>
-                  <p className="text-[14px] font-semibold text-faint sm:pt-2">From a reference</p>
-                  <div className="flex flex-wrap gap-2">
+                  <p className="text-[12.5px] font-medium text-faint sm:pt-1.5">From a reference</p>
+                  <div className="flex flex-wrap gap-1.5">
                     {references.map((ref) => (
                       <button
                         key={ref.id}
@@ -90,8 +92,8 @@ export function StartScreen() {
                   </div>
                 </>
               )}
-              <p className="text-[14px] font-semibold text-faint sm:pt-2">From scratch</p>
-              <div className="flex flex-wrap gap-2">
+              <p className="text-[12.5px] font-medium text-faint sm:pt-1.5">From scratch</p>
+              <div className="flex flex-wrap gap-1.5">
                 {EXAMPLES.map((example) => (
                   <button
                     key={example.label}
@@ -110,7 +112,7 @@ export function StartScreen() {
                   title="Build from a photo of a hand-drawn phone stand"
                   className={`${chip} flex items-center gap-1.5 bg-tile text-ink-2 hover:bg-track`}
                 >
-                  <ImagePlus className="h-4 w-4" />
+                  <ImagePlus className="h-3.5 w-3.5" />
                   Phone stand sketch
                 </button>
               </div>
