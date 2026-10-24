@@ -8,15 +8,12 @@ import remarkGfm from "remark-gfm";
 import type { Components } from "react-markdown";
 import { Check, Copy, Mic, Volume2 } from "lucide-react";
 import { enText } from "../../lib/copy";
-import type { Transcriber } from "../../events/types";
 
 interface ChatMessageProps {
   role: "user" | "agent";
   content: string;
   /** Spoken: the person's voice turn (mic marker) or a line Mechanic said aloud (speaker marker). */
   voice?: boolean;
-  /** Who transcribed a spoken user turn; Reson8 is credited by name. */
-  transcriber?: Transcriber;
   /** Reveal word by word (true only for messages that just arrived). */
   animate: boolean;
   onRevealProgress?: () => void;
@@ -69,25 +66,24 @@ function useWordReveal(text: string, animate: boolean, onProgress?: () => void):
 }
 
 /** The small marker under a spoken message. */
-function Spoken({ by, transcriber }: { by: "user" | "agent"; transcriber?: Transcriber }) {
+function Spoken({ by }: { by: "user" | "agent" }) {
   const Icon = by === "user" ? Mic : Volume2;
-  const label = by === "agent" ? "said aloud" : transcriber === "reson8" ? "Transcribed by Reson8" : "spoken";
   return (
     <span className="mt-0.5 inline-flex items-center gap-1 font-label text-[11px] text-faint" title={by === "user" ? "Spoken" : "Said aloud"}>
       <Icon className="h-3 w-3" aria-hidden />
-      {label}
+      {by === "user" ? "spoken" : "said aloud"}
     </span>
   );
 }
 
-function UserMessage({ content, voice, transcriber }: { content: string; voice?: boolean; transcriber?: Transcriber }) {
+function UserMessage({ content, voice }: { content: string; voice?: boolean }) {
   const isShort = content.length <= 48 && !content.includes("\n");
   return (
     <div className="flex flex-col items-end py-1.5 pl-10">
       <div className={`bg-tile px-3.5 py-2 ${isShort ? "rounded-full" : "rounded-[20px] rounded-br-md"}`}>
         <p className="font-read text-[15px] leading-[1.5] whitespace-pre-wrap text-ink">{content}</p>
       </div>
-      {voice && <Spoken by="user" transcriber={transcriber} />}
+      {voice && <Spoken by="user" />}
     </div>
   );
 }
@@ -134,9 +130,8 @@ function AssistantMessage({ content, voice, animate, onRevealProgress }: Omit<Ch
 
 function SidebarChatMessage({ role, content, ...rest }: ChatMessageProps) {
   const text = enText(content);
-  const { transcriber, ...agent } = rest;
-  if (role === "user") return <UserMessage content={text} voice={rest.voice} transcriber={transcriber} />;
-  return <AssistantMessage content={text} {...agent} />;
+  if (role === "user") return <UserMessage content={text} voice={rest.voice} />;
+  return <AssistantMessage content={text} {...rest} />;
 }
 
 export default memo(SidebarChatMessage);

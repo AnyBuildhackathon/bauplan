@@ -65,7 +65,7 @@ It prefers `frame.FCStd`, then STEP, then STL.
 
 `GET /api/voice` returns `{"gemini_live": true, "stt": "reson8"|"browser", "realtime_url": "...", "turns_url": "...", "language": "en", "phrases": [...], "custom_model_id": null}`.
 `gemini_live` says whether Mechanic's only voice, Gemini Live (`WS /api/voice/live`, see [GEMINI_LIVE.md](GEMINI_LIVE.md)), is configured.
-`turns_url` is Reson8's Turns endpoint for hands-free listening, `realtime_url` its Realtime endpoint for push-to-talk.
+`realtime_url` is Reson8's Realtime endpoint for push-to-talk dictation; `turns_url` is unused since the voice conversation is Gemini Live only.
 `phrases` bias Reson8 toward our vocabulary (the `phrases` query parameter); a `custom_model_id` from `RESON8_CUSTOM_MODEL_ID` replaces them.
 Mechanic never reads chat, `mascot` or `question` lines aloud; without Gemini Live he is silent and his text is the caption, and the system voice is never used.
 `POST /api/voice/token` returns `{"access_token": "...", "expires_in": 600}`, a short-lived Reson8 token for the browser's WebSocket (subprotocols `["bearer", token]`), or HTTP 503 without `RESON8_API_KEY`.
@@ -309,8 +309,7 @@ The tool pill still shows `offline`.
 
 `role` is `user` or `agent`.
 `text` is the utterance.
-`voice: true` marks a spoken line: a user turn heard by Reson8 or the browser, or a line Mechanic said aloud in a Gemini Live conversation.
-A spoken user turn from a Gemini Live conversation also carries `transcriber`: `reson8` when Reson8 transcribed it in parallel (the chat shows "Transcribed by Reson8"), or `gemini` when Gemini's own transcription stood in.
+`voice: true` marks a spoken line: a user turn transcribed by Gemini Live (or dictated with push-to-talk through Reson8 or the browser), or a line Mechanic said aloud in a Gemini Live conversation.
 
 ### tool
 

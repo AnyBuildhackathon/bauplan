@@ -19,8 +19,8 @@ Parametric CAD tools build 3D components with exact geometric dimensions.
 Physics and aerodynamic simulators validate real-world performance against environmental forces.
 Rendering tools produce photorealistic studio visualizations for team review.
 Bill of materials calculators price orderable parts and sync purchasing tasks back into Jamie.
-Realtime speech-to-text with Reson8 enables spoken dialogue with mascot Mechanic during design reviews.
-Mechanic speaks only through Gemini Live, inside a voice conversation the user starts, and stays silent, showing text, without it.
+The voice agent is Gemini Live only: it listens, transcribes and speaks as mascot Mechanic inside a voice conversation the user starts, and without it Mechanic stays silent, showing text.
+Reson8 speech-to-text powers push-to-talk dictation.
 Offline fallbacks run the complete workflow when API keys are absent.
 
 ## Worked Demo Example: Drone Design

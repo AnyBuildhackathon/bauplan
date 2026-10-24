@@ -302,7 +302,6 @@ export default function SidebarChat() {
                         role={item.role}
                         content={item.text}
                         voice={item.voice}
-                        transcriber={item.transcriber}
                         animate={item.role === "agent" && Date.now() - item.at < FRESH_MS}
                         onRevealProgress={onRevealProgress}
                       />

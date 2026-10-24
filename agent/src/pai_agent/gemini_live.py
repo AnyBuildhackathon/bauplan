@@ -196,9 +196,6 @@ async def record(session, role: str, text: str, source: str) -> None:
     if not text:
         return
     event = {"type": "chat", "role": role, "text": text, "voice": True}
-    if role == "user":
-        # Credits who heard the turn: Reson8 in parallel, or Gemini's own transcription without it.
-        event["transcriber"] = "reson8" if source == "reson8" else "gemini"
     # The bus also feeds the normal logbook and saved-chat archive.
     await session.bus.publish(event)
     path = session.state.directory / "voice_conversation.jsonl"
@@ -274,7 +271,6 @@ async def live(ws: WebSocket):
     jobs: dict[str, asyncio.Task] = {}
     output = ""
     input_text = ""
-    reson8 = False
 
     def release_session():
         if getattr(session, "live_voice", None) is owner:
@@ -330,11 +326,11 @@ async def live(ws: WebSocket):
                     )
 
             async def receive_browser():
-                nonlocal reson8
                 while True:
                     message = await ws.receive()
                     if message["type"] == "websocket.disconnect":
                         return
+                    # Only microphone audio comes in; Gemini both hears and transcribes it.
                     if message.get("bytes") is not None:
                         chunk = message["bytes"]
                         if len(chunk) > 64000:
@@ -351,14 +347,6 @@ async def live(ws: WebSocket):
                                 }
                             )
                         )
-                    elif message.get("text"):
-                        data = json.loads(message["text"])
-                        if data.get("type") == "transcriber":
-                            reson8 = data.get("source") == "reson8"
-                        elif data.get("type") == "transcript" and reson8:
-                            await record(
-                                session, "user", str(data.get("text", "")), "reson8"
-                            )
 
             async def receive_google():
                 nonlocal output, input_text
@@ -383,8 +371,8 @@ async def live(ws: WebSocket):
                                 }
                             )
                     if content.get("turnComplete") or content.get("interrupted"):
-                        if input_text and not reson8:
-                            await record(session, "user", input_text, "gemini-fallback")
+                        if input_text:
+                            await record(session, "user", input_text, "gemini")
                         if output:
                             await record(session, "agent", output, "gemini")
                         input_text = output = ""

@@ -15,7 +15,7 @@ AnyBuild's own code is MIT licensed (see [LICENSE](../LICENSE)); third-party mod
 | Anthropic server-side web search | `web_search` tool | Live shop prices for the bill of materials. | Anthropic API terms |
 | Jamie | MCP server `https://mcp.meetjamie.ai/mcp` | Meeting requirements, quotes, warnings, templates, notes, tags and order tasks. | Jamie terms |
 | Google Gemini Live | `gemini-3.8-live` (Vertex and AI Studio) | Mechanic's only voice: native speech conversation, barge-in and calls to Claude engineering tools; Fenrir voice. | Google Cloud / Gemini API terms |
-| Reson8 | Turns and Realtime speech-to-text | Hands-free voice input with semantic end-of-turn detection. | Reson8 terms |
+| Reson8 | Realtime speech-to-text | Push-to-talk dictation. | Reson8 terms |
 
 ## Backend (`agent/`, Python 3.12, managed by uv)
 

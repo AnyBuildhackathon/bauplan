@@ -17,7 +17,7 @@ Event payloads are specified in [events.md](events.md#tools), and the step each 
 | **MuJoCo 3.17** | `simulate_drone`, `simulate_assembly`, `simulate_grip` on the backend; `train_in_browser`, `stress_test` in the browser | Python bindings; `@mujoco/mujoco` WebAssembly in the dashboard | None needed |
 | **NVIDIA Isaac Sim 5.1 and Isaac Lab 2.3** | `isaac_test`, `isaac_train` and aliases | SSH to a GPU host prepared by `runpod/setup.sh`, job script `runpod/isaac_job.py` | Recorded, clearly labelled result |
 | **Jamie MCP** | All `jamie_*` tools, `requirements_accept`, `version_commit` | Streamable HTTP MCP client (`jamie_client.py`) with a bearer token | Fixture meetings and local outbox `jamie_outbox.json` |
-| **Reson8** | Voice input (not a tool) | Browser WebSocket with a short-lived token from the backend | Browser Web Speech recognition |
+| **Reson8** | Push-to-talk dictation (not a tool) | Browser WebSocket with a short-lived token from the backend | Browser Web Speech recognition |
 | **Gemini Live** | Mechanic's only voice (not a tool) | Native realtime audio through `WS /api/voice/live` | Silent, text only |
 | **Betaflight and Arduino** | `firmware` | Deterministic templates filled from the chosen parts | None needed |
 
