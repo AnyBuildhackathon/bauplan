@@ -17,6 +17,22 @@ function useSpin() {
   return sim === "running" || training === "running" ? 40 : 0;
 }
 
+const MODEL_TARGET = new THREE.Vector3(0, 0.012, 0);
+const MODEL_DISTANCE = new THREE.Vector3(0.15, 0.13, 0.17).distanceTo(MODEL_TARGET);
+
+/** Pulls the camera back on narrow canvases so the whole drone stays in frame. */
+function FitModelWidth() {
+  const camera = useThree((s) => s.camera);
+  const size = useThree((s) => s.size);
+  useLayoutEffect(() => {
+    const aspect = size.width / Math.max(1, size.height);
+    const dist = Math.min(0.45, MODEL_DISTANCE * Math.max(1, 1.05 / aspect));
+    const dir = camera.position.clone().sub(MODEL_TARGET).normalize();
+    camera.position.copy(MODEL_TARGET).addScaledVector(dir, dist);
+  }, [camera, size.width, size.height]);
+  return null;
+}
+
 export function ModelScene({ look }: { look: "modell" | "render" }) {
   const build = useAssembly();
   const url = useDroneUrl();
@@ -31,6 +47,7 @@ export function ModelScene({ look }: { look: "modell" | "render" }) {
       gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}
     >
       <AnchorScope primary>
+        <FitModelWidth />
         <ambientLight intensity={render ? 0.25 : 0.7} />
         <hemisphereLight args={["#ffffff", "#d9d6e8", render ? 0.3 : 0.6]} />
         <directionalLight
