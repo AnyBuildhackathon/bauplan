@@ -53,7 +53,7 @@ function Chart({ ev, busy, onPick, hover, setHover }: { ev: OptimizeEvent; busy:
       {limit !== undefined && py(limit) > PAD.top && py(limit) < H - PAD.bottom && (
         <g>
           <line x1={PAD.left} x2={W - PAD.right} y1={py(limit)} y2={py(limit)} stroke="var(--color-fail)" strokeDasharray="4 3" strokeOpacity={0.6} />
-          <text x={W - PAD.right} y={py(limit) - 3} textAnchor="end" className="fill-fail-ink text-[9px] font-semibold">
+          <text x={PAD.left + 3} y={py(limit) + 10} className="fill-fail-ink text-[9px] font-semibold">
             keep ≥ {fmtNum(limit, 0)} {AXIS[y].unit}
           </text>
         </g>
