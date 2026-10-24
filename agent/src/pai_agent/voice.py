@@ -6,7 +6,8 @@ and opens a Reson8 socket with the subprotocols ["bearer", token]. Hands-free, t
 the Turns endpoint, which says when a turn starts (barge-in) and when it has ended (send
 it); push-to-talk keeps the Realtime endpoint. Without RESON8_API_KEY the browser uses its
 own speech recognition. Mechanic speaks through ElevenLabs when ELEVENLABS_API_KEY is set,
-streamed sentence by sentence as raw PCM, else through the browser's speech synthesis.
+streamed sentence by sentence as raw PCM, else he stays silent and his text is the caption
+(never the system voice). The recorded demo plays pre-rendered ElevenLabs clips instead.
 Key values are never logged or returned.
 """
 
@@ -97,7 +98,7 @@ def _key(name: str) -> str:
 def capabilities() -> dict:
     return {
         "stt": "reson8" if _key("RESON8_API_KEY") else "browser",
-        "tts": "elevenlabs" if _key("ELEVENLABS_API_KEY") else "browser",
+        "tts": "elevenlabs" if _key("ELEVENLABS_API_KEY") else "none",
         "realtime_url": RESON8_REALTIME_URL,
         "turns_url": RESON8_TURNS_URL,
         "language": os.environ.get("RESON8_LANGUAGE", "").strip() or "en",
