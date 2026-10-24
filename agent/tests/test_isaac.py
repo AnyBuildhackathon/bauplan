@@ -134,7 +134,7 @@ class IsaacTests(unittest.IsolatedAsyncioTestCase):
             with self.subTest(failure=failure):
                 result, _ = await self.execute(failure=failure)
                 self.assertEqual(result["source"], "recorded")
-                self.assertIn("no new GPU measurement", result["detail"])
+                self.assertIn("nothing was measured", result["detail"])
 
     async def test_invalid_arguments_do_not_start_ssh(self):
         with patch.object(isaac, "_command") as runner:

@@ -6,7 +6,7 @@ This file is the only copy of the wire format.
 
 ## HTTP
 
-`POST /api/prompt` with `{"text": "..."}` starts or continues the one local session.
+`POST /api/prompt` with `{"text": "..."}` starts or continues the one local session; `"voice": true` marks the text as a spoken turn.
 The response is `{"ok": true, "mode": "mock"|"claude", "status": "started"|"already_running"|"answered"|"ui"}`.
 `mode` is `mock` when `ANTHROPIC_API_KEY` is empty or `PAI_FORCE_MOCK` is `1`.
 
@@ -176,6 +176,15 @@ HTTP 400 without a title or author or without a finished build (no bill of mater
 `POST /api/community/{id}/remix` (HTTP 404 for an unknown id) opens the entry on a fresh bench: it sends a `remix` event, rebuilds the entry through the same tools and events as `POST /api/library/{id}/open`, and Mechanic asks what to change.
 The response is like `POST /api/prompt`, with `remix`: `{"ok": true, "mode": "mock", "status": "started", "remix": "quiet-desk-fan"}`, or `status: already_running`.
 
+### Bench
+
+`GET /api/bench` answers `{"ok": true, "runs": [run, ...]}`: the results `agent/bench/run.py` wrote to `agent/bench/results/live.json` and `agent/bench/results/mock.json`, the live run first; a missing file is left out, so no run yet is `"runs": []`.
+A run is `{"mode": "live" | "mock", "note", "started_at", "finished_at", "orchestrator_model", "subagent_model", "concurrency", "timeout_s", "budget_s", "prompts_total", "summary", "results"}`; `note` says a mock run is not a measure of the live agent, and the models are `null` in mock mode.
+`summary` is `{"prompts", "ran", "passed", "pass_rate", "checks_passed", "checks_total", "check_pass_rate", "cost_usd", "cost_per_product_usd", "cost_per_valid_product_usd", "time_s", "retries", "cad_fallbacks", "input_tokens", "output_tokens"}`.
+Each result is one prompt: `{"id", "title", "category", "prompt", "status": "done" | "timeout" | "error" | "skipped", "error", "pass", "checks": [{"id", "label", "pass", "detail"}], "checks_passed", "checks_total", "time_s", "tool_calls", "tool_errors", "fixes", "retries", "cad_fallbacks", "input_tokens", "output_tokens", "cache_read_tokens", "cost_usd", "agents", "model_rounds", "product", "mass_g", "parts_eur", "session_id"}`.
+`pass` is true when the run finished and every expected check passed. A check id is `built`, `cad`, `bom`, `render`, or `req:<id or check>`, which passes when the build has that requirement and it is met.
+The bench sends no SSE events of its own; "Open on bench" in the drawer runs the prompt again with `POST /api/reset` and `POST /api/prompt`.
+
 ### Settings
 
 `GET /api/settings` answers `{"ok": true, "orchestrator_model": "claude-opus-5-5", "orchestrator_effort": "high", "subagent_model": "claude-sonnet-5-5", "subagent_effort": "medium", "delegation": true, "models": [{id, label}], "efforts": ["low", "medium", "high", "xhigh", "max"]}`.
@@ -245,7 +254,7 @@ Mechanic's spoken line, live only: it is never kept in the backlog, so a reconne
 `id` names the line, `kind` is `reply` (the fast answer to a prompt) or `update` (a build milestone).
 While the line is written, events carry `delta` (the next piece of text) and `done: false`.
 The last event has `done: true` and the whole `text`; `cancelled: true` means a newer prompt replaced the reply mid-way.
-A reply is also published as a normal agent `chat` event once it is done; updates are only spoken.
+Every finished line, reply or update, is also published as an agent `chat` event with `voice: true`, so the conversation stays readable in the chat.
 Updates follow `sim`, `cad`, `version` and failed `step` events of a running build, never slider changes, and wait until the reply is finished.
 
 ### explain
@@ -275,6 +284,7 @@ The tool pill still shows `offline`.
 
 `role` is `user` or `agent`.
 `text` is the utterance.
+`voice: true` marks a spoken line: a user turn heard by Reson8 or the browser, or a line Mechanic said aloud (a `say` reply or update).
 
 ### tool
 
@@ -410,6 +420,7 @@ A line falls back to the catalog when the search fails, finds nothing, or return
 Live results are cached in memory for 15 minutes (failed searches for one minute), so a rebuild only searches the changed parts, and later `metrics` keep using the cached live prices in `price_eur`.
 Older recordings have no `prices` or `price_source`; read them as `catalog`.
 `stl_path` is the STL path relative to the repository root, or an empty string before CAD.
+After `print_prep` the list ends with one filament line (`category: "filament"`, shop `printed`, `weight_g` 0, `unit_price_eur` 0) naming the material and grams of the print plan; it never changes `total_eur`, because printed parts already carry their filament cost and the drone's printed frame is an optional test print next to the bought carbon frame.
 
 ### mascot
 
@@ -493,6 +504,17 @@ The step-by-step build guide for the current bill of materials, published whole 
 `parts` are scene part names from the list below; the web explodes the model and highlights them for that step.
 `items` are the bill-of-materials names of those parts, plus the parts of categories without a scene part of their own (camera, canopy, hardware) that the step names, filled in by the backend.
 Together the steps cover every scene part.
+
+### print
+
+The print plan for every printed part, published whole by `print_prep` after `bom_build`.
+`source` is `slicer` when every part was sliced by PrusaSlicer or OrcaSlicer (`slicer` names it), else `estimate`: the numbers come from the mesh (shell plus 20 % infill at the default profile, an average flow and a per-layer overhead) and no part has G-code.
+`profile` is `{printer, nozzle_mm, layer_height_mm, infill_pct, walls, bed_mm}`.
+`parts` is a list of `{id, name, material, qty, orientation, size_mm, volume_cm3, time_min, filament_g, filament_m, cost_eur, warnings, stl_url, gcode_url, source}` for one piece each; `size_mm` is `[x, y, z]` as oriented on the bed, `orientation` is `flat`, `upright` or `as_modeled`.
+`gcode_url` is a `/files/...` download when a slicer produced it, else an empty string; a part whose slice failed keeps the estimate and adds `slicer_error`.
+`warnings` is a list of `{kind, text}` with `kind` `overhang` (faces past 45 degrees that are not on the bed), `thin_wall` (a designed thickness or the thinnest extent under 0.8 mm) or `bed_size` (over a 220 × 220 × 250 mm build volume).
+`totals` is `{parts, time_min, filament_g, cost_eur, warnings}` over every piece (`qty` counted).
+The drone prints its CAD frame as a PETG-CF test print; a spec product prints its printed parts, the gripper its body.
 
 ### point
 
@@ -637,7 +659,7 @@ Closing buttons are tagged `{control}:close`, and `look:3d` is the 3D switch of 
 
 ## Tools
 
-`jamie_templates`, `jamie_requirements`, `jamie_search`, `jamie_meeting`, `requirements_accept`, `ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `stress_test`, `cad_frame`, `cad_part`, `product_brief`, `product_spec`, `sketch_to_spec`, `reference_load`, `delegate`, `part_pick`, `assemble`, `cad_update`, `check_totals`, `check_tip_over`, `check_deflection`, `check_torque`, `check_runtime`, `check_power`, `check_thermal`, `check_rollover`, `simulate_assembly`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `blender_render`, `bom_build`, `build_guide`, `firmware`, `safety_check`, `jamie_create_tasks`, `version_commit`, `ui_point_at`, `ui_draw`, `ui_control`, `mascot_say`, `train_in_browser`.
+`jamie_templates`, `jamie_requirements`, `jamie_search`, `jamie_meeting`, `requirements_accept`, `ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `stress_test`, `cad_frame`, `cad_part`, `product_brief`, `product_spec`, `sketch_to_spec`, `reference_load`, `delegate`, `part_pick`, `assemble`, `cad_update`, `check_totals`, `check_tip_over`, `check_deflection`, `check_torque`, `check_runtime`, `check_power`, `check_thermal`, `check_rollover`, `simulate_assembly`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `blender_render`, `bom_build`, `print_prep`, `build_guide`, `firmware`, `safety_check`, `jamie_create_tasks`, `version_commit`, `ui_point_at`, `ui_draw`, `ui_control`, `mascot_say`, `train_in_browser`.
 
 `ui_control` takes `control` (see Dashboard controls) and, as the control needs, `open`, `value`, `part`, `versions` and `say` (the bubble, a default otherwise).
 It checks the control against the build (no bill of materials yet, fewer than two versions, Omniverse for a non-drone product) and answers an error the model can act on; `run:test` and `run:rebuild` wait for the run and return its result.
@@ -706,6 +728,7 @@ CadQuery writes the same STL, STEP, and GLB when FreeCAD is missing or the scrip
 `jamie_requirements` reads the `Hardware-Anforderungen` fields first.
 `build_guide` is drone only, comes after `bom_build`, and takes `steps` as in the `build_guide` event, without `items`; a step number out of order, an unknown part, or a scene part no step installs is an error that names it.
 A step may add `bom_parts`, categories from the bill of materials that have no scene part (`camera`, `canopy`, `hardware`); they show up in `items`.
+`print_prep` comes after `bom_build`; `orientation` (`flat` by default, `upright`, `as_modeled`) applies to every part and `orientations` sets it per part id. It runs a slicer found on `PATH` or in `/Applications` (`PAI_SLICER` names an executable, `off` skips it) and emits one `print` event.
 
 ## Mock story
 
@@ -715,7 +738,7 @@ The agent reads the kickoff (under 120 €, at least 8 minutes, under 50 g, hove
 It tries the FunFly anyway: the MuJoCo gust pushes it to the floor, the swap to the Tattu R-Line 1S 550 passes.
 A 34 mm arm lets the 51 mm propellers touch, so the frame becomes the Twiglet's 42.5 mm.
 v1 is 47.2 g, 8.5 min, 117.38 €.
-Each build writes a `build_guide` from the same step template with the parts it chose: frame, motors, flight controller, wiring, camera and canopy, battery, motor test, propellers.
+Each build writes a `print` plan for the frame (an estimate without a slicer) and a `build_guide` from the same step template with the parts it chose: frame, motors, flight controller, wiring, camera and canopy, battery, motor test, propellers.
 The review "Review 1" asks for 10 minutes.
 Mechanic asks which flight time counts and swaps to the BetaFPV LAVA II 1S 680, the other pack from the video.
 v2 is 48.4 g, 10.4 min, 117.60 €, and the difference goes back to the review as a note.
@@ -729,7 +752,7 @@ The swap to the MG996R gives 6.0 N per finger and passes with 0.4 mm slip.
 FreeCAD builds the gripper headless from the library template with the servo pocket sized for the MG996R (58 g PLA), Blender renders it, and the bill of materials comes to 18.65 € and 128 g.
 The drone and gripper stories call `firmware` right after `bom_build`: the drone gets a Betaflight CLI file, the gripper an Arduino sketch.
 Both call `safety_check` right before `bom_build`: the drone gets the EU class C0 note (under 250 g, register the operator, no remote ID) and the lithium battery shipping note, the gripper the pinch-point warning with a gear cover and a firmware travel limit as the fix.
-A prompt that asks for a lamp (`desk lamp`, `lamp`) plays the safety story: Mechanic writes a 230 V desk lamp spec, `safety_check` flags mains voltage inside printed PETG, Mechanic asks whether to switch to a USB-C 5 V supply (the default), revises the spec and runs the check again without the mains finding. The run stops before FreeCAD; with a key Claude builds it.
+A prompt that asks for a lamp on mains (`lamp` with `230 V`, `mains` or `wall socket`) plays the safety story: Mechanic writes a 230 V desk lamp spec, `safety_check` flags mains voltage inside printed PETG, Mechanic asks whether to switch to a USB-C 5 V supply (the default), revises the spec and runs the check again without the mains finding. The run stops before FreeCAD; with a key Claude builds it.
 A prompt that asks for a phone stand (`phone`, `tablet` with `stand`, `holder`, `dock` or `mount`) plays the generic story: Mechanic writes the spec, FreeCAD builds the base plate and the back rest from the phone stand reference build (`agent/data/references/phone-stand/`), the rubber feet come from the catalog, and the assembly with the 200 g phone tips at 0.35 N, under the 0.75 N tap it must take; the MuJoCo push knocks it over.
 Mechanic deepens the base from 60 to 110 mm with `cad_update`, every check runs again and passes (0.81 N, the push only rocks it), then Blender renders it and the bill of materials comes to 3.32 € and 116 g.
 The dashboard's `?demo` replays exactly the drone run from `web/src/events/recording.json`, written by `agent/scripts/record_demo.py`.

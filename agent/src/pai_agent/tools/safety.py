@@ -31,7 +31,7 @@ _HAND_TRANSIENT_N = 140.0
 # Pitch radius of the gripper template's gears, where a finger can get between the teeth.
 _GEAR_RADIUS_MM = 10.0
 
-_MAINS = re.compile(
+MAINS = re.compile(
     r"\b(230|240|220|120|110|100)\s*-?\s*v(olts?)?\b(?!\s*dc)|\bmains\b|\bwall (socket|outlet|plug)\b|\bschuko\b|\bE(27|14)\b|\b(110|230)\s*v\s*ac\b",
     re.IGNORECASE,
 )
@@ -157,7 +157,7 @@ def gripper_findings(state) -> list[dict]:
 def product_findings(state, text: str) -> list[dict]:
     findings = []
     spec = state.spec or {}
-    if _MAINS.search(text):
+    if MAINS.search(text):
         findings.append(
             _finding(
                 "mains-voltage",

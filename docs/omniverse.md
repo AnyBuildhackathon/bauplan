@@ -27,11 +27,10 @@ In mock mode, these requests go through the same tool registry without an LLM ca
 
 ## Recorded fallback
 
-Until a pod is configured, the app displays **Waiting for pod** and a clearly labelled **Recorded result**.
+Until a pod is configured, the Omniverse tab shows a calm **GPU not connected** state.
 A failed connection, export, remote timeout or invalid returned artifact also selects the recorded fallback and explains the failure.
-The recording is an eight-second browser replay of the existing local simulation visualization, with an in-video provenance label.
-The accompanying wind values and learning curve are synthetic fixture data, not Isaac measurements or proof that the current CAD product passed.
-Requested conditions and fixed recorded conditions are displayed separately.
+The backend still emits the recorded fixture (an eight-second browser replay and synthetic wind values and learning curve) with `source: "recorded"`.
+The app does not display those values, because they are not Isaac measurements or proof that the current CAD product passed.
 Recorded values must never trigger claims about the current product or automatic design changes.
 The fixed wind fixture describes drone v1: 36.7 g before payload, 10 g added payload, and 46.7 g total test mass.
 The displayed assembly weight follows the same selected version as the key numbers panel; fixture values remain fixed when that selection changes.

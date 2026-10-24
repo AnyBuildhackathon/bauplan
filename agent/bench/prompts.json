@@ -1,0 +1,162 @@
+[
+  {
+    "id": "drone-micro",
+    "title": "Micro racing drone",
+    "category": "drone",
+    "mock": true,
+    "prompt": "Build a small racing drone: under 50 g, at least 8 minutes of flight time, parts under 120 euros.",
+    "checks": ["built", "cad", "bom", "render", "req:weight", "req:flight_time", "req:budget"]
+  },
+  {
+    "id": "drone-freestyle",
+    "title": "5 inch freestyle drone",
+    "category": "drone",
+    "mock": false,
+    "prompt": "Design a 5 inch freestyle FPV quadcopter on 4S that stays stable in a 4 m/s gust, under 650 g and under 300 euros.",
+    "checks": ["built", "cad", "bom", "req:weight", "req:budget"]
+  },
+  {
+    "id": "drone-camera",
+    "title": "Camera drone",
+    "category": "drone",
+    "mock": false,
+    "prompt": "Build a light drone that carries a 30 g action camera and flies at least 6 minutes, parts under 150 euros.",
+    "checks": ["built", "cad", "bom", "req:flight_time", "req:budget"]
+  },
+  {
+    "id": "gripper-can",
+    "title": "Robot gripper",
+    "category": "robotics",
+    "mock": true,
+    "prompt": "Design a robot gripper that picks up a 200 g soda can, 66 mm wide, the gripper under 300 g and under 60 euros.",
+    "checks": ["built", "cad", "bom", "render", "req:payload", "req:opening", "req:weight", "req:budget"]
+  },
+  {
+    "id": "phone-stand",
+    "title": "Phone stand",
+    "category": "desk",
+    "mock": true,
+    "prompt": "Build a phone stand for a 6.7 inch phone that does not tip when you tap the screen, under 150 g and 6 euros in parts.",
+    "checks": ["built", "cad", "bom", "render", "req:mass", "req:cost", "req:tip_over"]
+  },
+  {
+    "id": "desk-lamp",
+    "title": "USB-C desk lamp",
+    "category": "lighting",
+    "mock": false,
+    "prompt": "Design a USB-C desk lamp with a 30 cm arm and a 5 W LED head that does not tip over, parts under 35 euros.",
+    "checks": ["built", "cad", "bom", "req:mass", "req:cost", "req:tip_over", "req:deflection"]
+  },
+  {
+    "id": "desk-fan",
+    "title": "Desk fan",
+    "category": "appliance",
+    "mock": false,
+    "prompt": "Design a small 5 V USB desk fan with a 120 mm rotor on a stand that stays put while it runs, parts under 25 euros.",
+    "checks": ["built", "cad", "bom", "req:mass", "req:cost", "req:tip_over"]
+  },
+  {
+    "id": "pi-case",
+    "title": "Raspberry Pi 5 enclosure",
+    "category": "electronics",
+    "mock": true,
+    "prompt": "Design an enclosure for a Raspberry Pi 5 with a 30 mm fan that keeps the board under 70 °C, under 120 g.",
+    "checks": ["built", "cad", "bom", "render", "req:mass", "req:cost", "req:thermal"]
+  },
+  {
+    "id": "plant-robot",
+    "title": "Plant-watering robot",
+    "category": "robotics",
+    "mock": false,
+    "prompt": "Build a plant-watering robot with a 500 ml tank and a 5 V pump that runs a week on batteries and does not tip when full.",
+    "checks": ["built", "cad", "bom", "req:mass", "req:cost", "req:tip_over", "req:runtime"]
+  },
+  {
+    "id": "rc-car",
+    "title": "2WD RC car",
+    "category": "vehicle",
+    "mock": true,
+    "prompt": "Build a 2WD RC car chassis with two geared motors that does not roll over in a 0.6 g turn, under 400 g.",
+    "checks": ["built", "cad", "bom", "render", "req:mass", "req:cost", "req:rollover"]
+  },
+  {
+    "id": "wall-hook",
+    "title": "Wall hook",
+    "category": "household",
+    "mock": false,
+    "prompt": "Design a 3D-printed wall hook that holds a 5 kg backpack with less than 2 mm sag, mounted with two screws.",
+    "checks": ["built", "cad", "bom", "req:mass", "req:cost", "req:deflection"]
+  },
+  {
+    "id": "cable-organizer",
+    "title": "Cable organizer",
+    "category": "desk",
+    "mock": false,
+    "prompt": "Design a desk-edge cable organizer that holds five USB cables, clips onto a 25 mm desk, under 20 g and 2 euros.",
+    "checks": ["built", "cad", "bom", "req:mass", "req:cost"]
+  },
+  {
+    "id": "headphone-stand",
+    "title": "Headphone stand",
+    "category": "desk",
+    "mock": false,
+    "prompt": "Design a headphone stand for 350 g over-ear headphones that does not tip when you hang them on it, under 10 euros.",
+    "checks": ["built", "cad", "bom", "req:mass", "req:cost", "req:tip_over"]
+  },
+  {
+    "id": "bike-light-mount",
+    "title": "Bike light mount",
+    "category": "mobility",
+    "mock": false,
+    "prompt": "Design a handlebar mount for a 120 g bike light on a 31.8 mm bar that bends less than 1 mm on bumps.",
+    "checks": ["built", "cad", "bom", "req:mass", "req:cost", "req:deflection"]
+  },
+  {
+    "id": "shelf-bracket",
+    "title": "Shelf bracket",
+    "category": "household",
+    "mock": false,
+    "prompt": "Design a shelf bracket for a 200 mm deep shelf that carries 10 kg with less than 1.5 mm sag at the tip.",
+    "checks": ["built", "cad", "bom", "req:mass", "req:cost", "req:deflection"]
+  },
+  {
+    "id": "pan-tilt",
+    "title": "Pan-tilt camera mount",
+    "category": "robotics",
+    "mock": false,
+    "prompt": "Build a pan-tilt mount for a 60 g webcam with two SG90 servos that have enough torque, under 20 euros.",
+    "checks": ["built", "cad", "bom", "req:mass", "req:cost", "req:torque"]
+  },
+  {
+    "id": "speaker-box",
+    "title": "Bluetooth speaker",
+    "category": "electronics",
+    "mock": false,
+    "prompt": "Design a Bluetooth speaker enclosure for a 40 mm driver and a 2000 mAh battery that plays 8 hours, under 30 euros.",
+    "checks": ["built", "cad", "bom", "req:mass", "req:cost", "req:runtime"]
+  },
+  {
+    "id": "weather-station",
+    "title": "Weather station",
+    "category": "electronics",
+    "mock": false,
+    "prompt": "Design an outdoor weather station enclosure for an ESP32 and a BME280 on a solar-charged battery with enough power headroom.",
+    "checks": ["built", "cad", "bom", "req:mass", "req:cost", "req:power"]
+  },
+  {
+    "id": "pet-feeder",
+    "title": "Pet feeder",
+    "category": "household",
+    "mock": false,
+    "prompt": "Build an automatic pet feeder with a 1 litre hopper and a servo auger that turns 50 g portions and does not tip over.",
+    "checks": ["built", "cad", "bom", "req:mass", "req:cost", "req:tip_over", "req:torque"]
+  },
+  {
+    "id": "laptop-stand",
+    "title": "Laptop stand",
+    "category": "desk",
+    "mock": false,
+    "prompt": "Design a foldable laptop stand that lifts a 2 kg laptop 15 cm with less than 2 mm flex and does not tip, under 15 euros.",
+    "checks": ["built", "cad", "bom", "req:mass", "req:cost", "req:tip_over", "req:deflection"]
+  }
+]

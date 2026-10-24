@@ -179,7 +179,7 @@ export function BrowserTraining() {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
         <p className="text-[18px] font-semibold text-ink-2">No training yet</p>
-        <p className="max-w-sm text-[15px] text-muted">Ask Bolzen to “train it”: 1,024 MuJoCo simulations run right here in the browser.</p>
+        <p className="max-w-sm text-[15px] text-muted">Ask Mechanic to “train it”: 1,024 MuJoCo simulations run right here in the browser.</p>
         <TrainHereButton />
       </div>
     );

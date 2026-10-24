@@ -57,12 +57,12 @@ interface SourceState {
   notice: string | null;
   setMode: (mode: SourceMode) => void;
   play: () => void;
-  pause: () => void;
   restart: () => void;
   setSpeed: (speed: number) => void;
   seekToMarker: (marker: string) => void;
   skipToEnd: () => void;
-  sendPrompt: (text: string) => Promise<void>;
+  /** voice: the text is a spoken turn, shown with a mic marker. */
+  sendPrompt: (text: string, voice?: boolean) => Promise<void>;
   /** Starts a new product from a photo of a hand sketch, with what the user typed next to it. */
   sendSketch: (image: Blob, note?: string) => Promise<void>;
   /** Sends the sample phone stand sketch the backend ships with. */
@@ -316,10 +316,6 @@ export const useSource = create<SourceState>((set, get) => {
       if (get().demo.index >= fixture.length) get().restart();
       startDemo();
     },
-    pause: () => {
-      clearTimer();
-      set((s) => ({ demo: { ...s.demo, playing: false } }));
-    },
     restart: () => {
       clearTimer();
       useSession.getState().reset();
@@ -346,7 +342,7 @@ export const useSource = create<SourceState>((set, get) => {
       set((s) => ({ demo: { ...s.demo, playing: false } }));
     },
 
-    sendPrompt: async (text) => {
+    sendPrompt: async (text, voice = false) => {
       const trimmed = text.trim();
       if (!trimmed) return;
       const { mode, demo } = get();
@@ -354,20 +350,20 @@ export const useSource = create<SourceState>((set, get) => {
         const omniverse = await recordedOmniverse(trimmed);
         if (omniverse) {
           const session = useSession.getState();
-          session.addLocalUserMessage(trimmed);
+          session.addLocalUserMessage(trimmed, voice);
           if (session.product !== "drone" || session.cad?.script_url) {
             session.apply({ type: "chat", role: "agent", text: "Omniverse hover tests and Crazyflie training support the drone only. Use the Simulation tab for the gripper lift-and-shake test." });
             return;
           }
           session.apply(omniverse);
-          session.apply({ type: "chat", role: "agent", text: "Here is the recorded Omniverse demo. Its values and learning curve are illustrative; this request has not been simulated." });
+          session.apply({ type: "chat", role: "agent", text: "The GPU is not connected, so Omniverse cannot run this test yet. The MuJoCo checks in the Simulation tab work without it." });
           useUi.getState().setTab("omniverse");
           return;
         }
         const open = Object.values(useSession.getState().questions).find((q) => q.status === "open");
         const answer = open ? matchAnswer(trimmed, open) : null;
         if (open && answer) {
-          useSession.getState().addLocalUserMessage(trimmed);
+          useSession.getState().addLocalUserMessage(trimmed, voice);
           void get().answerQuestion(open.id, answer);
           return;
         }
@@ -377,7 +373,7 @@ export const useSource = create<SourceState>((set, get) => {
           return;
         }
         const session = useSession.getState();
-        session.addLocalUserMessage(trimmed);
+        session.addLocalUserMessage(trimmed, voice);
         setTimeout(() => {
           session.apply({
             type: "chat",
@@ -387,12 +383,12 @@ export const useSource = create<SourceState>((set, get) => {
         }, 700);
         return;
       }
-      useSession.getState().addLocalUserMessage(trimmed);
+      useSession.getState().addLocalUserMessage(trimmed, voice);
       try {
         const res = await apiFetch("/api/prompt", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: trimmed }),
+          body: JSON.stringify({ text: trimmed, voice }),
         });
         await ensureOk(res);
       } catch (err) {
@@ -691,7 +687,8 @@ export function initSource() {
     const seek = params.get("seek");
     if (params.has("end")) useSource.getState().skipToEnd();
     else if (seek) useSource.getState().seekToMarker(seek);
-    else if (params.has("autoplay")) useSource.getState().play();
+    // No playback controls on screen: the recording plays on its own.
+    else useSource.getState().play();
     return;
   }
   void enterLive();

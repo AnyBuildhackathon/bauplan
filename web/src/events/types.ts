@@ -20,6 +20,8 @@ export interface ChatEvent {
   type: "chat";
   role: "user" | "agent";
   text: string;
+  /** A spoken line: the person's turn heard by Reson8 or the browser, or what Mechanic said aloud. */
+  voice?: boolean;
 }
 export interface ToolEvent {
   type: "tool";
@@ -502,6 +504,39 @@ export interface BuildGuideEvent {
   steps: BuildGuideStep[];
   total_minutes: number;
 }
+export interface PrintWarning {
+  kind: "overhang" | "thin_wall" | "bed_size";
+  text: string;
+}
+/** One printed part of the print plan, for a single piece. */
+export interface PrintPart {
+  id: string;
+  name: string;
+  material: string;
+  qty: number;
+  orientation: "flat" | "upright" | "as_modeled";
+  size_mm: [number, number, number];
+  volume_cm3: number;
+  time_min: number;
+  filament_g: number;
+  filament_m: number;
+  cost_eur: number;
+  warnings: PrintWarning[];
+  stl_url: string;
+  /** Empty without a slicer: an estimate has no G-code. */
+  gcode_url: string;
+  source: "slicer" | "estimate";
+  slicer_error?: string;
+}
+/** Print plan from print_prep: a headless slicer when installed, else an estimate from the mesh. */
+export interface PrintEvent {
+  type: "print";
+  source: "slicer" | "estimate";
+  slicer: string;
+  profile: { printer: string; nozzle_mm: number; layer_height_mm: number; infill_pct: number; walls: number; bed_mm: number[] };
+  parts: PrintPart[];
+  totals: { parts: number; time_min: number; filament_g: number; cost_eur: number; warnings: number };
+}
 export interface WiringRow {
   component: string;
   connects_to: string;
@@ -605,6 +640,7 @@ export type AgentEvent =
   | SketchEvent
   | RemixEvent
   | BuildGuideEvent
+  | PrintEvent
   | FirmwareEvent
   | SafetyEvent
   | AgentRunEvent
@@ -640,6 +676,7 @@ const EVENT_TYPES = new Set<AgentEvent["type"]>([
   "sketch",
   "remix",
   "build_guide",
+  "print",
   "firmware",
   "safety",
   "agent",

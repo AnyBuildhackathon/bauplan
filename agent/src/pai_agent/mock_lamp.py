@@ -1,6 +1,6 @@
 """Deterministic desk lamp run for the safety check, through the same tools Claude uses, for runs without a key.
 
-The request puts 230 V mains into a printed desk lamp. Mechanic writes the spec, the safety
+A lamp request that names mains (230 V, mains, a wall socket) puts it into a printed desk lamp. Mechanic writes the spec, the safety
 check flags the mains voltage inside PETG, and Mechanic offers the fix it can apply: a
 USB-C 5 V supply, so only safety extra-low voltage enters the printed parts. The revised
 spec runs the check again. Without a key the run stops before FreeCAD; with Claude the
@@ -14,6 +14,7 @@ import re
 
 from pai_agent.context import Ctx
 from pai_agent.mock_story import _beat, _need, _safety, _say
+from pai_agent.tools.safety import MAINS
 
 LAMP_WORDS = re.compile(r"\b(desk|table|bedside|reading|floor)?\s*lamp\b", re.IGNORECASE)
 
@@ -68,7 +69,9 @@ _USB_PARTS = [
 
 
 def wants_lamp(text: str) -> bool:
-    return bool(LAMP_WORDS.search(text))
+    """A lamp on mains; a USB-C lamp is no safety story."""
+
+    return bool(LAMP_WORDS.search(text) and MAINS.search(text))
 
 
 def _spec(quote: str, function: str, bought: list[dict]) -> dict:

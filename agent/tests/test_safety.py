@@ -76,6 +76,7 @@ def test_gripper_pinch_point_has_fix(tmp_path):
 def test_lamp_mock_flags_mains_and_applies_the_fix(tmp_path):
     prompt = "Design a 230 V desk lamp with an E14 bulb on a 200 mm arm"
     assert wants_lamp(prompt)
+    assert not wants_lamp("Design a USB-C desk lamp with a 30 cm arm and a 5 W LED head")
     ctx = _ctx(tmp_path)
     asyncio.run(run_lamp_mock(ctx, prompt))
     first, second = _safety_events(ctx)

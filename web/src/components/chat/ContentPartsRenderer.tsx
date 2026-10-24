@@ -7,7 +7,6 @@ import { memo, useEffect, useState } from "react";
 import {
   AlertTriangle,
   ArrowRight,
-  Boxes,
   CircleCheck,
   CircleX,
   Cpu,
@@ -23,10 +22,12 @@ import {
 import { useSession, type ChatItem } from "../../events/store";
 import { useSource } from "../../events/source";
 import { enLabel, enText } from "../../lib/copy";
-import { fmtDuration, fmtEur, fmtNum, stripMarkdown } from "../../lib/format";
+import { fmtDuration, fmtNum, stripMarkdown } from "../../lib/format";
 import { useUi } from "../../lib/ui";
 import { StressCard } from "../stress/StressCard";
+import { PrintPlanCard } from "../print/PrintPlanCard";
 import { ExplainChatCard } from "../learn/Explain";
+import { RequirementsCard, ResultsCard } from "./BuildCards";
 import { SafetyCard } from "../safety/SafetyCard";
 
 const TOOL_LABELS: Record<string, { running: string; done: string }> = {
@@ -91,9 +92,9 @@ function ToolCallPartRenderer({ item }: { item: Extract<ChatItem, { kind: "tool"
         <div className={`text-[14px] font-semibold ${item.phase === "running" ? "text-agent-ink" : item.phase === "error" ? "text-fail-ink" : "text-ink-2"}`}>
           {getToolLabel(item.name, item.phase)}
         </div>
-        {item.detail && <div className="truncate text-[13px] text-muted">{enText(item.detail)}</div>}
+        {item.detail && <div className="truncate font-label text-[12px] text-muted">{enText(item.detail)}</div>}
       </div>
-      {duration != null && duration > 0 && <span className="num shrink-0 text-[12px] text-faint">{fmtDuration(duration)}</span>}
+      {duration != null && duration > 0 && <span className="num shrink-0 font-label text-[12px] text-faint">{fmtDuration(duration)}</span>}
     </div>
   );
 }
@@ -106,7 +107,7 @@ function JamiePartRenderer({ item }: { item: Extract<ChatItem, { kind: "jamie" }
         <div className="text-[14px] font-semibold text-ink-2">
           <span className="text-jamie">Jamie</span> · {JAMIE_ACTIONS[item.action] ?? item.action.replace(/_/g, " ")}
         </div>
-        {item.detail && <div className="truncate text-[13px] text-muted">{enText(item.detail)}</div>}
+        {item.detail && <div className="truncate font-label text-[12px] text-muted">{enText(item.detail)}</div>}
       </div>
       <NotebookPen className="h-4 w-4 shrink-0 text-jamie" />
     </div>
@@ -140,26 +141,6 @@ function SimPartRenderer({ item }: { item: Extract<ChatItem, { kind: "sim" }> })
   );
 }
 
-function BomPartRenderer({ item }: { item: Extract<ChatItem, { kind: "bom" }> }) {
-  const setBomOpen = useUi((s) => s.setBomOpen);
-  return (
-    <button
-      type="button"
-      onClick={() => setBomOpen(true)}
-      className="group flex w-full items-center gap-3 rounded-[14px] bg-page-2 p-3 text-left"
-    >
-      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white shadow-[var(--shadow-pill)]">
-        <Boxes className="h-5 w-5 text-ink-2" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="text-[14px] font-bold text-ink">Bill of materials · {item.count} parts</div>
-        <div className="num text-[13px] text-muted">{fmtEur(item.total)} · shop links and STL</div>
-      </div>
-      <ArrowRight className="h-4 w-4 text-muted transition group-hover:translate-x-0.5" />
-    </button>
-  );
-}
-
 function TrainingPartRenderer({ item }: { item: Extract<ChatItem, { kind: "training" }> }) {
   const setView = useUi((s) => s.setView);
   const phase = item.status === "done" ? "ok" : item.status === "failed" || item.status === "offline" ? "error" : "running";
@@ -169,7 +150,7 @@ function TrainingPartRenderer({ item }: { item: Extract<ChatItem, { kind: "train
       <PhaseIcon phase={phase} />
       <div className="min-w-0 flex-1">
         <div className="text-[14px] font-semibold text-ink-2">{title}</div>
-        <div className="truncate text-[13px] text-muted">Isaac Lab · {item.detail}</div>
+        <div className="truncate font-label text-[12px] text-muted">Isaac Lab · {item.detail}</div>
       </div>
       <Cpu className="h-4 w-4 text-muted" />
     </button>
@@ -183,8 +164,8 @@ function WarningPartRenderer({ item }: { item: Extract<ChatItem, { kind: "warnin
       <div className="flex items-center gap-2 text-[14px] font-bold text-agent-ink">
         <AlertTriangle className="h-4.5 w-4.5 shrink-0" /> Warning from {w.meeting_title}
       </div>
-      <p className="mt-1 text-[15px] leading-snug text-ink">“{w.text}”</p>
-      <p className="mt-0.5 text-[13px] font-semibold text-muted">
+      <p className="mt-1 font-read text-[14px] leading-[1.5] text-ink">“{w.text}”</p>
+      <p className="mt-0.5 font-label text-[12px] font-semibold text-muted">
         {w.speaker} · {w.time} · {item.part}
       </p>
     </div>
@@ -241,7 +222,7 @@ function QuestionPartRenderer({ item }: { item: Extract<ChatItem, { kind: "quest
             ))}
           </div>
           {q.timeout_s > 0 && (
-            <p className="num mt-2 text-[13px] font-semibold text-muted">
+            <p className="num mt-2 font-label text-[12px] font-semibold text-muted">
               Answer by voice or click · otherwise “{q.options.find((o) => o.id === q.default_id)?.label}” in {left} s
             </p>
           )}
@@ -267,15 +248,15 @@ function VersionPartRenderer({ item }: { item: Extract<ChatItem, { kind: "versio
         <ul className="num mt-1.5 space-y-0.5">
           {v.diff.map((d) =>
             d.unit ? (
-              <li key={d.key} className="flex items-baseline gap-2 text-[15px]">
-                <span className="w-[118px] shrink-0 font-semibold text-ink-2">{enLabel(d.label)}</span>
-                <span className="text-muted">{fmt(d.before, d.unit)}</span>
+              <li key={d.key} className="flex items-baseline gap-2 text-[13px]">
+                <span className="w-[104px] shrink-0 font-semibold text-ink-2">{enLabel(d.label)}</span>
+                <span className="font-label text-[12px] text-muted">{fmt(d.before, d.unit)}</span>
                 <ArrowRight className="h-3.5 w-3.5 shrink-0 self-center text-muted" />
-                <span className="font-bold text-ink">{fmt(d.after, d.unit)}</span>
+                <span className="font-label text-[12px] font-semibold text-ink">{fmt(d.after, d.unit)}</span>
               </li>
             ) : (
-              <li key={d.key} className="flex gap-2 pt-0.5 text-[15px]">
-                <span className="w-[118px] shrink-0 font-semibold text-ink-2">{enLabel(d.label)}</span>
+              <li key={d.key} className="flex gap-2 pt-0.5 text-[13px]">
+                <span className="w-[104px] shrink-0 font-semibold text-ink-2">{enLabel(d.label)}</span>
                 <span className="min-w-0 leading-snug">
                   <span className="block truncate text-muted line-through decoration-faint">{d.before}</span>
                   <span className="block truncate font-bold text-ink">{d.after}</span>
@@ -285,7 +266,7 @@ function VersionPartRenderer({ item }: { item: Extract<ChatItem, { kind: "versio
           )}
         </ul>
       ) : (
-        <p className="mt-1 text-[14px] leading-snug text-ink-2">{v.summary}</p>
+        <p className="mt-1 font-label text-[12px] text-ink-2">{v.summary}</p>
       )}
     </button>
   );
@@ -298,11 +279,11 @@ export function ToolGroupRenderer({ items }: { items: Extract<ChatItem, { kind: 
       <div className="mb-1 flex items-center gap-2.5">
         <PhaseIcon phase="ok" />
         <span className="text-[14px] font-semibold text-ink-2">{getToolLabel(items[0].name, "ok")}</span>
-        <span className="num ml-auto text-[12px] text-faint">{items.length}×</span>
+        <span className="num ml-auto font-label text-[12px] text-faint">{items.length}×</span>
       </div>
       <ul className="space-y-0.5 pl-[30px]">
         {items.map((item) => (
-          <li key={item.id} className="truncate text-[13px] text-muted">
+          <li key={item.id} className="truncate font-label text-[12px] text-muted">
             {enText(item.detail).replace(/^(Picked|Gewählt): /, "")}
           </li>
         ))}
@@ -317,7 +298,7 @@ export function ProgressLineRenderer({ items }: { items: Extract<ChatItem, { kin
   const failed = items.some((i) => i.phase === "error");
   const names = [...new Set(items.map((i) => i.name))];
   return (
-    <div className="flex min-w-0 items-center gap-1.5 pl-8 text-[12px] text-faint" data-target="tool_progress">
+    <div className="flex min-w-0 items-center gap-1.5 pl-8 font-label text-[12px] text-faint" data-target="tool_progress">
       <PhaseIcon phase={running ? "running" : failed ? "error" : "ok"} small />
       <span className="truncate">{running ? getToolLabel(running.name, "running") : names.join(" · ")}</span>
     </div>
@@ -338,7 +319,7 @@ export function JamieGroupRenderer({ items }: { items: Extract<ChatItem, { kind:
           <li key={item.id} className="flex min-w-0 items-center gap-2">
             <PhaseIcon phase={item.phase} />
             <span className="shrink-0 text-[14px] font-semibold text-ink-2">{JAMIE_ACTIONS[item.action] ?? item.action.replace(/_/g, " ")}</span>
-            <span className="truncate text-[13px] text-muted">{enText(item.detail).replace(/ · local outbox$/, "")}</span>
+            <span className="truncate font-label text-[12px] text-muted">{enText(item.detail).replace(/ · local outbox$/, "")}</span>
           </li>
         ))}
       </ul>
@@ -372,7 +353,7 @@ function AgentPartRenderer({ item }: { item: Extract<ChatItem, { kind: "agent" }
         <PhaseIcon phase={phase} />
       </div>
       {agent.summary && <p className="mt-1.5 line-clamp-2 text-[13px] leading-snug text-muted">{stripMarkdown(agent.summary).replace(/\s+/g, " ")}</p>}
-      <div className="num mt-1 text-[12px] font-semibold text-faint">
+      <div className="num mt-1 font-label text-[12px] font-semibold text-faint">
         {agent.rounds} call{agent.rounds === 1 ? "" : "s"} · {fmtTokens(agent.input_tokens + agent.cache_read_tokens)} in · {fmtTokens(agent.output_tokens)} out · $
         {fmtNum(agent.cost_usd, agent.cost_usd < 0.1 ? 3 : 2)}
       </div>
@@ -389,7 +370,9 @@ function ContentPartsRenderer({ item }: { item: Exclude<ChatItem, { kind: "msg" 
     case "sim":
       return <SimPartRenderer item={item} />;
     case "bom":
-      return <BomPartRenderer item={item} />;
+      return <ResultsCard item={item} />;
+    case "requirements":
+      return <RequirementsCard />;
     case "training":
       return <TrainingPartRenderer item={item} />;
     case "warning":
@@ -404,6 +387,8 @@ function ContentPartsRenderer({ item }: { item: Exclude<ChatItem, { kind: "msg" 
       return <StressCard run={item.run} />;
     case "explain":
       return <ExplainChatCard explainKey={item.key} />;
+    case "print":
+      return <PrintPlanCard plan={item.plan} />;
     case "safety":
       return <SafetyCard safety={item.safety} />;
   }

@@ -1,13 +1,14 @@
 // The big canvas in the middle: Modell (live 3D or the Blender render), CAD and
 // Simulation, with Bolzen's spoken line at the bottom.
 import { useEffect, useState } from "react";
-import { Box, Camera, Cloud, DraftingCompass, Play, Rocket } from "lucide-react";
+import { Box, Boxes, Camera, Cloud, DraftingCompass, Play, Rocket } from "lucide-react";
 import { useSource } from "../../events/source";
 import { useSession } from "../../events/store";
 import { useUi, type CanvasTab, type ModelLook } from "../../lib/ui";
 import { MascotHead } from "../mascot/Mascot";
 import { Segmented } from "../ui/primitives";
 import { assetUrl } from "../../lib/api";
+import { fmtEur } from "../../lib/format";
 import { CadScene, CadView } from "./CadView";
 import { CompareView } from "./CompareView";
 import { ExplodeSlider, PartCard } from "./ExplodeControls";
@@ -93,40 +94,58 @@ export function CanvasCard() {
   const trained = useBrowserTrainingEvent() !== null;
   const showTraining = tab === "simulation" && pane === "training";
   const building = useSession((s) => Object.values(s.steps).some((step) => step.status === "running"));
+  const bom = useSession((s) => s.bom);
+  const setBomOpen = useUi((s) => s.setBomOpen);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex shrink-0 items-end gap-5 overflow-x-auto border-b border-line [scrollbar-width:none]" role="tablist">
-        {tabs.map((t) => {
-          const active = t.value === tab;
-          return (
-            <button
-              key={t.value}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              data-target={`tab:${t.value}`}
-              data-control={`tab:${t.value === "modell" ? "model" : t.value}`}
-              onClick={() => setTab(t.value)}
-              className={`-mb-px flex shrink-0 items-center gap-2 border-b-2 px-0.5 pb-3 text-[15px] whitespace-nowrap transition ${
-                active ? "border-ink font-semibold text-ink" : "border-transparent font-medium text-muted hover:text-ink"
-              }`}
-            >
-              <t.icon className="h-4.5 w-4.5" strokeWidth={1.8} />
-              {t.label}
-              {badges[t.value] && !active && <span className="h-1.5 w-1.5 rounded-full bg-agent" />}
-            </button>
-          );
-        })}
+      <div className="flex shrink-0 items-end gap-4 border-b border-line">
+        <div className="flex min-w-0 flex-1 items-end gap-5 overflow-x-auto [scrollbar-width:none]" role="tablist">
+          {tabs.map((t) => {
+            const active = t.value === tab;
+            return (
+              <button
+                key={t.value}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                data-target={`tab:${t.value}`}
+                data-control={`tab:${t.value === "modell" ? "model" : t.value}`}
+                onClick={() => setTab(t.value)}
+                className={`-mb-px flex shrink-0 items-center gap-2 border-b-2 px-0.5 pb-3 text-[15px] whitespace-nowrap transition ${
+                  active ? "border-ink font-semibold text-ink" : "border-transparent font-medium text-muted hover:text-ink"
+                }`}
+              >
+                <t.icon className="h-4.5 w-4.5" strokeWidth={1.8} />
+                {t.label}
+                {badges[t.value] && !active && <span className="h-1.5 w-1.5 rounded-full bg-agent" />}
+              </button>
+            );
+          })}
+        </div>
         {tab === "simulation" && !showTraining && runs > 0 && (
           <button
             type="button"
             onClick={() => void useSource.getState().pressControl("run:test")}
             disabled={building}
             data-control="run:test"
-            className="mb-2 ml-auto inline-flex h-9 items-center gap-1.5 rounded-full bg-tile px-3.5 text-[14px] font-semibold text-ink hover:bg-track disabled:text-faint"
+            className="mb-1.5 inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full bg-tile px-3 text-[12px] font-semibold text-ink hover:bg-track disabled:text-faint"
           >
             <Play className="h-3.5 w-3.5" fill="currentColor" /> Run test
+          </button>
+        )}
+        {bom && (
+          <button
+            type="button"
+            onClick={() => setBomOpen(true)}
+            data-target="bom stueckliste nav:stueckliste"
+            data-control="panel:bom"
+            title="Open the bill of materials"
+            className="mb-1.5 flex h-7 shrink-0 items-center gap-1.5 rounded-full bg-tile px-3 text-[12px] font-semibold text-ink-2 transition hover:bg-track"
+          >
+            <Boxes className="h-4 w-4" />
+            Bill of materials
+            <span className="font-label text-[11px] text-muted">{fmtEur(bom.total_eur)}</span>
           </button>
         )}
       </div>

@@ -1,6 +1,6 @@
 // The Settings panel behind the sliders icon. The dashboard shows only the essentials;
 // these toggles add the rest (agent steps, tool cards, Jamie activity, all metrics,
-// learning mode), show which speech recognition listens, and switch the mic from
+// learning mode), show which speech recognition listens, switch the mic from
 // hands-free to push-to-talk. In live mode it also holds the bench's model settings:
 // which Claude orchestrates, which runs the sub-agents, how hard each one thinks
 // (effort), and whether the orchestrator delegates. GET/POST /api/settings.
@@ -9,6 +9,7 @@ import { SlidersHorizontal } from "lucide-react";
 import { useSource } from "../events/source";
 import { apiFetch } from "../lib/api";
 import { useUi, type Display } from "../lib/ui";
+import { useBenchResults } from "../views/BenchResults";
 
 const DISPLAY: { key: keyof Display; label: string; hint: string; control?: string }[] = [
   { key: "agents", label: "Show agent steps and costs", hint: "Orchestrator and sub-agents in the chat", control: "setting:agents" },
@@ -145,6 +146,21 @@ export function BenchSettings() {
             onChange={(on) => setMicMode(on ? "ptt" : "handsfree")}
           />
           <p className="pt-1 text-[12px] text-muted">{SPEECH[stt]}</p>
+          <h3 className="eyebrow mt-3 mb-1 border-t border-line pt-3">Evaluation</h3>
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              useBenchResults.getState().setOpen(true);
+            }}
+            className="flex w-full items-center gap-3 py-1.5 text-left"
+          >
+            <span className="min-w-0 flex-1">
+              <span className="block text-[14px] font-semibold text-ink">AnyBuild Bench results</span>
+              <span className="block text-[12px] text-muted">Pass rate and cost over 20 product prompts</span>
+            </span>
+            <span className="text-[13px] font-bold text-link">Open</span>
+          </button>
           {live && (
             <div className="mt-3 border-t border-line pt-3">
               {!settings ? (
