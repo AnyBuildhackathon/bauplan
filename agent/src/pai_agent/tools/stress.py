@@ -31,14 +31,16 @@ from pai_agent.tools.physics import PhysicsError, compute
 _GRAVITY = 9.80665
 _RHO = 1.225
 _DT = 0.002
-_DURATION = 5.0
+_DURATION = 6.0
 _TARGET_Z = 0.5
 _SAMPLE_S = 0.05
 _MAX_TILT = 0.45
 _DRIFT_LIMIT_M = 0.35
 _FLOOR_Z = 0.08
-# Drag area of a 65 mm whoop: side-on (frame, ducts, props) and from above (prop discs).
-_CDA_SIDE = 0.0035
+# Motors and ESCs do not jump to a new thrust: first-order lag in seconds.
+_MOTOR_LAG_S = 0.04
+# Drag area of a 65 mm whoop: side-on (frame, ducts, tilted prop discs) and from above (prop discs).
+_CDA_SIDE = 0.008
 _CDA_TOP = 0.012
 
 WORLDS = 50
@@ -51,8 +53,9 @@ class ControllerGains:
 
     kp_z: float = 16.0
     kd_z: float = 7.0
-    kp_xy: float = 0.64
-    kd_xy: float = 0.40
+    # A soft position hold, as an untuned flight controller ships; training stiffens it.
+    kp_xy: float = 0.35
+    kd_xy: float = 0.30
     kp_att: float = 0.0016
     kd_att: float = 0.00018
 
@@ -100,7 +103,7 @@ def sample_worlds(n: int = WORLDS, seed: int = SEED) -> list[World]:
                 gust_mps=rng.uniform(0.0, 6.0),
                 gust_dir_deg=rng.uniform(0.0, 360.0),
                 gust_start_s=rng.uniform(1.6, 2.4),
-                gust_len_s=rng.uniform(0.4, 1.0),
+                gust_len_s=rng.uniform(0.8, 2.0),
                 downdraft_share=rng.uniform(0.2, 0.6),
                 noise_m=rng.uniform(0.0, 0.02),
             )
@@ -186,6 +189,8 @@ class MujocoRollout:
         crashed = False
         drift = 0.0
         low_after_gust = 10.0
+        thrust = mass_kg * _GRAVITY
+        lag = _DT / (_MOTOR_LAG_S + _DT)
 
         for step in range(steps):
             t = step * _DT
@@ -211,7 +216,8 @@ class MujocoRollout:
             roll_cmd = _clamp(-ay, -_MAX_TILT, _MAX_TILT)
             az = gains.kp_z * (_TARGET_Z - mz) - gains.kd_z * mvz
             tilt = max(0.5, math.cos(mroll) * math.cos(mpitch))
-            thrust = _clamp(mass_kg * (_GRAVITY + az) / tilt, 0.0, max_thrust_n)
+            wanted = _clamp(mass_kg * (_GRAVITY + az) / tilt, 0.0, max_thrust_n)
+            thrust += (wanted - thrust) * lag
             roll_tau = _clamp(gains.kp_att * (roll_cmd - mroll) - gains.kd_att * wx, -0.0008, 0.0008)
             pitch_tau = _clamp(gains.kp_att * (pitch_cmd - mpitch) - gains.kd_att * wy, -0.0008, 0.0008)
             yaw_tau = _clamp(-0.00008 * wz, -0.0003, 0.0003)
@@ -271,6 +277,9 @@ def world_row(world: World, outcome: dict) -> dict:
         "motor_pct": round((world.motor_scale - 1) * 100, 1),
         "gust_mps": round(world.gust_mps, 2),
         "downdraft_pct": round(world.downdraft_share * 100),
+        "gust_dir_deg": round(world.gust_dir_deg),
+        "gust_start_s": round(world.gust_start_s, 2),
+        "gust_len_s": round(world.gust_len_s, 2),
         "noise_cm": round(world.noise_m * 100, 2),
         "drift_m": outcome["drift_m"],
         "low_z_m": outcome["low_z_m"],
@@ -308,7 +317,11 @@ def weakest_point(rows: list[dict]) -> tuple[str | None, str]:
     worst = min(lost, key=lambda r: r["margin"])
     if key == "gust":
         floor = min(r["gust_mps"] for r in lost)
-        sentence = f"Gusts are the weak point: from {floor:.1f} m/s on, the wind pushes it more than {_DRIFT_LIMIT_M * 100:.0f} cm off its spot."
+        windy = [r for r in rows if r["gust_mps"] >= floor]
+        sentence = (
+            f"Gusts are the weak point: {len(lost)} of the {len(windy)} worlds with gusts of {floor:.1f} m/s or more "
+            f"blew it more than {_DRIFT_LIMIT_M * 100:.0f} cm off its spot, so the position hold needs to be stiffer."
+        )
     elif key == "motor":
         sentence = (
             f"Thrust reserve is the weak point: with motors {abs(worst['motor_pct']):.0f} % weaker, "
@@ -321,14 +334,19 @@ def weakest_point(rows: list[dict]) -> tuple[str | None, str]:
     return key, sentence
 
 
+def set_trained_gains(state, gains: dict) -> None:
+    """The training module calls this with its best result; the next stress test flies it."""
+
+    state.trained_gains = dict(gains)
+
+
 def trained_gains(state, override: dict | None) -> tuple[ControllerGains, str]:
     """The gains to stress: the tool argument, then the training result, else the defaults."""
 
-    if isinstance(override, dict) and override:
-        return gains_from(override), "trained"
-    trained = getattr(state, "trained_gains", None)
-    if isinstance(trained, dict) and trained:
-        return gains_from(trained), "trained"
+    for raw in (override, getattr(state, "trained_gains", None)):
+        gains = gains_from(raw)
+        if gains != ControllerGains():
+            return gains, "trained"
     return ControllerGains(), "default"
 
 
@@ -426,4 +444,8 @@ async def run_stress_mock(ctx: Ctx) -> None:
     survived, total = result["survived"], result["total"]
     state = "freut_sich" if survived == total else "erklaert" if survived >= total * 0.9 else "besorgt"
     await call_tool(ctx, "mascot_say", {"state": state, "say": result["explanation"]})
-    await ctx.chat("agent", f"Survived {survived}/{total}. " + result["explanation"])
+    worst = result["worst_world"]
+    if survived == total:
+        await ctx.chat("agent", f"Survived {survived}/{total}. The closest call, world {worst['i']}, replays in the card.")
+    else:
+        await ctx.chat("agent", f"Survived {survived}/{total}. The worst failure, world {worst['i']}, replays in the card.")

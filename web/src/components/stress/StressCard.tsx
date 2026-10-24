@@ -1,12 +1,12 @@
 // Stress test result in the chat: the robustness score, one dot per randomized
 // world, the worst world replayed in 3D, and Bolzen's sentence on the weak point.
 import { useMemo } from "react";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, Wind } from "lucide-react";
 import { useSession, type Run } from "../../events/store";
 import type { StressWorld } from "../../events/types";
 import { MascotHead } from "../mascot/Mascot";
 import { SimScene } from "../canvas/Scenes";
-import { useSimClockDriver } from "../canvas/simClock";
+import { useSimClockDriver, useSimTime } from "../canvas/simClock";
 import { RUN_COLOR } from "../canvas/SimView";
 
 const REASON: Record<string, string> = {
@@ -21,11 +21,27 @@ function describe(w: StressWorld): string {
   return `gust ${w.gust_mps.toFixed(1)} m/s · motors ${signed(w.motor_pct)} · mass ${signed(w.mass_pct)} · noise ${w.noise_cm.toFixed(1)} cm`;
 }
 
-function WorstReplay({ run, seq }: { run: Run; seq: number }) {
-  useSimClockDriver(run.trajectory.at(-1)?.[0] ?? 5);
+/** The 1-cosine gust the backend blew, as felt at time t. */
+function gustAt(w: StressWorld, t: number): number {
+  const k = (t - w.gust_start_s) / w.gust_len_s;
+  return k <= 0 || k >= 1 ? 0 : (w.gust_mps * (1 - Math.cos(2 * Math.PI * k))) / 2;
+}
+
+function WorstReplay({ run, seq, world }: { run: Run; seq: number; world: StressWorld }) {
+  useSimClockDriver(run.trajectory.at(-1)?.[0] ?? 6);
+  const { t } = useSimTime(15);
+  const gust = gustAt(world, t);
   return (
     <div className="relative h-[180px] overflow-hidden rounded-xl bg-[radial-gradient(110%_80%_at_50%_10%,#ffffff_0%,#f3f2f8_60%,#eae9f1_100%)]" key={seq}>
       <SimScene run={run} primary={false} color={RUN_COLOR[run.result]} />
+      <div className="num pointer-events-none absolute top-2 left-2 flex items-center gap-1.5 text-[12px] font-semibold">
+        <span className="rounded-full bg-white/90 px-2 py-0.5 text-muted">t {t.toFixed(1)} s</span>
+        {gust > 0.05 && (
+          <span className="flex items-center gap-1 rounded-full bg-agent-soft px-2 py-0.5 text-agent-ink">
+            <Wind className="h-3.5 w-3.5" /> gust {gust.toFixed(1)} m/s
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -92,7 +108,7 @@ export function StressCard({ run }: { run: number }) {
             </span>
           </div>
           {run === latest ? (
-            <WorstReplay run={replay} seq={ev.seq} />
+            <WorstReplay run={replay} seq={ev.seq} world={worst} />
           ) : (
             <div className="rounded-xl bg-white/70 px-3 py-2 text-[13px] text-muted">Replay shows on the latest stress test.</div>
           )}

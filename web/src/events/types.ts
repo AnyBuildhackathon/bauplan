@@ -136,6 +136,10 @@ export interface StressWorld {
   motor_pct: number;
   gust_mps: number;
   downdraft_pct: number;
+  /** Where the gust blows to, 0 is +x. */
+  gust_dir_deg: number;
+  gust_start_s: number;
+  gust_len_s: number;
   noise_cm: number;
   drift_m: number;
   low_z_m: number;

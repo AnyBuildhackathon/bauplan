@@ -267,8 +267,8 @@ The stress test flies one controller in randomized MuJoCo worlds (`stress_test`,
 `policy` is `trained` when the training module left gains (`state.trained_gains`) or the tool got `gains`, else `default`.
 `gains` are the controller gains that flew: `kp_z`, `kd_z`, `kp_xy`, `kd_xy`, `kp_att`, `kd_att`.
 `weight_g` and `thrust_to_weight` are the nominal build the worlds vary.
-`worlds` lists every finished world: `{i, pass, reason, mass_pct, motor_pct, gust_mps, downdraft_pct, noise_cm, drift_m, low_z_m, margin}`.
-`mass_pct` is −15…+15, `motor_pct` is −25…0, `gust_mps` is the gust peak 0…6 m/s, `downdraft_pct` the share of it blowing down, `noise_cm` the sensor noise.
+`worlds` lists every finished world: `{i, pass, reason, mass_pct, motor_pct, gust_mps, downdraft_pct, gust_dir_deg, gust_start_s, gust_len_s, noise_cm, drift_m, low_z_m, margin}`.
+`mass_pct` is −15…+15, `motor_pct` is −25…0, `gust_mps` is the gust peak 0…6 m/s, `downdraft_pct` the share of it blowing down, `gust_dir_deg` where it blows to (0 is +x), `gust_start_s` and `gust_len_s` when it blows, `noise_cm` the sensor noise.
 `reason` is `crashed`, `drifted` (more than 0.35 m off its spot), `sagged` (below 0.35 m in the last half second), or an empty string when it survived.
 `margin` is 1 for a perfect hover and 0 or less for a lost world.
 `worst` is `null` while running; when `done` it is the world with the lowest margin plus its `trajectory` (`[[t, x, y, z], ...]`, 5 s, the same shape as `sim`).
@@ -337,6 +337,7 @@ The review "Review 1" asks for 15 minutes and says last week's motor was too lou
 Bolzen asks which flight time counts, resolves "last week's motor" to the 22000KV from the flight test, swaps to the quieter 18000KV and a 1S 1100 mAh pack.
 v2 is 49.3 g, 15.6 min, 72.36 €, and the difference goes back to the review as a note.
 A later prompt in the same session does not rebuild.
+A prompt that asks for a stress test ("stress test it", "how robust is it?") runs `stress_test` on the current build instead; without a build Bolzen asks for the kickoff first.
 Reset starts the story over.
 A prompt that asks for a gripper (`gripper`, `claw`, `end effector`) plays the gripper story instead.
 Bolzen turns the request into checks, tries the 2.49 € SG90 first: 1.1 N per finger is a safety of 0.9×, and in MuJoCo the can slides out when the arm lifts.
