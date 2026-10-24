@@ -143,7 +143,7 @@ async def run_prompt(ctx: Ctx, text: str, messages: list[dict]) -> None:
         return
     first = await _first(ctx)
     if not claude_enabled():
-        if ctx.state.optimize and wants_pick(text):
+        if wants_pick(text) and ctx.state.optimize:
             await run_pick_mock(ctx, wants_pick(text))
             return
         if wants_optimize(text) and ctx.state.product == "drone" and not wants_gripper(text) and (ctx.state.selected or _DRONE.search(text)):
