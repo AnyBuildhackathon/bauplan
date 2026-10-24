@@ -7,6 +7,8 @@ file's materials (the carbon weave, the anodized bells, the green board) and sit
 cutting mat like the reference photo of the build. Without it, the frame is the STL from CAD and motors,
 propellers, the flight controller and the battery are placed from assembly.json (arm length,
 plate thickness, battery size in mm). Scene units are metres.
+A generated product (`"mode": "part"`) gets the light grey studio; with `"bench": "mat"` it sits
+on the drone's cutting mat in the same workshop light instead, as on the library cards.
 """
 
 import json
@@ -44,6 +46,22 @@ def main() -> None:
         return
     if spec.get("mode") == "part":
         radius, height = _part(spec["parts"], mats["frame"])
+        if spec.get("bench") == "mat":
+            # The library cards: the product on the drone's cutting mat, in its workshop light,
+            # seen from the front right. Flat products are seen more from above than tall ones.
+            _cutting_mat(max(1.2, 40 * radius))
+            _hero_lights(radius, turn=math.atan2(_MAT_VIEW[1], _MAT_VIEW[0]) - math.atan2(_HERO_VIEW[1], _HERO_VIEW[0]))
+            tall = min(1.0, height / (2 * radius))
+            _render_settings(scene, png_path)
+            _cycles(scene)
+            scene.cycles.samples = int(spec.get("samples", scene.cycles.samples))
+            scene.render.resolution_x, scene.render.resolution_y = spec.get("resolution", (1600, 900))
+            _camera(radius, height / 2, view=_MAT_VIEW, elevation=0.95 - 0.35 * tall)
+            _fit(scene, height / 2)
+            # The lights scale with the product, so a big one would wash the mat out.
+            scene.view_settings.exposure = -0.4
+            bpy.ops.render.render(write_still=True)
+            return
         _studio(mats)
         _lights()
         _camera(radius, height / 2)
@@ -123,6 +141,8 @@ def _materials() -> dict:
 # bench like the captain's reference photo of the build.
 _HERO_VIEW = (0.16, 0.5)
 _HERO_ELEVATION = 1.45
+# A library product on the same mat: from the front right, where its front (-Y) faces.
+_MAT_VIEW = (0.55, -0.6)
 
 
 def _hero(path: str):
@@ -171,11 +191,12 @@ def _clear_polycarbonate(mat) -> None:
         mat.surface_render_method = "DITHERED"
 
 
-def _cutting_mat() -> None:
+def _cutting_mat(size: float = 1.2) -> None:
     """The bench from the reference photo: a green self-healing cutting mat with a 10 mm grid,
-    every fifth line a little bolder, and the mat's 45 degree guide line."""
+    every fifth line a little bolder, and the mat's 45 degree guide line. size is its edge in
+    metres; the grid stays 10 mm whatever the size."""
 
-    bpy.ops.mesh.primitive_plane_add(size=1.2, location=(0, 0, 0))
+    bpy.ops.mesh.primitive_plane_add(size=size, location=(0, 0, 0))
     mat_obj = bpy.context.object
     mat_obj.name = "Cutting mat"
     mat = bpy.data.materials.new("Cutting mat")
@@ -260,16 +281,22 @@ def _cycles(scene) -> None:
         pass
 
 
-def _hero_lights(radius: float) -> None:
+def _hero_lights(radius: float, turn: float = 0.0) -> None:
     """Workshop light like the reference photo: a big overhead panel behind the camera, so the
     clear-coated carbon mirrors the dark room and reads black, a desk lamp from the left that
-    casts the drone's shadow, and a rim from behind that draws the edges."""
+    casts the drone's shadow, and a rim from behind that draws the edges. turn swings the whole
+    rig around the bench (radians) for a camera that stands elsewhere than the drone's."""
 
     s = radius / 0.06
-    _area("Ceiling", (-0.1 * s, 0.42 * s, 0.7 * s), 14.0 * s * s, 0.6 * s, color=(1.0, 0.98, 0.95), target=(0, 0, 0))
-    _area("Lamp", (-0.42 * s, -0.06 * s, 0.36 * s), 9.0 * s * s, 0.12 * s, color=(1.0, 0.95, 0.88), target=(0, 0, 0.01 * s))
-    _area("Fill", (0.45 * s, 0.3 * s, 0.3 * s), 3.0 * s * s, 0.4 * s, color=(0.94, 0.97, 1.0), target=(0, 0, 0.01 * s))
-    _area("Rim", (0.3 * s, -0.38 * s, 0.2 * s), 4.0 * s * s, 0.14 * s, target=(0, 0, 0.012 * s))
+    c, n = math.cos(turn), math.sin(turn)
+
+    def at(x, y, z):
+        return (s * (x * c - y * n), s * (x * n + y * c), s * z)
+
+    _area("Ceiling", at(-0.1, 0.42, 0.7), 14.0 * s * s, 0.6 * s, color=(1.0, 0.98, 0.95), target=(0, 0, 0))
+    _area("Lamp", at(-0.42, -0.06, 0.36), 9.0 * s * s, 0.12 * s, color=(1.0, 0.95, 0.88), target=(0, 0, 0.01 * s))
+    _area("Fill", at(0.45, 0.3, 0.3), 3.0 * s * s, 0.4 * s, color=(0.94, 0.97, 1.0), target=(0, 0, 0.01 * s))
+    _area("Rim", at(0.3, -0.38, 0.2), 4.0 * s * s, 0.14 * s, target=(0, 0, 0.012 * s))
 
 
 # --- parts -------------------------------------------------------------------------
@@ -458,6 +485,27 @@ def _camera(radius: float, target_z: float = 0.011, view=None, distance_k: float
     obj.rotation_euler = (target - obj.location).to_track_quat("-Z", "Y").to_euler()
     data.dof.focus_distance = (target - obj.location).length
     bpy.context.scene.camera = obj
+
+
+def _fit(scene, target_z: float, margin: float = 0.1) -> None:
+    """Moves the camera along its line of sight until the whole product fills the frame with a
+    margin all round (the card crops the sides a little more, hence the wider x margin)."""
+
+    from bpy_extras.object_utils import world_to_camera_view
+
+    camera = scene.camera
+    corners = [o.matrix_world @ Vector(c) for o in scene.objects if o.type == "MESH" and o.name != "Cutting mat" for c in o.bound_box]
+    target = Vector((0, 0, target_z))
+    direction = (camera.location - target).normalized()
+    distance = 0.05
+    for _ in range(200):
+        camera.location = target + direction * distance
+        bpy.context.view_layer.update()
+        points = [world_to_camera_view(scene, camera, c) for c in corners]
+        if all(margin * 1.6 <= p.x <= 1 - margin * 1.6 and margin <= p.y <= 1 - margin and p.z > 0 for p in points):
+            break
+        distance *= 1.04
+    camera.data.dof.focus_distance = distance
 
 
 def _render_settings(scene, png_path: str) -> None:
