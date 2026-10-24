@@ -1,8 +1,7 @@
-// The slim icon rail on the far left: the logo, a new project, and the views. The
+// The slim icon rail on the far left: the logo (which starts a new chat) and the views. The
 // stage flow lives on the Workbench; Library, Community, Training and Logbook stay one click away.
-import { BookOpen, Box, Dumbbell, LayoutGrid, Plus, Users } from "lucide-react";
+import { BookOpen, Box, Dumbbell, LayoutGrid, Users } from "lucide-react";
 import { useSource } from "../events/source";
-import { useSession } from "../events/store";
 import { useUi, type View } from "../lib/ui";
 import { Logo } from "./TopBar";
 
@@ -50,26 +49,26 @@ function RailButton({
 export function IconRail() {
   const view = useUi((s) => s.view);
   const setView = useUi((s) => s.setView);
-  const showLanding = useUi((s) => s.showLanding);
   const resetUi = useUi((s) => s.resetUi);
   const resetSession = useSource((s) => s.resetSession);
   return (
     <nav className="flex h-full w-16 shrink-0 flex-col items-center justify-between bg-page-2 py-4" aria-label="AnyBuild">
       <div className="flex flex-col items-center gap-1.5">
-        <button type="button" onClick={() => showLanding(useSession.getState().chat.length)} title="Start screen" aria-label="AnyBuild start screen" data-target="logo" className="mb-4">
-          <Logo size={52} />
-        </button>
-        <RailButton
-          label="New project"
-          target="nav:new"
+        {/* The logo starts a new chat: a fresh session on the start screen. */}
+        <button
+          type="button"
           onClick={() => {
             resetUi();
             setView("werkbank");
             void resetSession();
           }}
+          title="New chat"
+          aria-label="AnyBuild: new chat"
+          data-target="logo nav:new"
+          className="mb-4"
         >
-          <Plus className="h-5 w-5" strokeWidth={1.8} />
-        </RailButton>
+          <Logo size={52} />
+        </button>
         {VIEWS.map((v) => (
           <RailButton key={v.value} label={v.label} active={view === v.value} onClick={() => setView(v.value)} target={`nav:${v.value}`} control={v.control}>
             <v.icon className="h-5 w-5" strokeWidth={1.8} />
