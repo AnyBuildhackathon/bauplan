@@ -3,6 +3,20 @@ import { BenchSettings } from "./BenchSettings";
 import { MeetingTimeline } from "./timeline/MeetingTimeline";
 import { StatusDot } from "./ui/primitives";
 
+/** The app logo: Mechanic leaning on the workbench cube, cropped to his head and the cube corner so it reads at small sizes. */
+export function Logo({ size = 40 }: { size?: number }) {
+  return (
+    <img
+      src={`${import.meta.env.BASE_URL}logo-mark.webp`}
+      width={size}
+      height={size}
+      alt=""
+      draggable={false}
+      className="shrink-0 rounded-[12px] shadow-[0_0_0_1px_rgb(26_26_24_/_0.06)] select-none"
+    />
+  );
+}
+
 /** Where the bench gets its events: the live backend and whether Claude or the mock runs it.
  * The recorded run (?demo) shows nothing here; it plays on its own. */
 function SourceStatus() {

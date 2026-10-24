@@ -464,7 +464,7 @@ export const useSource = create<SourceState>((set, get) => {
     startRemix: async (id) => {
       if (get().mode === "demo") return;
       try {
-        const res = await fetch(apiUrl(`/api/community/${encodeURIComponent(id)}/remix`), {
+        const res = await apiFetch(`/api/community/${encodeURIComponent(id)}/remix`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: "{}",
