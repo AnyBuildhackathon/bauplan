@@ -10,6 +10,12 @@ This file is the only copy of the wire format.
 The response is `{"ok": true, "mode": "mock"|"claude", "status": "started"|"already_running"}`.
 `mode` is `mock` when `ANTHROPIC_API_KEY` is empty or `PAI_FORCE_MOCK` is `1`.
 
+`POST /api/sketch` with `{"image_base64": "...", "media_type": "image/png", "note": "..."}` starts a new product from a photo of a hand sketch, on a fresh bench.
+`image_base64` is plain base64 or a data URL; the type is read from the bytes: PNG, JPEG or WebP up to 8 MB, anything else (HEIC too) is HTTP 400, and while Mechanic builds it is HTTP 409.
+The photo is stored as `sketch-<n>.<ext>` in the session and served under `/files/`; the backend publishes `sketch` with status `reading` and runs `sketch_to_spec`, then `product_spec` and the normal flow.
+The response is `{"ok": true, "mode": ..., "status": "started", "sketch": "sketch-1.png", "url": "/files/{session}/sketch-1.png"}`.
+`GET /api/sketch/sample` returns the sample sketch of a phone stand (`agent/data/sketches/phone-stand.png`).
+
 `GET /api/events` is a Server-Sent Events stream.
 Each event is one `data: ` line of JSON, followed by a blank line.
 Comments of the form `: keepalive` are not events.
@@ -97,6 +103,15 @@ The response is like `POST /api/prompt`, with `reference`: `{"ok": true, "mode":
 
 `POST /api/library` with `{"id": "...", "name": "...", "summary": "..."}` (all optional) saves the current product build as a project with its latest render as thumbnail and answers `{"ok": true, "item": {...}}`; HTTP 400 when there is no finished product build or the id is taken by a reference, 409 while Mechanic is building.
 
+### Export
+
+All three answer HTTP 404 before the first `bom`.
+`GET /api/export/bom.csv` returns the current bill of materials as `anybuild-{product}-bom.csv`: UTF-8 with a byte order mark (so Excel reads it), comma separated, dot decimals, columns `name, qty, unit_price_eur, line_total_eur, weight_g, shop, url, price_source, availability, checked_at`, then a `Total` row.
+`GET /api/export/bundle.zip` writes `anybuild-{product}-v{n}.zip` into the session directory and returns it. One folder holds `cad/` (every STL and STEP of the build: the drone frame, each spec part, the gripper part, `assembly.stl` and `assembly.glb`), `scripts/` (the FreeCAD scripts), `bom.csv`, `build-guide.md` (the latest `build_guide`, else an ordered list from the bill of materials: print the printed parts, fit the bought ones, verify the checks), `firmware/` with the latest firmware file, `render.png` (the latest studio render, or the recorded still without Blender) and `README.md` (requirements with pass/fail and detail, key numbers, print settings per material, and any STL without a STEP under "Missing files").
+`GET /api/export/order` answers `{"ok": true, "shops": [{"shop", "items": [{name, qty, unit_price_eur, line_total_eur, url, price_source}], "total_eur", "live"}], "print": {"items": [{name, qty, material, mass_g}], "filament_g", "cost_eur"}, "total_eur"}`, shops by total, most expensive first; printed parts (shop `printed` or a `url` that is not an http link) go to `print`. The shop totals plus `print.cost_eur` add up to `total_eur`.
+Share in the dashboard saves a spec product with `POST /api/library` and copies `?project={id}`; the drone and the gripper share their code reference id (`micro-drone`, `robot-gripper`) without saving.
+The dashboard opens `?project={id}` by calling `POST /api/library/{id}/open` once when the backend is live, then drops the parameter from the URL; an id that is not in the library shows a notice instead.
+
 ### Settings
 
 `GET /api/settings` answers `{"ok": true, "orchestrator_model": "claude-opus-5-5", "orchestrator_effort": "high", "subagent_model": "claude-sonnet-5-5", "subagent_effort": "medium", "delegation": true, "models": [{id, label}], "efforts": ["low", "medium", "high", "xhigh", "max"]}`.
@@ -111,7 +126,7 @@ It is HTTP 409 when another client holds the job or it is over, and 404 for a jo
 `POST /api/stress/{job_id}/progress` with `{"client", "status": "running"|"done"|"failed", "results": [{i, metrics, trajectory}], "error"}` from the claiming client hands finished worlds to the backend, which scores them and publishes the `stress` events; `metrics` are the drone episode's `crashed`, `drift_m`, `low_z_m`, and `tail_z_m`, and `trajectory` is `[[t, x, y, z], ...]` at 20 Hz.
 `GET /api/training/browser` returns `{"ok": true, "job": {...}}` with the latest browser job of the session in the `training` event shape without `type`, or `job: null`.
 
-`GET /api/health` returns `{"ok": true, "mode": "mock"|"claude"}`.
+`GET /api/health` returns `{"ok": true, "mode": "mock"|"claude", "busy": bool}`; `busy` is true while a run is in flight, which the end-to-end tests and agent/scripts/profile_build.py wait on.
 The dashboard calls it on start: when the backend answers it opens in live mode with an empty bench, and only without a backend (or with `?demo`) does it play the recording, with a notice saying so.
 
 `GET /files/{bucket}/{name}` serves one file.
@@ -171,6 +186,10 @@ The tool pill still shows `offline`.
 `name` is the tool name from the list below.
 `status` is `connected`, `running`, `ok`, `error`, or `offline`.
 `detail` is a short English line.
+The final event of a call (any status but `running`) carries `ms`, the tool's wall time in milliseconds.
+`timed_out: true` marks a tool stopped by its time limit (agent/src/pai_agent/timeouts.py); `status` is then `error` (Blender: `offline` with the recorded still) and `detail` names the tool and the limit, the same line the agent says in the chat.
+`cached: true` marks a FreeCAD part reused from agent/runs/cache/ because the script, parameters and material were identical.
+A `cad` event's `source` is `cadquery` when FreeCAD was missing or stuck and CadQuery built the part's envelope as a plain block.
 
 ### requirement
 
@@ -204,6 +223,12 @@ The gripper sends `weight_g`, `price_eur`, `grip_force_n`, `safety_factor`, and 
 Sent by `product_brief` and `product_spec`; a revised spec that keeps the name or any part id keeps the same `id` (only the `label` changes), and its `requirements` lists the requirement ids it still has, so the client drops the others.
 When the product changes, the client drops the other product's requirements, numbers, parts, runs, CAD, renders and bill of materials.
 Without this event a fresh bench has no product; the first drone event (drone metrics, a drone part, a hover run, the frame CAD, a version) makes it the drone.
+
+### sketch
+
+The photo of a hand sketch a build started from: `id` (`sketch-1`), `url` (under `/files/`, never the image data), `status` and `note` (what the user wrote with it).
+`reading` comes first, when the photo is stored; `sketch_to_spec` then publishes `read` with `summary` (one sentence), `read` (`[{label, value, unit, confidence}]`, confidence `high`, `medium` or `low`), `unreadable` (strings), `product` (the spec id) and `source` (`claude` or `recorded`), or `failed` with `error` and `unreadable`.
+The client shows the latest sketch in the Model tab; a `reset` drops it, and so does a `product` event for another product than the sketch's.
 
 ### sim
 
@@ -467,7 +492,7 @@ UI:
 
 ## Tools
 
-`jamie_templates`, `jamie_requirements`, `jamie_search`, `jamie_meeting`, `requirements_accept`, `ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `stress_test`, `cad_frame`, `cad_part`, `product_brief`, `product_spec`, `reference_load`, `delegate`, `part_pick`, `assemble`, `cad_update`, `check_totals`, `check_tip_over`, `check_deflection`, `check_torque`, `check_runtime`, `check_power`, `check_thermal`, `check_rollover`, `simulate_assembly`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `blender_render`, `bom_build`, `build_guide`, `firmware`, `jamie_create_tasks`, `version_commit`, `ui_point_at`, `ui_draw`, `mascot_say`, `train_in_browser`.
+`jamie_templates`, `jamie_requirements`, `jamie_search`, `jamie_meeting`, `requirements_accept`, `ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `stress_test`, `cad_frame`, `cad_part`, `product_brief`, `product_spec`, `sketch_to_spec`, `reference_load`, `delegate`, `part_pick`, `assemble`, `cad_update`, `check_totals`, `check_tip_over`, `check_deflection`, `check_torque`, `check_runtime`, `check_power`, `check_thermal`, `check_rollover`, `simulate_assembly`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `blender_render`, `bom_build`, `build_guide`, `firmware`, `jamie_create_tasks`, `version_commit`, `ui_point_at`, `ui_draw`, `mascot_say`, `train_in_browser`.
 
 ### Any product
 
@@ -486,6 +511,11 @@ An external part is a load that is not ordered, such as the phone on a stand: `m
 A requirement has `text`, `check` and a limit: `mass` (max g, product without loads), `cost` (max eur), `size` (max mm, largest side), `tip_over` (min deg, or min N pushed at the top), `deflection` (max mm, optional `part_id`), `torque` (min x), `runtime` (min with `unit` `min`, `h` or `days`), `stability` (max deg after the push), `drop` (max g), `power` (min x supply headroom over the peak current), `thermal` (max `deg_c` inside the case), `rollover` (min `g` lateral, or min `deg` side slope) or `printable` (no limit).
 At most six printed parts and sixteen parts.
 A spec that keeps the name or a part id revises the product on the bench: a printed part with the same description and material keeps its script and is rebuilt from it when its params changed, a part that is still bought keeps its pick, and the result lists `kept`, `rebuilt_with_new_params`, `to_build` and `to_pick`.
+
+`sketch_to_spec` with `sketch` (the file name, the newest when left out) and optional `note` sends the photo to Claude vision on the orchestrator model at medium effort, with one forced tool `propose_spec` whose `spec` is the `product_spec` schema.
+`spec.py` validates the answer; its problems go back in the same conversation, up to two retries. A photo without a product answers `ok: false` with what was seen, so Mechanic asks instead of building.
+It returns `spec`, `read`, `unreadable`, `summary` and `source` and does not start the build: the orchestrator calls `product_spec` with `spec`.
+Without a key the recorded reading of the sample (`agent/data/sketches/phone-stand.json`) answers after 1.5 s, whatever the photo, and the mock builds the phone stand from it.
 
 `cad_part` takes `part_id` for a spec part: the spec gives name, description, material and params, and the script writer also sees the product, the frame and the other parts.
 The build is checked against the part's envelope (its largest side between 0.4x and 2.5x), against walls under 0.2 mm and against anything over 2 m; a failure goes back to Claude like a FreeCAD error.

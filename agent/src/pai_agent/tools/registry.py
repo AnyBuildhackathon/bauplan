@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import asyncio
+import time
+
 from pai_agent.context import Ctx
+from pai_agent.timeouts import limit, timed_out
 from pai_agent.requirements import refresh_requirements
 from pai_agent.scene import DRAW_KINDS, MASCOT_STATES, PART_CATEGORIES, TARGETS
 from pai_agent.freecad_run import find_freecadcmd
-from pai_agent.tools.blender import blender_render, find_blender
+from pai_agent.tools.blender import blender_render, find_blender, recorded_still
 from pai_agent.tools.bom import bom_build
 from pai_agent.tools.browser_train import train_in_browser
 from pai_agent.tools.build_guide import SCHEMA as BUILD_GUIDE_SCHEMA, build_guide
@@ -16,6 +20,7 @@ from pai_agent.tools.checks import check_deflection, check_runtime, check_tip_ov
 from pai_agent.tools.checks_more import check_power, check_rollover, check_thermal
 from pai_agent.tools.product import assemble, cad_update, part_pick, product_spec
 from pai_agent.tools.reference import reference_load
+from pai_agent.tools.sketch import sketch_to_spec
 from pai_agent.agents import delegate
 from pai_agent.tools.gripper import catalog_search, grip_calc, product_brief, simulate_grip
 from pai_agent.tools.firmware import firmware, refresh_after_training
@@ -54,6 +59,7 @@ TOOLS = {
     "cad_part": cad_part,
     "product_brief": product_brief,
     "product_spec": product_spec,
+    "sketch_to_spec": sketch_to_spec,
     "reference_load": reference_load,
     "delegate": delegate,
     "part_pick": part_pick,
@@ -100,6 +106,7 @@ _STEP = {
     "cad_part": "cad",
     "product_brief": "meeting",
     "product_spec": "meeting",
+    "sketch_to_spec": "meeting",
     "reference_load": "meeting",
     "part_pick": "teile",
     "assemble": "cad",
@@ -382,6 +389,16 @@ SCHEMAS = [
             "properties": {"agent": {"type": "string", "enum": ["parts", "checks", "pricing"]}, "task": {"type": "string"}},
             "required": ["agent", "task"],
         },
+    },
+    {
+        "name": "sketch_to_spec",
+        "description": (
+            "Use it when a sketch image is on the bench (the user uploaded one): Claude vision reads the photo of the hand sketch "
+            "and returns spec (a validated product_spec), read (each dimension and label with value, unit and confidence), unreadable and summary. "
+            "It does not start the build: say what you read and guessed, then call product_spec with spec. "
+            "sketch is the file name from the user's message (sketch-1.png); note is what the user wrote with it."
+        ),
+        "input_schema": {"type": "object", "properties": {"sketch": {"type": "string"}, "note": {"type": "string"}}},
     },
     {
         "name": "reference_load",
@@ -723,6 +740,8 @@ def _running_detail(name: str, args: dict) -> str:
         return str(args.get("part_id") or args.get("name") or "")
     if name == "product_spec":
         return str(args.get("name", ""))
+    if name == "sketch_to_spec":
+        return str(args.get("sketch", ""))
     if name == "delegate":
         return str(args.get("agent", "")) + " agent"
     if name == "simulate_assembly":
@@ -768,7 +787,7 @@ async def _advance(ctx: Ctx, name: str, result: dict, started: bool) -> None:
         await ctx.step("training", "done")
     elif name == "jamie_create_tasks":
         await ctx.step("stueckliste", "done")
-    elif name in {"blender_render", "isaac_sim_render", "cad_frame", "cad_part", "cad_update", "assemble", "product_brief", "product_spec", "reference_load", "part_pick", "jamie_requirements", "jamie_meeting"}:
+    elif name in {"blender_render", "isaac_sim_render", "cad_frame", "cad_part", "cad_update", "assemble", "product_brief", "product_spec", "sketch_to_spec", "reference_load", "part_pick", "jamie_requirements", "jamie_meeting"}:
         await ctx.step(step, "done")
 
 
@@ -783,8 +802,17 @@ async def call_tool(ctx: Ctx, name: str, args: dict | None) -> dict:
         {"type": "tool", "name": name, "status": "running", "detail": _running_detail(name, payload)}
     )
     await _advance(ctx, name, {}, started=True)
+    seconds = limit(name)
+    started = time.perf_counter()
     try:
-        result = await function(ctx, payload)
+        result = await asyncio.wait_for(function(ctx, payload), seconds)
+    except TimeoutError:
+        # A stuck tool ends here with a message the room can read, not a frozen run.
+        message = timed_out(name, seconds or 0)
+        result = {"ok": False, "error": message, "detail": message, "timed_out": True}
+        await ctx.chat("agent", message)
+        if name == "blender_render":
+            result = {**await recorded_still(ctx, message), "timed_out": True}
     except Exception as exc:
         result = {"ok": False, "error": str(exc)}
     status = "error"
@@ -793,7 +821,12 @@ async def call_tool(ctx: Ctx, name: str, args: dict | None) -> dict:
         if status not in {"connected", "running", "ok", "error", "offline"}:
             status = "ok"
     detail = str(result.get("detail") or result.get("error") or "")
-    await ctx.emit({"type": "tool", "name": name, "status": status, "detail": detail})
+    final = {"type": "tool", "name": name, "status": status, "detail": detail, "ms": round((time.perf_counter() - started) * 1000)}
+    if result.get("timed_out"):
+        final["timed_out"] = True
+    if result.get("cached"):
+        final["cached"] = True
+    await ctx.emit(final)
     await _advance(ctx, name, result, started=False)
     if result.get("ok") is not False:
         await refresh_requirements(ctx)
