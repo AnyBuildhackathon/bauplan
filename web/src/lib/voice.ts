@@ -4,7 +4,7 @@
 // and tool names. Push-to-talk: Reson8's Realtime endpoint while a key is held. Both
 // get a short-lived token from the backend; without a Reson8 key the browser's own
 // speech recognition does the same. Mechanic's speaking lives in speech.ts.
-import { apiUrl } from "./api";
+import { apiFetch } from "./api";
 import { stopSpeaking } from "./speech";
 
 export type SttMode = "reson8" | "browser" | "none";
@@ -40,7 +40,7 @@ let caps: Capabilities = {
 /** Asks the backend which voice services have keys. The demo recording plays its pre-rendered clips. */
 export async function loadVoiceCapabilities(): Promise<Capabilities> {
   try {
-    const res = await fetch(apiUrl("/api/voice"));
+    const res = await apiFetch("/api/voice");
     if (res.ok) {
       const body = await res.json();
       caps = {
@@ -130,7 +130,7 @@ async function openMic(onChunk: (chunk: ArrayBuffer) => void): Promise<Mic> {
 }
 
 async function reson8Token(): Promise<string> {
-  const res = await fetch(apiUrl("/api/voice/token"), { method: "POST" });
+  const res = await apiFetch("/api/voice/token", { method: "POST" });
   if (!res.ok) throw new Error(`Token HTTP ${res.status}`);
   const { access_token: token } = await res.json();
   return token;

@@ -1,7 +1,7 @@
 // Browser stress test: claims a queued drone `stress` job from the backend, flies its 50
 // seeded worlds on the training module's rollout pool with the trained gains, and posts
 // the outcomes back. The backend scores them and publishes the `stress` events.
-import { apiUrl } from "../lib/api";
+import { apiFetch } from "../lib/api";
 import { DRONE_TARGET, droneParams, droneProduct, type DroneSpec } from "./drone";
 import { sharedPool } from "./pool";
 import type { Perturbation, RolloutResult } from "./types";
@@ -32,7 +32,7 @@ const started = new Set<string>();
 let abort: AbortController | null = null;
 
 async function post(path: string, body: unknown): Promise<Response> {
-  return fetch(apiUrl(path), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  return apiFetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
 }
 
 /** A world starts level on the hover spot; the trainer's scripted push is off and the world's own gust blows. */

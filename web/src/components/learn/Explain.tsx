@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "../../events/store";
 import { useSource } from "../../events/source";
 import type { AgentEvent, ExplainEvent } from "../../events/types";
-import { apiUrl } from "../../lib/api";
+import { apiFetch } from "../../lib/api";
 import { useUi } from "../../lib/ui";
 import { Chip } from "../ui/primitives";
 import { Glossed } from "./Term";
@@ -19,7 +19,7 @@ const fmtValue = (v: number | string) => (typeof v === "number" ? String(Number(
 /** Asks the backend; the answer arrives as an `explain` event too. Null when there is nothing to explain yet. */
 export async function requestExplain(kind: ExplainKind, id: string, chat = false): Promise<ExplainEvent | null> {
   try {
-    const res = await fetch(apiUrl("/api/explain"), {
+    const res = await apiFetch("/api/explain", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ kind, id, chat }),

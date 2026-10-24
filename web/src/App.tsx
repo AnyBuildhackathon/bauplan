@@ -10,6 +10,7 @@ import { ResizeHandle, usePaneWidth, useWindowWidth } from "./components/ui/Resi
 import { DrawLayer } from "./components/overlay/DrawLayer";
 import { PointerLayer } from "./components/overlay/PointerLayer";
 import { useSource } from "./events/source";
+import { AccessScreen } from "./views/AccessScreen";
 import { useBolzenVoice } from "./lib/bolzenVoice";
 import { usePilotRunner } from "./lib/pilot";
 import { useUi } from "./lib/ui";
@@ -66,7 +67,13 @@ function Notice() {
   );
 }
 
+/** The bench once the backend answered and, on the public deployment, the access code was entered. */
 export default function App() {
+  const access = useSource((s) => s.access);
+  return access === "open" ? <Bench /> : <AccessScreen />;
+}
+
+function Bench() {
   const view = useUi((s) => s.view);
   useBolzenVoice();
   useBrowserTraining();

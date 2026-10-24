@@ -27,7 +27,7 @@ In mock mode, these requests go through the same tool registry without an LLM ca
 
 ## Recorded fallback
 
-Until a pod is configured, the app displays **Waiting for pod** and a clearly labelled **Recorded demo**.
+Until a pod is configured, the app displays **Waiting for pod** and a clearly labelled **Recorded result**.
 A failed connection, export, remote timeout or invalid returned artifact also selects the recorded fallback and explains the failure.
 The recording is an eight-second browser replay of the existing local simulation visualization, with an in-video provenance label.
 The accompanying wind values and learning curve are synthetic fixture data, not Isaac measurements or proof that the current CAD product passed.

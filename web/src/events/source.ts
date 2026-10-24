@@ -4,7 +4,7 @@ import { create } from "zustand";
 import { DEMO_FIXTURE, type FixtureItem } from "./fixture";
 import { useSession } from "./store";
 import { parseEvent, type QuestionEvent } from "./types";
-import { apiUrl } from "../lib/api";
+import { accessToken, apiFetch, apiStreamUrl, errorDetail, onAccessEvents, setAccessToken } from "../lib/api";
 import { useUi } from "../lib/ui";
 import { loadVoiceCapabilities } from "../lib/voice";
 import { handleSay, unlockAudio } from "../lib/speech";
@@ -27,6 +27,8 @@ export interface ReferenceBuild {
   saved_at: string | null;
 }
 export type LiveStatus = "idle" | "connecting" | "open" | "error";
+/** Whether the app may show the bench: checking the backend, backend offline, access code needed, or in. */
+export type AccessStatus = "checking" | "offline" | "locked" | "open";
 
 interface DemoState {
   playing: boolean;
@@ -39,6 +41,9 @@ interface DemoState {
 interface SourceState {
   mode: SourceMode;
   live: LiveStatus;
+  access: AccessStatus;
+  /** Trades the access code for a session; resolves to an error message, or null when it worked. */
+  unlock: (code: string) => Promise<string | null>;
   /** What the live backend runs: Claude with a key, or the scripted mock without one. */
   backend: "claude" | "mock" | null;
   references: ReferenceBuild[];
@@ -131,7 +136,7 @@ function watchStalls() {
 function openLive(onStatus: (s: LiveStatus) => void) {
   closeLive();
   onStatus("connecting");
-  const es = new EventSource(apiUrl("/api/events"));
+  const es = new EventSource(apiStreamUrl("/api/events"));
   eventSource = es;
   watchStalls();
   // The backlog a (re)connect replays is applied without animations or Bolzen speaking it again.
@@ -147,7 +152,10 @@ function openLive(onStatus: (s: LiveStatus) => void) {
   es.onerror = () => {
     if (es.readyState !== EventSource.CLOSED) return onStatus("connecting");
     onStatus("error");
-    if (eventSource === es) retry = setTimeout(() => openLive(onStatus), RETRY_MS);
+    if (eventSource !== es) return;
+    retry = setTimeout(() => openLive(onStatus), RETRY_MS);
+    // A stream refused with 401 means the session ended; apiFetch then locks the app (and closes this).
+    void apiFetch("/api/access").catch(() => undefined);
   };
   es.onmessage = (msg) => {
     lastEventAt = Date.now();
@@ -173,15 +181,21 @@ function closeLive() {
   eventSource = null;
 }
 
-/** GET /api/health: "claude" or "mock" when the backend answers, else null. */
-async function probeBackend(timeoutMs = 2500): Promise<"claude" | "mock" | null> {
+interface Health {
+  backend: "claude" | "mock";
+  /** "required" when the backend runs with ANYBUILD_ACCESS_CODE. */
+  access: "open" | "required";
+}
+
+/** GET /api/health, or null when the backend does not answer. */
+async function fetchHealth(timeoutMs = 6000): Promise<Health | null> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetch(apiUrl("/api/health"), { signal: controller.signal });
+    const res = await apiFetch("/api/health", { signal: controller.signal });
     if (!res.ok) return null;
-    const body = (await res.json()) as { mode?: string };
-    return body.mode === "claude" ? "claude" : "mock";
+    const body = (await res.json()) as { mode?: string; access?: string };
+    return { backend: body.mode === "claude" ? "claude" : "mock", access: body.access === "required" ? "required" : "open" };
   } catch {
     return null;
   } finally {
@@ -189,9 +203,32 @@ async function probeBackend(timeoutMs = 2500): Promise<"claude" | "mock" | null>
   }
 }
 
+async function probeBackend(): Promise<"claude" | "mock" | null> {
+  return (await fetchHealth())?.backend ?? null;
+}
+
+/** Throws with the backend's own message (e.g. a rate limit) when a call failed. */
+async function ensureOk(res: Response): Promise<void> {
+  if (res.ok) return;
+  const err = new Error(await errorDetail(res)) as Error & { status?: number };
+  err.status = res.status;
+  throw err;
+}
+
+function notify(notice: string | null) {
+  if (notice) useSource.setState({ notice });
+}
+
+/** The notice for a failed call; null when the access screen or a rate-limit notice already says it. */
+function failure(what: string, err: unknown): string | null {
+  const status = (err as { status?: number })?.status;
+  if (status === 401 || status === 429) return null;
+  return `${what} (${err instanceof Error ? err.message : "error"}).`;
+}
+
 async function loadReferences(): Promise<ReferenceBuild[]> {
   try {
-    const res = await fetch(apiUrl("/api/library"));
+    const res = await apiFetch("/api/library");
     if (!res.ok) return [];
     const body = (await res.json()) as { items?: ReferenceBuild[] };
     return body.items ?? [];
@@ -252,6 +289,7 @@ export const useSource = create<SourceState>((set, get) => {
   return {
     mode: "live",
     live: "idle",
+    access: "checking",
     backend: null,
     references: [],
     demo: { playing: false, started: false, speed: 1, index: 0, total: fixture.length },
@@ -342,21 +380,21 @@ export const useSource = create<SourceState>((set, get) => {
           session.apply({
             type: "chat",
             role: "agent",
-            text: "This is a recorded session. Switch to **Live** up top and I will build with you.",
+            text: "This is a recorded session, so I cannot build here.",
           });
         }, 700);
         return;
       }
       useSession.getState().addLocalUserMessage(trimmed);
       try {
-        const res = await fetch(apiUrl("/api/prompt"), {
+        const res = await apiFetch("/api/prompt", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text: trimmed }),
         });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        await ensureOk(res);
       } catch (err) {
-        set({ notice: `Backend unreachable (${err instanceof Error ? err.message : "error"}). Is agent/ running on port 8100?` });
+        notify(failure("Your message did not reach AnyBuild", err));
       }
     },
 
@@ -372,48 +410,45 @@ export const useSource = create<SourceState>((set, get) => {
           reader.onerror = () => reject(reader.error ?? new Error("unreadable file"));
           reader.readAsDataURL(image);
         });
-        const res = await fetch(apiUrl("/api/sketch"), {
+        const res = await apiFetch("/api/sketch", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ image_base64: dataUrl, media_type: image.type, note: note.trim() }),
         });
-        if (!res.ok) {
-          const body = await res.json().catch(() => null);
-          throw new Error(body?.detail ?? `HTTP ${res.status}`);
-        }
+        await ensureOk(res);
       } catch (err) {
-        set({ notice: `The sketch did not go through (${err instanceof Error ? err.message : "error"}).` });
+        notify(failure("The sketch did not go through", err));
       }
     },
 
     sendSampleSketch: async () => {
       try {
-        const res = await fetch(apiUrl("/api/sketch/sample"));
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const res = await apiFetch("/api/sketch/sample");
+        await ensureOk(res);
         await get().sendSketch(await res.blob());
       } catch (err) {
-        set({ notice: `The sample sketch did not load (${err instanceof Error ? err.message : "error"}).` });
+        notify(failure("The sample sketch did not load", err));
       }
     },
 
     startReference: async (id) => {
       if (get().mode === "demo") return;
       try {
-        const res = await fetch(apiUrl(`/api/library/${encodeURIComponent(id)}/open`), {
+        const res = await apiFetch(`/api/library/${encodeURIComponent(id)}/open`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: "{}",
         });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        await ensureOk(res);
       } catch (err) {
-        set({ notice: `The reference did not start (${err instanceof Error ? err.message : "error"}).` });
+        notify(failure("The reference did not start", err));
       }
     },
 
     restoreVersion: async (n) => {
       if (get().mode === "demo") return;
       try {
-        const res = await fetch(apiUrl(`/api/versions/${n}/restore`), {
+        const res = await apiFetch(`/api/versions/${n}/restore`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: "{}",
@@ -422,27 +457,27 @@ export const useSource = create<SourceState>((set, get) => {
           set({ notice: "Mechanic is building. Restore when the build is done." });
           return;
         }
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        await ensureOk(res);
       } catch (err) {
-        set({ notice: `The restore did not start (${err instanceof Error ? err.message : "error"}).` });
+        notify(failure("The restore did not start", err));
       }
     },
 
     setCadParams: async (params) => {
       if (get().mode === "demo") {
-        set({ notice: "CAD does not recompute in the recorded session. Switch to Live." });
+        set({ notice: "CAD does not recompute in the recorded session." });
         return false;
       }
       try {
-        const res = await fetch(apiUrl("/api/cad/params"), {
+        const res = await apiFetch("/api/cad/params", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(params),
         });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        await ensureOk(res);
         return true;
       } catch (err) {
-        set({ notice: `CAD parameters did not arrive (${err instanceof Error ? err.message : "error"}).` });
+        notify(failure("CAD parameters did not arrive", err));
         return false;
       }
     },
@@ -453,10 +488,10 @@ export const useSource = create<SourceState>((set, get) => {
         return;
       }
       try {
-        const res = await fetch(apiUrl("/api/cad/open"), { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const res = await apiFetch("/api/cad/open", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+        await ensureOk(res);
       } catch (err) {
-        set({ notice: `FreeCAD could not be opened (${err instanceof Error ? err.message : "error"}).` });
+        notify(failure("FreeCAD could not be opened", err));
       }
     },
 
@@ -466,7 +501,9 @@ export const useSource = create<SourceState>((set, get) => {
         return;
       }
       try {
-        const res = await fetch(apiUrl("/api/control"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ control }) });
+        const res = await apiFetch("/api/control", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ control }) });
+        // The access screen or a rate-limit notice already says why.
+        if (res.status === 401 || res.status === 429) return;
         const body = (await res.json()) as { ok?: boolean; error?: string };
         if (!res.ok || body.ok === false) throw new Error(body.error ?? `HTTP ${res.status}`);
       } catch (err) {
@@ -482,10 +519,10 @@ export const useSource = create<SourceState>((set, get) => {
       // Archives the chat and clears now; the server's reset marker on the stream follows.
       useSession.getState().reset();
       try {
-        const res = await fetch(apiUrl("/api/reset"), { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      } catch {
-        set({ notice: "Reset did not arrive: backend unreachable." });
+        const res = await apiFetch("/api/reset", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+        await ensureOk(res);
+      } catch (err) {
+        notify(failure("Reset did not arrive", err));
       }
     },
 
@@ -497,14 +534,14 @@ export const useSource = create<SourceState>((set, get) => {
         session.apply({ ...tasks, items: tasks.items.map((t) => (t.id === id ? { ...t, done } : t)) });
       if (get().mode === "demo") return local();
       try {
-        const res = await fetch(apiUrl(`/api/tasks/${encodeURIComponent(id)}`), {
+        const res = await apiFetch(`/api/tasks/${encodeURIComponent(id)}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ done }),
         });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        await ensureOk(res);
       } catch (err) {
-        set({ notice: `Task was not saved (${err instanceof Error ? err.message : "error"}).` });
+        notify(failure("Task was not saved", err));
       }
     },
 
@@ -516,14 +553,14 @@ export const useSource = create<SourceState>((set, get) => {
         return;
       }
       try {
-        const res = await fetch(apiUrl("/api/webhooks/jamie"), {
+        const res = await apiFetch("/api/webhooks/jamie", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ event: `meeting.${event}`, meeting_id: meeting.id, title: meeting.title }),
         });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        await ensureOk(res);
       } catch (err) {
-        set({ notice: `Jamie event did not arrive (${err instanceof Error ? err.message : "error"}).` });
+        notify(failure("Jamie event did not arrive", err));
       }
     },
 
@@ -536,63 +573,110 @@ export const useSource = create<SourceState>((set, get) => {
         return;
       }
       try {
-        const res = await fetch(apiUrl("/api/answer"), {
+        const res = await apiFetch("/api/answer", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id, answer_id: answerId }),
         });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        await ensureOk(res);
       } catch (err) {
-        set({ notice: `Answer did not arrive (${err instanceof Error ? err.message : "error"}).` });
+        notify(failure("Answer did not arrive", err));
       }
+    },
+
+    unlock: async (code) => {
+      try {
+        const res = await apiFetch("/api/access", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code: code.trim() }),
+        });
+        if (!res.ok) return await errorDetail(res);
+        const body = (await res.json()) as { token?: string };
+        setAccessToken(body.token ?? null);
+      } catch {
+        return "Live backend offline, try again shortly.";
+      }
+      openBench();
+      return null;
     },
 
     dismissNotice: () => set({ notice: null }),
   };
 });
 
+const OFFLINE_RETRY_MS = 5000;
+let offlineRetry: ReturnType<typeof setTimeout> | null = null;
+let sharedProject: string | null = null;
+
+/** Opens the bench in live mode, then the shared project of a ?project=<id> link, once. */
+function openBench() {
+  useSource.setState({ access: "open" });
+  useSource.getState().setMode("live");
+  const project = sharedProject;
+  if (!project) return;
+  sharedProject = null;
+  // Drops the parameter, so a reload does not rebuild again.
+  const params = new URLSearchParams(window.location.search);
+  params.delete("project");
+  const rest = params.toString();
+  window.history.replaceState(null, "", `${window.location.pathname}${rest ? `?${rest}` : ""}${window.location.hash}`);
+  void loadReferences().then((known) => {
+    if (!known.some((r) => r.id === project)) return useSource.setState({ notice: "That project is not in the library." });
+    void useSource.getState().startReference(project);
+  });
+}
+
 /**
- * Picks the start mode: the URL (?demo / ?live) wins; otherwise the live backend when it
- * answers, with an empty bench. The recording only plays without a backend, and says so.
+ * Checks the backend before the bench opens: offline (retried on its own), access code
+ * needed, or straight in. The recording is not offered here; only a hidden ?demo plays it.
  */
+async function enterLive() {
+  if (offlineRetry) clearTimeout(offlineRetry);
+  offlineRetry = null;
+  const health = await fetchHealth();
+  if (!health) {
+    useSource.setState({ access: "offline" });
+    offlineRetry = setTimeout(() => void enterLive(), OFFLINE_RETRY_MS);
+    return;
+  }
+  useSource.setState({ backend: health.backend });
+  if (health.access === "required") {
+    if (!accessToken()) return useSource.setState({ access: "locked" });
+    // A stored session may have expired, or the code changed; apiFetch locks the app on 401.
+    const res = await apiFetch("/api/access").catch(() => null);
+    if (!res) return void enterLive();
+    if (!res.ok) return useSource.setState({ access: "locked" });
+  }
+  openBench();
+}
+
+/** Picks the start mode: the live backend, or the recording only with the hidden ?demo URL parameter (for the video). */
 export function initSource() {
   const params = new URLSearchParams(window.location.search);
   const source = useSource.getState();
   const speed = Number(params.get("speed"));
   if (speed) source.setSpeed(speed);
 
-  const urlMode: SourceMode | null = params.has("live") ? "live" : params.has("demo") ? "demo" : null;
-  if (urlMode) {
-    source.setMode(urlMode);
-  } else {
-    source.setMode("live");
-    void probeBackend().then((backend) => {
-      if (backend) return useSource.setState({ backend });
-      if (useSource.getState().live === "open" || useSource.getState().demo.started) return;
-      useSource.getState().setMode("demo");
-      useSource.setState({ notice: "No backend running: this is the recorded demo, not a live build." });
-    });
-  }
+  onAccessEvents({
+    onLocked: () => {
+      closeLive();
+      useSource.setState({ access: "locked", live: "idle" });
+    },
+    onLimited: (message) => useSource.setState({ notice: message }),
+  });
 
-  // A share link (?project=<id>) rebuilds that library entry once, then drops the parameter so a reload does not rebuild again.
-  const project = params.get("project");
-  if (project && !params.has("demo")) {
-    void probeBackend().then(async (backend) => {
-      if (!backend) return;
-      params.delete("project");
-      const rest = params.toString();
-      window.history.replaceState(null, "", `${window.location.pathname}${rest ? `?${rest}` : ""}${window.location.hash}`);
-      const known = await loadReferences();
-      if (!known.some((r) => r.id === project)) return useSource.setState({ notice: "That project is not in the library." });
-      void useSource.getState().startReference(project);
-    });
-  }
+  // A share link (?project=<id>) rebuilds that library entry once the bench is open.
+  if (!params.has("demo")) sharedProject = params.get("project");
 
-  if (useSource.getState().mode === "demo") {
+  if (params.has("demo")) {
+    useSource.setState({ access: "open" });
+    source.setMode("demo");
     const seek = params.get("seek");
     if (params.has("end")) useSource.getState().skipToEnd();
     else if (seek) useSource.getState().seekToMarker(seek);
     else if (params.has("autoplay")) useSource.getState().play();
+    return;
   }
+  void enterLive();
 }
-
