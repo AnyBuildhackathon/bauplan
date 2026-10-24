@@ -15,6 +15,7 @@ import ContentPartsRenderer, { JamieGroupRenderer, ProgressLineRenderer, ToolGro
 import ChatMessage from "./SidebarChatMessage";
 import SidebarChatInput from "./SidebarChatInput";
 import { useSketchDrop } from "./SketchDrop";
+import { EXAMPLES } from "./examples";
 
 const FRESH_MS = 2500;
 
@@ -63,15 +64,6 @@ const FOLLOW_UPS: Record<string, string[]> = {
   drone: ["Make it lighter", "Why this battery?"],
   default: ["Make it lighter", "Make it cheaper"],
 };
-
-/** Starting points that show AnyBuild builds more than the drone. */
-const EXAMPLES = [
-  { label: "Phone stand", prompt: "Design a phone stand for my desk that holds my phone for video calls. It must not tip when I tap the screen and cost under 6 €." },
-  { label: "Desk fan", prompt: "Design a small USB desk fan that stands stable on the desk, under 300 g and 25 €." },
-  { label: "Plant-watering robot", prompt: "Design a plant-watering robot for one pot: a water tank, a pump and a soil sensor, running a month on a battery, under 40 €." },
-  { label: "Drone", prompt: "Build the small drone from the kickoff." },
-  { label: "Robot gripper", prompt: "Design a robot gripper for our arm that picks up a 200 g soda can, 66 mm wide. Keep it under 150 g and 30 €." },
-];
 
 export default function SidebarChat() {
   const allChat = useSession((s) => s.chat);

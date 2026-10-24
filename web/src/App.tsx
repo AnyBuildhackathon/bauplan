@@ -9,6 +9,7 @@ import { useAutoExplain } from "./components/learn/Explain";
 import { ResizeHandle, usePaneWidth, useWindowWidth } from "./components/ui/ResizeHandle";
 import { DrawLayer } from "./components/overlay/DrawLayer";
 import { PointerLayer } from "./components/overlay/PointerLayer";
+import { useSession } from "./events/store";
 import { useSource } from "./events/source";
 import { AccessScreen } from "./views/AccessScreen";
 import { useBolzenVoice } from "./lib/bolzenVoice";
@@ -22,6 +23,7 @@ import { LessonModal } from "./views/LessonModal";
 import { CommunityView } from "./views/CommunityView";
 import { LibraryView } from "./views/LibraryView";
 import { LogbookView } from "./views/LogbookView";
+import { StartScreen } from "./views/StartScreen";
 import { TrainingView } from "./views/TrainingView";
 import { WorkbenchView } from "./views/WorkbenchView";
 
@@ -87,10 +89,14 @@ function Bench() {
   const chatMax = Math.min(CHAT.max, vw - RAIL - WORKBENCH_GUTTERS - CANVAS_MIN);
   const chatWidth = fit(chatPane.wanted, CHAT.min, chatMax);
   usePilotRunner();
+  // Before anything has started, the workbench is one start screen; the first chat line,
+  // step or version (from any source) brings the normal bench.
+  const started = useSession((s) => s.chat.length > 0 || s.versions.length > 0 || Object.values(s.steps).some((st) => st.status !== "pending"));
+  const starting = view === "werkbank" && !started;
   return (
     <div className="flex h-full min-h-0">
       <IconRail />
-      {hasChat && (
+      {hasChat && !starting && (
         <>
           {/* Expanded, the chat takes the whole window; the bench stays mounted behind it. */}
           <div className={chatExpanded ? "h-full min-w-0 flex-1" : "h-full shrink-0 border-r border-line"} style={chatExpanded ? undefined : { width: chatWidth }}>
@@ -109,10 +115,11 @@ function Bench() {
           )}
         </>
       )}
-      <div className={`min-h-0 min-w-0 flex-1 flex-col ${hasChat && chatExpanded ? "hidden" : "flex"}`}>
+      <div className={`min-h-0 min-w-0 flex-1 flex-col ${hasChat && chatExpanded && !starting ? "hidden" : "flex"}`}>
         <TopBar />
         <main className="min-h-0 flex-1">
-          {view === "werkbank" && <WorkbenchView />}
+          {starting && <StartScreen />}
+          {view === "werkbank" && !starting && <WorkbenchView />}
           {view === "library" && <LibraryView />}
           {view === "community" && <CommunityView />}
           {view === "training" && <TrainingView />}
