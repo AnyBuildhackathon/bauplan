@@ -9,6 +9,7 @@ import { useSession, type ChatItem } from "../../events/store";
 import { useSource } from "../../events/source";
 import { fmtDuration, fmtEur, fmtNum } from "../../lib/format";
 import { useUi } from "../../lib/ui";
+import { StressCard } from "../stress/StressCard";
 
 const TOOL_LABELS: Record<string, { running: string; done: string }> = {
   Claude: { running: "Claude denkt nach", done: "Claude" },
@@ -330,6 +331,8 @@ function ContentPartsRenderer({ item }: { item: Exclude<ChatItem, { kind: "msg" 
       return <QuestionPartRenderer item={item} />;
     case "version":
       return <VersionPartRenderer item={item} />;
+    case "stress":
+      return <StressCard run={item.run} />;
   }
 }
 

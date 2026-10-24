@@ -20,6 +20,7 @@ import {
   type SimEvent,
   type StepId,
   type StepStatus,
+  type StressEvent,
   type ToolStatus,
   type TrainingEvent,
   type OmniverseEvent,
@@ -81,7 +82,8 @@ export type ChatItem =
   | { kind: "training"; id: string; seq: number; at: number; status: TrainingEvent["status"]; detail: string }
   | { kind: "warning"; id: string; seq: number; at: number; part: string; warning: PartWarning }
   | { kind: "question"; id: string; seq: number; at: number; questionId: string }
-  | { kind: "version"; id: string; seq: number; at: number; n: number };
+  | { kind: "version"; id: string; seq: number; at: number; n: number }
+  | { kind: "stress"; id: string; seq: number; at: number; run: number };
 
 export interface Run extends SimEvent {
   seq: number;
@@ -139,6 +141,8 @@ export interface SessionState {
   tasks: TasksEvent | null;
   /** The product this session builds; the drone until a `product` event says otherwise. */
   product: ProductEvent["id"];
+  /** Stress tests by run number, latest event of each. */
+  stress: Record<number, StressEvent & { seq: number; at: number }>;
   /** Reduces one contract event. `instant` marks events replayed in bulk (seek), so nothing animates for them. */
   apply: (ev: AgentEvent, opts?: { instant?: boolean }) => void;
   addLocalUserMessage: (text: string) => void;
@@ -182,6 +186,7 @@ const TOOL_ALIASES: Record<string, string> = {
   grip_calc: "Physik",
   product_brief: "Brief",
   simulate_drone: "MuJoCo",
+  stress_test: "MuJoCo",
   blender_render: "Blender",
   isaac_sim_render: "Isaac Sim",
   isaac_test: "Isaac Sim",
@@ -216,6 +221,7 @@ const SILENT_TOOLS = new Set([
   "physics_calc",
   "grip_calc",
   "product_brief",
+  "stress_test",
 ]);
 
 /** Tool names from the backend may differ in case or spacing ("isaac_lab", "Isaac Lab"). */
@@ -256,6 +262,7 @@ function emptyState() {
     questions: {} as Record<string, QuestionEvent>,
     tasks: null as TasksEvent | null,
     product: "drone" as ProductEvent["id"],
+    stress: {} as SessionState["stress"],
   };
 }
 
@@ -432,6 +439,12 @@ export const useSession = create<SessionState>((set, get) => ({
           parts: {},
           versions: [],
         });
+      }
+      case "stress": {
+        const stress = { ...s.stress, [ev.run]: { ...ev, seq, at } };
+        const known = s.chat.some((c) => c.kind === "stress" && c.run === ev.run);
+        const chat: ChatItem[] = known ? s.chat : [...s.chat, { kind: "stress", id: nextId("stress"), seq, at, run: ev.run }];
+        return set({ log, stress, chat });
       }
       case "training": {
         const prev = s.training;

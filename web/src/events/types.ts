@@ -126,6 +126,39 @@ export interface TrainingEvent {
   curve: [number, number][];
   video_url: string | null;
 }
+/** One randomized world of a stress test. */
+export interface StressWorld {
+  i: number;
+  pass: boolean;
+  /** crashed, drifted, sagged, or "" when it survived. */
+  reason: string;
+  mass_pct: number;
+  motor_pct: number;
+  gust_mps: number;
+  downdraft_pct: number;
+  noise_cm: number;
+  drift_m: number;
+  low_z_m: number;
+  /** 1 is a perfect hover, 0 or less a lost world. */
+  margin: number;
+}
+export interface StressEvent {
+  type: "stress";
+  run: number;
+  status: "running" | "done" | "failed";
+  total: number;
+  done: number;
+  survived: number;
+  seed: number;
+  policy: "trained" | "default";
+  gains: Record<string, number>;
+  weight_g: number;
+  thrust_to_weight: number;
+  worlds: StressWorld[];
+  worst: (StressWorld & { trajectory: TrajectorySample[] }) | null;
+  weakest: "gust" | "motor" | "mass" | "noise" | null;
+  explanation: string;
+}
 
 export interface OmniverseEvent {
   type: "omniverse";
@@ -300,6 +333,7 @@ export type AgentEvent =
   | PointEvent
   | TrainingEvent
   | OmniverseEvent
+  | StressEvent
   | CadEvent
   | RenderEvent
   | MeetingEvent
@@ -325,6 +359,7 @@ const EVENT_TYPES = new Set<AgentEvent["type"]>([
   "point",
   "training",
   "omniverse",
+  "stress",
   "cad",
   "render",
   "meeting",

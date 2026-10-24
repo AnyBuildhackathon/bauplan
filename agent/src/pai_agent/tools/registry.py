@@ -27,6 +27,7 @@ from pai_agent.tools.jamie import (
 from pai_agent.tools.parts import parts_search
 from pai_agent.tools.physics import physics_calc
 from pai_agent.tools.simulate import simulate_drone
+from pai_agent.tools.stress import stress_test
 from pai_agent.tools.ui import mascot_say, ui_draw, ui_point_at
 
 TOOLS = {
@@ -40,6 +41,7 @@ TOOLS = {
     "parts_search": parts_search,
     "physics_calc": physics_calc,
     "simulate_drone": simulate_drone,
+    "stress_test": stress_test,
     "cad_frame": cad_frame,
     "cad_part": cad_part,
     "product_brief": product_brief,
@@ -191,6 +193,18 @@ SCHEMAS = [
         "name": "simulate_drone",
         "description": "MuJoCo-Schwebetest. Masse und Maximalschub kommen aus den gewählten Teilen. fail heißt zu schwer, pass heißt sie hält den Schwebepunkt.",
         "input_schema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "stress_test",
+        "description": "Stress test: flies the best trained controller (default gains without a training result) in 50 randomized MuJoCo worlds, each with mass +-15 %, motor strength -25..0 %, a gust up to 6 m/s and sensor noise. Returns the robustness score (survived/total), the worst world and one sentence on the weakest point. Use it when someone asks to stress test the drone or how robust it is.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "worlds": {"type": "integer", "description": "Number of worlds, default 50."},
+                "seed": {"type": "integer"},
+                "gains": {"type": "object", "description": "Controller gains to test instead of the training result."},
+            },
+        },
     },
     {
         "name": "cad_frame",

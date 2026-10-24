@@ -258,6 +258,22 @@ It does not guess from a screenshot.
 `video_url` is a backend path such as `/files/fallback/hover.mp4`, or `null` when there is no clip.
 A `done` event after an `offline` tool means the fallback file was played, not that a pod finished a job.
 
+### stress
+
+The stress test flies one controller in randomized MuJoCo worlds (`stress_test`, 50 worlds by default).
+`status` is `running` while worlds finish, then `done`.
+`run` counts stress tests in the session; `total`, `done`, and `survived` count worlds, so the score reads `Survived {survived}/{total}`.
+`seed` makes the worlds reproducible; the same seed draws the same worlds.
+`policy` is `trained` when the training module left gains (`state.trained_gains`) or the tool got `gains`, else `default`.
+`gains` are the controller gains that flew: `kp_z`, `kd_z`, `kp_xy`, `kd_xy`, `kp_att`, `kd_att`.
+`weight_g` and `thrust_to_weight` are the nominal build the worlds vary.
+`worlds` lists every finished world: `{i, pass, reason, mass_pct, motor_pct, gust_mps, downdraft_pct, noise_cm, drift_m, low_z_m, margin}`.
+`mass_pct` is −15…+15, `motor_pct` is −25…0, `gust_mps` is the gust peak 0…6 m/s, `downdraft_pct` the share of it blowing down, `noise_cm` the sensor noise.
+`reason` is `crashed`, `drifted` (more than 0.35 m off its spot), `sagged` (below 0.35 m in the last half second), or an empty string when it survived.
+`margin` is 1 for a perfect hover and 0 or less for a lost world.
+`worst` is `null` while running; when `done` it is the world with the lowest margin plus its `trajectory` (`[[t, x, y, z], ...]`, 5 s, the same shape as `sim`).
+`weakest` is `gust`, `motor`, `mass`, `noise`, or `null` when every world survived; `explanation` is Bolzen's one sentence about it.
+
 ## Scene targets
 
 One catalog motor is instanced four times.
@@ -288,7 +304,7 @@ UI:
 
 ## Tools
 
-`jamie_templates`, `jamie_requirements`, `jamie_search`, `jamie_meeting`, `requirements_accept`, `ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `cad_frame`, `cad_part`, `product_brief`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `blender_render`, `bom_build`, `jamie_create_tasks`, `version_commit`, `ui_point_at`, `ui_draw`, `mascot_say`.
+`jamie_templates`, `jamie_requirements`, `jamie_search`, `jamie_meeting`, `requirements_accept`, `ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `stress_test`, `cad_frame`, `cad_part`, `product_brief`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `blender_render`, `bom_build`, `jamie_create_tasks`, `version_commit`, `ui_point_at`, `ui_draw`, `mascot_say`.
 
 `cad_part` builds any part from `name`, `description`, `params` (mm, they become the CAD sliders), `material` (`PLA`, `PETG`, `ABS`, `ASA`, `NYLON`, `TPU`, `ALUMINIUM`, `STEEL`), and optionally `script` or `template` (`gripper`).
 Without a script Claude writes FreeCAD Python for the description; when FreeCAD reports an error, the script and the error go back to Claude for a fix, up to three attempts.
