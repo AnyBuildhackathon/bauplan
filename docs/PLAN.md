@@ -30,7 +30,7 @@ Two team members develop the project concurrently using independent agent sessio
 - Workstream 2: General Physical AI, Simulation, Design System, and Deliverables
   - Owner: Batu / Agent Workspace
   - Directories: `agent/src/pai_agent/tools/cad.py`, `agent/src/pai_agent/freecad_run.py`, `runpod/`, `web/`, `desktop/`, and `docs/`
-  - Responsibilities: General CAD generation where Claude writes FreeCAD Python scripts for arbitrary parts, a second demonstration product, AnyBuild UI renaming and Bevel visual polish, NVIDIA Omniverse and Isaac Sim on RunPod, technical documentation, and stage demo video recording.
+  - Responsibilities: English UI translation task (translating Bolzen spoken dialogue, agent chat messages, and web labels, with `RESON8_LANGUAGE=en`), general CAD generation where Claude writes FreeCAD Python scripts for arbitrary parts, a second demonstration product, AnyBuild UI renaming and Bevel visual polish, NVIDIA Omniverse and Isaac Sim on RunPod, technical documentation, and stage demo video recording.
 
 ## Parallel Development Interfaces
 
