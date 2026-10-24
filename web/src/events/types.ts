@@ -120,8 +120,18 @@ export interface BomItem {
   weight_g: number;
   shop: string;
   url: string;
-  /** Where the price comes from: a catalog sample, an estimate, or a live shop price. */
-  price_source?: "sample" | "estimated" | "live";
+  /**
+   * Where the price comes from: "live" when a web search found a shop price, "catalog" (drone and gripper)
+   * or "sample" (spec products) for the catalog sample, "estimated" for an estimate. Older recordings omit it.
+   */
+  price_source?: "live" | "catalog" | "sample" | "estimated";
+  /** Shop price per piece in its own currency (live lines only). */
+  price?: number;
+  currency?: string;
+  availability?: "in_stock" | "out_of_stock" | "unknown";
+  pack_qty?: number;
+  catalog_price_eur?: number;
+  checked_at?: string;
   /** The spec part this line belongs to (any product). */
   category?: string;
 }
@@ -130,6 +140,8 @@ export interface BomEvent {
   items: BomItem[];
   total_eur: number;
   stl_path: string;
+  /** "searching" while live prices load, then "live" or "catalog". */
+  prices?: "searching" | "live" | "catalog";
 }
 export interface MascotEvent {
   type: "mascot";

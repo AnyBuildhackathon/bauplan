@@ -397,10 +397,11 @@ export const useSession = create<SessionState>((set, get) => ({
       case "mascot":
         return set({ log, mascot: { state: ev.state, say: ev.say, at } });
       case "bom": {
-        const chat: ChatItem[] = [
-          ...s.chat,
-          { kind: "bom", id: nextId("bom"), seq, at, count: ev.items.length, total: ev.total_eur },
-        ];
+        const card = { kind: "bom" as const, id: nextId("bom"), seq, at, count: ev.items.length, total: ev.total_eur };
+        // Live prices replace the catalog list they were searched for, so the card updates instead of repeating.
+        let open = s.bom?.prices === "searching" ? s.chat.length - 1 : -1;
+        while (open >= 0 && s.chat[open].kind !== "bom") open--;
+        const chat: ChatItem[] = open >= 0 ? s.chat.map((c, i) => (i === open ? { ...card, id: c.id } : c)) : [...s.chat, card];
         return set({ log, bom: ev, chat });
       }
       case "jamie": {

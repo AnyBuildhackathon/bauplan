@@ -165,7 +165,8 @@ For a product built from a spec, `id` is the spec requirement id, the quote is t
 
 `weight_g`, `thrust_to_weight`, `flight_time_min`, `price_eur`.
 Numbers are already rounded.
-`price_eur` is a sample total to verify, not a live checkout.
+`price_eur` is a total to verify, not a checkout: catalog samples, or live shop prices once `bom_build` found them.
+After `bom_build` finds live prices, a second `metrics` event carries the live total in `price_eur`; the other numbers repeat.
 
 For a product other than the drone the event carries `cards` instead of the drone numbers, and the panel shows those.
 Each card is `{key, label, value, unit, digits, limit, ok, pending}`: `limit` is the line under the number (such as `min. 2 ×`), `ok` says whether it meets its requirement, and `pending: true` means its check has not run yet.
@@ -248,7 +249,16 @@ The tool pill stays `offline` when the recorded still is served.
 Printed parts are priced at filament cost, and their `url` is the part's STL.
 `weight_g` is the mass of one piece, not the line.
 `url` may be an empty string for the printed frame.
-`total_eur` is the sample sum of `unit_price_eur * qty`.
+`total_eur` is the sum of `unit_price_eur * qty`.
+`prices` is `catalog`, `searching`, or `live`.
+With `ANTHROPIC_API_KEY` set, `bom_build` first sends the catalog list with `prices: "searching"`, then a second `bom` with the live lines; the second replaces the first.
+Without the key every line stays on the catalog and `prices` is `catalog`.
+`prices` is `live` when at least one line has a live price, else `catalog`.
+Each item also has `price_source` (`live`, or `catalog` for the drone and gripper; a spec product keeps `sample` or `estimated` when no live price is found), `currency`, and `availability` (`in_stock`, `out_of_stock`, or `unknown`).
+A `live` item's `unit_price_eur`, `shop`, and `url` come from a web search (Claude with the server-side web search tool, EU shops first); it adds `price` and `currency` as the shop shows them, `pack_qty` when the shop sells a multipack, `catalog_price_eur`, and `checked_at` (ISO time).
+A line falls back to the catalog when the search fails, finds nothing, or returns a price more than four times off the catalog sample; printed parts (shop `printed`, or a `url` that is not an http link) are never searched.
+Live results are cached in memory for 15 minutes (failed searches for one minute), so a rebuild only searches the changed parts, and later `metrics` keep using the cached live prices in `price_eur`.
+Older recordings have no `prices` or `price_source`; read them as `catalog`.
 `stl_path` is the STL path relative to the repository root, or an empty string before CAD.
 
 ### mascot

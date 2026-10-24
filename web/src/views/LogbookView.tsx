@@ -83,7 +83,7 @@ function SavedChats() {
     <Card className="flex min-h-0 flex-col px-5 pt-4 pb-4">
       <div className="flex items-center gap-2">
         <MessageSquareText className="h-5 w-5 text-muted" />
-        <h2 className="text-[17px] font-semibold text-ink-2">Gespeicherte Chats</h2>
+        <h2 className="text-[17px] font-semibold text-ink-2">Saved chats</h2>
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
         <button

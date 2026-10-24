@@ -7,6 +7,14 @@ export type CanvasTab = "modell" | "cad" | "simulation" | "omniverse";
 export type ModelLook = "3d" | "render";
 export type ConceptStatus = "verstanden" | "gesehen";
 
+/** What the dashboard shows beyond the essentials. Off by default, remembered per browser. */
+export interface Display {
+  agents: boolean;
+  tools: boolean;
+  jamie: boolean;
+  allMetrics: boolean;
+}
+
 interface UiState {
   view: View;
   tab: CanvasTab;
@@ -24,6 +32,8 @@ interface UiState {
   voiceOn: boolean;
   /** Who listens to the microphone: Reson8, the browser, or nobody. */
   stt: "reson8" | "browser" | "none";
+  display: Display;
+  setDisplay: (patch: Partial<Display>) => void;
   setView: (view: View) => void;
   setTab: (tab: CanvasTab) => void;
   setLook: (look: ModelLook) => void;
@@ -42,6 +52,17 @@ const VIEWS: View[] = ["werkbank", "training", "logbuch"];
 const TABS: CanvasTab[] = ["modell", "cad", "simulation", "omniverse"];
 const params = () => new URLSearchParams(window.location.search);
 const VOICE_KEY = "bauplan.voice";
+const DISPLAY_KEY = "anybuild.display";
+const DISPLAY_DEFAULT: Display = { agents: false, tools: false, jamie: false, allMetrics: false };
+
+function storedDisplay(): Display {
+  try {
+    const raw = localStorage.getItem(DISPLAY_KEY);
+    return raw ? { ...DISPLAY_DEFAULT, ...(JSON.parse(raw) as Partial<Display>) } : DISPLAY_DEFAULT;
+  } catch {
+    return DISPLAY_DEFAULT;
+  }
+}
 
 function storedVoice(): boolean {
   if (params().has("mute")) return false;
@@ -77,6 +98,17 @@ export const useUi = create<UiState>((set) => ({
   concepts: {},
   listening: false,
   voiceOn: storedVoice(),
+  display: storedDisplay(),
+  setDisplay: (patch) =>
+    set((s) => {
+      const display = { ...s.display, ...patch };
+      try {
+        localStorage.setItem(DISPLAY_KEY, JSON.stringify(display));
+      } catch {
+        // Private windows may refuse storage; the choice lasts for this page.
+      }
+      return { display };
+    }),
   stt: "SpeechRecognition" in window || "webkitSpeechRecognition" in window ? "browser" : "none",
   setView: (view) => set({ view }),
   setTab: (tab) => set({ tab }),
