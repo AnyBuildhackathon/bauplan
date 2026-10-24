@@ -4,7 +4,8 @@ The kickoff arrives at the reference micro build, the $59 toothpick from Mediocr
 "Build a Micro FPV Drone" video: Twiglet 2" carbon frame, 1103 15000KV motors, Gemfan 2020
 four-blade props, Caddx Ant camera, BetaFPV Matrix 1S 5in1 AIO, canopy with battery holder,
 M1.4 bolts and a 1S pack. run_mock builds v1 from the kickoff, run_review builds the next
-version from a review.
+version from a review. A MockTeam stands for the orchestrator: it fans the parts, CAD,
+pricing and checks jobs out to sub-agents, as the live orchestrator delegates them.
 """
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ import asyncio
 from pai_agent.env import pace_seconds
 from pai_agent.context import Ctx
 from pai_agent.meetings import fmt_number, short_date
+from pai_agent.mock_team import MockTeam, build_jobs, parts_job
 from pai_agent.tools.build_guide import mock_steps
 from pai_agent.tools.registry import call_tool
 
@@ -85,9 +87,13 @@ async def _pick(ctx: Ctx, category: str, query: str, part_id: str, reason: str, 
     await _need(ctx, "parts_search", args)
 
 
-async def _build_tail(ctx: Ctx, meeting_id: str, label: str) -> dict:
+async def _build_tail(ctx: Ctx, meeting_id: str, label: str, team: MockTeam) -> dict:
     """Frame in FreeCAD, real frame mass, Blender, bill of materials, Jamie tasks, version."""
 
+    return await team.alongside(build_jobs(label), _build(ctx, meeting_id, label))
+
+
+async def _build(ctx: Ctx, meeting_id: str, label: str) -> dict:
     await _beat()
     await ctx.step("cad", "running")
     arm = float(ctx.state.cad_params.get("arm_length_mm") or 0)
@@ -149,7 +155,32 @@ async def _build_tail(ctx: Ctx, meeting_id: str, label: str) -> dict:
     return version
 
 
+async def _first_picks(ctx: Ctx) -> None:
+    motor = _part("generic-1103-15000kv")
+    await _pick(ctx, "motor", "1103", motor["id"], "Hovered cleanly in last week's flight test, " + en(float(motor["thrust_g"]), 0) + " g thrust per motor.")
+    await _pick(ctx, "propeller", "2020", "gemfan-2020-4", "The 2-inch four-blade the 1103 thrust figure is measured with.")
+    await _pick(ctx, "battery", "FunFly", "tattu-funfly-4s-1300", "1300 mAh looks like plenty of flight time. I check that.", "flight_time")
+    controller = _part("betafpv-matrix-1s-5in1-v2")
+    await _pick(
+        ctx,
+        "flight_controller",
+        "Matrix",
+        controller["id"],
+        "Flight controller, four ESCs, ELRS receiver and video transmitter on one board, " + en(float(controller["mass_g"]), 1) + " g.",
+        "weight",
+    )
+    await _pick(ctx, "frame", "Twiglet", "twiglet-2in-carbon", "The 2-inch carbon toothpick frame; I model it in FreeCAD for STL and STEP.", "printable")
+    await _pick(ctx, "camera", "Caddx", "caddx-ant", "Nano FPV camera that fits the canopy.")
+    await _pick(ctx, "canopy", "canopy", "toothpick-canopy-holder", "Holds the camera and the 1S pack under the frame.")
+    await _pick(ctx, "hardware", "M1.4", "m14-bolts", "Motor bolts, 3 mm, so they stop short of the windings.")
+
+
 async def run_mock(ctx: Ctx, meeting_id: str = "") -> None:
+    async with MockTeam(ctx, "build the small drone from the kickoff") as team:
+        await _kickoff(ctx, meeting_id, team)
+
+
+async def _kickoff(ctx: Ctx, meeting_id: str, team: MockTeam) -> None:
     await _beat()
     await ctx.step("meeting", "running")
     await _say(ctx, "denkt", "Meeting first. Guessing is for people without Jamie.")
@@ -186,23 +217,16 @@ async def run_mock(ctx: Ctx, meeting_id: str = "") -> None:
     await _beat()
     await ctx.step("teile", "running")
     await _say(ctx, "denkt", "Eight minutes? Everyone grabs a big battery. That is the trap.")
-    motor = _part("generic-1103-15000kv")
-    await _pick(ctx, "motor", "1103", motor["id"], "Hovered cleanly in last week's flight test, " + en(float(motor["thrust_g"]), 0) + " g thrust per motor.")
-    await _pick(ctx, "propeller", "2020", "gemfan-2020-4", "The 2-inch four-blade the 1103 thrust figure is measured with.")
-    await _pick(ctx, "battery", "FunFly", "tattu-funfly-4s-1300", "1300 mAh looks like plenty of flight time. I check that.", "flight_time")
-    controller = _part("betafpv-matrix-1s-5in1-v2")
-    await _pick(
-        ctx,
-        "flight_controller",
-        "Matrix",
-        controller["id"],
-        "Flight controller, four ESCs, ELRS receiver and video transmitter on one board, " + en(float(controller["mass_g"]), 1) + " g.",
-        "weight",
+    await team.alongside(
+        [
+            parts_job(
+                "pick the bought parts for the 1S toothpick",
+                ["1103 15000KV motors", "Gemfan 2020 props", "FunFly 4S battery", "Matrix 1S 5in1 AIO", "frame, camera, canopy and bolts"],
+                "8 parts picked. The FunFly 4S looks like flight time, but Lea warned about it; the checks decide.",
+            )
+        ],
+        _first_picks(ctx),
     )
-    await _pick(ctx, "frame", "Twiglet", "twiglet-2in-carbon", "The 2-inch carbon toothpick frame; I model it in FreeCAD for STL and STEP.", "printable")
-    await _pick(ctx, "camera", "Caddx", "caddx-ant", "Nano FPV camera that fits the canopy.")
-    await _pick(ctx, "canopy", "canopy", "toothpick-canopy-holder", "Holds the camera and the 1S pack under the frame.")
-    await _pick(ctx, "hardware", "M1.4", "m14-bolts", "Motor bolts, 3 mm, so they stop short of the windings.")
     first = await _need(ctx, "physics_calc", {})
     battery_g = float(ctx.state.selected["battery"]["mass_g"])
     await ctx.chat("agent", "First pass: " + _numbers(first) + ". The battery alone weighs " + en(battery_g, 1) + " g. " + " ".join(first["warnings"]))
@@ -259,7 +283,7 @@ async def run_mock(ctx: Ctx, meeting_id: str = "") -> None:
     await _say(ctx, "freut_sich", "Second run holds the gust. Told you.")
     await _need(ctx, "ui_draw", {"kind": "halo", "target": "battery", "text": "fits"})
 
-    version = await _build_tail(ctx, kickoff_id, "v1")
+    version = await _build_tail(ctx, kickoff_id, "v1", team)
     await _need(ctx, "ui_point_at", {"target": "timeline", "label": "v1 hangs on the kickoff"})
     await _say(
         ctx,
@@ -275,6 +299,11 @@ async def run_mock(ctx: Ctx, meeting_id: str = "") -> None:
 
 
 async def run_review(ctx: Ctx, meeting_id: str) -> None:
+    async with MockTeam(ctx, "build the next version from the review") as team:
+        await _review(ctx, meeting_id, team)
+
+
+async def _review(ctx: Ctx, meeting_id: str, team: MockTeam) -> None:
     ctx.state.finished = False
     await _beat()
     await ctx.step("meeting", "running")
@@ -346,28 +375,10 @@ async def run_review(ctx: Ctx, meeting_id: str) -> None:
 
     await _beat()
     await ctx.step("teile", "running")
-    target = next((r for r in ctx.state.requirements if r["id"] == "flight_time"), None)
-    if target and float(target.get("min", 0)) > float(ctx.state.metrics.get("flight_time_min", 0)):
-        await _need(ctx, "parts_search", {"category": "battery", "query": ""})
-        bigger = _part("betafpv-lava-1s-680")
-        await _say(
-            ctx,
-            "denkt",
-            "More flight time means more battery. But not the FunFly.",
-            "For "
-            + en(float(target["min"]), 0)
-            + " minutes I need more capacity. The FunFly would have it, but Jamie reminds me of Lea's warning. I stay at 1S and take the "
-            + bigger["name"]
-            + ", the other pack from the video.",
-        )
-        await _pick(
-            ctx,
-            "battery",
-            "680",
-            bigger["id"],
-            en(float(bigger["capacity_mah"]), 0) + " mAh for " + en(float(target["min"]), 0) + " minutes, " + en(float(bigger["mass_g"]), 1) + " g, still 1S.",
-            "flight_time",
-        )
+    await team.alongside(
+        [parts_job("find a pack for the new flight time", ["1S packs with more capacity", "BetaFPV LAVA II 1S 680"], "LAVA II 1S 680 fits: more capacity, still 1S, the motors stay.")],
+        _swap_pack(ctx),
+    )
     metrics = await _need(ctx, "physics_calc", {})
     await ctx.step("teile", "done")
     await ctx.chat("agent", "Computed: " + _numbers(metrics) + ".")
@@ -381,7 +392,7 @@ async def run_review(ctx: Ctx, meeting_id: str) -> None:
     else:
         await _say(ctx, "besorgt", "Gust wins this round. Back to the parts.")
 
-    version = await _build_tail(ctx, meeting_id, "v" + str(len(ctx.state.versions) + 1))
+    version = await _build_tail(ctx, meeting_id, "v" + str(len(ctx.state.versions) + 1), team)
     changes = [item for item in version["diff"] if item["key"] in {"weight_g", "flight_time_min", "price_eur"}]
     digits = {"weight_g": 1, "flight_time_min": 1, "price_eur": 2}
     parts = ", ".join(
@@ -406,6 +417,31 @@ async def run_review(ctx: Ctx, meeting_id: str) -> None:
         + " closed.",
     )
     ctx.state.finished = True
+
+
+async def _swap_pack(ctx: Ctx) -> None:
+    target = next((r for r in ctx.state.requirements if r["id"] == "flight_time"), None)
+    if target and float(target.get("min", 0)) > float(ctx.state.metrics.get("flight_time_min", 0)):
+        await _need(ctx, "parts_search", {"category": "battery", "query": ""})
+        bigger = _part("betafpv-lava-1s-680")
+        await _say(
+            ctx,
+            "denkt",
+            "More flight time means more battery. But not the FunFly.",
+            "For "
+            + en(float(target["min"]), 0)
+            + " minutes I need more capacity. The FunFly would have it, but Jamie reminds me of Lea's warning. I stay at 1S and take the "
+            + bigger["name"]
+            + ", the other pack from the video.",
+        )
+        await _pick(
+            ctx,
+            "battery",
+            "680",
+            bigger["id"],
+            en(float(bigger["capacity_mah"]), 0) + " mAh for " + en(float(target["min"]), 0) + " minutes, " + en(float(bigger["mass_g"]), 1) + " g, still 1S.",
+            "flight_time",
+        )
 
 
 async def run_mock_followup(ctx: Ctx) -> None:

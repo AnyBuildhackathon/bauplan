@@ -463,13 +463,14 @@ export interface TaskItem {
 export interface AgentRunEvent {
   type: "agent";
   id: string;
-  role: "orchestrator" | "cad" | "parts" | "checks" | "pricing";
+  role: "orchestrator" | "cad" | "parts" | "checks" | "pricing" | "sketch";
   label: string;
   model: string;
   model_label: string;
   effort: string;
   task: string;
-  status: "running" | "done" | "error";
+  /** `queued` waits for another job of the same fan-out to finish first. */
+  status: "queued" | "running" | "done" | "error";
   /** Model calls so far. */
   rounds: number;
   input_tokens: number;
@@ -478,6 +479,23 @@ export interface AgentRunEvent {
   cost_usd: number;
   /** What it is doing now, or its report when done. */
   summary: string;
+  /** Server time in epoch seconds when this report was sent. Older backends omit it and the fields below. */
+  sent_at?: number;
+  /** The orchestrator run that delegated this job; null for the orchestrator. */
+  parent?: string | null;
+  /** Server time in epoch seconds when it started working, null while queued. */
+  started_at?: number | null;
+  /** Server time in epoch seconds when it finished, null while it works. */
+  ended_at?: number | null;
+  /** The tool it runs right now (`freecad`, `blender_render`, `simulate_assembly`, …), or null. */
+  tool?: string | null;
+  /** Its tool calls so far, newest last, at most 30. */
+  calls?: AgentToolCall[];
+}
+export interface AgentToolCall {
+  tool: string;
+  ok: boolean;
+  detail: string;
 }
 export interface TasksEvent {
   type: "tasks";

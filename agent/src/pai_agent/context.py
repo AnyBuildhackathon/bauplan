@@ -14,6 +14,8 @@ class Ctx:
         self.auto_steps = auto_steps
         # Asks the people in the room and waits for the answer; set by the session.
         self.asker = asker
+        # The orchestrator run in progress; the sub-agents it delegates to name it as their parent.
+        self.lead_id: str | None = None
 
     async def emit(self, event: dict) -> None:
         await self.bus.publish(event)
