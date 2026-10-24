@@ -1,9 +1,8 @@
-// Listening in the side chat. Hands-free (the default): Reson8's Turns endpoint hears
-// the whole conversation, says when the person starts talking (so Mechanic stops) and
-// when their turn has ended (so it is sent at once), with a phrase list for our part
-// and tool names. Push-to-talk: Reson8's Realtime endpoint while a key is held. Both
-// get a short-lived token from the backend; without a Reson8 key the browser's own
-// speech recognition does the same. Mechanic's speaking lives in speech.ts.
+// Listening in the side chat. The voice conversation (Talk) is Gemini Live only
+// (lib/geminiLive.ts); this file opens its microphone. Push-to-talk dictation uses
+// Reson8's Realtime endpoint while a key is held, with a short-lived token from the
+// backend and a phrase list for our part and tool names; without a Reson8 key the
+// browser's own speech recognition does the same. Mechanic's speaking lives in speech.ts.
 import { apiFetch } from "./api";
 import { stopSpeaking } from "./speech";
 
@@ -169,143 +168,9 @@ function parse(data: unknown): Record<string, unknown> | null {
   }
 }
 
-// --- hands-free ------------------------------------------------------------------------
-
-export interface HandsFreeHandlers {
-  /** The person started talking (barge-in). */
-  onTurnStart: () => void;
-  /** What has been heard of this turn so far. */
-  onPartial: (text: string) => void;
-  /** The turn is over; the text may be empty when it was only noise. */
-  onTurnEnd: (text: string) => void;
-  onError: (message: string) => void;
-}
-
+/** A running Gemini Live voice conversation (lib/geminiLive.ts). */
 export interface HandsFree {
   stop: () => void;
-}
-
-export async function startHandsFree(handlers: HandsFreeHandlers): Promise<HandsFree | null> {
-  if (caps.stt === "reson8") {
-    try {
-      return await handsFreeReson8(handlers);
-    } catch (err) {
-      handlers.onError(`Reson8 is unreachable (${err instanceof Error ? err.message : "error"}). The browser is listening.`);
-    }
-  }
-  if (BROWSER_STT) return handsFreeBrowser(handlers);
-  handlers.onError("This browser has no speech recognition. Type it instead.");
-  return null;
-}
-
-async function handsFreeReson8({ onTurnStart, onPartial, onTurnEnd, onError }: HandsFreeHandlers): Promise<HandsFree> {
-  const params = baseParams();
-  // Candidates at every short pause double as the live transcript; the turn end keeps its default bar.
-  params.set("eager_turn_probability", "0.3");
-  const url = `${caps.turnsUrl}?${params}`;
-  let stopped = false;
-  let failures = 0;
-  let socket: WebSocket | null = null;
-  let heard = "";
-  const close = () => {
-    stopped = true;
-    socket?.close(1000);
-    socket = null;
-  };
-
-  const open = async () => {
-    const ws = await connect(url, await reson8Token());
-    failures = 0;
-    ws.onmessage = (msg) => {
-      const data = parse(msg.data);
-      if (!data) return;
-      if (data.type === "turn_start") {
-        heard = "";
-        onTurnStart();
-      } else if (data.type === "turn_end_candidate" && typeof data.text === "string") {
-        heard = data.text.trim();
-        onPartial(heard);
-      } else if (data.type === "turn_end") {
-        const text = heard;
-        heard = "";
-        onTurnEnd(text);
-      }
-    };
-    // A dropped session (network, server restart, the 10 minute token) reconnects with a fresh token.
-    ws.onclose = () => {
-      if (stopped) return;
-      socket = null;
-      setTimeout(reopen, 400 * Math.min(8, 2 ** failures));
-    };
-    socket = ws;
-  };
-  const reopen = () => {
-    if (stopped) return;
-    open().catch((err) => {
-      failures++;
-      if (failures >= 5) {
-        onError(`Reson8 dropped the connection (${err instanceof Error ? err.message : "error"}).`);
-        return;
-      }
-      setTimeout(reopen, 400 * Math.min(8, 2 ** failures));
-    });
-  };
-
-  await open();
-  let mic: Mic;
-  try {
-    mic = await openMic((chunk) => {
-      if (socket?.readyState === WebSocket.OPEN) socket.send(chunk);
-    });
-  } catch (err) {
-    close();
-    throw err;
-  }
-  return {
-    stop: () => {
-      close();
-      mic.close();
-    },
-  };
-}
-
-function handsFreeBrowser({ onTurnStart, onPartial, onTurnEnd, onError }: HandsFreeHandlers): HandsFree {
-  const rec = newRecognition();
-  let stopped = false;
-  let inTurn = false;
-  rec.onresult = (e) => {
-    for (let i = e.resultIndex; i < e.results.length; i++) {
-      const r = e.results[i];
-      const text = r[0].transcript.trim();
-      if (!inTurn && text) {
-        inTurn = true;
-        onTurnStart();
-      }
-      if (r.isFinal) {
-        if (inTurn) onTurnEnd(text);
-        inTurn = false;
-      } else if (text) {
-        onPartial(text);
-      }
-    }
-  };
-  rec.onerror = (e) => {
-    if (e.error === "not-allowed") {
-      stopped = true;
-      onError("The microphone is blocked for this page.");
-    } else if (e.error !== "aborted" && e.error !== "no-speech") onError(`Speech recognition: ${e.error}`);
-  };
-  // Chrome ends a continuous session after a while of silence; keep it going.
-  rec.onend = () => {
-    if (!stopped) setTimeout(() => !stopped && rec.start(), 150);
-  };
-  rec.start();
-  return {
-    stop: () => {
-      stopped = true;
-      rec.stop();
-    },
-  };
 }
 
 // --- push-to-talk ------------------------------------------------------------------------

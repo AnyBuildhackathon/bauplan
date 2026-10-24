@@ -1,9 +1,9 @@
 // Adapted from core-oss (github.com/10xapp/core-oss, Apache-2.0),
 // core-web/src/components/SidebarChat/SidebarChatInput.tsx. Modified: Bevel pill
 // styling, a mic button and a sketch photo (SketchDrop.tsx) in place of attachments and mentions: hands-free by default
-// (click to start a conversation; Reson8 hears when a turn ends and when the person
-// interrupts Mechanic), push-to-talk as the fallback (hold the button or the space
-// bar); speech goes to Reson8 or the browser (lib/voice.ts).
+// (click Talk to start a Gemini Live conversation, lib/geminiLive.ts, which hears, transcribes
+// and answers), push-to-talk dictation as the alternative (hold the button or the space
+// bar; speech goes to Reson8 or the browser, lib/voice.ts).
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowUp, Mic, MousePointer2 } from "lucide-react";
 import { useUi } from "../../lib/ui";
@@ -66,7 +66,6 @@ export default function SidebarChatInput({
   const setHandsFree = useUi((s) => s.setHandsFree);
   const userTalking = useUi((s) => s.userTalking);
   const speaking = useSpeech((s) => s.speaking);
-  const setUserTalking = useUi((s) => s.setUserTalking);
   const [hint, setHint] = useState<string | null>(null);
   const lg = size === "lg";
 
@@ -93,8 +92,6 @@ export default function SidebarChatInput({
   // --- hands-free -----------------------------------------------------------
   const conversation = useRef<HandsFree | null>(null);
   const starting = useRef(false);
-  const onVoiceRef = useRef(onVoice);
-  onVoiceRef.current = onVoice;
 
   const stopHandsFree = useCallback(() => {
     conversation.current?.stop();
@@ -109,20 +106,7 @@ export default function SidebarChatInput({
     setHint(null);
     unlockAudio();
     setHandsFree(true);
-    const active = await startVoiceConversation({
-      // Dictation without Gemini Live: the finished turn is sent as text and answered in text.
-      onTurnStart: () => {
-        setUserTalking(true);
-        setHeard("");
-      },
-      onPartial: setHeard,
-      onTurnEnd: (text) => {
-        setUserTalking(false);
-        setHeard("");
-        if (text) onVoiceRef.current?.(text);
-      },
-      onError: flash,
-    }, setHeard).catch(() => {
+    const active = await startVoiceConversation(flash, setHeard).catch(() => {
       flash("The microphone is unavailable. Check its permission or type instead.");
       return null;
     });
@@ -133,7 +117,7 @@ export default function SidebarChatInput({
       return;
     }
     conversation.current = active;
-  }, [setHandsFree, setUserTalking, flash]);
+  }, [setHandsFree, flash]);
 
   useEffect(() => () => {
     useUi.getState().setHandsFree(false);
@@ -241,7 +225,7 @@ export default function SidebarChatInput({
           <div className={`flex flex-1 items-center gap-3 ${lg ? "min-h-[112px]" : "self-center"}`}>
             <Waveform active bars={lg ? 11 : 7} />
             <span className={`line-clamp-2 font-medium ${heard ? "text-ink" : "text-accent"} ${lg ? "text-[20px]" : "text-[15px]"}`}>
-              {heard || (stt === "reson8" ? "Reson8 is listening…" : "Listening…")}
+              {heard || (handsFree ? "Gemini is listening…" : stt === "reson8" ? "Reson8 is listening…" : "Listening…")}
             </span>
           </div>
         ) : (
@@ -258,7 +242,7 @@ export default function SidebarChatInput({
               if (picked.file) onSketchChange?.(picked.file);
               else if (picked.error) flash(picked.error);
             }}
-            placeholder={sketch ? "What should I know about it? (optional)" : handsFree ? "Listening. Just talk, or type" : placeholder}
+            placeholder={sketch ? "What should I know about it? (optional)" : handsFree ? "Just talk, or type" : placeholder}
             rows={1}
             name="prompt"
             aria-label="Message to Mechanic"

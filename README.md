@@ -29,7 +29,7 @@ It targets diverse physical products, from a phone stand to a plant-watering rob
 - **Engineering checks and physics.** Mass, cost, size, tip-over, deflection, torque, runtime, power, thermal and roll-over checks, plus MuJoCo push, drop, hover and grip tests replayed in 3D.
 - **Fix loop.** When a check fails, Claude changes a dimension or swaps a part, rebuilds and reruns every check, and says why.
 - **Meeting memory with Jamie.** Warnings from earlier meetings surface before a part is chosen, contradictions become multiple-choice questions, each version is attached to its meeting with a diff note, and order tasks with assignees land in Jamie.
-- **Talk to Mechanic.** Press **Talk** in the chat and just speak; Gemini Live (`gemini-3.8-live`, voice Fenrir) is Mechanic's only voice and handles realtime speech and barge-in while Claude handles engineering, and Reson8 transcribes in parallel.
+- **Talk to Mechanic.** Press **Talk** in the chat and just speak; Gemini Live (`gemini-3.8-live`, voice Fenrir) is the whole voice agent: it listens, transcribes and speaks as Mechanic, with barge-in, while Claude handles engineering.
   Mechanic never narrates on his own: he answers you, plus one short line when a build finishes, and without Gemini Live he answers in text.
   [Setup and measured latency](docs/GEMINI_LIVE.md).
 - **Orchestrator and sub-agents.** Claude Opus 5.5 plans and reviews; Claude Sonnet 5.5 sub-agents write CAD scripts in parallel, pick parts, run checks and price the bill of materials, each visible as its own card with tokens and cost.
@@ -43,7 +43,7 @@ It targets diverse physical products, from a phone stand to a plant-watering rob
 ```mermaid
 flowchart LR
     M[Jamie meetings] -->|webhook and MCP| B
-    V[Voice: Gemini Live + Reson8 transcript] --> W
+    V[Voice: Gemini Live] --> W
     W[Web dashboard<br/>React, Three.js] -->|HTTP| B[FastAPI backend]
     B -->|SSE event stream| W
     B --> O[Orchestrator<br/>Claude Opus 5.5]
@@ -89,12 +89,11 @@ Without a Jamie token, the same calls answer from local fixture meetings and wri
 
 ### Reson8
 
-Reson8 is Mechanic's ears.
-The browser streams microphone audio to Reson8's Turns endpoint with a short-lived token the backend vends (`POST /api/voice/token`), so the API key never reaches the browser.
-Reson8 decides that a turn has ended from acoustics and meaning, not silence alone, so a thinking pause does not cut the speaker off, and a phrase list biases recognition toward engineering vocabulary such as Twiglet, Caddx, 1103, KV and MuJoCo.
-With Gemini Live, Reson8 supplies the chat transcript and logbook while Gemini handles speech and calls Claude for engineering; Reson8 never speaks.
-Without Gemini Live, Reson8 dictates the turn to the agent and Mechanic answers in text.
-Push-to-talk over Reson8's Realtime endpoint and the browser's Web Speech recognition are the fallbacks.
+Reson8 powers push-to-talk dictation.
+The browser streams microphone audio to Reson8 with a short-lived token the backend vends (`POST /api/voice/token`), so the API key never reaches the browser, and a phrase list biases recognition toward engineering vocabulary such as Twiglet, Caddx, 1103, KV and MuJoCo.
+Turn on **Push-to-talk** in Settings, hold the mic or the space bar, and the turn goes to the agent as text over Reson8's Realtime endpoint; Mechanic answers in text.
+The browser's Web Speech recognition is the fallback without a Reson8 key.
+The voice conversation (**Talk**) does not use Reson8: Gemini Live hears and transcribes it itself.
 
 ### Also used
 

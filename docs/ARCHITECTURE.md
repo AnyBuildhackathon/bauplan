@@ -249,24 +249,24 @@ Without a GLB (the CadQuery fallback) the studio places simple parts around the 
 
 Gemini Live is Mechanic's only voice; without it Mechanic answers in text.
 The backend proxies native audio through Vertex AI with gcloud user OAuth or AI Studio with a server-only key.
-Gemini calls Claude for engineering and the existing app controls for navigation; Reson8 independently transcribes the same microphone stream for the chat and logbook.
+Gemini calls Claude for engineering and the existing app controls for navigation, and its own transcription of both sides feeds the chat and logbook; Reson8 is not part of the voice conversation.
 Gemini output plays through Web Audio and drives the mascot's lip-sync.
 Mechanic speaks only inside a voice conversation the person started with **Talk** in the chat input: he answers them, plus at most one short line when a build finishes, and never narrates build progress.
 See [realtime voice](GEMINI_LIVE.md) for configuration, protocol, transcript ownership and measured latency.
 
 ```text
-mic -16 kHz PCM-+-> WS /api/voice/live -> Gemini Live (gemini-3.8-live, Fenrir) -> 24 kHz PCM -> Web Audio + lip-sync
-                |                              +-> engineer / control_app / product_state -> Claude and the dashboard
-                +-> Reson8 Turns -> chat transcript and logbook (never speaks, never starts a build)
+mic -16 kHz PCM-> WS /api/voice/live -> Gemini Live (gemini-3.8-live, Fenrir) -> 24 kHz PCM -> Web Audio + lip-sync
+                                             +-> input and output transcription -> chat and logbook
+                                             +-> engineer / control_app / product_state -> Claude and the dashboard
 ```
 
-- **Listening:** with `RESON8_API_KEY`, the browser streams 16 kHz PCM to the Reson8 Turns endpoint with a short-lived token from `POST /api/voice/token`; the API key never leaves the backend.
-  Reson8 decides when a turn ended from acoustics and meaning, so a thinking pause does not cut the speaker off, and a phrase list biases recognition toward the domain vocabulary (`PHRASES` in `voice.py`).
+- **Listening:** Gemini Live's voice detection and transcription hear the conversation.
+- **Push-to-talk dictation:** with `RESON8_API_KEY`, the browser streams 16 kHz PCM to Reson8's Realtime endpoint while the key is held, with a short-lived token from `POST /api/voice/token` and a phrase list for the domain vocabulary (`PHRASES` in `voice.py`); the API key never leaves the backend.
 - **Speaking:** only Gemini Live speaks, natively, with the prebuilt voice `Fenrir` (`GEMINI_LIVE_VOICE` overrides it); chat lines, mascot bubbles and questions are never read aloud.
 - **Persona:** Mechanic is self-assured and witty, may swear mildly when it fits, never at the person, and stays honest: no claimed pass, price or number that a tool did not produce.
 - **Lip-sync:** `useSpeech` in `web/src/lib/speech.ts` measures the audio level every frame and drives the mascot's mouth while Mechanic speaks.
 - **Barge-in:** Gemini's voice detection interrupts Mechanic the moment the person talks.
-- Fallbacks: without Reson8 the browser's Web Speech recognition listens, push-to-talk dictates a prompt from settings, and without Gemini Live Mechanic stays silent and shows text.
+- Fallbacks: without Reson8, push-to-talk uses the browser's Web Speech recognition; without Gemini Live there is no voice conversation, and Mechanic answers typed messages in text.
 
 ## Event stream
 
@@ -283,7 +283,7 @@ Every external dependency has a fallback, so the full workflow runs on a laptop 
 | --- | --- |
 | `ANTHROPIC_API_KEY` | Scripted mock stories (`mock_story.py`, `mock_product.py`, `mock_gripper.py`, `mock_categories.py`) call the same tools with the same events. |
 | `JAMIE_MCP_TOKEN` | Fixture meetings in `agent/data/meetings/` and the local outbox `jamie_outbox.json`. |
-| `RESON8_API_KEY` | Browser Web Speech recognition; typing always works. |
+| `RESON8_API_KEY` | Push-to-talk uses browser Web Speech recognition; typing always works. |
 | Gemini Live (`GOOGLE_CLOUD_PROJECT` with gcloud, or `GEMINI_API_KEY`) | Mechanic stays silent and shows text; the microphone still dictates. |
 | FreeCAD window | Headless `freecadcmd`, then CadQuery. |
 | Blender | The recorded still `agent/runs/fallback/render.png`. |

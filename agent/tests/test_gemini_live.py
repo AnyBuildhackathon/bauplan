@@ -103,16 +103,14 @@ def test_studio_key_stays_in_header():
 def test_transcripts_reach_chat_and_durable_log(tmp_path):
     async def run():
         s = session(tmp_path)
-        await live.record(s, "user", "Make it lighter", "reson8")
+        await live.record(s, "user", "Make it lighter", "gemini")
         await live.record(s, "agent", "I'll ask Claude to check it.", "gemini")
         assert [e["role"] for e in s.bus.events] == ["user", "agent"]
-        # Reson8 is credited on the user turn; Mechanic's line has no transcriber.
-        assert [e.get("transcriber") for e in s.bus.events] == ["reson8", None]
         rows = [
             json.loads(row)
             for row in (tmp_path / "voice_conversation.jsonl").read_text().splitlines()
         ]
-        assert [r["source"] for r in rows] == ["reson8", "gemini"]
+        assert [r["source"] for r in rows] == ["gemini", "gemini"]
 
     asyncio.run(run())
 
@@ -275,8 +273,7 @@ class FakeUpstream:
             )
 
 
-@pytest.mark.parametrize("reson8", [True, False])
-def test_gateway_audio_tools_transcript_ownership_and_reconnect(tmp_path, reson8):
+def test_gateway_audio_tools_gemini_transcript_and_reconnect(tmp_path):
     upstreams = []
 
     def connect(*args, **kwargs):
@@ -292,11 +289,8 @@ def test_gateway_audio_tools_transcript_ownership_and_reconnect(tmp_path, reson8
         for _ in range(2):
             with c.websocket_connect("/api/voice/live") as ws:
                 assert ws.receive_json()["type"] == "ready"
-                if reson8:
-                    ws.send_json({"type": "transcriber", "source": "reson8"})
-                    ws.send_json(
-                        {"type": "transcript", "text": "Reson8 heard the user"}
-                    )
+                # A stray text message is ignored: only Gemini hears and transcribes.
+                ws.send_json({"type": "transcript", "text": "Another transcriber"})
                 ws.send_bytes(bytes(3200))
                 assert ws.receive_json()["type"] == "input"
                 assert ws.receive_json() == {
@@ -307,13 +301,7 @@ def test_gateway_audio_tools_transcript_ownership_and_reconnect(tmp_path, reson8
                 assert ws.receive_json()["type"] == "turn_complete"
         events = c.app.state.session.bus.events
         users = [e["text"] for e in events if e.get("role") == "user"]
-        assert (
-            users
-            == ["Reson8 heard the user" if reson8 else "Gemini heard the user"] * 2
-        )
-        assert {e["transcriber"] for e in events if e.get("role") == "user"} == {
-            "reson8" if reson8 else "gemini"
-        }
+        assert users == ["Gemini heard the user"] * 2
         assert len([e for e in events if e.get("role") == "agent"]) == 2
         assert all(
             any("toolResponse" in d for d in upstream.sent) for upstream in upstreams

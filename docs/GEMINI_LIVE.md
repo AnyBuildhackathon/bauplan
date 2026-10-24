@@ -1,9 +1,9 @@
 # Mechanic's realtime voice
 
-Gemini Live handles speech-to-speech conversation and interruptions.
+The voice agent is Gemini Live only: it listens, transcribes, speaks and handles interruptions.
 Claude remains the engineering brain: Gemini calls the existing orchestrator to build, change and test products, then speaks about the returned measurements.
-Reson8 independently transcribes the same microphone stream with the existing engineering phrase list.
-Its transcript feeds chat, the logbook and the conversation note offered by **Send to Jamie**.
+Gemini's own input and output transcription feeds chat, the logbook and the conversation note offered by **Send to Jamie**.
+Reson8 is not part of the voice conversation; it only powers push-to-talk dictation.
 
 ## Configuration
 
@@ -44,20 +44,18 @@ Push-to-talk (Settings) only dictates a prompt; Mechanic answers it in text.
 ## Audio and transcripts
 
 One microphone capture produces 16 kHz, mono, signed 16-bit PCM chunks.
-The browser sends each chunk to both the backend Gemini gateway and Reson8 Turns.
+The browser sends each chunk only to the backend Gemini gateway.
 Gemini's automatic voice detection controls conversation and barge-in.
 Gemini's 24 kHz PCM response plays through Web Audio, and its level drives the mascot's lip-sync.
 The header mute button silences playback while preserving transcription.
 
-Reson8's final turn text is recorded without sending another engineering prompt.
-Those turns carry `transcriber: "reson8"`, and the chat credits them with a "Transcribed by Reson8" label.
-Gemini's output transcription records Mechanic's spoken reply.
-When Reson8 is unavailable or disconnects, Gemini's input transcription becomes the transcript source and the UI displays a notice.
+Gemini's input transcription records the person's turn, shown live in the chat input while they speak, and its output transcription records Mechanic's spoken reply.
+Neither starts a second engineering prompt; only Gemini's `engineer` tool call does.
 Both sides enter the existing `chat` SSE stream and logbook archive.
 The backend also appends completed turns to the session's `voice_conversation.jsonl` file.
 The logbook lets the user choose a timeline meeting and send the displayed conversation through the existing Jamie adapter, which retains its offline outbox fallback.
 
-If Gemini is not configured, fails, times out, or closes the session, Mechanic does not switch to another voice: the microphone keeps dictating through Reson8 or the browser, and Mechanic answers in text captions.
+If Gemini is not configured, fails, times out, or closes the session, the voice conversation ends with a notice and nothing else listens or speaks; Mechanic answers typed messages in text.
 An engineering task already started by Claude continues if the voice connection ends or Gemini cancels its pending tool response.
 
 ## WebSocket protocol
@@ -71,21 +69,18 @@ Browser messages:
 
 | Message | Meaning |
 | --- | --- |
-| Binary frame | At most 64,000 bytes of raw 16 kHz mono PCM. |
-| `{"type":"transcriber","source":"reson8"}` | Reson8 is providing the user transcript. |
-| `{"type":"transcriber","source":"gemini"}` | Resume the Gemini input-transcription fallback. |
-| `{"type":"transcript","text":"Make it lighter"}` | Completed Reson8 user turn; log it without starting a second build. |
+| Binary frame | At most 64,000 bytes of raw 16 kHz mono PCM. Text frames are ignored. |
 
 Gateway messages:
 
 | Type | Fields and behavior |
 | --- | --- |
 | `ready` | `model`, `provider`, `voice`; microphone capture can begin. |
-| `input` | `text`; accumulated Gemini input transcript, displayed when Reson8 is unavailable. |
+| `input` | `text`; accumulated Gemini input transcript, shown in the chat input while the person speaks. |
 | `audio` | Base64 `data`, `sample_rate: 24000`; enqueue native PCM for playback. |
 | `interrupted` | Stop queued and playing audio immediately. |
 | `turn_complete` | The model finished the current response. |
-| `error` | Generic English `message`; switch to the legacy voice loop. Upstream error details and credentials are never forwarded. |
+| `error` | Generic English `message`; the conversation ends and Mechanic answers in text. Upstream error details and credentials are never forwarded. |
 
 Gemini can invoke three server-owned tools:
 
