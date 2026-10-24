@@ -46,7 +46,7 @@ function SpokenLine({ lifted, overSlider }: { lifted: boolean; overSlider: boole
       className={`pointer-events-none absolute left-1/2 z-10 ${lifted ? "bottom-[112px]" : overSlider ? "bottom-[68px]" : "bottom-5"} flex w-max max-w-[86%] -translate-x-1/2 animate-rise items-center gap-3 rounded-[24px] bg-white/95 py-2.5 pr-6 pl-2.5 shadow-[var(--shadow-float)] backdrop-blur`}
     >
       <MascotHead size={44} state={mascot.state} />
-      <span className="line-clamp-2 text-[19px] leading-snug font-semibold text-ink">„{mascot.say}“</span>
+      <span className="line-clamp-2 text-[19px] leading-snug font-semibold text-ink">“{mascot.say}”</span>
     </div>
   );
 }

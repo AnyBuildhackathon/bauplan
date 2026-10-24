@@ -83,7 +83,13 @@ def milestone(event: dict) -> dict | None:
             for row in (event.get("diff") or [])[:4]
             if isinstance(row, dict)
         ]
-        return {"milestone": "version finished", "version": event.get("n"), "summary": event.get("summary", ""), "changes": diff}
+        # Labelled numbers: a bare "8.5 min" reads as print time as easily as flight time.
+        labels = {"weight_g": "weight", "flight_time_min": "flight time", "price_eur": "price of the parts"}
+        units = {"weight_g": "g", "flight_time_min": "min", "price_eur": "€"}
+        summary = ", ".join(
+            f"{label} {event[key]:g} {units[key]}" for key, label in labels.items() if isinstance(event.get(key), (int, float))
+        )
+        return {"milestone": "version finished", "version": event.get("n"), "summary": summary or event.get("summary", ""), "changes": diff}
     if kind == "step" and event.get("status") == "failed":
         return {"milestone": "step failed", "step": event.get("label")}
     return None

@@ -46,6 +46,8 @@ class MilestoneTest(unittest.TestCase):
         self.assertEqual(speech.milestone({"type": "sim", "result": "fail", "summary": "It sank."})["result"], "fail")
         version = speech.milestone({"type": "version", "n": 2, "summary": "49.3 g · 15.6 min", "diff": [{"label": "Flight time", "before": 11.7, "after": 15.6, "unit": "min"}]})
         self.assertEqual(version["changes"], ["Flight time: 11.7 to 15.6 min"])
+        labelled = speech.milestone({"type": "version", "n": 1, "weight_g": 47.2, "flight_time_min": 8.5, "price_eur": 121.56, "summary": "47.2 g · 8.5 min · 121.56 €"})
+        self.assertEqual(labelled["summary"], "weight 47.2 g, flight time 8.5 min, price of the parts 121.56 €")
         self.assertIsNone(speech.milestone({"type": "tool", "name": "parts_search", "status": "ok"}))
         self.assertIsNone(speech.milestone({"type": "step", "id": "cad", "status": "done"}))
         self.assertEqual(speech.milestone({"type": "step", "label": "CAD", "status": "failed"})["step"], "CAD")
