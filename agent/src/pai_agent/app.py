@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import re
@@ -52,6 +53,10 @@ async def _lifespan(app: FastAPI):
     session = Session()
     app.state.session = session
     await session.bootstrap()
+    from pai_agent import warm
+
+    if warm.enabled():
+        app.state.warm = asyncio.create_task(asyncio.to_thread(warm.warm))
     yield
     await session.shutdown()
 
@@ -69,8 +74,9 @@ app.include_router(stress_router)
 
 
 @app.get("/api/health")
-async def health() -> dict:
-    return {"ok": True, "mode": "claude" if claude_enabled() else "mock"}
+async def health(request: Request) -> dict:
+    # busy tells tests and the profiler when a run has finished.
+    return {"ok": True, "mode": "claude" if claude_enabled() else "mock", "busy": request.app.state.session._busy()}
 
 
 @app.post("/api/prompt")

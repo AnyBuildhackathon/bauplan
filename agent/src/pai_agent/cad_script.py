@@ -214,3 +214,71 @@ def run_script(
         )
     finally:
         shutil.rmtree(work, ignore_errors=True)
+
+
+def run_script_cached(
+    source: str,
+    params: dict,
+    out_dir: Path,
+    stem: str,
+    material: str = "PLA",
+    expected_mm: list[float] | None = None,
+) -> tuple[PartBuild, bool]:
+    """run_script, but an identical script, parameters and material reuse the last FreeCAD result. Returns (build, cached)."""
+
+    from pai_agent import cache
+
+    entry = cache.key("part", source, params, material.upper(), expected_mm, cache.digest(HARNESS), cache.tool_version(find_freecadcmd()))
+    meta = cache.restore("parts", entry, {})
+    if meta is not None:
+        names = ["part.stl", "part.step", "part.glb"] + [row["stl"] for row in meta["parts"]]
+        targets = {name: out_dir / name.replace("part", stem, 1) for name in names}
+        if cache.restore("parts", entry, targets) is not None:
+            parts = [{**row, "stl": row["stl"].replace("part", stem, 1)} for row in meta["parts"]]
+            (out_dir / (stem + ".py")).write_text(source, encoding="utf-8")
+            return PartBuild(parts, meta["bbox_mm"], meta["volume_mm3"], meta["mass_g"], out_dir / (stem + ".stl"), out_dir / (stem + ".step"), out_dir / (stem + ".glb")), True
+    build = run_script(source, params, out_dir, stem, material, expected_mm=expected_mm)
+    files = {"part.stl": build.stl, "part.step": build.step, "part.glb": build.glb}
+    rows = []
+    for row in build.parts:
+        cached_name = "part" + row["stl"][len(stem):]
+        files[cached_name] = out_dir / row["stl"]
+        rows.append({**row, "stl": cached_name})
+    cache.store("parts", entry, files, {"parts": rows, "bbox_mm": build.bbox_mm, "volume_mm3": build.volume_mm3, "mass_g": build.mass_g})
+    return build, False
+
+
+def freecad_unavailable(error: str | None) -> bool:
+    """FreeCAD is missing or stuck, as opposed to a script it rejected."""
+
+    return find_freecadcmd() is None or "ran longer than" in str(error or "")
+
+
+def run_block(size: list[float], center: list[float] | None, out_dir: Path, stem: str, material: str = "PLA") -> PartBuild:
+    """Without a working FreeCAD, CadQuery builds the part's envelope as a plain block, so the assembly and checks go on."""
+
+    import cadquery as cq
+    from cadquery import exporters
+
+    sx, sy, sz = (float(v) for v in size[:3])
+    cx, cy, cz = (float(v) for v in (center or (0.0, 0.0, sz / 2.0))[:3])
+    block = cq.Workplane("XY").box(sx, sy, sz).translate((cx, cy, cz))
+    out_dir.mkdir(parents=True, exist_ok=True)
+    stl = out_dir / (stem + ".stl")
+    step = out_dir / (stem + ".step")
+    glb = out_dir / (stem + ".glb")
+    kept = out_dir / (stem + "-0.stl")
+    exporters.export(block, str(stl))
+    exporters.export(block, str(step))
+    shutil.copyfile(stl, kept)
+    stls_to_glb([("Block", kept, None)], glb)
+    volume = sx * sy * sz
+    mass = round(volume / 1000.0 * density(material), 2)
+    bbox = [cx - sx / 2, cy - sy / 2, cz - sz / 2, cx + sx / 2, cy + sy / 2, cz + sz / 2]
+    row = {"name": "Block", "volume_mm3": round(volume, 2), "mass_g": mass, "material": material.upper(), "reference": False, "bbox_mm": bbox, "stl": kept.name, "color": None}
+    (out_dir / (stem + ".py")).write_text(
+        "# Simplified block: FreeCAD was not available, CadQuery built the part's envelope.\n"
+        f"shape = Part.makeBox({sx:g}, {sy:g}, {sz:g}, Vector({cx - sx / 2:g}, {cy - sy / 2:g}, {cz - sz / 2:g}))\n",
+        encoding="utf-8",
+    )
+    return PartBuild(parts=[row], bbox_mm=bbox, volume_mm3=round(volume, 2), mass_g=mass, stl=stl, step=step, glb=glb)

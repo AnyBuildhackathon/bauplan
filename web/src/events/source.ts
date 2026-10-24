@@ -104,6 +104,23 @@ let eventSource: EventSource | null = null;
 let retry: ReturnType<typeof setTimeout> | null = null;
 const RETRY_MS = 3000;
 
+// The watchdog: a step that stays running with no event for this long gets one notice, so a quiet tool never looks frozen.
+const STALL_MS = 45_000;
+let lastEventAt = Date.now();
+let stallNoticed = false;
+let watchdog: ReturnType<typeof setInterval> | null = null;
+
+function watchStalls() {
+  if (watchdog) return;
+  watchdog = setInterval(() => {
+    if (stallNoticed || Date.now() - lastEventAt < STALL_MS) return;
+    const running = Object.values(useSession.getState().steps).find((step) => step.status === "running");
+    if (!running) return;
+    stallNoticed = true;
+    useSource.setState({ notice: `Mechanic is still working on ${running.label}. A stuck tool stops on its own time limit with a message.` });
+  }, 5000);
+}
+
 /**
  * Opens the SSE stream. EventSource retries dropped connections itself, but gives
  * up for good after an HTTP error (for example 502 from the proxy while the backend
@@ -114,6 +131,7 @@ function openLive(onStatus: (s: LiveStatus) => void) {
   onStatus("connecting");
   const es = new EventSource(apiUrl("/api/events"));
   eventSource = es;
+  watchStalls();
   // The backlog a (re)connect replays is applied without animations or Bolzen speaking it again.
   let replaying = true;
   es.onopen = () => {
@@ -130,6 +148,8 @@ function openLive(onStatus: (s: LiveStatus) => void) {
     if (eventSource === es) retry = setTimeout(() => openLive(onStatus), RETRY_MS);
   };
   es.onmessage = (msg) => {
+    lastEventAt = Date.now();
+    stallNoticed = false;
     const ev = parseEvent(msg.data);
     if (!ev) return;
     if (ev.type === "replayed") {
