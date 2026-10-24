@@ -23,6 +23,11 @@ export interface Display {
 interface UiState {
   view: View;
   tab: CanvasTab;
+  /** Follow engineering activity unless a person has taken the tabs for 30 seconds. */
+  director: boolean;
+  directorPausedUntil: number;
+  setDirector: (on: boolean) => void;
+  selectTab: (tab: CanvasTab) => void;
   /** Inside the Modell tab: the live 3D model or the Blender render. */
   look: ModelLook;
   /** Version picked on the meeting timeline; null follows the newest. */
@@ -109,6 +114,15 @@ function storedDisplay(): Display {
 
 const MIC_KEY = "anybuild.mic";
 const CLICKY_KEY = "anybuild.clicky";
+const DIRECTOR_KEY = "anybuild.director";
+
+function storedDirector(): boolean {
+  try {
+    return localStorage.getItem(DIRECTOR_KEY) !== "off";
+  } catch {
+    return true;
+  }
+}
 
 function storedClicky(): boolean {
   try {
@@ -152,6 +166,17 @@ function initialTab(): CanvasTab {
 export const useUi = create<UiState>((set) => ({
   view: initialView(),
   tab: initialTab(),
+  director: storedDirector(),
+  directorPausedUntil: params().has("tab") ? Date.now() + 30_000 : 0,
+  setDirector: (director) => {
+    try {
+      localStorage.setItem(DIRECTOR_KEY, director ? "on" : "off");
+    } catch {
+      // Private windows may refuse storage; the choice lasts for this page.
+    }
+    set({ director, directorPausedUntil: 0 });
+  },
+  selectTab: (tab) => set({ tab, directorPausedUntil: Date.now() + 30_000 }),
   look: params().get("tab") === "render" ? "render" : "3d",
   selectedVersion: null,
   versionsOpen: false,

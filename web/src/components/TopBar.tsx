@@ -1,7 +1,5 @@
-import { useSource } from "../events/source";
 import { BenchSettings } from "./BenchSettings";
-import { MeetingTimeline } from "./timeline/MeetingTimeline";
-import { StatusDot } from "./ui/primitives";
+import { PartnerChips } from "./PartnerChips";
 
 /** The app logo: the workbench cube, shown full. */
 export function Logo({ size = 40 }: { size?: number }) {
@@ -17,29 +15,11 @@ export function Logo({ size = 40 }: { size?: number }) {
   );
 }
 
-/** Where the bench gets its events: the live backend and whether Claude or the mock runs it. */
-function SourceStatus() {
-  const live = useSource((s) => s.live);
-  const backend = useSource((s) => s.backend);
-  return (
-    <span
-      title={backend === "mock" ? "No Anthropic API key: the backend runs its scripted mock build" : undefined}
-      className={`flex items-center gap-2 text-[12px] font-semibold ${live !== "open" ? (live === "connecting" ? "text-agent-ink" : "text-fail-ink") : backend === "mock" ? "text-agent-ink" : "text-ok-ink"}`}
-    >
-      <StatusDot tone={live === "open" ? "ok" : live === "connecting" ? "agent" : "fail"} pulse={live === "connecting"} />
-      {live === "open" ? (backend === "mock" ? "Mock mode" : "Claude live") : live === "connecting" ? "connecting …" : "Backend offline"}
-    </span>
-  );
-}
-
-/** The slim bar over the canvas: the Jamie meetings on the left, the backend status and Settings on the right. */
+/** Partner availability and settings; meeting history lives in the Logbook. */
 export function TopBar() {
   return (
-    <header className="flex h-[56px] shrink-0 items-center gap-4 border-b border-line px-5">
-      <div className="flex min-w-0 flex-1">
-        <MeetingTimeline />
-      </div>
-      <SourceStatus />
+    <header className="flex min-h-[56px] shrink-0 items-center gap-3 border-b border-line px-5 py-2">
+      <PartnerChips />
       <BenchSettings />
     </header>
   );

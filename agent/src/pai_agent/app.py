@@ -129,6 +129,19 @@ async def access() -> dict:
     return {"ok": True, "access": "open"}
 
 
+@app.get("/api/status")
+async def status(request: Request) -> dict:
+    from pai_agent.status import isaac_connection, partner_statuses
+
+    session = request.app.state.session
+    partners, isaac = await asyncio.gather(
+        asyncio.to_thread(partner_statuses, list(session.bus.events)), isaac_connection(),
+    )
+    last = session.state.omniverse_result
+    isaac = {**isaac, "last_run": {key: last.get(key) for key in ("job_id", "mode", "status", "source", "stage", "detail")} if last else None}
+    return {"partners": [*partners, {"id": "isaac", "label": "NVIDIA Isaac", "state": isaac["state"], "detail": isaac["detail"]}], "isaac": isaac}
+
+
 @app.post("/api/prompt")
 async def prompt(body: PromptIn, request: Request) -> dict:
     text = body.text.strip()

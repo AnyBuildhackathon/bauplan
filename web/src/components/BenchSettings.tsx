@@ -80,6 +80,8 @@ export function BenchSettings() {
   const ref = useRef<HTMLDivElement>(null);
 
   const display = useUi((s) => s.display);
+  const director = useUi((s) => s.director);
+  const setDirector = useUi((s) => s.setDirector);
   const setDisplay = useUi((s) => s.setDisplay);
   const micMode = useUi((s) => s.micMode);
   const setMicMode = useUi((s) => s.setMicMode);
@@ -138,6 +140,7 @@ export function BenchSettings() {
       {open && (
         <div className="scroll-soft absolute top-12 right-0 z-[90] max-h-[calc(100vh-90px)] w-[340px] animate-rise overflow-y-auto rounded-[20px] bg-card p-4 shadow-[var(--shadow-float)]">
           <h3 className="eyebrow mb-1">Show</h3>
+          <Toggle label="Director mode" hint="Follow CAD, tests and version changes. A tab click pauses for 30 seconds." on={director} onChange={setDirector} />
           {DISPLAY.map((d) => (
             <Toggle key={d.key} control={d.control} label={d.label} hint={d.hint} on={display[d.key]} onChange={(on) => setDisplay({ [d.key]: on })} />
           ))}

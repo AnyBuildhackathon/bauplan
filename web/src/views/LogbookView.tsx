@@ -7,6 +7,7 @@ import { useMemo, useState } from "react";
 import { ChevronDown, Download, MessageSquareText, NotebookPen } from "lucide-react";
 import { MascotHead } from "../components/mascot/Mascot";
 import { Chip, PillButton } from "../components/ui/primitives";
+import { MeetingTimeline } from "../components/timeline/MeetingTimeline";
 import { STEP_IDS, type MeetingEvent, type VersionDiff, type VersionEvent } from "../events/types";
 import { useSession } from "../events/store";
 import { loadSavedChats } from "../lib/archive";
@@ -307,6 +308,7 @@ export function LogbookView() {
             <Download className="h-4 w-4" /> Export
           </PillButton>
         </div>
+        <div className="mb-5"><MeetingTimeline /></div>
         {versions.length === 0 ? (
           <p className="pb-6 text-[14px] text-muted">No version yet. v1 comes out of the kickoff or your first request.</p>
         ) : (

@@ -15,6 +15,7 @@ import { AccessScreen } from "./views/AccessScreen";
 import { useBolzenVoice } from "./lib/bolzenVoice";
 import { usePilotRunner } from "./lib/pilot";
 import { useUi } from "./lib/ui";
+import { useDirector } from "./lib/director";
 import { BenchResults } from "./views/BenchResults";
 import { BomDrawer } from "./views/BomDrawer";
 import { VersionDrawer } from "./views/VersionDrawer";
@@ -77,6 +78,7 @@ export default function App() {
 }
 
 function Bench() {
+  useDirector();
   const view = useUi((s) => s.view);
   const chatExpanded = useUi((s) => s.chatExpanded);
   useBolzenVoice();
