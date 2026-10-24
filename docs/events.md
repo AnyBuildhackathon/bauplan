@@ -340,6 +340,20 @@ It does not guess from a screenshot.
 `curve` is `[[step, reward], ...]`.
 `video_url` is a backend path such as `/files/fallback/hover.mp4`, or `null` when there is no clip.
 A `done` event after an `offline` tool means the fallback file was played, not that a pod finished a job.
+`gains` is optional: the training task may emit the trained controller gains as `{roll, pitch, yaw}`, each `{p, i, d, f}` in Betaflight units.
+
+### firmware
+
+The firmware and wiring for the built product, from the `firmware` tool after `bom_build`.
+`kind` is `betaflight` (a drone with a flight controller) or `arduino` (a servo product).
+`product` is the product name, such as `drone`.
+`filename` is the file name, such as `anybuild-drone-v1-betaflight.txt` or `anybuild_gripper_v1.ino`; `url` is its `/files/{session}/{filename}` path.
+`content` is the whole file, so a client can offer the download without the backend.
+The file is a fixed template filled from the chosen parts; only `explanation`, one or two sentences, may come from Claude.
+`gains` is `{roll, pitch, yaw}`, each `{p, i, d, f}` in Betaflight units, or `null` for an Arduino sketch.
+`gains_source` says where they came from: `training`, `defaults`, or `none`.
+`training` means the optional `gains` field of the last `training` event that carries one; missing terms keep the defaults.
+`wiring` is a list of `{component, connects_to, pin, wire, note}`, one row per connection of a chosen part.
 
 ### stress
 
@@ -399,7 +413,7 @@ UI:
 
 ## Tools
 
-`jamie_templates`, `jamie_requirements`, `jamie_search`, `jamie_meeting`, `requirements_accept`, `ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `stress_test`, `cad_frame`, `cad_part`, `product_brief`, `product_spec`, `reference_load`, `delegate`, `part_pick`, `assemble`, `cad_update`, `check_totals`, `check_tip_over`, `check_deflection`, `check_torque`, `check_runtime`, `simulate_assembly`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `blender_render`, `bom_build`, `jamie_create_tasks`, `version_commit`, `ui_point_at`, `ui_draw`, `mascot_say`.
+`jamie_templates`, `jamie_requirements`, `jamie_search`, `jamie_meeting`, `requirements_accept`, `ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `stress_test`, `cad_frame`, `cad_part`, `product_brief`, `product_spec`, `reference_load`, `delegate`, `part_pick`, `assemble`, `cad_update`, `check_totals`, `check_tip_over`, `check_deflection`, `check_torque`, `check_runtime`, `simulate_assembly`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `blender_render`, `bom_build`, `firmware`, `jamie_create_tasks`, `version_commit`, `ui_point_at`, `ui_draw`, `mascot_say`.
 
 ### Any product
 
@@ -475,6 +489,7 @@ A prompt that asks for a gripper (`gripper`, `claw`, `end effector`) plays the g
 Mechanic turns the request into checks, tries the 2.49 € SG90 first: 1.1 N per finger is a safety of 0.9×, and in MuJoCo the can slides out when the arm lifts.
 The swap to the MG996R gives 6.0 N per finger and passes with 0.4 mm slip.
 FreeCAD builds the gripper headless from the library template with the servo pocket sized for the MG996R (58 g PLA), Blender renders it, and the bill of materials comes to 18.65 € and 128 g.
+The drone and gripper stories call `firmware` right after `bom_build`: the drone gets a Betaflight CLI file, the gripper an Arduino sketch.
 A prompt that asks for a phone stand (`phone`, `tablet` with `stand`, `holder`, `dock` or `mount`) plays the generic story: Mechanic writes the spec, FreeCAD builds the base plate and the back rest from the phone stand reference build (`agent/data/references/phone-stand/`), the rubber feet come from the catalog, and the assembly with the 200 g phone tips at 0.35 N, under the 0.75 N tap it must take; the MuJoCo push knocks it over.
 Mechanic deepens the base from 60 to 110 mm with `cad_update`, every check runs again and passes (0.81 N, the push only rocks it), then Blender renders it and the bill of materials comes to 3.32 € and 116 g.
 The dashboard's `?demo` replays exactly the drone run from `web/src/events/recording.json`, written by `agent/scripts/record_demo.py`.

@@ -107,6 +107,7 @@ async def run_gripper_mock(ctx: Ctx, text: str) -> None:
     await _beat()
     await ctx.step("stueckliste", "running")
     bom = await _need(ctx, "bom_build", {})
+    await _need(ctx, "firmware", {})
     await ctx.step("stueckliste", "done")
     ctx.state.finished = True
     await _say(

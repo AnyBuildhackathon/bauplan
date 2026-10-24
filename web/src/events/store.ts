@@ -7,6 +7,7 @@ import {
   type BomEvent,
   type CadEvent,
   type DrawEvent,
+  type FirmwareEvent,
   type RenderEvent,
   type MascotState,
   type MeetingEvent,
@@ -145,6 +146,7 @@ export interface SessionState {
   agents: Record<string, AgentRunEvent & { at: number }>;
   /** The product this session builds: empty on a fresh bench, set by a `product` event or by the first drone event. */
   product: ProductEvent["id"];
+  firmware: FirmwareEvent | null;
   productLabel: string;
   /** Stress tests by run number, latest event of each. */
   stress: Record<number, StressEvent & { seq: number; at: number }>;
@@ -212,6 +214,7 @@ const TOOL_ALIASES: Record<string, string> = {
   parts_search: "Parts",
   physics_calc: "Physics",
   bom_build: "BOM",
+  firmware: "Firmware",
   version_commit: "Version",
   ask_user: "Question",
 };
@@ -277,6 +280,7 @@ function emptyState() {
     partsByName: {} as Record<string, PartEvent>,
     questions: {} as Record<string, QuestionEvent>,
     tasks: null as TasksEvent | null,
+    firmware: null as FirmwareEvent | null,
     agents: {} as SessionState["agents"],
     product: "" as ProductEvent["id"],
     productLabel: "Any product",
@@ -481,6 +485,7 @@ export const useSession = create<SessionState>((set, get) => ({
           renders: [],
           parts: {},
           versions: [],
+          firmware: null,
         });
       }
       case "stress": {
@@ -489,6 +494,8 @@ export const useSession = create<SessionState>((set, get) => ({
         const chat: ChatItem[] = known ? s.chat : [...s.chat, { kind: "stress", id: nextId("stress"), seq, at, run: ev.run }];
         return set({ log, stress, chat });
       }
+      case "firmware":
+        return set({ log, firmware: ev });
       case "training": {
         const prev = s.training;
         let chat = s.chat;
