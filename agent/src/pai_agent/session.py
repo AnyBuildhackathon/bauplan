@@ -55,14 +55,14 @@ class Session:
     def _busy(self) -> bool:
         return self.task is not None and not self.task.done()
 
-    async def start(self, text: str, voice: bool = False) -> dict:
+    async def start(self, text: str, voice: bool = False, record_user: bool = True) -> dict:
         mode = "claude" if claude_enabled() else "mock"
         commands = match_commands(text, self.state)
         if commands:
-            return await self._control(text, commands, mode)
+            return await self._control(text, commands, mode, record_user=record_user)
         if self._busy():
             question = self.question
-            if question is not None and await self._answer_from_text(text, voice):
+            if question is not None and await self._answer_from_text(text, voice, record_user=record_user):
                 self.voice.reply(text, self.state, "answered", question)
                 return {"ok": True, "mode": mode, "status": "answered"}
             self.voice.reply(text, self.state, "already_running")
@@ -71,16 +71,17 @@ class Session:
         ctx = self._ctx(auto_steps=claude_enabled())
         ctx.trigger = "chat"
         ctx.label = text.strip()[:80]
-        self.task = asyncio.create_task(self._run(run_prompt(ctx, text, self.messages, voice), ctx))
+        self.task = asyncio.create_task(self._run(run_prompt(ctx, text, self.messages, voice, record_user=record_user), ctx))
         return {"ok": True, "mode": mode, "status": "started"}
 
-    async def _control(self, text: str, commands: list[dict], mode: str) -> dict:
+    async def _control(self, text: str, commands: list[dict], mode: str, *, record_user: bool = True) -> dict:
         """A pure dashboard command: Mechanic operates the app at once, also while a build runs."""
 
         from pai_agent.tools.registry import call_tool
         from pai_agent.tools.ui import ui_event
 
-        await self.bus.publish({"type": "chat", "role": "user", "text": text})
+        if record_user:
+            await self.bus.publish({"type": "chat", "role": "user", "text": text})
         if any(c["control"] == "run:rebuild" for c in commands):
             review = next(
                 (m for m in sorted(self.state.meetings.values(), key=lambda m: (m["date"], m["time"])) if m["kind"] == "review" and m["status"] != "done"),
@@ -299,7 +300,7 @@ class Session:
             self._answer.set_result(answer_id)
         return True
 
-    async def _answer_from_text(self, text: str, voice: bool = False) -> bool:
+    async def _answer_from_text(self, text: str, voice: bool = False, *, record_user: bool = True) -> bool:
         """'Fünfzehn', '15 bitte' or 'ja, passt' answer the open question."""
 
         assert self.question is not None
@@ -310,10 +311,12 @@ class Session:
         for option in self.question["options"]:
             numbers = re.findall(r"\d+", option["label"])
             if numbers and any(re.search(r"\b" + n + r"\b", lowered) for n in numbers):
-                await self.bus.publish({"type": "chat", "role": "user", "text": text, **({"voice": True} if voice else {})})
+                if record_user:
+                    await self.bus.publish({"type": "chat", "role": "user", "text": text, **({"voice": True} if voice else {})})
                 return await self.answer(self.question["id"], option["id"])
         if re.search(r"\b(ja|passt|okay|ok|genau|neu|neue|yes|fine|sure|new)\b", lowered):
-            await self.bus.publish({"type": "chat", "role": "user", "text": text, **({"voice": True} if voice else {})})
+            if record_user:
+                await self.bus.publish({"type": "chat", "role": "user", "text": text, **({"voice": True} if voice else {})})
             return await self.answer(self.question["id"], self.question["default_id"])
         return False
 

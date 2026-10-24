@@ -8,7 +8,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowUp, Mic, MousePointer2 } from "lucide-react";
 import { useUi } from "../../lib/ui";
 import { hold, isEcho, isSpeaking, markTurnEnd, release, stopSpeaking, unlockAudio, warmUp } from "../../lib/speech";
-import { startHandsFree, startListening as listen, type HandsFree, type Listener } from "../../lib/voice";
+import { startListening as listen, type HandsFree, type Listener } from "../../lib/voice";
+import { startVoiceConversation } from "../../lib/geminiLive";
+import { useVoiceEngine } from "../../lib/voiceEngine";
 import { pickImage, SketchButton, SketchChip } from "./SketchDrop";
 
 interface SidebarChatInputProps {
@@ -61,6 +63,7 @@ export default function SidebarChatInput({
   const listening = useUi((s) => s.listening);
   const setListening = useUi((s) => s.setListening);
   const micMode = useUi((s) => s.micMode);
+  const engineChoice = useVoiceEngine((s) => s.choice);
   const handsFree = useUi((s) => s.handsFree);
   const setHandsFree = useUi((s) => s.setHandsFree);
   const userTalking = useUi((s) => s.userTalking);
@@ -109,7 +112,7 @@ export default function SidebarChatInput({
     setHint(null);
     unlockAudio();
     setHandsFree(true);
-    const active = await startHandsFree({
+    const active = await startVoiceConversation({
       onTurnStart: () => {
         // Barge-in: Mechanic pauses mid-word the moment the person starts talking.
         overMechanic.current = isSpeaking();
@@ -135,6 +138,9 @@ export default function SidebarChatInput({
         onVoiceRef.current?.(text);
       },
       onError: flash,
+    }, setHeard).catch(() => {
+      flash("The microphone is unavailable. Check its permission or type instead.");
+      return null;
     });
     starting.current = false;
     if (!active || !useUi.getState().handsFree) {
@@ -145,7 +151,11 @@ export default function SidebarChatInput({
     conversation.current = active;
   }, [setHandsFree, setUserTalking, flash]);
 
-  useEffect(() => () => conversation.current?.stop(), []);
+  useEffect(() => () => {
+    useUi.getState().setHandsFree(false);
+    conversation.current?.stop();
+  }, []);
+  useEffect(() => stopHandsFree(), [engineChoice, stopHandsFree]);
   useEffect(() => {
     if (micMode === "ptt") stopHandsFree();
   }, [micMode, stopHandsFree]);
