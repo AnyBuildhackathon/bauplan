@@ -16,6 +16,7 @@ import { useTargets } from "../lib/hooks";
 import { useUi } from "../lib/ui";
 import { Segmented } from "../components/ui/primitives";
 import { BuildGuideButton } from "./BuildGuide";
+import { WhyButton } from "../components/learn/Explain";
 import { ExportMenu } from "./ExportMenu";
 import { OrderView } from "./OrderView";
 
@@ -93,6 +94,7 @@ function PartRow({ item, part, searching }: { item: BomItem; part: PartEvent | u
         <div className="mt-2.5 space-y-2 pl-14">
           {part.reason && <p className="text-[15px] leading-snug text-ink-2">{part.reason}</p>}
           {part.why && <QuoteBubble quote={part.why} />}
+          <WhyButton kind="part" id={part.category} label="Explain the physics" />
         </div>
       )}
       {warnings.map((w, i) => (

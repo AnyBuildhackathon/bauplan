@@ -502,6 +502,21 @@ export interface FirmwareEvent {
  * then `done` with the whole `text`. `kind` is `reply` (an answer to the person) or
  * `update` (a build milestone). Never replayed on reconnect.
  */
+/** Learning mode: one decision explained with its physics (POST /api/explain). */
+export interface ExplainEvent {
+  type: "explain";
+  key: string;
+  kind: "part" | "swap" | "requirement" | "sim" | "param";
+  target_id: string;
+  title: string;
+  text: string;
+  formula: string;
+  numbers: { label: string; value: number | string; unit: string }[];
+  source: "claude" | "template";
+  model: string | null;
+  /** Asked for by a live event, so it shows as a chat card; a "Why?" click shows it in place. */
+  chat?: boolean;
+}
 export interface SayEvent {
   type: "say";
   id: string;
@@ -540,6 +555,7 @@ export type AgentEvent =
   | FirmwareEvent
   | AgentRunEvent
   | SayEvent
+  | ExplainEvent
   | ResetEvent
   | ReplayedEvent;
 
@@ -571,6 +587,7 @@ const EVENT_TYPES = new Set<AgentEvent["type"]>([
   "firmware",
   "agent",
   "say",
+  "explain",
   "reset",
   "replayed",
 ]);
