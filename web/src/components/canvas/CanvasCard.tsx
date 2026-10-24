@@ -48,7 +48,7 @@ function SpokenLine({ lifted, overSlider }: { lifted: boolean; overSlider: boole
   return (
     <>
       {figure && (
-        <div className={`pointer-events-none absolute right-4 z-10 animate-rise ${lifted ? "bottom-[100px]" : "bottom-2"}`}>
+        <div className={`pointer-events-none absolute right-4 z-10 animate-rise ${lifted ? "bottom-[150px]" : "bottom-2"}`}>
           <MascotFull state={mascot.state} height={150} />
         </div>
       )}

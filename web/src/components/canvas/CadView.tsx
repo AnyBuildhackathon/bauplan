@@ -239,9 +239,9 @@ function ParamSlider({
   const changed = Math.abs(value - param.value) > 1e-9;
   return (
     <label className="block" data-target={`param:${name} ${name}`}>
-      <div className="flex items-baseline justify-between">
-        <span className="truncate text-[14px] font-semibold text-ink-2">{param.label ?? paramLabel(name)}</span>
-        <span className={`num text-[15px] font-bold ${pending ? "text-agent-ink" : changed ? "text-ink" : "text-ink"}`}>
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="min-w-0 truncate text-[14px] font-semibold text-ink-2" title={param.label ?? paramLabel(name)}>{param.label ?? paramLabel(name)}</span>
+        <span className={`num shrink-0 text-[15px] font-bold whitespace-nowrap ${pending ? "text-agent-ink" : changed ? "text-ink" : "text-ink"}`}>
           {changed && <span className="mr-1 text-[13px] font-semibold text-faint">{fmtNum(param.value, step < 1 ? 1 : 0)} →</span>}
           {fmtNum(value, step < 1 ? 1 : 0)} {param.unit}
         </span>
