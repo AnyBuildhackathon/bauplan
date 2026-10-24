@@ -70,14 +70,12 @@ Clear integration points connect modules across the codebase without merge confl
 
 The hackathon takes place on 2026-10-24 in Berlin:
 
-- 09:00 - 10:00: Team kickoff, problem framing, and repository structure setup.
-- 10:00 - 12:30: Core agent tools, FreeCAD parametric build pipeline, and MuJoCo simulation harness.
-- 12:30 - 14:30: Jamie MCP integration, requirement extraction, timeline wire contracts, and Reson8 speech connection.
-- 14:30 - 16:30: Frontend dashboard polish, Three.js 3D viewport tabs, Bevel design tokens, and mock story recording.
-- 16:30 - 17:45: RunPod RTX 4090 Isaac Lab training setup, fallback recording generation, and desktop packaging.
-- 17:45 - 18:30: End-to-end rehearsal, code freeze, and submission completion.
-- 18:30: Project submission deadline.
-- 19:00: Opt-in deadline for live stage demos.
+- Until 12:00: Environment setup, repository clones, and configuring on-site credentials for Jamie, Reson8, and Anthropic.
+- 12:00 - 16:00: All workstreams build in parallel with small pull requests into main (Omniverse and RunPod included in this window, switching to recorded fallback if the pod is not stable by 14:00).
+- 16:00: Feature freeze across all active branches.
+- 16:00 - 17:30: Record 2-minute demo video alongside README and technical documentation completion.
+- 17:30 - 18:30: Two rehearsals of the 5-minute presentation and make the repository public.
+- 18:30: Project submission (deadline 19:00).
 - 20:00: Live demo presentations on the main stage projector.
 
 ## Submission Requirements and Judging Criteria
