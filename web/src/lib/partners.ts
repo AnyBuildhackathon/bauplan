@@ -23,7 +23,7 @@ export interface IntegrationStatus {
 
 const ROSTER = [
   ["claude", "Claude"], ["jamie", "Jamie"], ["reson8", "Reson8"],
-  ["elevenlabs", "ElevenLabs"], ["freecad", "FreeCAD"], ["blender", "Blender"], ["isaac", "NVIDIA Isaac"],
+  ["elevenlabs", "ElevenLabs"], ["gemini", "Gemini Live"], ["freecad", "FreeCAD"], ["blender", "Blender"], ["isaac", "NVIDIA Isaac"],
 ];
 
 function unavailable(recorded: boolean, detail: string): IntegrationStatus {

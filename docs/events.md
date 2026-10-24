@@ -222,14 +222,15 @@ The dashboard calls it on start: when the backend answers it opens with an empty
 
 `GET /api/status` returns `{"partners": [{"id", "label", "state", "detail"}], "isaac": {"host", "gpu", "state", "detail", "last_run"}}`.
 It requires the same access session as other API routes and never returns keys, tokens or private-key paths.
-Partner ids are `claude`, `jamie`, `reson8`, `elevenlabs`, `freecad`, `blender` and `isaac`.
+Partner ids are `claude`, `jamie`, `reson8`, `elevenlabs`, `gemini`, `freecad`, `blender` and `isaac`.
 `state` is `live`, `offline` or `mock`; `detail` explains the provider and its fallback in English.
 For remote APIs, `live` means credentials are configured and the integration is enabled, not that authentication or quota has been verified.
 Status checks make no billable API calls.
 Claude is `mock` when disabled or forced into mock mode; Jamie is `mock` without its MCP token.
 Missing speech keys are `offline`, with browser recognition or text replies as the fallback.
 FreeCAD and Blender report local availability; observed tool errors and CAD fallback to CadQuery override availability until a later successful result or session reset.
-ElevenLabs is the implemented voice provider; Gemini has no voice adapter and is not advertised as connected.
+ElevenLabs and Gemini Live report independently, so either voice engine can be chosen in Settings without implying the other is connected.
+Gemini availability follows the existing Studio key or Vertex project and `gcloud` configuration.
 The frontend polls every 15 seconds, marks unavailable status responses offline, and labels every chip `mock` during static demo playback without contacting the backend.
 
 The Isaac chip opens the Omniverse tab, including on an empty bench, and reports `Connected` with the GPU name only after a successful read-only SSH `nvidia-smi` probe.
@@ -242,6 +243,7 @@ Running Isaac jobs requires a connected GPU and the supported drone reference.
 
 Director mode is a browser preference, enabled by default and toggled in Settings.
 Running `teile` or `cad` steps and CAD artifacts select CAD; running `simulation` steps and simulation results select Simulation; rendering selects the Model render view.
+Live Omniverse job events select Omniverse; recorded GPU fallbacks do not take over the canvas.
 A `version` event selects the 3D Model and compares it with the previous version of the same product when available.
 Manual canvas tab clicks pause Director for 30 seconds, then apply the latest pending activity even if no additional event arrives.
 A `tab` URL parameter gets the same initial grace period.

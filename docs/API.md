@@ -25,6 +25,7 @@ It has no OpenAPI page; FastAPI's generated docs are turned off on purpose for t
 | Method | Path | Purpose | Limit | Spec |
 | --- | --- | --- | --- | --- |
 | `GET` | `/api/health` | Status: `mode` (`claude` or `mock`), `busy`, `access` (`open` or `required`). Always public. | | [Learning mode](events.md#learning-mode) |
+| `GET` | `/api/status` | Independent partner availability and NVIDIA SSH/GPU connection, including the last Isaac run. Requires the normal access session. | | [Partner status](events.md#partner-status-and-director-mode) |
 | `GET` | `/api/bench` | Saved live and mock benchmark results: `{ok, runs}`; missing runs are omitted. | | [Bench](events.md#http) |
 | `POST` | `/api/prompt` | Send a typed or spoken (`voice: true`) message; starts or continues a build, answers an open question, or operates the dashboard (`status: ui`). | build | [HTTP](events.md#http) |
 | `POST` | `/api/sketch` | Start a new product from a photo of a hand sketch (PNG, JPEG or WebP up to 8 MB, base64 or data URL). | build | [HTTP](events.md#http) |

@@ -21,6 +21,7 @@ function shotFor({ ev }: LoggedEvent, state: SessionState): Shot | null {
   }
   if (ev.type === "cad") return { tab: "cad" };
   if (ev.type === "sim") return { tab: "simulation" };
+  if (ev.type === "omniverse" && ev.source === "live") return { tab: "omniverse" };
   return null;
 }
 
