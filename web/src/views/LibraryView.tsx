@@ -133,7 +133,7 @@ function Inspect({ item, live, onRebuild }: { item: ReferenceBuild; live: boolea
           {item.saved_at ? ` · ${savedLabel(item.saved_at)}` : ""}
         </div>
         <h2 className="text-[20px] leading-tight font-semibold tracking-[-0.01em] text-ink">{item.name}</h2>
-        <p className="mt-2 font-serif text-[16px] leading-snug text-ink-2">{item.summary}</p>
+        <p className="mt-2 font-read text-[14px] leading-normal text-ink-2">{item.summary}</p>
       </div>
       <div className="grid grid-cols-3 gap-3 border-y border-line py-3">
         {[
@@ -255,7 +255,7 @@ export function LibraryView() {
           <div className="mb-5 flex items-end justify-between gap-4 px-1">
             <div>
               <h1 className="text-[28px] font-semibold tracking-[-0.02em] text-ink">Library</h1>
-              <p className="font-serif text-[17px] leading-snug text-ink-2">Start from a build that already flies or grips. Every project keeps its parts, checks and render.</p>
+              <p className="font-read text-[15px] leading-normal text-ink-2">Start from a build that already flies or grips. Every project keeps its parts, checks and render.</p>
             </div>
             {live && hasBuild && (
               <button

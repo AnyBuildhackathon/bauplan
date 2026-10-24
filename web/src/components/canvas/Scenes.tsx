@@ -1,6 +1,6 @@
 // The 3D canvases: the drone model (Modell and Render tabs) and trajectory replays
 // (Simulation and Video tabs). Lighting is built locally, nothing loads from the web.
-import { ContactShadows, Environment, Grid, Lightformer, Line, OrbitControls } from "@react-three/drei";
+import { Environment, Lightformer, Line, OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Suspense, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
@@ -8,6 +8,7 @@ import { useSession } from "../../events/store";
 import type { Run } from "../../events/store";
 import { useAssembly, useHighlight } from "../../lib/hooks";
 import { AnchorScope } from "./anchors";
+import { GridStage, stageObstacles, usePrefersReducedMotion } from "./GridStage";
 import { HeroDrone, useDroneUrl } from "./HeroDrone";
 import { sampleAt, simClock } from "./simClock";
 
@@ -17,8 +18,12 @@ function useSpin() {
   return sim === "running" || training === "running" ? 40 : 0;
 }
 
+/** The reference quad spans about 10 cm motor to motor. */
+const DRONE_SIZE = 0.1;
 const MODEL_TARGET = new THREE.Vector3(0, 0.012, 0);
-const MODEL_DISTANCE = new THREE.Vector3(0.15, 0.13, 0.17).distanceTo(MODEL_TARGET);
+// Low enough that the stage's horizon and sky show above the drone.
+const MODEL_CAMERA: [number, number, number] = [0.17, 0.064, 0.2];
+const MODEL_DISTANCE = new THREE.Vector3(...MODEL_CAMERA).distanceTo(MODEL_TARGET);
 
 /** Pulls the camera back on narrow canvases so the whole drone stays in frame. */
 function FitModelWidth() {
@@ -39,17 +44,18 @@ export function ModelScene({ look }: { look: "modell" | "render" }) {
   const highlight = useHighlight();
   const spin = useSpin();
   const render = look === "render";
+  const still = usePrefersReducedMotion();
   return (
     <Canvas
       shadows
       dpr={[1, 2]}
-      camera={{ position: [0.15, 0.13, 0.17], fov: 30, near: 0.005, far: 10 }}
+      camera={{ position: MODEL_CAMERA, fov: 30, near: 0.005, far: 10 }}
       gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}
     >
       <AnchorScope primary>
         <FitModelWidth />
         <ambientLight intensity={render ? 0.25 : 0.7} />
-        <hemisphereLight args={["#ffffff", "#d9d6e8", render ? 0.3 : 0.6]} />
+        <hemisphereLight args={["#f2f9ff", "#b7cad6", render ? 0.3 : 0.6]} />
         <directionalLight
           position={[0.4, 0.8, 0.3]}
           intensity={render ? 1.6 : 1.8}
@@ -75,10 +81,10 @@ export function ModelScene({ look }: { look: "modell" | "render" }) {
             <HeroDrone url={url} battery={build.battery} highlight={highlight} spin={spin} />
           </Suspense>
         </group>
-        <ContactShadows position={[0, 0, 0]} opacity={render ? 0.55 : 0.35} scale={0.35} blur={2.4} far={0.12} resolution={512} />
+        <GridStage size={DRONE_SIZE} lights={false} shadowArea={0.35} shadowReach={0.12} shadowOpacity={render ? 0.6 : 0.5} />
         <OrbitControls
           makeDefault
-          autoRotate
+          autoRotate={!still}
           autoRotateSpeed={render ? 1.1 : 0.55}
           enablePan={false}
           minDistance={0.09}
@@ -94,6 +100,8 @@ export function ModelScene({ look }: { look: "modell" | "render" }) {
 /** three.js is y-up; trajectories are z-up. */
 const toScene = (x: number, y: number, z: number) => new THREE.Vector3(x, z, -y);
 const DRONE_SCALE = 5;
+/** The replayed drone is drawn five times its size, about half a metre across. */
+const FLIGHT_SIZE = 0.5;
 /** The MuJoCo hover target (simulate.py climbs to 0.5 m). */
 const TARGET_Z = 0.5;
 
@@ -181,7 +189,8 @@ function FitCamera({ bounds }: { bounds: THREE.Box3 }) {
     const dist = radius / Math.sin(Math.min(vfov, hfov) / 2);
     camera.position.copy(center).addScaledVector(VIEW_DIR, dist);
     camera.near = Math.max(0.05, dist - radius * 3);
-    camera.far = dist + radius * 4;
+    // Far enough that the floor fades out in the fog instead of ending at the far plane.
+    camera.far = Math.max(dist + radius * 4, FLIGHT_SIZE * 30);
     camera.lookAt(center);
     camera.updateProjectionMatrix();
   }, [bounds, camera, size.width, size.height]);
@@ -205,25 +214,24 @@ export function SimScene({
   const path = useMemo(() => run.trajectory.map(([, x, y, z]) => toScene(x, y, z).add(new THREE.Vector3(0, 0.03, 0))), [run]);
   const ground = useMemo(() => path.map((p) => new THREE.Vector3(p.x, 0.002, p.z)), [path]);
   const box = useMemo(() => bounds ?? trajectoryBounds([run]), [bounds, run]);
+  const { floorCenter, shadowArea, obstacles } = useMemo(() => {
+    const c = box.getCenter(new THREE.Vector3());
+    const s = box.getSize(new THREE.Vector3());
+    const center: [number, number] = [c.x, c.z];
+    return { floorCenter: center, shadowArea: Math.max(s.x, s.z) + 1, obstacles: stageObstacles(FLIGHT_SIZE, [c.x - s.x / 2, c.z - s.z / 2]) };
+  }, [box]);
   return (
     <Canvas dpr={[1, 2]} camera={{ fov: 34 }} gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}>
       <FitCamera bounds={box} />
       <AnchorScope primary={primary}>
-        <ambientLight intensity={0.75} />
-        <hemisphereLight args={["#ffffff", "#d9d6e8", 0.6]} />
-        <directionalLight position={[2, 4, 2]} intensity={1.6} />
-        <Grid
-          position={[0, 0, 0]}
-          args={[10, 10]}
-          cellSize={0.25}
-          cellThickness={0.8}
-          cellColor="#d9d8e2"
-          sectionSize={1}
-          sectionThickness={1.2}
-          sectionColor="#bdbcca"
-          fadeDistance={9}
-          fadeStrength={1.5}
-          infiniteGrid
+        <ambientLight intensity={0.35} />
+        <GridStage
+          size={FLIGHT_SIZE}
+          center={floorCenter}
+          shadowArea={shadowArea}
+          shadowReach={TARGET_Z + 0.4}
+          shadowOpacity={0.45}
+          obstacles={obstacles}
         />
         {showTarget && (
           <group position={[0, TARGET_Z + 0.03, 0]}>

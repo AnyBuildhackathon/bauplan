@@ -1,12 +1,17 @@
-// Simulation tab for the gripper: replays `sim` events of kind "grip" as a front view.
+// Simulation tab for the gripper: replays `sim` events of kind "grip" in 3D on the grid stage
+// (the stress card keeps the flat front view).
 // The hand lifts 15 cm and shakes; the object follows only as far as friction holds it.
 // Before/after shows the previous run next to the selected one, on the shared playhead.
+import { OrbitControls } from "@react-three/drei";
+import { Canvas, useThree } from "@react-three/fiber";
 import { Pause, Play } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import * as THREE from "three";
 import type { Run } from "../../events/store";
 import { fmtNum } from "../../lib/format";
 import { useSelectedVersion, useVersions } from "../../lib/hooks";
 import { TrendChart } from "../ui/TrendChart";
+import { GridStage, stageObstacles } from "./GridStage";
 import { seek, setPlaying, useSimClockDriver, useSimTime } from "./simClock";
 
 const COLOR = { pass: "#2ed3ae", fail: "#ff5a5f" } as const;
@@ -28,7 +33,105 @@ function at(series: [number, number][], t: number): number {
 
 const objectRise = (run: Run) => run.trajectory.map((s) => [s[0], s[3]] as [number, number]);
 
-export function GripStage({ run, t, label }: { run: Run; t: number; label: string }) {
+const mm = (v: number) => v / 1000;
+/** The can is 12 cm tall; the stage grid and fog scale to that. */
+const GRIP_SIZE = 0.15;
+const GRIP_TARGET = new THREE.Vector3(0, 0.17, 0);
+const GRIP_VIEW = new THREE.Vector3(0.75, 0.42, 1).normalize();
+
+function FitGrip() {
+  const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
+  const size = useThree((s) => s.size);
+  const controls = useThree((s) => s.controls) as unknown as { target: THREE.Vector3; update: () => void } | null;
+  useLayoutEffect(() => {
+    // Floor to the lifted hand: about 45 cm tall, 30 cm wide.
+    const radius = 0.19;
+    const vfov = THREE.MathUtils.degToRad(camera.fov);
+    const hfov = 2 * Math.atan(Math.tan(vfov / 2) * (size.width / Math.max(1, size.height)));
+    const dist = radius / Math.sin(Math.min(vfov, hfov) / 2);
+    camera.position.copy(GRIP_TARGET).addScaledVector(GRIP_VIEW, dist);
+    camera.near = dist / 100;
+    camera.far = Math.max(dist * 10, GRIP_SIZE * 40);
+    camera.lookAt(GRIP_TARGET);
+    camera.updateProjectionMatrix();
+    if (controls) {
+      controls.target.copy(GRIP_TARGET);
+      controls.update();
+    }
+  }, [camera, size.width, size.height, controls]);
+  return null;
+}
+
+/** Arrow along +X with its tip at the origin, `length` long. */
+function Squeeze({ length, flip }: { length: number; flip: boolean }) {
+  return (
+    <group rotation={[0, flip ? Math.PI : 0, 0]}>
+      <mesh position={[-length * 0.62, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[length * 0.07, length * 0.07, length * 0.76, 12]} />
+        <meshBasicMaterial color="#ff8a3d" />
+      </mesh>
+      <mesh position={[-length * 0.13, 0, 0]} rotation={[0, 0, -Math.PI / 2]}>
+        <coneGeometry args={[length * 0.17, length * 0.26, 16]} />
+        <meshBasicMaterial color="#ff8a3d" />
+      </mesh>
+    </group>
+  );
+}
+
+/** The grip test in metres: floor at y = 0, the pads hold the can's middle. */
+function GripScene({ run, t }: { run: Run; t: number }) {
+  const width = run.object_width_mm ?? 66;
+  const hand = at(run.hand ?? [], t) * 1000;
+  const obj = at(objectRise(run), t) * 1000;
+  const pass = run.result === "pass";
+  const slipping = hand - obj > 10;
+  const gap = width / 2;
+  const padY = hand + OBJECT_H / 2;
+  const palmY = padY + 20 + 73;
+  const fingerLen = palmY - (padY - 26);
+  const obstacles = useMemo(() => stageObstacles(GRIP_SIZE), []);
+  const canColor = pass ? "#bff0e2" : slipping ? "#ffc9c9" : "#e4e5ea";
+  return (
+    <>
+      <FitGrip />
+      <ambientLight intensity={0.3} />
+      <GridStage size={GRIP_SIZE} shadowArea={0.6} shadowReach={0.45} obstacles={obstacles} />
+      {/* The can. */}
+      <mesh position={[0, mm(obj + OBJECT_H / 2), 0]}>
+        <cylinderGeometry args={[mm(gap), mm(gap), mm(OBJECT_H), 48]} />
+        <meshStandardMaterial color={canColor} roughness={0.35} metalness={0.25} />
+      </mesh>
+      {/* Pads, fingers, palm and the wrist block. */}
+      {[-1, 1].map((side) => (
+        <group key={side}>
+          <mesh position={[mm(side * (gap + 6)), mm(padY), 0]}>
+            <boxGeometry args={[mm(12), mm(40), mm(30)]} />
+            <meshStandardMaterial color="#2b2d33" roughness={0.9} />
+          </mesh>
+          <mesh position={[mm(side * (gap + 19)), mm(palmY - fingerLen / 2), 0]}>
+            <boxGeometry args={[mm(14), mm(fingerLen), mm(34)]} />
+            <meshStandardMaterial color="#e7e8ec" roughness={0.5} />
+          </mesh>
+          <group position={[mm(side * (gap + 30)), mm(padY), 0]}>
+            <group rotation={[0, side < 0 ? 0 : Math.PI, 0]}>
+              <Squeeze length={mm(36)} flip={false} />
+            </group>
+          </group>
+        </group>
+      ))}
+      <mesh position={[0, mm(palmY + 7), 0]}>
+        <boxGeometry args={[mm(width + 80), mm(14), mm(40)]} />
+        <meshStandardMaterial color="#c9ccd3" roughness={0.45} metalness={0.2} />
+      </mesh>
+      <mesh position={[0, mm(palmY + 14 + 17), 0]}>
+        <boxGeometry args={[mm(28), mm(34), mm(28)]} />
+        <meshStandardMaterial color="#3b5bdb" roughness={0.4} />
+      </mesh>
+    </>
+  );
+}
+
+export function GripStage({ run, t, label, stage = false }: { run: Run; t: number; label: string; stage?: boolean }) {
   const width = run.object_width_mm ?? 66;
   const hand = at(run.hand ?? [], t) * 1000;
   const obj = at(objectRise(run), t) * 1000;
@@ -42,6 +145,12 @@ export function GripStage({ run, t, label }: { run: Run; t: number; label: strin
   const slipping = hand - obj > 10;
   return (
     <div className="relative h-full min-h-0 min-w-0">
+      {stage ? (
+        <Canvas dpr={[1, 2]} camera={{ fov: 32 }} gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }} aria-label={`${label}: grip test ${run.run}`}>
+          <GripScene run={run} t={t} />
+          <OrbitControls makeDefault enablePan={false} maxPolarAngle={Math.PI / 2.08} />
+        </Canvas>
+      ) : (
       <svg viewBox="-150 0 300 330" className="h-full w-full" preserveAspectRatio="xMidYMid meet" role="img" aria-label={`${label}: grip test ${run.run}`}>
         <line x1={-150} x2={150} y1={floor} y2={floor} stroke="#d6d5de" strokeWidth={2} />
         {/* Object: a can between the pads. */}
@@ -60,7 +169,8 @@ export function GripStage({ run, t, label }: { run: Run; t: number; label: strin
         <path d={`M ${-gap - 52} ${padY + 20} l 18 0 m -6 -6 l 6 6 l -6 6`} stroke="#ff8a3d" strokeWidth={3} fill="none" strokeLinecap="round" />
         <path d={`M ${gap + 52} ${padY + 20} l -18 0 m 6 -6 l -6 6 l 6 6`} stroke="#ff8a3d" strokeWidth={3} fill="none" strokeLinecap="round" />
       </svg>
-      <div className="absolute top-3 left-3 flex flex-wrap items-center gap-2">
+      )}
+      <div className="pointer-events-none absolute top-3 left-3 flex flex-wrap items-center gap-2">
         <span className={`inline-flex h-8 items-center gap-2 rounded-full bg-white/95 px-3.5 text-[13px] font-bold shadow-[var(--shadow-pill)] ${pass ? "text-ok-ink" : "text-fail-ink"}`}>
           <span className="h-2 w-2 rounded-full" style={{ background: COLOR[run.result] }} />
           {label} · Run {run.run} · {pass ? "holds" : "slips"}
@@ -68,6 +178,11 @@ export function GripStage({ run, t, label }: { run: Run; t: number; label: strin
         <span className="num inline-flex h-8 items-center rounded-full bg-white/95 px-3.5 text-[13px] font-semibold text-ink-2 shadow-[var(--shadow-pill)]">
           {fmtNum(run.force_n ?? 0, 1)} N per finger
         </span>
+        {stage && (
+          <span className="num inline-flex h-8 items-center rounded-full bg-white/95 px-3.5 text-[13px] font-semibold text-ink-2 shadow-[var(--shadow-pill)]">
+            {fmtNum(run.payload_g ?? 0, 0)} g can
+          </span>
+        )}
       </div>
     </div>
   );
@@ -106,10 +221,10 @@ export function GripSimView() {
       <div className="relative grid min-h-0 flex-1" style={{ gridTemplateColumns: before ? "minmax(0,1fr) minmax(0,1fr)" : "minmax(0,1fr)" }}>
         {before && (
           <div className="min-h-0 min-w-0 border-r border-line">
-            <GripStage run={before.run} t={t} label="Before" />
+            <GripStage run={before.run} t={t} label="Before" stage />
           </div>
         )}
-        <GripStage run={after.run} t={t} label={before ? "After" : "Run"} />
+        <GripStage run={after.run} t={t} label={before ? "After" : "Run"} stage />
       </div>
       <div className="flex shrink-0 items-center gap-4 border-t border-line bg-card/80 px-4 py-2.5">
         <button

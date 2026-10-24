@@ -1,14 +1,13 @@
-// Logbuch: the versions per Jamie meeting with their difference and the note written
-// back to Jamie, saved chats, learned concepts, and the editable logbook (core-oss
-// BlockEditor) with the Jamie summary of the session and Markdown export.
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Download, MessageSquareText, NotebookPen, RefreshCw } from "lucide-react";
-import BlockEditor from "../components/BlockEditor/BlockEditor";
-import { blocksToMarkdown, createBlock, parseBlocksFromContent, serializeBlocks, type Block } from "../components/BlockEditor/types";
+// Logbuch: one column with a timeline of the versions. Each entry says what triggered
+// it (a Jamie meeting or a chat request), the three key numbers and what changed in one
+// line; it opens to the full difference and the note written back to Jamie. Saved
+// chats fold away below, the learned concepts show only in learning mode, and Export
+// downloads the whole logbook as Markdown.
+import { useMemo, useState } from "react";
+import { ChevronDown, Download, MessageSquareText, NotebookPen } from "lucide-react";
 import { MascotHead } from "../components/mascot/Mascot";
-import { JamieMark } from "../components/panels/Panels";
-import { Card, Chip, PillButton } from "../components/ui/primitives";
-import { STEP_IDS, type MeetingEvent, type VersionEvent } from "../events/types";
+import { Chip, PillButton } from "../components/ui/primitives";
+import { STEP_IDS, type MeetingEvent, type VersionDiff, type VersionEvent } from "../events/types";
 import { useSession } from "../events/store";
 import { loadSavedChats } from "../lib/archive";
 import { fmtClock, fmtEur, fmtGram, fmtNum, stripMarkdown } from "../lib/format";
@@ -16,80 +15,139 @@ import { enLabel, enText } from "../lib/copy";
 import { LESSONS } from "../lib/lessons";
 import { useUi } from "../lib/ui";
 
-const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+type Session = ReturnType<typeof useSession.getState>;
 
-function VersionCard({ v }: { v: VersionEvent }) {
-  const pass = v.sim !== "fail";
+const fmtValue = (value: number | string, unit: string) => (typeof value === "number" ? `${fmtNum(value, unit === "€" ? 2 : 1)} ${unit}` : enText(value));
+
+function diffText(d: VersionDiff): string {
+  return `${enLabel(d.label)} ${fmtValue(d.before, d.unit)} → ${fmtValue(d.after, d.unit)}`;
+}
+
+/** What changed against the version before, in one line. */
+function changeLine(v: VersionEvent): string {
+  if (v.n === 1) return "First build";
+  if (!v.diff.length) return "No change";
+  const parts = v.diff.filter((d) => !d.unit);
+  const numbers = v.diff.filter((d) => d.unit);
+  return [...parts, ...numbers].map(diffText).join(" · ");
+}
+
+/** The three key numbers a version carries; products that do not fly leave out flight time. */
+function keyNumbers(v: VersionEvent): { label: string; value: string }[] {
+  return [
+    { label: "Weight", value: v.weight_g > 0 ? `${fmtNum(v.weight_g, v.weight_g < 100 ? 1 : 0)} g` : "" },
+    { label: "Flight time", value: v.flight_time_min > 0 ? `${fmtNum(v.flight_time_min, 1)} min` : "" },
+    { label: "Price", value: v.price_eur > 0 ? fmtEur(v.price_eur) : "" },
+  ].filter((n) => n.value);
+}
+
+function useTrigger(v: VersionEvent): { meeting: MeetingEvent | undefined; label: string } {
+  const meeting = useSession((s) => s.meetings.find((m) => m.id === v.meeting_id && m.kind !== "archive"));
+  return { meeting, label: meeting?.title ?? (v.meeting_title && v.meeting_title !== "Meeting" ? v.meeting_title : "Chat request") };
+}
+
+function VersionEntry({ v, last }: { v: VersionEvent; last: boolean }) {
+  const [open, setOpen] = useState(false);
   const selectVersion = useUi((s) => s.selectVersion);
   const setView = useUi((s) => s.setView);
-  const fmt = (value: number | string, unit: string) => (typeof value === "number" ? `${fmtNum(value, unit === "€" ? 2 : 1)} ${unit}` : value);
+  const { meeting, label } = useTrigger(v);
+  const tested = v.sim !== null;
+  const pass = v.sim !== "fail";
   return (
-    <div className="flex gap-3">
+    <li className="flex gap-4" data-target={`logbook:v${v.n}`}>
       <div className="flex flex-col items-center">
-        <span className={`flex h-9 min-w-11 items-center justify-center rounded-full px-2 text-[15px] font-extrabold text-white ${pass ? "bg-ok" : "bg-fail"}`}>
+        <span className={`num flex h-7 min-w-9 items-center justify-center rounded-full px-2 text-[13px] font-semibold text-white ${pass ? "bg-ok" : "bg-fail"}`}>
           v{v.n}
         </span>
-        <span className="mt-1 w-[2px] flex-1 rounded-full bg-track" />
+        {!last && <span className="mt-1.5 w-px flex-1 bg-track" />}
       </div>
-      <button
-        type="button"
-        onClick={() => {
-          selectVersion(v.n);
-          setView("werkbank");
-        }}
-        className="mb-3 min-w-0 flex-1 rounded-[22px] bg-page-2 p-4 text-left transition hover:bg-tile"
-      >
-        <div className="flex items-baseline gap-2">
-          <span className="text-[17px] font-bold">from {v.meeting_title}</span>
-          <span className={`text-[15px] font-bold ${pass ? "text-ok-ink" : "text-fail-ink"}`}>{pass ? "✓ hovers" : "✕ drops"}</span>
-        </div>
-        <p className="num mt-1 text-[15px] font-semibold text-ink-2">{v.summary}</p>
-        {v.diff.length > 0 && (
-          <ul className="num mt-2 space-y-0.5 text-[14px]">
-            {v.diff.map((d) => (
-              <li key={d.key} className="flex gap-2">
-                <span className="w-28 shrink-0 font-semibold text-muted">{enLabel(d.label)}</span>
-                <span className="min-w-0 truncate text-ink-2">
-                  {fmt(d.before, d.unit)} → <b className="text-ink">{fmt(d.after, d.unit)}</b>
-                </span>
-              </li>
+      <div className={`min-w-0 flex-1 ${last ? "" : "pb-6"}`}>
+        <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="group block w-full text-left">
+          <div className="flex items-center gap-2 text-[13px] font-medium text-muted">
+            {meeting ? <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-jamie" /> : <MessageSquareText className="h-3.5 w-3.5 shrink-0" />}
+            <span className="truncate">
+              {meeting && "Jamie meeting · "}
+              <span className="text-ink-2">{label}</span>
+              {tested && <span className={pass ? "text-ok-ink" : "text-fail-ink"}> · {pass ? "test passed" : "test failed"}</span>}
+            </span>
+            <ChevronDown className={`ml-auto h-4 w-4 shrink-0 text-faint transition group-hover:text-ink-2 ${open ? "rotate-180" : ""}`} />
+          </div>
+          <div className="num mt-1 flex flex-wrap gap-x-5 gap-y-0.5 text-[17px] font-semibold tracking-[-0.01em] text-ink">
+            {keyNumbers(v).map((n) => (
+              <span key={n.label} title={n.label}>
+                {n.value}
+              </span>
             ))}
-          </ul>
-        )}
-        {v.note && (
-          <div className="mt-3 flex gap-2 rounded-2xl bg-lavender/55 px-3 py-2.5">
-            <NotebookPen className="mt-0.5 h-4 w-4 shrink-0 text-jamie" />
-            <div className="min-w-0">
-              <p className="text-[12px] font-bold text-jamie">Note on {v.meeting_title}</p>
-              <p className="text-[14px] leading-snug whitespace-pre-line text-ink">{enText(v.note)}</p>
-            </div>
+          </div>
+          {!(open && v.diff.length) && <p className="num mt-0.5 truncate font-read text-[14px] text-ink-2">{changeLine(v)}</p>}
+        </button>
+        {open && (
+          <div className="mt-3 animate-rise space-y-3">
+            {v.diff.length > 0 && (
+              <ul className="num space-y-0.5 text-[13px]">
+                {v.diff.map((d) => (
+                  <li key={d.key} className="flex gap-3">
+                    <span className="w-28 shrink-0 text-muted">{enLabel(d.label)}</span>
+                    <span className="min-w-0 text-ink-2">
+                      {fmtValue(d.before, d.unit)} → <b className="font-semibold text-ink">{fmtValue(d.after, d.unit)}</b>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {v.note && (
+              <div className="flex gap-2.5 rounded-[14px] bg-lavender/50 px-3.5 py-3">
+                <NotebookPen className="mt-0.5 h-4 w-4 shrink-0 text-jamie" />
+                <div className="min-w-0">
+                  <p className="text-[12px] font-semibold text-jamie">Note in Jamie{meeting ? ` · ${meeting.title}` : ""}</p>
+                  <p className="font-read text-[13px] leading-normal whitespace-pre-line text-ink-2">{enText(v.note)}</p>
+                </div>
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                selectVersion(v.n);
+                setView("werkbank");
+              }}
+              className="text-[13px] font-semibold text-accent hover:underline"
+            >
+              Show v{v.n} on the workbench
+            </button>
           </div>
         )}
-      </button>
-    </div>
+      </div>
+    </li>
   );
 }
 
-function SavedChats() {
+function Section({ title, meta, children }: { title: string; meta?: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <section className="border-t border-line">
+      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="group flex w-full items-center gap-2 py-3.5 text-left">
+        <span className="text-[14px] font-semibold text-ink-2">{title}</span>
+        {meta && <span className="num text-[13px] text-muted">{meta}</span>}
+        <ChevronDown className={`ml-auto h-4 w-4 text-faint transition group-hover:text-ink-2 ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && <div className="animate-rise pb-5">{children}</div>}
+    </section>
+  );
+}
+
+function Chats() {
   const chat = useSession((s) => s.chat);
   const saved = useMemo(() => loadSavedChats(), []);
-  const current = chat.filter((c) => c.kind === "msg");
+  const current = chat.flatMap((c) => (c.kind === "msg" ? [{ role: c.role, text: stripMarkdown(c.text) }] : []));
   const [open, setOpen] = useState<"current" | number>("current");
-  const shown =
-    open === "current"
-      ? current.map((c) => (c.kind === "msg" ? { role: c.role, text: stripMarkdown(c.text) } : null)).filter(Boolean)
-      : saved[open]?.messages ?? [];
+  const shown = open === "current" ? current : (saved[open]?.messages ?? []);
   return (
-    <Card className="flex min-h-0 flex-col px-5 pt-4 pb-4">
-      <div className="flex items-center gap-2">
-        <MessageSquareText className="h-5 w-5 text-muted" />
-        <h2 className="text-[17px] font-semibold text-ink-2">Saved chats</h2>
-      </div>
-      <div className="mt-3 flex flex-wrap gap-2">
+    <Section title="Chats" meta={`${current.length} messages${saved.length ? ` · ${saved.length} earlier` : ""}`}>
+      <div className="flex flex-wrap gap-1.5">
         <button
           type="button"
           onClick={() => setOpen("current")}
-          className={`h-8 rounded-full px-3 text-[13px] font-semibold ${open === "current" ? "bg-ink text-white" : "bg-tile text-ink-2"}`}
+          className={`h-7 rounded-full px-3 text-[12px] font-semibold ${open === "current" ? "bg-ink text-white" : "bg-tile text-ink-2 hover:bg-track"}`}
         >
           Now · {current.length} messages
         </button>
@@ -98,47 +156,40 @@ function SavedChats() {
             key={s.at + i}
             type="button"
             onClick={() => setOpen(i)}
-            className={`h-8 rounded-full px-3 text-[13px] font-semibold ${open === i ? "bg-ink text-white" : "bg-tile text-ink-2"}`}
+            className={`h-7 rounded-full px-3 text-[12px] font-semibold ${open === i ? "bg-ink text-white" : "bg-tile text-ink-2 hover:bg-track"}`}
           >
             {fmtClock(s.at)} · {s.result}
           </button>
         ))}
       </div>
-      <div className="scroll-soft mt-3 min-h-0 flex-1 space-y-2.5 overflow-y-auto pr-1">
-        {shown.length === 0 && <p className="text-[15px] text-muted">No chat yet. Start on the workbench.</p>}
+      <div className="scroll-soft mt-3 max-h-[420px] space-y-2 overflow-y-auto pr-1">
+        {shown.length === 0 && <p className="text-[14px] text-muted">No chat yet. Start on the workbench.</p>}
         {shown.map((m, i) =>
-          m!.role === "user" ? (
-            <div key={i} className="ml-8 rounded-[18px] rounded-br-md bg-tile px-3.5 py-2 text-[14px] leading-snug text-ink">
-              {m!.text}
+          m.role === "user" ? (
+            <div key={i} className="flex justify-end pl-10">
+              <p className="rounded-[16px] rounded-br-md bg-tile px-3 py-1.5 font-read text-[13px] leading-normal text-ink">{m.text}</p>
             </div>
           ) : (
             <div key={i} className="flex gap-2">
               <MascotHead size={24} />
-              <p className="text-[14px] leading-snug text-ink-2">{m!.text}</p>
+              <p className="font-read text-[13px] leading-normal text-ink-2">{m.text}</p>
             </div>
           ),
         )}
       </div>
-    </Card>
+    </Section>
   );
 }
 
-function Concepts() {
+function Learned() {
   const concepts = useUi((s) => s.concepts);
   const steps = useSession((s) => s.steps);
   const openLesson = useUi((s) => s.openLesson);
   const understood = STEP_IDS.filter((id) => concepts[id] === "verstanden").length;
   return (
-    <Card className="px-5 pt-4 pb-4">
-      <div className="flex items-baseline">
-        <h2 className="text-[17px] font-semibold text-ink-2">Learned</h2>
-        <span className="num ml-auto text-[13px] font-semibold text-muted">
-          {understood} of {STEP_IDS.length} learned
-        </span>
-      </div>
-      <div className="mt-3 grid grid-cols-2 gap-2">
+    <Section title="Learned" meta={`${understood} of ${STEP_IDS.length}`}>
+      <div className="flex flex-wrap gap-1.5">
         {STEP_IDS.map((id) => {
-          const l = LESSONS[id];
           const st = concepts[id];
           const reached = steps[id].status !== "pending";
           return (
@@ -146,152 +197,96 @@ function Concepts() {
               key={id}
               type="button"
               onClick={() => openLesson(id)}
-              className={`rounded-[18px] p-3 text-left transition hover:bg-tile ${st ? "bg-page-2" : "bg-page-2/60 ring-1 ring-line ring-inset"} ${!reached && !st ? "opacity-60" : ""}`}
+              className={`flex h-8 items-center gap-2 rounded-full bg-tile pr-1.5 pl-3 text-[13px] font-semibold text-ink-2 transition hover:bg-track ${!reached && !st ? "opacity-60" : ""}`}
             >
-              <div className="flex items-start gap-2">
-                <span className="text-[15px] leading-tight font-bold">{l.concept}</span>
-                <Chip tone={st === "verstanden" ? "ok" : st === "gesehen" ? "agent" : "muted"} className="ml-auto h-6! px-2! text-[11px]!">
-                  {st === "verstanden" ? "learned" : st === "gesehen" ? "seen" : "open"}
-                </Chip>
-              </div>
+              {LESSONS[id].concept}
+              <Chip tone={st === "verstanden" ? "ok" : st === "gesehen" ? "agent" : "muted"} className="h-5! px-2! text-[11px]!">
+                {st === "verstanden" ? "learned" : st === "gesehen" ? "seen" : "open"}
+              </Chip>
             </button>
           );
         })}
       </div>
-    </Card>
+    </Section>
   );
 }
 
-function buildLogbook(args: {
-  meetings: MeetingEvent[];
-  versions: VersionEvent[];
-  requirements: ReturnType<typeof useSession.getState>["requirements"];
-  bom: ReturnType<typeof useSession.getState>["bom"];
-  concepts: Record<string, string>;
-}): Block[] {
-  const b: Block[] = [];
-  b.push(createBlock("heading1", "Drone · Logbook"));
-  const stations = args.meetings.filter((m) => m.kind !== "archive" && m.status === "done").map((m) => m.title);
-  b.push(createBlock("paragraph", esc(`${stations.join(" → ") || "No meeting yet"} · as of ${fmtClock(Date.now())}`)));
-  if (args.requirements.length) {
-    b.push(createBlock("heading2", "Requirements"));
-    for (const r of args.requirements) {
+function logbookMarkdown(s: Pick<Session, "meetings" | "versions" | "requirements" | "bom" | "productLabel">, concepts: Record<string, string>): string {
+  const lines: string[] = [];
+  lines.push(`# ${s.productLabel || "Build"} · Logbook`, "");
+  const stations = s.meetings.filter((m) => m.kind !== "archive" && m.status === "done").map((m) => m.title);
+  lines.push(`${stations.join(" → ") || "No meeting yet"} · as of ${fmtClock(Date.now())}`, "");
+  if (s.versions.length) {
+    lines.push("## Versions", "");
+    for (const v of [...s.versions].reverse()) {
+      const meeting = s.meetings.find((m) => m.id === v.meeting_id && m.kind !== "archive");
+      lines.push(`### v${v.n} · ${meeting ? `Jamie meeting ${meeting.title}` : v.meeting_title || "Chat request"}`, "");
+      lines.push(`${keyNumbers(v).map((n) => `${n.label} ${n.value}`).join(" · ")}${v.sim ? ` · test ${v.sim === "pass" ? "passed" : "failed"}` : ""}`, "");
+      for (const d of v.diff) lines.push(`- ${diffText(d)}`);
+      if (v.diff.length) lines.push("");
+      if (v.note) lines.push(...enText(v.note).split("\n").map((l) => `> ${l}`), "");
+    }
+  }
+  if (s.requirements.length) {
+    lines.push("## Requirements", "");
+    for (const r of s.requirements) {
       const mark = r.met === true ? "✓" : r.met === false ? "✕" : "○";
       const who = [r.speaker, r.time, r.meeting_title].filter(Boolean).join(", ");
-      b.push(createBlock("bulletList", `${mark} <b>${esc(r.text)}</b>: „${esc(r.source_quote)}“${who ? ` (${esc(who)})` : ""}`));
+      lines.push(`- ${mark} **${r.text}**: "${r.source_quote}"${who ? ` (${who})` : ""}`);
     }
+    lines.push("");
   }
-  if (args.versions.length) {
-    b.push(createBlock("heading2", "Jamie-Zusammenfassung"));
-    for (const v of args.versions) {
-      const lines = enText(v.note ?? `AnyBuild v${v.n} from ${v.meeting_title}: ${v.summary}.`).split("\n");
-      b.push(createBlock("bulletList", `<b>${esc(lines[0])}</b>${lines.slice(1).map((l) => `<br>${esc(l)}`).join("")}`));
-    }
+  if (s.bom) {
+    lines.push(`## Bill of materials · ${fmtEur(s.bom.total_eur)}`, "");
+    for (const it of s.bom.items) lines.push(`- ${it.qty}× ${it.name}, ${fmtEur(it.unit_price_eur)}, ${fmtGram(it.weight_g)}`);
+    lines.push("");
   }
-  if (args.bom) {
-    b.push(createBlock("heading2", `Bill of materials · ${fmtEur(args.bom.total_eur)}`));
-    for (const it of args.bom.items) b.push(createBlock("bulletList", esc(`${it.qty}× ${it.name}, ${fmtEur(it.unit_price_eur)}, ${fmtGram(it.weight_g)}`)));
-  }
-  const learned = STEP_IDS.filter((id) => args.concepts[id]);
+  const learned = STEP_IDS.filter((id) => concepts[id]);
   if (learned.length) {
-    b.push(createBlock("heading2", "Learned"));
-    for (const id of learned) b.push(createBlock("bulletList", `<b>${esc(LESSONS[id].concept)}</b>: ${args.concepts[id]}`));
+    lines.push("## Learned", "");
+    for (const id of learned) lines.push(`- **${LESSONS[id].concept}**: ${concepts[id] === "verstanden" ? "learned" : "seen"}`);
+    lines.push("");
   }
-  b.push(createBlock("heading2", "Notes"));
-  b.push(createBlock("paragraph", ""));
-  return b;
+  return lines.join("\n");
 }
 
-function LogbookEditor() {
-  const meetings = useSession((s) => s.meetings);
+export function LogbookView() {
   const versions = useSession((s) => s.versions);
-  const requirements = useSession((s) => s.requirements);
-  const bom = useSession((s) => s.bom);
-  const concepts = useUi((s) => s.concepts);
-  const generated = useMemo(
-    () => serializeBlocks(buildLogbook({ meetings, versions, requirements, bom, concepts })),
-    [meetings, versions, requirements, bom, concepts],
-  );
-  const [content, setContent] = useState(generated);
-  const edited = useRef(false);
-
-  // Follow the session until someone edits the text by hand.
-  useEffect(() => {
-    if (!edited.current) setContent(generated);
-  }, [generated]);
+  const learning = useUi((s) => s.display.learning);
 
   const exportMd = () => {
-    const md = blocksToMarkdown(parseBlocksFromContent(content));
+    const md = logbookMarkdown(useSession.getState(), useUi.getState().concepts);
     const url = URL.createObjectURL(new Blob([md], { type: "text/markdown;charset=utf-8" }));
     const a = document.createElement("a");
     a.href = url;
-    a.download = `logbook-drone-${new Date().toISOString().slice(0, 10)}.md`;
+    a.download = `logbook-${new Date().toISOString().slice(0, 10)}.md`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   return (
-    <Card className="flex min-h-0 flex-1 flex-col pt-4 pb-4">
-      <div className="flex items-center gap-2 px-5">
-        <h2 className="text-[17px] font-semibold text-ink-2">Logbook</h2>
-        <span className="text-[13px] text-muted">editable, “/” for blocks</span>
-        <button
-          type="button"
-          onClick={() => {
-            edited.current = false;
-            setContent(generated);
-          }}
-          className="ml-auto rounded-full p-1.5 text-faint hover:bg-tile hover:text-ink-2"
-          title="Rebuild from the session"
-        >
-          <RefreshCw className="h-4 w-4" />
-        </button>
-      </div>
-      <div className="mt-2 min-h-0 flex-1">
-        <BlockEditor
-          content={content}
-          onChange={(c) => {
-            edited.current = true;
-            setContent(c);
-          }}
-        />
-      </div>
-      <div className="px-5 pt-3">
-        <PillButton variant="agent" size="lg" className="w-full" onClick={exportMd}>
-          <Download className="h-4.5 w-4.5" /> Export Markdown
-        </PillButton>
-      </div>
-    </Card>
-  );
-}
-
-export function LogbookView() {
-  const versions = useSession((s) => s.versions);
-  return (
-    <div className="flex h-full min-h-0 flex-col gap-4 px-5 pb-4">
-      <div className="flex items-baseline gap-3 pt-1">
-        <h1 className="text-[34px] leading-none font-extrabold tracking-[-0.03em]">Logbook</h1>
-        <span className="text-[17px] text-muted">Everything that was built, tested and learned.</span>
-      </div>
-      <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(0,1fr)] gap-4">
-        <Card className="flex min-h-0 flex-col px-5 pt-4 pb-2">
-          <div className="mb-3 flex items-center gap-2">
-            <h2 className="text-[17px] font-semibold text-ink-2">Versions</h2>
-            <span className="text-[13px] text-muted">one per meeting in</span>
-            <JamieMark />
+    <div className="scroll-soft h-full overflow-y-auto">
+      <div className="mx-auto max-w-[720px] px-6 pt-8 pb-12">
+        <div className="mb-7 flex items-end gap-4">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-[26px] leading-tight font-semibold tracking-[-0.02em] text-ink">Logbook</h1>
+            <p className="text-[14px] text-muted">Every version, what triggered it and what changed.</p>
           </div>
-          <div className="scroll-soft min-h-0 flex-1 overflow-y-auto pr-1">
-            {versions.length === 0 && <p className="text-[15px] text-muted">v1 comes out of the kickoff.</p>}
-            {[...versions].reverse().map((v) => (
-              <VersionCard key={v.n} v={v} />
-            ))}
-          </div>
-        </Card>
-        <SavedChats />
-        <div className="flex min-h-0 flex-col gap-4">
-          <Concepts />
-          <LogbookEditor />
+          <PillButton variant="secondary" size="sm" onClick={exportMd} title="Download the logbook as Markdown" data-target="logbook_export">
+            <Download className="h-4 w-4" /> Export
+          </PillButton>
         </div>
+        {versions.length === 0 ? (
+          <p className="pb-6 text-[14px] text-muted">No version yet. v1 comes out of the kickoff or your first request.</p>
+        ) : (
+          <ol className="pb-6">
+            {[...versions].reverse().map((v, i) => (
+              <VersionEntry key={v.n} v={v} last={i === versions.length - 1} />
+            ))}
+          </ol>
+        )}
+        <Chats />
+        {learning && <Learned />}
       </div>
     </div>
   );
