@@ -28,7 +28,7 @@ function at(series: [number, number][], t: number): number {
 
 const objectRise = (run: Run) => run.trajectory.map((s) => [s[0], s[3]] as [number, number]);
 
-function GripStage({ run, t, label }: { run: Run; t: number; label: string }) {
+export function GripStage({ run, t, label }: { run: Run; t: number; label: string }) {
   const width = run.object_width_mm ?? 66;
   const hand = at(run.hand ?? [], t) * 1000;
   const obj = at(objectRise(run), t) * 1000;

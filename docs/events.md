@@ -364,6 +364,34 @@ The file is a fixed template filled from the chosen parts; only `explanation`, o
 `training` means the optional `gains` field of the last `training` event that carries one; missing terms keep the defaults.
 `wiring` is a list of `{component, connects_to, pin, wire, note}`, one row per connection of a chosen part.
 
+### stress
+
+The stress test runs the current product in 50 randomized MuJoCo worlds (`stress_test`).
+`product` is `drone` or `gripper`.
+`status` is `running` while worlds finish, then `done`, or `failed` when a world raised an error; a `failed` event keeps the worlds finished so far, `worst` is `null`, and `explanation` names the error.
+`run` counts stress tests in the session; `total`, `done`, and `survived` count worlds, so the score reads `Survived {survived}/{total}`.
+`seed` is the fixed seed the worlds are drawn from, so every stress test of the same build flies the same worlds.
+`weight_g` is the nominal build the worlds vary.
+`worlds` lists every finished world; every world has `{i, pass, reason, mass_pct, motor_pct, margin}`.
+`mass_pct` is −15…+15 (the drone, or the gripper's payload) and `motor_pct` −25…0 (motors, or the gripper servo).
+`margin` is 1 for a perfect run and 0 or less for a lost world; `reason` is an empty string when the world survived.
+`worst` is `null` while running; when `done` it is the lost world with the lowest margin (the survived one with the lowest margin when none was lost) plus its `trajectory` (`[[t, x, y, z], ...]`, the same shape as `sim`).
+`weakest` names the factor that separates lost worlds from survived ones, or is `null` when every world survived; `explanation` is Bolzen's one sentence about it.
+
+Drone: the controller holds 0.5 m over its start point for 6 s while a 1-cosine gust hits it.
+`policy` is `trained` when the training module left gains (`set_trained_gains` in `tools/stress.py`) or the tool got `gains`, else `default`.
+`gains` are the controller gains that flew: `kp_z`, `kd_z`, `kp_xy`, `kd_xy`, `kp_att`, `kd_att`; `thrust_to_weight` is the nominal one.
+Drone worlds add `gust_mps` (peak 0…6 m/s), `downdraft_pct` (the share of it blowing down), `gust_dir_deg` (where it blows to, 0 is +x), `gust_start_s` and `gust_len_s` (when it blows), `noise_cm` (sensor noise), `drift_m` (farthest from its spot) and `low_z_m` (lowest height after the gust).
+`reason` is `crashed`, `drifted` (more than 0.35 m off its spot), or `sagged` (below 0.35 m in the last half second).
+`weakest` is `gust`, `motor`, `mass`, or `noise`.
+
+Gripper: the grip test from `sim` (lift 15 cm, hold, shake at 2.5 Hz), 3.2 s.
+`policy` is `design` and `gains` is empty; the event also carries `payload_g`, `object_width_mm`, `force_n` (per finger), and `safety_factor` of the nominal build.
+Gripper worlds add `friction_pct` (pad friction −40…+10), `shake_x` (shake amplitude 1–2× the nominal 1.5 cm), `noise_pct` (slow servo jitter on the squeeze force, 0…15) and `slip_mm`.
+`reason` is `slipped` (the object lagged the hand by more than 10 mm) or `dropped`.
+`worst` also has `hand` (`[[t, z], ...]`, as in `sim`).
+`weakest` is `friction`, `motor`, `mass`, `shake`, or `noise`.
+
 ## Scene targets
 
 One catalog motor is instanced four times.
@@ -394,7 +422,7 @@ UI:
 
 ## Tools
 
-`jamie_templates`, `jamie_requirements`, `jamie_search`, `jamie_meeting`, `requirements_accept`, `ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `cad_frame`, `cad_part`, `product_brief`, `product_spec`, `reference_load`, `delegate`, `part_pick`, `assemble`, `cad_update`, `check_totals`, `check_tip_over`, `check_deflection`, `check_torque`, `check_runtime`, `simulate_assembly`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `blender_render`, `bom_build`, `build_guide`, `firmware`, `jamie_create_tasks`, `version_commit`, `ui_point_at`, `ui_draw`, `mascot_say`.
+`jamie_templates`, `jamie_requirements`, `jamie_search`, `jamie_meeting`, `requirements_accept`, `ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `stress_test`, `cad_frame`, `cad_part`, `product_brief`, `product_spec`, `reference_load`, `delegate`, `part_pick`, `assemble`, `cad_update`, `check_totals`, `check_tip_over`, `check_deflection`, `check_torque`, `check_runtime`, `simulate_assembly`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `blender_render`, `bom_build`, `build_guide`, `firmware`, `jamie_create_tasks`, `version_commit`, `ui_point_at`, `ui_draw`, `mascot_say`.
 
 ### Any product
 
@@ -466,6 +494,8 @@ The review "Review 1" asks for 10 minutes.
 Mechanic asks which flight time counts and swaps to the BetaFPV LAVA II 1S 680, the other pack from the video.
 v2 is 48.4 g, 10.4 min, 115.12 €, and the difference goes back to the review as a note.
 A later prompt in the same session does not rebuild.
+A prompt with the word "stress" ("stress test it") runs `stress_test` on the current build instead; without a build Mechanic asks for the kickoff first.
+Once a build has finished, "robust" asks for it too ("how robust is it?"); a prompt that ends a review still runs the review first.
 Reset starts the story over.
 A prompt that asks for a gripper (`gripper`, `claw`, `end effector`) plays the gripper story instead.
 Mechanic turns the request into checks, tries the 2.49 € SG90 first: 1.1 N per finger is a safety of 0.9×, and in MuJoCo the can slides out when the arm lifts.

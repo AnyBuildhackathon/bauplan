@@ -23,6 +23,7 @@ import {
   type SimEvent,
   type StepId,
   type StepStatus,
+  type StressEvent,
   type ToolStatus,
   type TrainingEvent,
   type OmniverseEvent,
@@ -85,7 +86,8 @@ export type ChatItem =
   | { kind: "warning"; id: string; seq: number; at: number; part: string; warning: PartWarning }
   | { kind: "question"; id: string; seq: number; at: number; questionId: string }
   | { kind: "version"; id: string; seq: number; at: number; n: number }
-  | { kind: "agent"; id: string; seq: number; at: number; agentId: string };
+  | { kind: "agent"; id: string; seq: number; at: number; agentId: string }
+  | { kind: "stress"; id: string; seq: number; at: number; run: number };
 
 export interface Run extends SimEvent {
   seq: number;
@@ -147,6 +149,8 @@ export interface SessionState {
   product: ProductEvent["id"];
   firmware: FirmwareEvent | null;
   productLabel: string;
+  /** Stress tests by run number, latest event of each. */
+  stress: Record<number, StressEvent & { seq: number; at: number }>;
   /** Step-by-step build guide for the latest bill of materials. */
   buildGuide: BuildGuideEvent | null;
   /** Reduces one contract event. `instant` marks events replayed in bulk (seek), so nothing animates for them. */
@@ -202,6 +206,7 @@ const TOOL_ALIASES: Record<string, string> = {
   check_runtime: "Analysis",
   simulate_assembly: "MuJoCo",
   simulate_drone: "MuJoCo",
+  stress_test: "MuJoCo",
   blender_render: "Blender",
   isaac_sim_render: "Isaac Sim",
   isaac_test: "Isaac Sim",
@@ -239,6 +244,7 @@ const SILENT_TOOLS = new Set([
   "grip_calc",
   "product_brief",
   "delegate",
+  "stress_test",
 ]);
 
 /** Tool names from the backend may differ in case or spacing ("isaac_lab", "Isaac Lab"). */
@@ -282,6 +288,7 @@ function emptyState() {
     agents: {} as SessionState["agents"],
     product: "" as ProductEvent["id"],
     productLabel: "Any product",
+    stress: {} as SessionState["stress"],
     buildGuide: null as BuildGuideEvent | null,
   };
 }
@@ -486,6 +493,12 @@ export const useSession = create<SessionState>((set, get) => ({
           versions: [],
           firmware: null,
         });
+      }
+      case "stress": {
+        const stress = { ...s.stress, [ev.run]: { ...ev, seq, at } };
+        const known = s.chat.some((c) => c.kind === "stress" && c.run === ev.run);
+        const chat: ChatItem[] = known ? s.chat : [...s.chat, { kind: "stress", id: nextId("stress"), seq, at, run: ev.run }];
+        return set({ log, stress, chat });
       }
       case "build_guide":
         return set({ log, buildGuide: ev });

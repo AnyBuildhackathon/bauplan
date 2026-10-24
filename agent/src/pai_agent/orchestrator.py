@@ -15,6 +15,7 @@ from pai_agent.mock_product import run_product_mock, wants_product
 from pai_agent.mock_story import run_mock, run_mock_followup, run_review
 from pai_agent.scene import STEPS
 from pai_agent.tools.registry import DELEGATED, SCHEMAS, call_tool
+from pai_agent.tools.stress import run_stress_mock, wants_stress
 
 log = logging.getLogger(__name__)
 
@@ -73,6 +74,7 @@ A catalog motor sits four times in the scene; for the motor type point at motor_
 The robot gripper (gripper, claw, end effector): product_brief with product gripper, object_mass_g, object_width_mm, max_weight_g, budget_eur and quote.
 Then catalog_search with select_id for servo, pads, hardware and driver, grip_calc, simulate_grip. On fail, swap to a stronger servo and test again.
 Then cad_part with template gripper (params jaw_opening_mm at least object width plus 10, finger_length_mm), grip_calc again, blender_render, bom_build, firmware.
+Asked to stress test the build or how robust it is: stress_test (after training it flies the trained gains), then mascot_say with its explanation and name the score in English.
 
 Omniverse requests: use isaac_test for gusty wind, a camera/payload mass or hover stability.
 These tools and product_usd support the drone only. For a gripper, use simulate_grip and explain that the GPU hover controller does not support it.
@@ -123,6 +125,8 @@ async def run_prompt(ctx: Ctx, text: str, messages: list[dict]) -> None:
             review["status"] = "done"
             await ctx.emit({"type": "jamie", "action": "meeting_ended", "status": "ok", "detail": review["title"] + " ended"})
             await run_review(ctx, review["id"])
+        elif wants_stress(text, ctx.state.finished):
+            await run_stress_mock(ctx)
         elif ctx.state.finished or (not first and (ctx.state.sim_run or ctx.state.selected)):
             await run_mock_followup(ctx)
         else:

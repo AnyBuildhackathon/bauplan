@@ -168,6 +168,56 @@ export interface TrainingEvent {
   video_url: string | null;
   gains?: FirmwareGains;
 }
+/** One randomized world of a stress test. Drone and gripper worlds share the first fields. */
+export interface StressWorld {
+  i: number;
+  pass: boolean;
+  /** Drone: crashed, drifted, sagged. Gripper: dropped, slipped. "" when it survived. */
+  reason: string;
+  mass_pct: number;
+  /** Motor (drone) or servo (gripper) strength against the datasheet. */
+  motor_pct: number;
+  /** 1 is a perfect run, 0 or less a lost world. */
+  margin: number;
+  // Drone worlds.
+  gust_mps?: number;
+  downdraft_pct?: number;
+  /** Where the gust blows to, 0 is +x. */
+  gust_dir_deg?: number;
+  gust_start_s?: number;
+  gust_len_s?: number;
+  noise_cm?: number;
+  drift_m?: number;
+  low_z_m?: number;
+  // Gripper worlds.
+  friction_pct?: number;
+  shake_x?: number;
+  noise_pct?: number;
+  slip_mm?: number;
+}
+export interface StressEvent {
+  type: "stress";
+  run: number;
+  product: "drone" | "gripper";
+  status: "running" | "done" | "failed";
+  total: number;
+  done: number;
+  survived: number;
+  seed: number;
+  /** trained or default controller gains for the drone; design for the gripper. */
+  policy: "trained" | "default" | "design";
+  gains: Record<string, number>;
+  weight_g: number;
+  thrust_to_weight?: number;
+  payload_g?: number;
+  object_width_mm?: number;
+  force_n?: number;
+  safety_factor?: number;
+  worlds: StressWorld[];
+  worst: (StressWorld & { trajectory: TrajectorySample[]; hand?: [number, number][] }) | null;
+  weakest: string | null;
+  explanation: string;
+}
 
 export interface OmniverseEvent {
   type: "omniverse";
@@ -406,6 +456,7 @@ export type AgentEvent =
   | PointEvent
   | TrainingEvent
   | OmniverseEvent
+  | StressEvent
   | CadEvent
   | RenderEvent
   | MeetingEvent
@@ -434,6 +485,7 @@ const EVENT_TYPES = new Set<AgentEvent["type"]>([
   "point",
   "training",
   "omniverse",
+  "stress",
   "cad",
   "render",
   "meeting",
