@@ -233,11 +233,11 @@ SCHEMAS = [
     },
     {
         "name": "stress_test",
-        "description": "Stress test: flies the best trained controller (default gains without a training result) in 50 randomized MuJoCo worlds, each with mass +-15 %, motor strength -25..0 %, a gust up to 6 m/s and sensor noise. Returns the robustness score (survived/total), the worst world and one sentence on the weakest point. Use it when someone asks to stress test the drone or how robust it is.",
+        "description": "Stress test: flies the best trained controller (default gains without a training result) in 50 randomized MuJoCo worlds in the open dashboard's browser, each with mass +-15 %, motor strength -25..0 %, a gust up to 6 m/s and sensor noise. Returns the robustness score (survived/total), the worst world and one sentence on the weakest point. Use it when someone asks to stress test the drone or how robust it is.",
         "input_schema": {
             "type": "object",
             "properties": {
-                "gains": {"type": "object", "description": "Controller gains to test instead of the training result."},
+                "gains": {"type": "object", "description": "Controller gains to test instead of the training result, in the training event's units (kp_z, ki_z, kd_z, kp_xy, kd_xy, kp_att, kd_att)."},
             },
         },
     },

@@ -104,6 +104,9 @@ The defaults come from `PAI_ORCHESTRATOR_MODEL` (else `ANTHROPIC_MODEL`), `PAI_O
 `POST /api/training/{job_id}/claim` with `{"client": "..."}` lets one dashboard tab take a queued browser training job; it returns the job's `spec`, `population`, and `generations`.
 It is HTTP 409 when another client already holds the job, and 404 for a job of an earlier session.
 `POST /api/training/{job_id}/progress` with `{"client", "status": "running"|"done"|"failed", "step", "generation", "best_score", "best_params", "best_metrics", "gains", "error"}` from the claiming client publishes a `training` event (`gains` is kept only with `status: "done"`); other clients get HTTP 409.
+`POST /api/stress/{job_id}/claim` with `{"client": "..."}` lets one dashboard tab take a queued drone stress test; it returns `{"ok", "job_id", "product", "spec", "gains", "seed", "worlds"}`, where `worlds` are the 50 seeded worlds `{i, mass_scale, motor_scale, gust_mps, gust_dir_deg, gust_start_s, gust_len_s, downdraft_share, noise_m}`.
+It is HTTP 409 when another client holds the job or it is over, and 404 for a job of an earlier session.
+`POST /api/stress/{job_id}/progress` with `{"client", "status": "running"|"done"|"failed", "results": [{i, metrics, trajectory}], "error"}` from the claiming client hands finished worlds to the backend, which scores them and publishes the `stress` events; `metrics` are the drone episode's `crashed`, `drift_m`, `low_z_m`, and `tail_z_m`, and `trajectory` is `[[t, x, y, z], ...]` at 20 Hz.
 `GET /api/training/browser` returns `{"ok": true, "job": {...}}` with the latest browser job of the session in the `training` event shape without `type`, or `job: null`.
 
 `GET /api/health` returns `{"ok": true, "mode": "mock"|"claude"}`.
@@ -387,7 +390,7 @@ The file is a fixed template filled from the chosen parts; only `explanation`, o
 
 The stress test runs the current product in 50 randomized MuJoCo worlds (`stress_test`).
 `product` is `drone` or `gripper`.
-`status` is `running` while worlds finish, then `done`, or `failed` when a world raised an error; a `failed` event keeps the worlds finished so far, `worst` is `null`, and `explanation` names the error.
+`status` is `running` while worlds finish, then `done`, or `failed` when a world raised an error or no browser flew the worlds; a `failed` event keeps the worlds finished so far, `worst` is `null`, and `explanation` names the error.
 `run` counts stress tests in the session; `total`, `done`, and `survived` count worlds, so the score reads `Survived {survived}/{total}`.
 `seed` is the fixed seed the worlds are drawn from, so every stress test of the same build flies the same worlds.
 `weight_g` is the nominal build the worlds vary.
@@ -397,11 +400,13 @@ The stress test runs the current product in 50 randomized MuJoCo worlds (`stress
 `worst` is `null` while running; when `done` it is the lost world with the lowest margin (the survived one with the lowest margin when none was lost) plus its `trajectory` (`[[t, x, y, z], ...]`, the same shape as `sim`).
 `weakest` names the factor that separates lost worlds from survived ones, or is `null` when every world survived; `explanation` is Bolzen's one sentence about it.
 
-Drone: the controller holds 0.5 m over its start point for 6 s while a 1-cosine gust hits it.
-`policy` is `trained` when the training module left gains (`set_trained_gains` in `tools/stress.py`) or the tool got `gains`, else `default`.
-`gains` are the controller gains that flew: `kp_z`, `kd_z`, `kp_xy`, `kd_xy`, `kp_att`, `kd_att`; `thrust_to_weight` is the nominal one.
+Drone: the worlds fly in the browser, on the MuJoCo WASM workers of the training module, with its drone episode: the controller holds its spot 1 m up for 10 s while a 1-cosine gust hits it.
+The first event is `queued` with `source: "browser"`, `job_id`, and `spec` (the training spec); the first dashboard tab that sees it claims the job, and every later event carries the same three fields.
+No claim within `PAI_TRAIN_CLAIM_TIMEOUT_S`, no report for `PAI_TRAIN_STALL_S`, or no finish within `PAI_TRAIN_TIMEOUT_S` ends it as `failed`.
+`policy` is `trained` when the last drone `training` event carries `gains` (or the tool got `gains`), else `default`, and the card says the gains are not trained yet.
+`gains` are the controller gains that flew, in the `training` event's units: `kp_z`, `ki_z`, `kd_z`, `kp_xy`, `kd_xy`, `kp_att`, `kd_att`; `thrust_to_weight` is the nominal one.
 Drone worlds add `gust_mps` (peak 0…6 m/s), `downdraft_pct` (the share of it blowing down), `gust_dir_deg` (where it blows to, 0 is +x), `gust_start_s` and `gust_len_s` (when it blows), `noise_cm` (sensor noise), `drift_m` (farthest from its spot) and `low_z_m` (lowest height after the gust).
-`reason` is `crashed`, `drifted` (more than 0.35 m off its spot), or `sagged` (below 0.35 m in the last half second).
+`reason` is `crashed`, `drifted` (more than 0.35 m off its spot after the first second), or `sagged` (more than 0.15 m below its spot in the last half second).
 `weakest` is `gust`, `motor`, `mass`, or `noise`.
 
 Gripper: the grip test from `sim` (lift 15 cm, hold, shake at 2.5 Hz), 3.2 s.

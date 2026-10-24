@@ -199,7 +199,12 @@ export interface StressEvent {
   type: "stress";
   run: number;
   product: "drone" | "gripper";
-  status: "running" | "done" | "failed";
+  /** queued: the drone's worlds wait for a dashboard tab to fly them in the browser. */
+  status: "queued" | "running" | "done" | "failed";
+  /** The drone's worlds fly in the browser: the job a tab claims, and the spec it builds the MJCF from. */
+  source?: "browser";
+  job_id?: string;
+  spec?: unknown;
   total: number;
   done: number;
   survived: number;
