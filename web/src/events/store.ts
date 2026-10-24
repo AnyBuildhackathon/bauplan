@@ -6,7 +6,6 @@
 // Nothing here calls the backend: user actions are posted through events/source.ts and
 // lib/api.ts, and their effect comes back as events.
 import { create } from "zustand";
-import { archiveChat } from "../lib/archive";
 import {
   STEP_IDS,
   type AgentEvent,
@@ -669,12 +668,7 @@ export const useSession = create<SessionState>((set, get) => ({
     }));
   },
 
-  reset: () => {
-    const { chat, runs } = get();
-    const last = runs.at(-1);
-    archiveChat(chat, last ? `Run ${last.run} ${last.result === "pass" ? "passes" : "drops"}` : "no run");
-    set(emptyState());
-  },
+  reset: () => set(emptyState()),
 }));
 
 function trainingDetail(ev: TrainingEvent): string {

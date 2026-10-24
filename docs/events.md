@@ -24,7 +24,7 @@ A client that connects late receives the events already published, then the live
 `POST /api/reset` clears the session, the chat memory, and the event buffer, then publishes a `reset` event, a fresh tool snapshot, pending steps, and the timeline.
 Every stream starts with a `reset` event, so a client that reconnects replays onto an empty state.
 
-State-changing calls without a typed body (`/api/reset`, `/api/run/*`, `/api/webhooks/jamie`, `/api/cad/params`, `/api/cad/open`, `/api/versions/{n}/restore`) need `Content-Type: application/json`, else HTTP 415, so a web page cannot fire them as a plain cross-site form post.
+State-changing calls without a typed body (`/api/reset`, `/api/run/*`, `/api/webhooks/jamie`, `/api/cad/params`, `/api/cad/open`, `/api/versions/{n}/restore`, `/api/history/{id}/open`) need `Content-Type: application/json`, else HTTP 415, so a web page cannot fire them as a plain cross-site form post.
 
 ### Pause and stop
 
@@ -127,6 +127,20 @@ With `"kind": "reference"` the same call promotes the build into the registry (`
 `POST /api/versions/{n}/restore` makes version `n` current: Mechanic rebuilds it through the same tools as any build (a product from the spec, part scripts, picks and checks saved with it; the drone by re-picking its catalog parts, the frame with its parameters, the hover test, the render and the bill of materials) and commits the result as a new version with `trigger` `restore` and `restored_from` `n`, so history only grows.
 It answers like `POST /api/prompt` with `restoring: n`; HTTP 404 for an unknown `n`, 409 while Mechanic is building.
 Versions live in the session; a reset clears them.
+
+### Chat history
+
+Every chat is saved in its session directory (`agent/runs/sessions/<id>/`): `chat.json` (the list entry), `events.json` (the event log) and `state.pkl` (the build state and Claude's message history).
+It is saved after every run, before a reset or a reopen, on shutdown, and when the history is listed; a bench nobody typed on and no version was built on is not saved.
+A reset (the logo, or `POST /api/reset`) ends the chat, so the next one is a new entry.
+The history belongs to the backend, like the bench: every access session sees the same bench, so it sees the same history.
+
+`GET /api/history` answers `{"ok": true, "current": "<id>", "items": [...]}`, newest first, at most 100.
+Each item is `{"id", "title", "product", "created_at", "updated_at", "messages", "versions"}`: the title is the first user message (cut to 60 characters), else the meeting or product name; `product` is the product label or empty; times are Unix seconds; `messages` counts chat lines.
+`GET /api/history/{id}` answers `{"ok": true, "item": {...}}`, the list entry plus `chat`, the chat lines as `{"role", "text"}`, for reading a chat without opening it; HTTP 404 for an unknown id.
+`POST /api/history/{id}/open` reopens a saved chat on the bench: the current chat is saved, the saved build state and Claude's memory come back, so the next prompt builds on that product, and every client receives the saved event log as a backlog: `{"type": "reset", "replay": true}`, the events, then `replayed`, followed by a fresh tool snapshot.
+A question still open when the chat was saved comes back answered with its default.
+It answers `{"ok": true, "id", "status": "opened"}`, or `status: "current"` for the chat already open; HTTP 404 for an unknown id, 409 while Mechanic is building.
 
 ### Optimizer
 
@@ -292,8 +306,8 @@ Unknown extra fields should be ignored.
 
 ### reset
 
-No fields.
 The first event of every stream and of every server reset: drop all session state.
+`replay: true` (only after `POST /api/history/{id}/open`) means a saved chat's events follow up to `replayed`, to be applied as a backlog without animations or speech.
 
 ### explain
 

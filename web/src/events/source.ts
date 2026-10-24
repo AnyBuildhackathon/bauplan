@@ -59,6 +59,8 @@ interface SourceState {
   /** Run test or Rebuild, pressed by a person (POST /api/control). */
   pressControl: (control: "run:test" | "run:rebuild") => Promise<void>;
   resetSession: () => Promise<void>;
+  /** Reopens a saved chat on the bench; resolves to false when it did not open. */
+  openChat: (id: string) => Promise<boolean>;
   /** Ticks or unticks "bestellt" on an order task; the backend mirrors it to Jamie. */
   toggleTask: (id: string, done: boolean) => Promise<void>;
   /** Stands in for Jamie's webhook: marks a meeting as running, or as ended (which rebuilds). */
@@ -131,6 +133,7 @@ function openLive(onStatus: (s: LiveStatus) => void) {
       replaying = false;
       return;
     }
+    if (ev.type === "reset" && ev.replay) replaying = true;
     useSession.getState().apply(ev, { instant: replaying });
   };
 }
@@ -357,13 +360,28 @@ export const useSource = create<SourceState>((set, get) => {
     },
 
     resetSession: async () => {
-      // Archives the chat and clears now; the server's reset marker on the stream follows.
+      // Clears now; the server saves the chat to the history and its reset marker on the stream follows.
       useSession.getState().reset();
       try {
         const res = await apiFetch("/api/reset", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
         await ensureOk(res);
       } catch (err) {
         notify(failure("Reset did not arrive", err));
+      }
+    },
+
+    openChat: async (id) => {
+      try {
+        const res = await apiFetch(`/api/history/${encodeURIComponent(id)}/open`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+        if (res.status === 409) {
+          set({ notice: "Mechanic is building. Open the chat when the build is done." });
+          return false;
+        }
+        await ensureOk(res);
+        return true;
+      } catch (err) {
+        notify(failure("The chat did not open", err));
+        return false;
       }
     },
 

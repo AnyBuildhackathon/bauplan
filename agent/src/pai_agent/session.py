@@ -20,6 +20,7 @@ import asyncio
 import logging
 import os
 import re
+import time
 import uuid
 from pathlib import Path
 
@@ -51,6 +52,7 @@ class Session:
         self.bus = EventBus()
         self.state: BuildState = _new_state()
         self.messages: list[dict] = []
+        self.created_at = time.time()
         self.task: asyncio.Task | None = None
         self.question: dict | None = None
         self._answer: asyncio.Future | None = None
@@ -427,6 +429,46 @@ class Session:
         return {"ok": False, "detail": "Noch kein Rahmen."}
 
     async def reset(self) -> None:
+        await self._stop()
+        # The chat that ends here stays in the history; the next one is a new entry.
+        self.save_chat()
+        forget_client(self.state.session_id)
+        self.state = _new_state()
+        self.messages = []
+        self.created_at = time.time()
+        await self.bus.clear()
+        await self._baseline()
+
+    async def open_chat(self, chat_id: str) -> dict:
+        """Reopens a saved chat: its build state, Claude's memory of it, and its events, replayed to every client."""
+
+        from pai_agent import history
+
+        if self._busy():
+            return {"ok": False, "busy": True, "error": "Mechanic is building. Open the chat when the build is done."}
+        if chat_id == self.state.session_id:
+            return {"ok": True, "id": chat_id, "status": "current"}
+        saved = history.load(chat_id)
+        if saved is None:
+            return {"ok": False, "missing": True, "error": "No saved chat " + chat_id + "."}
+        await self._stop()
+        self.save_chat()
+        forget_client(self.state.session_id)
+        self.state, self.messages, events, self.created_at = saved
+        await self.bus.load(events)
+        await emit_connections(self.bus.publish)
+        return {"ok": True, "id": chat_id, "status": "opened"}
+
+    def save_chat(self) -> None:
+        from pai_agent import history
+
+        try:
+            history.save(self.state, list(self.bus.events), self.messages, self.created_at)
+        except Exception:
+            # Losing one save must never break a build or a reset.
+            log.exception("saving the chat failed")
+
+    async def _stop(self) -> None:
         if self._busy():
             assert self.task is not None
             self.task.cancel()
@@ -437,16 +479,12 @@ class Session:
         self.task = None
         self.question = None
         self._answer = None
-        forget_client(self.state.session_id)
-        self.state = _new_state()
-        self.messages.clear()
-        await self.bus.clear()
-        await self._baseline()
 
     async def shutdown(self) -> None:
         if self._busy():
             assert self.task is not None
             self.task.cancel()
+        self.save_chat()
 
     async def pause(self) -> dict:
         """Pauses the run at its next checkpoint; the tool that runs now finishes first."""
@@ -487,6 +525,7 @@ class Session:
             await ctx.emit({"type": "mascot", "state": "besorgt", "say": "Something went wrong in the run."})
         finally:
             await self.run.finished()
+        self.save_chat()
 
     async def _baseline(self) -> None:
         # Every stream starts with this marker, so a client that reconnects or misses a reset starts clean.
