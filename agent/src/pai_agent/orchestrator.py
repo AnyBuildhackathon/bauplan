@@ -64,7 +64,7 @@ Any product (the default; a phone stand, a desk fan, a plant-watering robot, a b
    and only then revise it with product_spec.
 7. blender_render, then bom_build and print_prep, then electronics_plan when the product has electronics. End with two sentences at most: mass, cost, which requirements pass.
 
-A reference build is a known product with its real parts (reference_load lists and loads them). After one is loaded, the user changes it:
+A reference build is a known product with its real parts. When the user asks to rebuild one, build it fresh with the live tools from the spec in the message (the drone or gripper flow, or product_spec). Do not call reference_load for that rebuild: it replays a saved run. reference_load only lists references, or, without a live key, puts a saved build on the bench. After a build is already on the bench, the user changes it:
 use cad_update for dimensions, part_pick to swap a bought part, or product_spec with the revised spec for new parts or requirements
 (parts whose definition did not change keep their build); then rerun the checks, blender_render, bom_build and print_prep.
 Keep runs short: at most four printed parts unless the product really needs more.
@@ -266,14 +266,24 @@ async def run_sketch(ctx: Ctx, name: str, note: str, messages: list[dict]) -> No
     await _run_claude(ctx, text, messages)
 
 
-async def run_reference(ctx: Ctx, ref_id: str) -> None:
-    """The empty bench's other start: a reference build, loaded through the same tools, ready to change."""
+async def run_reference(ctx: Ctx, ref_id: str, messages: list[dict] | None = None) -> None:
+    """Start from a library reference.
 
-    from pai_agent.references import build_reference
+    With a live key this is a fresh orchestrator run from that reference's spec and parts.
+    Without a key, or with PAI_FORCE_MOCK, the saved build plays and the chat says it is offline.
+    """
+
+    from pai_agent.references import build_reference, reference_brief
 
     await _first(ctx)
-    await ctx.step("meeting", "running")
-    await _on_bench(ctx, await build_reference(ctx, ref_id))
+    visible, model = reference_brief(ref_id)
+    await ctx.chat("user", visible)
+    if not claude_enabled():
+        await ctx.chat("agent", "Offline: rebuilding the saved build without the live model.")
+        await ctx.step("meeting", "running")
+        await _on_bench(ctx, await build_reference(ctx, ref_id))
+        return
+    await _run_claude(ctx, model, [] if messages is None else messages)
 
 
 async def run_remix(ctx: Ctx, entry: dict) -> None:

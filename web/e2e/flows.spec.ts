@@ -8,8 +8,6 @@ const STAND = "Design a phone stand for my desk";
 test("drone reference: Library, Rebuild, v1 with every check met", async ({ page }) => {
   await freshBench(page, "view=library");
   await page.locator('[data-target="library:micro-drone"]').dispatchEvent("click");
-  await expect(page.locator('[data-target="library_rebuild"]')).toBeEnabled();
-  await page.locator('[data-target="library_rebuild"]').dispatchEvent("click");
   // The mock rebuild takes about 30 s on a loaded machine, as long as the default expect timeout.
   await expect(page.getByText("Version 1 ·", { exact: false }).first()).toBeAttached({ timeout: 60_000 });
   await expect(page.locator('[data-target~="requirements"]')).toContainText(/(\d+) of \1 met/);

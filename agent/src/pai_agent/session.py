@@ -137,7 +137,7 @@ class Session:
         from pai_agent.references import name_of
 
         ctx.label = "Library: " + name_of(ref_id)
-        self.task = asyncio.create_task(self._run(run_reference(ctx, ref_id), ctx))
+        self.task = asyncio.create_task(self._run(run_reference(ctx, ref_id, self.messages), ctx))
         return {"ok": True, "mode": mode, "status": "started", "reference": ref_id}
 
     async def restore_version(self, n: int) -> dict:

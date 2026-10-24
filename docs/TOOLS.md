@@ -28,7 +28,7 @@ Event payloads are specified in [events.md](events.md#tools), and the step each 
 | `product_spec` | `name` (required): string; `function` (required): string; `quote`: string; `requirements` (required): array; `assemblies`: array; `parts` (required): array | Validates the full spec of any product (`spec.py`) and lists every problem at once until it is right; emits `product` and `requirement` rows. | Python validation |
 | `product_brief` | `product` (required): `drone` or `gripper`; `object_mass_g`, `object_width_mm`, `max_weight_g`, `budget_eur`: number; `quote`: string | Starts a drone or gripper build and turns the request into requirement checks. | Python |
 | `sketch_to_spec` | `sketch`: string (file name); `note`: string | Reads a hand-sketch photo: a validated spec, every dimension with value, unit and confidence, what was unreadable, and a summary; emits `sketch`. | Claude vision |
-| `reference_load` | `id`: string | Without `id` lists the reference builds; with `id` loads one onto the bench (spec, part scripts, picks, assembly, checks, render, BOM). | `agent/data/references/` |
+| `reference_load` | `id`: string | Without `id` lists the reference builds. With `id` and no live key, loads the saved build onto the bench. With a live key, returns the spec and parts (`request`) and does not replay the saved run. | `agent/data/references/` |
 | `delegate` | `agent` (required): `parts`, `checks` or `pricing`; `task` (required): string | Runs a sub-agent with only its tools and returns its report, tool calls, tokens and cost; emits `agent`. | Claude Sonnet 5.5 |
 
 ## CAD and assembly
