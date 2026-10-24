@@ -17,9 +17,8 @@ _BOARDS = {
         "receiver": "ExpressLRS 2.4 GHz on board (SPI)",
         "battery_plug": "BT2.0",
     },
+    # No board_name: the target is not confirmed, and a wrong one makes Betaflight refuse to save the batch.
     "betafpv-matrix-1s-5in1-v2": {
-        "board_name": "BETAFPVG473",
-        "manufacturer_id": "BEFH",
         "receiver": "ExpressLRS 2.4 GHz on board (UART, CRSF)",
         "battery_plug": "BT2.0",
     },
@@ -183,7 +182,7 @@ def betaflight_cli(ctx: Ctx, gains: dict, gains_source: str) -> str:
     for warning in _drone_warnings(fc, motor, battery):
         lines.append("# WARNING: " + warning)
     lines += ["", "batch start", ""]
-    if board:
+    if board.get("board_name"):
         lines += ["board_name " + board["board_name"], "manufacturer_id " + board["manufacturer_id"], ""]
     lines += ["# Motor order (Quad X, props in)"]
     for pad, _target, position, spin in _MOTORS:

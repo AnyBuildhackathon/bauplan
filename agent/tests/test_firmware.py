@@ -71,7 +71,7 @@ def test_betaflight_file_uses_known_cli_lines(tmp_path):
         setting = re.fullmatch(r"set (\w+) = \S+", line)
         assert (setting and setting[1] in _SETTINGS) or any(re.fullmatch(c, line) for c in _COMMANDS), line
     assert event["content"].rstrip().endswith("save")
-    assert "board_name BETAFPVG473" in event["content"]
+    assert "board_name" not in event["content"]
     assert "set serialrx_provider = CRSF" in event["content"]
     assert (tmp_path / event["filename"]).read_text() == event["content"]
 
