@@ -1,5 +1,5 @@
 // The evolution strategy: a cross-entropy method in the normalised [0, 1] parameter box.
-// Sample a population around the mean, keep the elite quarter, move mean and spread there.
+// Sample a population around the mean, keep the best 15 %, move mean and spread there.
 import { mulberry32 } from "./drone";
 import type { ParamSpec, Params } from "./types";
 
@@ -19,19 +19,33 @@ export function fromParams(specs: ParamSpec[], p: Params): number[] {
   });
 }
 
+export interface CrossEntropyOptions {
+  seed?: number;
+  /** Starting spread in the unit box. */
+  sigma0?: number;
+  /** Share of the population that moves the mean. */
+  eliteFrac?: number;
+  /** How much of the elite spread replaces the old spread each generation. */
+  smooth?: number;
+  /** Lowest spread, so the search keeps exploring to the last generation. */
+  floor?: number;
+}
+
 export class CrossEntropy {
   mean: number[];
   sigma: number[];
   private rnd: () => number;
-  constructor(
-    specs: ParamSpec[],
-    seed = 7,
-    sigma0 = 0.3,
-    private eliteFrac = 0.25,
-  ) {
+  private eliteFrac: number;
+  private smooth: number;
+  private floor: number;
+  constructor(specs: ParamSpec[], options: CrossEntropyOptions = {}) {
+    const { seed = 7, sigma0 = 0.4, eliteFrac = 0.15, smooth = 0.5, floor = 0.06 } = options;
     this.mean = fromParams(specs, Object.fromEntries(specs.map((s) => [s.name, s.init])));
     this.sigma = specs.map(() => sigma0);
     this.rnd = mulberry32(seed);
+    this.eliteFrac = eliteFrac;
+    this.smooth = smooth;
+    this.floor = floor;
   }
   private gauss() {
     const u = Math.max(1e-12, this.rnd());
@@ -52,8 +66,7 @@ export class CrossEntropy {
       const mu = elite.reduce((a, x) => a + x[j], 0) / k;
       const varj = elite.reduce((a, x) => a + (x[j] - mu) ** 2, 0) / k;
       this.mean[j] = mu;
-      // Smoothed, with a floor, so the search keeps exploring to the last generation.
-      this.sigma[j] = Math.max(0.02, 0.6 * Math.sqrt(varj) + 0.4 * this.sigma[j] * 0.7);
+      this.sigma[j] = Math.max(this.floor, this.smooth * Math.sqrt(varj) + (1 - this.smooth) * this.sigma[j]);
     }
   }
 }

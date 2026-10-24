@@ -265,7 +265,7 @@ A `done` event after an `offline` tool means the fallback file was played, not t
 
 A browser run (`train_in_browser`) adds `source: "browser"` and these fields to the same shape:
 `job_id`; `product` (`drone`); `spec`, what the browser builds the MJCF from: `{product, label, nominal, mass_g, thrust_g, motors, arm_length_mm, parts: [{category, name, qty, mass_g}]}`, where `thrust_g` is the total maximum thrust of all motors and `nominal: true` means nothing was built yet; `population` (64), `generations` (16), `rollouts_total` (1024), `generation` (finished generations);
-`best_params`, the best controller gains so far (drone: `kp_z`, `kd_z`, `kp_xy`, `kd_xy`, `kp_att`, `kd_att`), or `null`; `best_metrics` (drone: `rms_error_cm` after the first 2 s, `max_tilt_deg`, `survived_s`, `crashed`, `held`), or `null`; and `error` on `failed`.
+`best_params`, the best controller gains so far (drone: `kp_z`, `ki_z`, `kd_z`, `kp_xy`, `kd_xy`, `kp_att`, `kd_att`), or `null`; `best_metrics` (drone: `rms_error_cm` after the first 2 s, `max_tilt_deg`, `survived_s`, `crashed`, `held`), or `null`; and `error` on `failed`.
 `step` counts finished rollouts and `reward` is the best score so far, 0–100; `curve` holds one point per generation.
 `queued` asks a dashboard to run it; `running` follows each generation; `done` carries the final gains.
 `failed` with `error: "no_browser"` means no dashboard claimed the job within `PAI_TRAIN_CLAIM_TIMEOUT_S` (default 20); a run that does not finish within `PAI_TRAIN_TIMEOUT_S` (default 240) fails with `error: "timeout"`, and a claimed run that reports nothing for `PAI_TRAIN_STALL_S` (default 30) fails with `error: "browser_gone"`, for example after the tab was closed or reloaded.

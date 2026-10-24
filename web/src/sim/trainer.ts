@@ -149,15 +149,16 @@ export async function runBrowserTraining(jobId: string, fallback: { productId: s
 
   try {
     const product = productFor(productId);
-    const es = new CrossEntropy(product.params, 7);
+    const es = new CrossEntropy(product.params);
     let best: Best | null = null;
     await report({ status: "running", step: 0, generation: 0 });
     for (let g = 0; g < generations; g++) {
       const t0 = performance.now();
       const xs = es.ask(population);
       const params = xs.map((x) => toParams(product.params, x));
-      // Common random numbers: one scenario (gust side) per generation for every candidate.
-      const jobs = params.map((p) => ({ params: p, perturbation: { seed: 1000 * (g + 1) + 1 } }));
+      // Common random numbers: one scenario per generation for every candidate.
+      const scenario = product.trainingPerturbation(g);
+      const jobs = params.map((p) => ({ params: p, perturbation: scenario }));
       const results: RolloutResult[] = await pool.run({
         productId,
         spec,

@@ -3,6 +3,9 @@
 import type { MjData, MjModel } from "@mujoco/mujoco";
 import type { Episode, Params, Perturbation, TrainingProduct } from "./types";
 
+/** The trained gains: a cascaded PID, altitude with an integral, position and attitude PD. */
+export const DRONE_GAINS = ["kp_z", "ki_z", "kd_z", "kp_xy", "kd_xy", "kp_att", "kd_att"] as const;
+
 /** What the backend sends in the `training` event (`spec`). */
 export interface DroneSpec {
   product: "drone";
@@ -88,11 +91,8 @@ function euler(qw: number, qx: number, qy: number, qz: number) {
 }
 
 function episode(params: Params, p: Perturbation, spec: DroneSpec): Episode {
-  const { d, mass, ixx, izz } = dims(spec);
-  const massScale = p.mass_scale ?? 1;
-  const m = mass * massScale;
-  const ix = ixx * massScale;
-  const iz = izz * massScale;
+  // The controller only knows the nominal build; a perturbation changes the plant, not what it assumes.
+  const { d, mass: m, ixx: ix, izz: iz } = dims(spec);
   const rnd = mulberry32(p.seed ?? 1);
   const offset = p.init_offset ?? [0, 0, 0];
   const tilt = p.init_tilt ?? START_TILT;
@@ -101,7 +101,8 @@ function episode(params: Params, p: Perturbation, spec: DroneSpec): Episode {
   // The gust comes from a random side, so a controller cannot overfit one direction.
   const gustAngle = rnd() * Math.PI * 2;
   const gustN = GUST.weights * m * G * gustScale;
-  const [kpZ, kdZ, kpXY, kdXY, kpA, kdA] = [params.kp_z, params.kd_z, params.kp_xy, params.kd_xy, params.kp_att, params.kd_att];
+  const [kpZ, kiZ, kdZ, kpXY, kdXY, kpA, kdA] = [params.kp_z, params.ki_z ?? 0, params.kd_z, params.kp_xy, params.kd_xy, params.kp_att, params.kd_att];
+  let iz_err = 0;
   let err2 = 0;
   let errN = 0;
   let maxTilt = 0;
@@ -128,7 +129,9 @@ function episode(params: Params, p: Perturbation, spec: DroneSpec): Episode {
       const { roll, pitch, yaw } = euler(q[3], q[4], q[5], q[6]);
       const ax = kpXY * (DRONE_TARGET[0] - q[0]) - kdXY * v[0];
       const ay = kpXY * (DRONE_TARGET[1] - q[1]) - kdXY * v[1];
-      const az = kpZ * (DRONE_TARGET[2] - q[2]) - kdZ * v[2];
+      // Integral on altitude, clamped so it cannot wind up past half the weight.
+      iz_err = clamp(iz_err + (DRONE_TARGET[2] - q[2]) * DT, -0.5 * G / Math.max(kiZ, 1e-6), 0.5 * G / Math.max(kiZ, 1e-6));
+      const az = kpZ * (DRONE_TARGET[2] - q[2]) + kiZ * iz_err - kdZ * v[2];
       const cy = Math.cos(yaw), sy = Math.sin(yaw);
       const axb = cy * ax + sy * ay;
       const ayb = -sy * ax + cy * ay;
@@ -199,9 +202,10 @@ function episode(params: Params, p: Perturbation, spec: DroneSpec): Episode {
 export const droneProduct: TrainingProduct<DroneSpec> = {
   id: "drone",
   label: "Hover controller",
-  goal: "Stay level and hold position for 10 s, with a gust from a random side",
+  goal: "Stay level and hold position for 10 s, 15 % over the expected mass, with a gust from a random side",
   params: [
     { name: "kp_z", label: "Altitude P", min: 0.5, max: 40, init: 1.2, log: true, unit: "1/s²" },
+    { name: "ki_z", label: "Altitude I", min: 0.05, max: 20, init: 0.1, log: true, unit: "1/s³" },
     { name: "kd_z", label: "Altitude D", min: 0.2, max: 15, init: 0.4, log: true, unit: "1/s" },
     { name: "kp_xy", label: "Position P", min: 0.1, max: 15, init: 0.25, log: true, unit: "1/s²" },
     { name: "kd_xy", label: "Position D", min: 0.1, max: 10, init: 0.2, log: true, unit: "1/s" },
@@ -212,5 +216,7 @@ export const droneProduct: TrainingProduct<DroneSpec> = {
   frameSize: 7,
   frameHz: 20,
   buildMjcf,
+  // A payload 15 % over what the controller assumes, so the altitude integral earns its keep.
+  trainingPerturbation: (generation) => ({ seed: 1000 * (generation + 1) + 1, mass_scale: 1.15 }),
   episode,
 };

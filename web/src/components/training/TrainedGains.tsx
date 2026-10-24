@@ -30,7 +30,7 @@ export function TrainedGains() {
             {fmtNum(m.rms_error_cm, 1)} cm RMS · max tilt {fmtNum(Number(m.max_tilt_deg ?? 0), 0)}°
           </div>
         )}
-        <div className="num mt-2 grid grid-cols-3 gap-x-3 gap-y-1">
+        <div className="num mt-2 grid grid-cols-4 gap-x-3 gap-y-1">
           {Object.entries(t.best_params).map(([k, v]) => (
             <div key={k} className="min-w-0">
               <div className="truncate text-[11px] font-semibold text-muted">{labels[k] ?? k}</div>

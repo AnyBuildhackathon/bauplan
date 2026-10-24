@@ -209,7 +209,7 @@ export function BrowserTraining() {
           </div>
         </div>
         {bestParams && product && (
-          <div className="grid shrink-0 grid-cols-3 gap-1.5" data-target="training:gains">
+          <div className="grid shrink-0 grid-cols-4 gap-1.5" data-target="training:gains">
             {product.params.map((p) => (
               <div key={p.name} className="rounded-[12px] bg-white/80 px-2.5 py-1.5">
                 <div className="truncate text-[11px] font-semibold text-muted">{p.label}</div>

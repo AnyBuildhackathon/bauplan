@@ -279,7 +279,7 @@ async def run_mock_training(ctx: Ctx) -> None:
     await ctx.chat(
         "agent",
         "I start 64 controller candidates for 16 generations, 1,024 MuJoCo simulations in the browser. "
-        "Each one has to hold its position for 10 seconds with a gust from the side.",
+        "Each one has to hold its position for 10 seconds, 15 % heavier than it expects and with a gust from the side.",
     )
     result = await call_tool(ctx, "train_in_browser", {})
     if result.get("ok") is False:
