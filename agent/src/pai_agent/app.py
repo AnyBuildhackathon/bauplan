@@ -18,6 +18,7 @@ from pai_agent import explain
 from pai_agent.access import AccessGate, access_code
 from pai_agent.env import claude_enabled, load_env
 from pai_agent.paths import FALLBACK_DIR, REPO_ROOT, SESSIONS_DIR
+from pai_agent.gemini_live import router as gemini_live_router
 from pai_agent.session import Session
 from pai_agent.tools.browser_train import router as browser_train_router
 from pai_agent.tools.stress import router as stress_router
@@ -107,6 +108,7 @@ app.add_middleware(
 )
 app.include_router(browser_train_router)
 app.include_router(stress_router)
+app.include_router(gemini_live_router)
 
 
 @app.get("/api/health")
@@ -125,6 +127,19 @@ async def health(request: Request) -> dict:
 async def access() -> dict:
     # Reached only without ANYBUILD_ACCESS_CODE; with it, AccessGate answers both.
     return {"ok": True, "access": "open"}
+
+
+@app.get("/api/status")
+async def status(request: Request) -> dict:
+    from pai_agent.status import isaac_connection, partner_statuses
+
+    session = request.app.state.session
+    partners, isaac = await asyncio.gather(
+        asyncio.to_thread(partner_statuses, list(session.bus.events)), isaac_connection(),
+    )
+    last = session.state.omniverse_result
+    isaac = {**isaac, "last_run": {key: last.get(key) for key in ("job_id", "mode", "status", "source", "stage", "detail")} if last else None}
+    return {"partners": [*partners, {"id": "isaac", "label": "NVIDIA Isaac", "state": isaac["state"], "detail": isaac["detail"]}], "isaac": isaac}
 
 
 @app.post("/api/prompt")

@@ -9,6 +9,7 @@ import { SlidersHorizontal } from "lucide-react";
 import { useSource } from "../events/source";
 import { apiFetch } from "../lib/api";
 import { useUi, type Display } from "../lib/ui";
+import { selectedVoiceEngine, useVoiceEngine } from "../lib/voiceEngine";
 import { useBenchResults } from "../views/BenchResults";
 
 const DISPLAY: { key: keyof Display; label: string; hint: string; control?: string }[] = [
@@ -55,6 +56,7 @@ function Select({ label, value, options, onChange }: { label: string; value: str
     <label className="flex items-center justify-between gap-3 py-1 text-[14px] font-semibold text-ink-2">
       {label}
       <select
+        name={label.toLowerCase().replace(/\s+/g, "-")}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="h-8 rounded-full bg-tile px-3 text-[13px] font-semibold text-ink outline-none hover:bg-track"
@@ -78,10 +80,13 @@ export function BenchSettings() {
   const ref = useRef<HTMLDivElement>(null);
 
   const display = useUi((s) => s.display);
+  const director = useUi((s) => s.director);
+  const setDirector = useUi((s) => s.setDirector);
   const setDisplay = useUi((s) => s.setDisplay);
   const micMode = useUi((s) => s.micMode);
   const setMicMode = useUi((s) => s.setMicMode);
   const stt = useUi((s) => s.stt);
+  const voiceEngine = useVoiceEngine();
   const mode = useSource((s) => s.mode);
   const live = mode === "live";
 
@@ -135,10 +140,12 @@ export function BenchSettings() {
       {open && (
         <div className="scroll-soft absolute top-12 right-0 z-[90] max-h-[calc(100vh-90px)] w-[340px] animate-rise overflow-y-auto rounded-[20px] bg-card p-4 shadow-[var(--shadow-float)]">
           <h3 className="eyebrow mb-1">Show</h3>
+          <Toggle label="Director mode" hint="Follow CAD, tests and version changes. A tab click pauses for 30 seconds." on={director} onChange={setDirector} />
           {DISPLAY.map((d) => (
             <Toggle key={d.key} control={d.control} label={d.label} hint={d.hint} on={display[d.key]} onChange={(on) => setDisplay({ [d.key]: on })} />
           ))}
           <h3 className="eyebrow mt-3 mb-1 border-t border-line pt-3">Voice</h3>
+          {live && <Select label="Voice engine" value={selectedVoiceEngine()} options={[...(voiceEngine.available ? [{ value: "gemini", label: "Gemini Live" }] : []), { value: "elevenlabs", label: "ElevenLabs" }]} onChange={(v) => voiceEngine.choose(v as "gemini" | "elevenlabs")} />}
           <Toggle
             control="setting:push_to_talk"
             label="Push-to-talk"

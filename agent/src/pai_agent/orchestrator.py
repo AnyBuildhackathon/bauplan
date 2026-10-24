@@ -129,8 +129,9 @@ async def _first(ctx: Ctx) -> bool:
     return first
 
 
-async def run_prompt(ctx: Ctx, text: str, messages: list[dict], voice: bool = False) -> None:
-    await ctx.chat("user", text, voice)
+async def run_prompt(ctx: Ctx, text: str, messages: list[dict], voice: bool = False, *, record_user: bool = True) -> None:
+    if record_user:
+        await ctx.chat("user", text, voice)
     # "Train it, then stress test it": training first, so the stress test flies the trained gains.
     if not claude_enabled() and wants_train_then_stress(text):
         await _first(ctx)

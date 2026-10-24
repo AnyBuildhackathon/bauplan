@@ -100,7 +100,6 @@ function Row({ r, run }: { r: BenchResult; run: BenchRun }) {
   const resetUi = useUi((s) => s.resetUi);
   const resetSession = useSource((s) => s.resetSession);
   const sendPrompt = useSource((s) => s.sendPrompt);
-  const demo = useSource((s) => s.mode) === "demo";
   const tone = r.status === "skipped" ? "text-muted" : r.pass ? "text-ok-ink" : "text-fail-ink";
   const verdict = r.status === "done" ? (r.pass ? "Valid" : "Failed") : r.status === "timeout" ? "Timeout" : r.status === "error" ? "Error" : "Skipped";
   const openOnBench = async () => {
@@ -141,16 +140,14 @@ function Row({ r, run }: { r: BenchResult; run: BenchRun }) {
             {typeof r.parts_eur === "number" ? ` · ${fmtEur(r.parts_eur)} in parts` : ""} · {r.tool_errors} tool errors, {r.fixes} fixes
             {r.cad_fallbacks ? ` · ${r.cad_fallbacks} part(s) as CadQuery blocks (no FreeCAD)` : ""}
           </p>
-          {!demo && (
-            <button
-              type="button"
-              onClick={() => void openOnBench()}
-              title={run.mode === "mock" ? "Builds this prompt again on a fresh bench (mock story without a key)" : "Builds this prompt again on a fresh bench"}
-              className="inline-flex h-8 items-center gap-1.5 rounded-full bg-card px-3 text-[13px] font-bold text-ink-2 shadow-[var(--shadow-pill)] transition hover:bg-page"
-            >
-              <Play className="h-3.5 w-3.5" /> Open on bench
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => void openOnBench()}
+            title={run.mode === "mock" ? "Builds this prompt again on a fresh bench (mock story without a key)" : "Builds this prompt again on a fresh bench"}
+            className="inline-flex h-8 items-center gap-1.5 rounded-full bg-card px-3 text-[13px] font-bold text-ink-2 shadow-[var(--shadow-pill)] transition hover:bg-page"
+          >
+            <Play className="h-3.5 w-3.5" /> Open on bench
+          </button>
         </div>
       )}
     </li>

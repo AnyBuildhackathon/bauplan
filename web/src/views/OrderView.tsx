@@ -1,6 +1,6 @@
 // The order inside the bill of materials: one card per shop with its lines and a total,
 // printed parts in their own group with the filament they take. Built from the bom event
-// on the client, the same grouping GET /api/export/order answers, so it also works in ?demo.
+// on the client, the same grouping GET /api/export/order answers.
 import { ArrowUpRight, Printer, ShoppingCart } from "lucide-react";
 import type { BomEvent, BomItem } from "../events/types";
 import { fmtEur, fmtGram } from "../lib/format";

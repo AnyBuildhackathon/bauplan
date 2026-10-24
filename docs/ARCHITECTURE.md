@@ -248,6 +248,14 @@ Without a GLB (the CadQuery fallback) the studio places simple parts around the 
 
 ## Voice loop
 
+Gemini Live is the default hands-free engine when configured.
+The backend proxies native audio through Vertex AI with gcloud user OAuth or AI Studio with a server-only key.
+Gemini calls Claude for engineering and the existing app controls for navigation; Reson8 independently transcribes the same microphone stream for the chat and logbook.
+Gemini output shares the existing Web Audio lip-sync path.
+See [realtime voice](GEMINI_LIVE.md) for configuration, protocol, transcript ownership and measured latency.
+
+The existing loop below remains available through Settings and starts automatically when Gemini fails.
+
 ```text
 mic -16 kHz PCM-> Reson8 Turns --turn_start--> Mechanic pauses (barge-in)
                        |
@@ -264,7 +272,7 @@ mic -16 kHz PCM-> Reson8 Turns --turn_start--> Mechanic pauses (barge-in)
 - **Speaking:** the browser cuts the streamed text into phrases (the first at a comma, the rest at sentence ends) and requests each from ElevenLabs Turbo v2.5 as a PCM stream as soon as it is complete, so speech starts while Haiku is still writing.
   Phrases play gaplessly through Web Audio, and each request passes the sentence before it so the intonation stays continuous; the voice is the stock ElevenLabs voice "Roger" with stability 0.4, similarity boost 0.8 and style 0.45.
 - **Persona:** Mechanic is self-assured and witty, may swear mildly when it fits, never at the person, and stays honest: no claimed pass, price or number that a tool did not produce.
-- **Lip-sync:** `useSpeech` in `web/src/lib/speech.ts` measures the audio level every frame and drives the mascot's mouth, for live speech and the recorded demo clips alike.
+- **Lip-sync:** `useSpeech` in `web/src/lib/speech.ts` measures the audio level every frame and drives the mascot's mouth while Mechanic speaks.
 - **Barge-in:** when Reson8 reports a new turn while Mechanic talks, playback pauses at once and resumes if the turn was only an echo.
 - Measured end of turn to first audio was about 1 second (960 to 1010 ms in one run on 2026-10-24).
 - Fallbacks: without Reson8 the browser's Web Speech recognition listens, push-to-talk is available in settings, and without ElevenLabs Mechanic stays silent and shows text.
@@ -273,7 +281,7 @@ mic -16 kHz PCM-> Reson8 Turns --turn_start--> Mechanic pauses (barge-in)
 
 The backend publishes every state change as one JSON object on `GET /api/events`.
 Every stream starts with `reset`, then the backlog, then a `replayed` marker, then live events, with `: keepalive` comments every 15 seconds.
-The web store (`web/src/events/store.ts`) folds events into UI state, and the same reducer plays the recorded demo from `web/src/events/recording.json`, so the live app and the recording cannot drift apart.
+The web store (`web/src/events/store.ts`) folds events into UI state.
 `say` events are live-only and never replayed.
 The 34 event types and their payloads are listed in [API.md](API.md#server-sent-events) and specified in [events.md](events.md#sse-events).
 

@@ -68,7 +68,6 @@ It prefers `frame.FCStd`, then STEP, then STL.
 `phrases` bias Reson8 toward our vocabulary (the `phrases` query parameter); a `custom_model_id` from `RESON8_CUSTOM_MODEL_ID` replaces them.
 `narrator` is `true` when `ANTHROPIC_API_KEY` is set: the backend then writes Mechanic's spoken lines as `say` events and the client does not read `mascot` lines aloud.
 Without ElevenLabs (`"tts": "none"`) Mechanic is silent and his text is the caption; the system voice is never used.
-The recorded demo has no backend: its `mascot` events and open `question` events carry an optional `voice` URL (`/demo/voice/<hash>.mp3`), a pre-rendered ElevenLabs clip of the `say` text or of the last sentence of the question, which the client plays when the event arrives.
 `POST /api/voice/token` returns `{"access_token": "...", "expires_in": 600}`, a short-lived Reson8 token for the browser's WebSocket (subprotocols `["bearer", token]`), or HTTP 503 without `RESON8_API_KEY`.
 `POST /api/voice/speak` with `{"text": "...", "previous_text": "..."}` streams ElevenLabs speech for one phrase as raw 16-bit little-endian mono PCM (`audio/pcm`, sample rate in `X-Sample-Rate`, 24000), or HTTP 503 without `ELEVENLABS_API_KEY`.
 `previous_text` is the phrase spoken just before, so one reply keeps a continuous intonation.
@@ -137,7 +136,7 @@ The dashboard opens `?project={id}` by calling `POST /api/library/{id}/open` onc
 
 The community holds projects people published, for others to open and keep working on (remix).
 Seed entries live in the repository under `agent/data/community/{id}/entry.json` and rebuild from a library item; published entries live under `agent/runs/community/{id}/` (local, not committed) with the whole project.
-`agent/scripts/seed_community.py` rebuilds the seeds in mock mode, writes their real numbers into `entry.json`, and exports the same feed to `web/public/community/feed.json` for the recorded demo.
+`agent/scripts/seed_community.py` rebuilds the seeds in mock mode, writes their real numbers into `entry.json`, and exports the same feed to `web/public/community/feed.json`, which the dashboard reads while the backend is offline.
 
 `GET /api/community?sort=new|popular&q=...` answers `{"ok": true, "items": [entry, ...]}`: newest first, or with `sort=popular` the most remixed first; `q` keeps the entries whose title, description, author or product mentions it.
 HTTP 400 for another `sort`.
@@ -217,8 +216,39 @@ It is HTTP 409 when another client holds the job or it is over, and 404 for a jo
 `GET /api/training/browser` returns `{"ok": true, "job": {...}}` with the latest browser job of the session in the `training` event shape without `type`, or `job: null`.
 
 `GET /api/health` returns `{"ok": true, "mode": "mock"|"claude", "busy": bool, "access": "open"|"required"}`; `busy` is true while a run is in flight, which the end-to-end tests and agent/scripts/profile_build.py wait on.
-The dashboard calls it on start: when the backend answers it opens in live mode with an empty bench (after the access code, when `access` is `required`); without a backend it shows "Live backend offline, try again shortly" and retries.
-Only the hidden `?demo` URL parameter plays the recording.
+The dashboard calls it on start: when the backend answers it opens with an empty bench (after the access code, when `access` is `required`); without a backend it shows "Live backend offline, try again shortly" and retries.
+
+### Partner status and Director mode
+
+`GET /api/status` returns `{"partners": [{"id", "label", "state", "detail"}], "isaac": {"host", "gpu", "state", "detail", "last_run"}}`.
+It requires the same access session as other API routes and never returns keys, tokens or private-key paths.
+Partner ids are `claude`, `jamie`, `reson8`, `elevenlabs`, `gemini`, `freecad`, `blender` and `isaac`.
+`state` is `live`, `offline` or `mock`; `detail` explains the provider and its fallback in English.
+For remote APIs, `live` means credentials are configured and the integration is enabled, not that authentication or quota has been verified.
+Status checks make no billable API calls.
+Claude is `mock` when disabled or forced into mock mode; Jamie is `mock` without its MCP token.
+Missing speech keys are `offline`, with browser recognition or text replies as the fallback.
+FreeCAD and Blender report local availability; observed tool errors and CAD fallback to CadQuery override availability until a later successful result or session reset.
+ElevenLabs and Gemini Live report independently, so either voice engine can be chosen in Settings without implying the other is connected.
+Gemini availability follows the existing Studio key or Vertex project and `gcloud` configuration.
+The frontend polls every 15 seconds and marks unavailable status responses offline.
+
+The Isaac chip opens the Omniverse tab, including on an empty bench, and reports `Connected` with the GPU name only after a successful read-only SSH `nvidia-smi` probe.
+The probe uses the existing `ISAAC_SSH_*` / `RUNPOD_SSH_*` configuration and the job's noninteractive `accept-new` host policy, with a disposable known-hosts sink so polling never changes the user's SSH files.
+It times out after five seconds and caches its result for 15 seconds.
+No configured host, rejected SSH authentication or a failed GPU query reports `offline`.
+`isaac.last_run` is `null` before the first job, otherwise `{job_id, mode, status, source, stage, detail}` from the latest Omniverse event; absent fields are `null`.
+The Omniverse connection header shows host, GPU, status and last run; existing SSE `omniverse` events update its live export, upload, execute and download progress.
+Running Isaac jobs requires a connected GPU and the supported drone reference.
+
+Director mode is a browser preference, enabled by default and toggled in Settings.
+Running `teile` or `cad` steps and CAD artifacts select CAD; running `simulation` steps and simulation results select Simulation; rendering selects the Model render view.
+Live Omniverse job events select Omniverse; recorded GPU fallbacks do not take over the canvas.
+A `version` event selects the 3D Model and compares it with the previous version of the same product when available.
+Manual canvas tab clicks pause Director for 30 seconds, then apply the latest pending activity even if no additional event arrives.
+A `tab` URL parameter gets the same initial grace period.
+Director preserves browsing in other main views and uses a short canvas fade that respects reduced-motion preferences.
+The top bar contains partner status and Settings; Jamie meetings and their controls remain in the Logbook.
 
 ### Access
 
@@ -647,7 +677,7 @@ For the drone it is `{kp_z, ki_z, kd_z, kp_xy, kd_xy, kp_att, kd_att, roll: {p, 
 Those are the Betaflight defaults (roll 45/80, pitch 47/84) scaled by the trained `kd_att` against 12 1/s and clamped to 0.5–2×, a starting point for the bench rather than a measured tune; yaw, D, and feed-forward are not trained and keep the firmware defaults.
 For the gripper `gains` is `{squeeze, grip_force_n, ramp_ms, settle_ms, lift_ms, cycle_ms}`, the grasp to put in the servo sketch.
 `queued` asks a dashboard to run it; `running` follows each generation; `done` carries the final gains.
-A local run, started with the Training pane's "Train in this browser" button in the static demo or without a backend, never reaches the backend: it has no `job_id`, sends no claim or progress, and publishes no `training` event, so its gains do not feed the stress test or the firmware.
+A local run, started with the Training pane's "Train in this browser" button while the backend is offline, never reaches the backend: it has no `job_id`, sends no claim or progress, and publishes no `training` event, so its gains do not feed the stress test or the firmware.
 `failed` with `error: "no_browser"` means no dashboard claimed the job within `PAI_TRAIN_CLAIM_TIMEOUT_S` (default 20); a run that does not finish within `PAI_TRAIN_TIMEOUT_S` (default 240) fails with `error: "timeout"`, and a claimed run that reports nothing for `PAI_TRAIN_STALL_S` (default 30) fails with `error: "browser_gone"`, for example after the tab was closed or reloaded.
 
 ## Scene targets
@@ -797,7 +827,6 @@ A prompt that asks for a phone stand (`phone`, `tablet` with `stand`, `holder`, 
 Mechanic deepens the base from 60 to 110 mm with `cad_update`, every check runs again and passes (0.81 N, the push only rocks it), then Blender renders it and the bill of materials comes to 3.32 € and 116 g.
 Once the drone is built, a prompt that asks for it lighter, cheaper, stronger or longer-running ("make the drone lighter but keep 8 minutes") runs `optimize_design` with goals and limits read from the sentence (`8 minutes` keeps the flight time, `under 50 g` the weight; without a number the flight-time requirement holds); before any build it builds v1 first.
 Six variants come back, each with its checks; "take variant C" or a click on its point builds it as the next version.
-The dashboard's `?demo` replays exactly the drone run from `web/src/events/recording.json`, written by `agent/scripts/record_demo.py`.
 
 ## Omniverse results
 

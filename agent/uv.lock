@@ -686,6 +686,7 @@ dependencies = [
     { name = "mujoco" },
     { name = "pydantic" },
     { name = "uvicorn" },
+    { name = "websockets" },
 ]
 
 [package.metadata]
@@ -697,6 +698,7 @@ requires-dist = [
     { name = "mujoco", specifier = ">=3.2" },
     { name = "pydantic", specifier = ">=2" },
     { name = "uvicorn", specifier = ">=0.32" },
+    { name = "websockets", specifier = ">=15,<18" },
 ]
 
 [[package]]

@@ -7,7 +7,7 @@ the Turns endpoint, which says when a turn starts (barge-in) and when it has end
 it); push-to-talk keeps the Realtime endpoint. Without RESON8_API_KEY the browser uses its
 own speech recognition. Mechanic speaks through ElevenLabs when ELEVENLABS_API_KEY is set,
 streamed sentence by sentence as raw PCM, else he stays silent and his text is the caption
-(never the system voice). The recorded demo plays pre-rendered ElevenLabs clips instead.
+(never the system voice).
 Key values are never logged or returned.
 """
 
@@ -57,7 +57,7 @@ PHRASES = [
 _ELEVEN_STREAM_URL = "https://api.elevenlabs.io/v1/text-to-speech/{voice}/stream"
 # "Roger", a stock ElevenLabs voice: a confident, laid-back American male. Not a clone of anyone.
 DEFAULT_VOICE = "CwhRBWXzGAHq8TQ4Fs17"
-# Turbo v2.5 sounds fuller than Flash at a similar latency; the recorded demo has no latency to hit, so it uses multilingual v2.
+# Turbo v2.5 sounds fuller than Flash at a similar latency.
 DEFAULT_TTS_MODEL = "eleven_turbo_v2_5"
 VOICE_SETTINGS = {"stability": 0.4, "similarity_boost": 0.8, "style": 0.45, "use_speaker_boost": True}
 TTS_SAMPLE_RATE = 24000
@@ -98,7 +98,10 @@ def _key(name: str) -> str:
 
 
 def capabilities() -> dict:
+    from pai_agent.gemini_live import available
+
     return {
+        "gemini_live": available(),
         "stt": "reson8" if _key("RESON8_API_KEY") else "browser",
         "tts": "elevenlabs" if _key("ELEVENLABS_API_KEY") else "none",
         "realtime_url": RESON8_REALTIME_URL,

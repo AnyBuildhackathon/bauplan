@@ -7,12 +7,15 @@ import { useMemo, useState } from "react";
 import { ChevronDown, Download, MessageSquareText, NotebookPen } from "lucide-react";
 import { MascotHead } from "../components/mascot/Mascot";
 import { Chip, PillButton } from "../components/ui/primitives";
+import { MeetingTimeline } from "../components/timeline/MeetingTimeline";
 import { STEP_IDS, type MeetingEvent, type VersionDiff, type VersionEvent } from "../events/types";
 import { useSession } from "../events/store";
 import { loadSavedChats } from "../lib/archive";
 import { fmtClock, fmtEur, fmtGram, fmtNum, stripMarkdown } from "../lib/format";
 import { enLabel, enText } from "../lib/copy";
 import { LESSONS } from "../lib/lessons";
+import { apiFetch } from "../lib/api";
+import { useSource } from "../events/source";
 import { useUi } from "../lib/ui";
 
 type Session = ReturnType<typeof useSession.getState>;
@@ -141,6 +144,28 @@ function Chats() {
   const current = chat.flatMap((c) => (c.kind === "msg" ? [{ role: c.role, text: stripMarkdown(c.text) }] : []));
   const [open, setOpen] = useState<"current" | number>("current");
   const shown = open === "current" ? current : (saved[open]?.messages ?? []);
+  const meetings = useSession((s) => s.meetings);
+  const live = useSource((s) => s.mode) === "live";
+  const [meetingId, setMeetingId] = useState("");
+  const [noteStatus, setNoteStatus] = useState("");
+  const [sending, setSending] = useState(false);
+  const targetMeeting = meetingId || meetings.find((m) => m.status === "live")?.id
+    || [...meetings].reverse().find((m) => m.status === "done")?.id
+    || meetings.find((m) => m.kind !== "archive")?.id || "";
+  const sendToJamie = async () => {
+    setSending(true);
+    setNoteStatus("");
+    try {
+      const response = await apiFetch("/api/voice/note", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ meeting_id: targetMeeting, text: shown.map((m) => `${m.role === "user" ? "You" : "Mechanic"}: ${m.text}`).join("\n\n").slice(0, 24000) }),
+      });
+      const result = await response.json();
+      if (!response.ok || result.ok === false) throw new Error("Could not send the note.");
+      setNoteStatus(result.live ? "Sent to Jamie." : "Saved to the Jamie outbox.");
+    } catch { setNoteStatus("Could not send the note. Try again."); }
+    finally { setSending(false); }
+  };
   return (
     <Section title="Chats" meta={`${current.length} messages${saved.length ? ` · ${saved.length} earlier` : ""}`}>
       <div className="flex flex-wrap gap-1.5">
@@ -162,6 +187,13 @@ function Chats() {
           </button>
         ))}
       </div>
+      {live && shown.length > 0 && meetings.length > 0 && <div className="mt-3 flex flex-wrap items-center gap-2">
+        <select name="conversation-meeting" aria-label="Jamie meeting for conversation note" value={targetMeeting} onChange={(e) => setMeetingId(e.target.value)} className="min-w-0 max-w-full rounded-full bg-tile px-3 py-1 text-[12px] text-ink">
+          {meetings.map((m) => <option key={m.id} value={m.id}>{m.title}</option>)}
+        </select>
+        <PillButton variant="secondary" size="sm" disabled={sending || !targetMeeting} onClick={() => void sendToJamie()}>{sending ? "Sending…" : "Send to Jamie"}</PillButton>
+        {noteStatus && <p role="status" className="w-full text-[12px] text-muted">{noteStatus}</p>}
+      </div>}
       <div className="scroll-soft mt-3 max-h-[420px] space-y-2 overflow-y-auto pr-1">
         {shown.length === 0 && <p className="text-[14px] text-muted">No chat yet. Start on the workbench.</p>}
         {shown.map((m, i) =>
@@ -276,6 +308,7 @@ export function LogbookView() {
             <Download className="h-4 w-4" /> Export
           </PillButton>
         </div>
+        <div className="mb-5"><MeetingTimeline /></div>
         {versions.length === 0 ? (
           <p className="pb-6 text-[14px] text-muted">No version yet. v1 comes out of the kickoff or your first request.</p>
         ) : (

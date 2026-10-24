@@ -25,6 +25,7 @@ It has no OpenAPI page; FastAPI's generated docs are turned off on purpose for t
 | Method | Path | Purpose | Limit | Spec |
 | --- | --- | --- | --- | --- |
 | `GET` | `/api/health` | Status: `mode` (`claude` or `mock`), `busy`, `access` (`open` or `required`). Always public. | | [Learning mode](events.md#learning-mode) |
+| `GET` | `/api/status` | Independent partner availability and NVIDIA SSH/GPU connection, including the last Isaac run. Requires the normal access session. | | [Partner status](events.md#partner-status-and-director-mode) |
 | `GET` | `/api/bench` | Saved live and mock benchmark results: `{ok, runs}`; missing runs are omitted. | | [Bench](events.md#http) |
 | `POST` | `/api/prompt` | Send a typed or spoken (`voice: true`) message; starts or continues a build, answers an open question, or operates the dashboard (`status: ui`). | build | [HTTP](events.md#http) |
 | `POST` | `/api/sketch` | Start a new product from a photo of a hand sketch (PNG, JPEG or WebP up to 8 MB, base64 or data URL). | build | [HTTP](events.md#http) |
@@ -75,10 +76,12 @@ It has no OpenAPI page; FastAPI's generated docs are turned off on purpose for t
 
 | Method | Path | Purpose | Limit | Spec |
 | --- | --- | --- | --- | --- |
-| `GET` | `/api/voice` | Capabilities: STT (`reson8` or `browser`), TTS (`elevenlabs` or `none`), Reson8 endpoints, language, phrase list, sample rate. | | [HTTP](events.md#http) |
+| `GET` | `/api/voice` | Capabilities: `gemini_live` availability, STT (`reson8` or `browser`), TTS (`elevenlabs` or `none`), Reson8 endpoints, language, phrase list, sample rate. | | [HTTP](events.md#http) |
 | `POST` | `/api/voice/token` | A short-lived Reson8 token for the browser's WebSocket; 503 without `RESON8_API_KEY`. | stt | [HTTP](events.md#http) |
 | `POST` | `/api/voice/speak` | Stream ElevenLabs speech for one phrase as raw 16-bit PCM (`X-Sample-Rate: 24000`); 503 without `ELEVENLABS_API_KEY`. | speech | [HTTP](events.md#http) |
 | `POST` | `/api/voice/warm` | Open the Claude and ElevenLabs connections ahead of a reply. | | [HTTP](events.md#http) |
+| `WS` | `/api/voice/live` | Server-proxied Gemini Live audio and engineering tool calls; Vertex OAuth or AI Studio, with credentials kept on the backend. | One active session | [Realtime voice](GEMINI_LIVE.md#websocket-protocol) |
+| `POST` | `/api/voice/note` | Send a displayed conversation to a selected Jamie meeting, with offline outbox fallback. | | [Realtime voice](GEMINI_LIVE.md#websocket-protocol) |
 
 ### Learning mode, settings and training jobs
 

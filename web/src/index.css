@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+@keyframes canvas-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 /* AnyBuild look as tokens: an off-white, airy, almost borderless reading surface.
    Inter Tight carries the interface. Reading text (Mechanic's answers, the Jamie quotes)
    uses the system sans, as core.so's agent chat does, and Chivo Mono marks small labels,

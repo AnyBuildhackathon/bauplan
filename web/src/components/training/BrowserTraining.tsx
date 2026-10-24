@@ -116,7 +116,7 @@ const NOMINAL_DRONE: DroneSpec = {
   parts: [],
 };
 
-/** Live with a backend: ask Bolzen, so the agent narrates. Demo or no backend: train right here. */
+/** With the backend open, ask Mechanic. Otherwise train in this browser. */
 function TrainHereButton() {
   const mode = useSource((s) => s.mode);
   const live = useSource((s) => s.live);
@@ -173,7 +173,6 @@ export function BrowserTraining() {
   const bestMetrics = here ? local.best?.metrics : sse?.best_metrics ?? undefined;
   const status = here ? local.status : sse?.status ?? "idle";
   const bestScore = curve.at(-1)?.[1];
-  const demo = useSource((s) => s.mode === "demo");
 
   if (!sse && local.status === "idle") {
     return (
@@ -195,8 +194,6 @@ export function BrowserTraining() {
           : local.status === "elsewhere"
             ? "running in another dashboard tab"
             : `generation ${generation} / ${generations}${here ? timeLeft(local.startedAt, generation, generations) : ""}`;
-  // In the recorded demo the pane may already hold the recording's run: offer a fresh local one.
-  const offerLocal = demo && local.status !== "running" && local.status !== "claiming";
 
   return (
     <div className="grid h-full min-h-0 gap-3 p-3" style={{ gridTemplateColumns: "minmax(0,1.3fr) minmax(0,1fr)" }}>
@@ -210,7 +207,6 @@ export function BrowserTraining() {
             {local.local && here ? "local run · " : ""}
             {statusText}
           </span>
-          {offerLocal && <TrainHereButton />}
         </div>
         <div className="grid min-h-0 flex-1 grid-cols-4 grid-rows-4 gap-1.5">
           {Array.from({ length: GRID_SIZE }, (_, k) => {
