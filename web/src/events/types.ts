@@ -40,12 +40,25 @@ export interface RequirementEvent {
   /** The earlier wording when a later meeting changed this requirement. */
   changed_from?: string | null;
 }
+/** One key number as the backend wants it shown (products other than the drone send these). */
+export interface MetricCard {
+  key: string;
+  label: string;
+  value: number;
+  unit: string;
+  digits: number;
+  /** The limit line under the number, e.g. "min. 2 ×". */
+  limit: string;
+  ok: boolean;
+}
 export interface MetricsEvent {
   type: "metrics";
   weight_g: number;
   thrust_to_weight: number;
   flight_time_min: number;
   price_eur: number;
+  /** When present, the panel shows these cards instead of the four drone numbers. */
+  cards?: MetricCard[];
 }
 /** One trajectory sample: [t, x, y, z] in seconds and metres, z is up. */
 export type TrajectorySample = [number, number, number, number];
@@ -55,6 +68,19 @@ export interface SimEvent {
   result: "pass" | "fail";
   summary: string;
   trajectory: TrajectorySample[];
+  /** "grip": a gripper lifts and shakes an object; trajectory z is the object's rise, `hand` the hand's. */
+  kind?: "hover" | "grip";
+  hand?: [number, number][];
+  object_width_mm?: number;
+  payload_g?: number;
+  force_n?: number;
+  slip_mm?: number;
+}
+/** Which product this session builds. */
+export interface ProductEvent {
+  type: "product";
+  id: "drone" | "gripper";
+  label: string;
 }
 export interface DrawEvent {
   type: "draw";
@@ -122,6 +148,17 @@ export interface CadEvent {
   stl_url: string | null;
   step_url: string | null;
   view_png_url: string | null;
+  /** A generated part: the FreeCAD script that built it (cad_part). */
+  script_url?: string | null;
+  part?: {
+    name: string;
+    material: string;
+    mass_g: number;
+    bbox_mm: number[];
+    attempts: number;
+    /** true when Claude wrote the script, false for a library template. */
+    generated: boolean;
+  };
 }
 /** One Blender render. */
 export interface RenderEvent {
@@ -251,6 +288,7 @@ export type AgentEvent =
   | PartEvent
   | QuestionEvent
   | TasksEvent
+  | ProductEvent
   | ResetEvent
   | ReplayedEvent;
 
@@ -274,6 +312,7 @@ const EVENT_TYPES = new Set<AgentEvent["type"]>([
   "part",
   "question",
   "tasks",
+  "product",
   "reset",
   "replayed",
 ]);

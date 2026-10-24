@@ -209,6 +209,7 @@ def _media(name: str) -> str:
         ".png": "image/png",
         ".mp4": "video/mp4",
         ".fcstd": "application/octet-stream",
+        ".py": "text/plain; charset=utf-8",
     }.get(Path(name).suffix.lower(), "application/octet-stream")
 
 

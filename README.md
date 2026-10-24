@@ -97,6 +97,31 @@ blender -b -P agent/blender/studio.py -- frame.stl studio-v1.png assembly.json
 The file `assembly.json` specifies `arm_mm`, `thickness_mm`, `prop_mm`, and `battery_mm` dimensions; when absent, version 1 defaults apply.
 If Blender is missing, the tool status shows `offline` and the `render` event serves `agent/runs/fallback/render.png`.
 
+## General CAD and the Robot Gripper
+
+AnyBuild is not tied to the drone.
+`cad_part` builds any part from a description: Claude writes FreeCAD Python for it, `freecadcmd` runs the script headless, and the tool returns STEP, STL and GLB with volume, mass for the chosen material and the bounding box.
+When FreeCAD reports an error, Claude gets the script and the error back and fixes it, up to three attempts.
+The script is checked before it runs (only `FreeCAD`, `Part` and `math` imports, no file access), runs in a fresh temp directory without the backend's environment and with a 60 s timeout, and on macOS `sandbox-exec` blocks network access and writes outside that directory.
+The part shows up in the CAD tab like the drone frame, with its parameters as sliders, its bodies in the tree and a Script button that shows the generated code.
+Moving a slider reruns the same script without a model call.
+The harness is `agent/freecad/part_harness.py`, the runner `agent/src/pai_agent/cad_script.py`, the tool `agent/src/pai_agent/tools/cad_part.py`.
+
+The second demo product is a parametric two-finger robot gripper, chosen because it has moving parts, a real physics question (does it hold the object while the arm moves?) and a parts choice that changes the CAD.
+Ask for it in the chat, for example with the "Robot gripper" example on the empty chat:
+
+```text
+Design a robot gripper for our arm that picks up a 200 g soda can, 66 mm wide. Keep it under 150 g and 30 €.
+```
+
+`product_brief` turns the request into checks, `catalog_search` picks servo, pads, hardware and driver from `agent/data/catalogs/gripper.json`, `grip_calc` computes finger force and grip safety, `simulate_grip` lifts and shakes the object in MuJoCo, `cad_part` builds the gripper from `agent/freecad/library/gripper.py` with the servo pocket sized for the chosen servo, then `blender_render` and `bom_build`.
+Without `ANTHROPIC_API_KEY` the mock plays this story through the same tools: the SG90 drops the can, the MG996R holds it.
+Check it without a network:
+
+```bash
+cd agent && uv run python scripts/smoke_cad_part.py
+```
+
 ## Voice Integration
 
 In the chat interface, press and hold the spacebar or microphone button to speak with mascot Bolzen and answer clarification questions.

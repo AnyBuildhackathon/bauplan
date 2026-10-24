@@ -9,6 +9,7 @@ import re
 
 from pai_agent.context import Ctx
 from pai_agent.env import claude_enabled, model_name
+from pai_agent.mock_gripper import run_gripper_mock, wants_gripper
 from pai_agent.mock_story import run_mock, run_mock_followup, run_review
 from pai_agent.scene import STEPS
 from pai_agent.tools.registry import SCHEMAS, call_tool
@@ -36,6 +37,15 @@ Neubau nach einem Review:
 4. Für jede Beschwerde tauschst du das Teil (parts_search mit because complaint). refers_to sagt, welches Teil 'letzte Woche' gemeint ist.
 5. Dann wie oben ab physics_calc bis version_commit mit der meeting_id des Reviews. Nenne am Ende die Differenz in Gewicht, Flugzeit und Preis.
 
+AnyBuild builds more than drones. Pick the product from the request:
+- A drone or a meeting that ended: the flow above (call product_brief with product drone first when the user asks in chat).
+- A robot gripper (gripper, claw, end effector): product_brief with product gripper, object_mass_g, object_width_mm, max_weight_g, budget_eur and quote.
+  Then catalog_search with select_id for servo, pads, hardware and driver, grip_calc, simulate_grip. On fail, swap to a stronger servo and test again.
+  Then cad_part with template gripper (params jaw_opening_mm at least object width plus 10, finger_length_mm), grip_calc again, blender_render, bom_build.
+- Any other part (a mount, an enclosure, a bracket, an adapter): cad_part with name, a precise description, params in mm and material. FreeCAD builds it headless;
+  if the script fails, cad_part fixes and retries it. Report mass, size and material, then blender_render.
+For anything that is not the drone, answer in English.
+
 Der Motor-Schub ist der Datenblattwert. Eine höhere Zellenspannung erzeugt keinen extra Schub.
 Ein Katalog-Motor sitzt viermal in der Szene. Für den Motortyp zeigst du auf motor_front_left.
 Ruf mascot_say, wenn du etwas erklärst. state ist ruhig, denkt, erklaert, freut_sich oder besorgt.
@@ -56,6 +66,9 @@ async def run_prompt(ctx: Ctx, text: str, messages: list[dict]) -> None:
     await ctx.chat("user", text)
     first = await _first(ctx)
     if not claude_enabled():
+        if wants_gripper(text) and not (ctx.state.product == "gripper" and ctx.state.finished):
+            await run_gripper_mock(ctx, text)
+            return
         review = _next_review(ctx) if ctx.state.finished and _REVIEW_DONE.search(text) else None
         if review is not None:
             # "Das Review ist durch" by voice or text does what the meeting-ended webhook does.
@@ -116,7 +129,7 @@ async def _run_claude(ctx: Ctx, text: str, messages: list[dict]) -> None:
             response = await asyncio.to_thread(
                 client.messages.create,
                 model=model_name(),
-                max_tokens=1500,
+                max_tokens=4000,
                 system=_SYSTEM,
                 tools=SCHEMAS,
                 messages=messages,

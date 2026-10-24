@@ -7,6 +7,7 @@ import logging
 import os
 import re
 import uuid
+from pathlib import Path
 
 from pai_agent.bus import EventBus
 from pai_agent.context import Ctx
@@ -150,16 +151,42 @@ class Session:
         if self._busy():
             message = "Bolzen baut gerade. Gleich noch einmal."
             return {"ok": False, "error": message, "detail": message, "busy": True}
+        if self._part_is_current():
+            return await self._rebuild_part(body)
         try:
             args = apply_param_body(self.state.cad_params, body)
         except (TypeError, ValueError) as exc:
             return {"ok": False, "error": str(exc), "detail": str(exc)}
         return await cad_frame(self._ctx(auto_steps=False), args)
 
+    def _part_is_current(self) -> bool:
+        # The newest CAD build decides: cad_frame writes frame.stl, cad_part writes part-<name>.stl.
+        return self.state.part is not None and Path(self.state.stl_path or "").name.startswith("part-")
+
+    async def _rebuild_part(self, body: dict) -> dict:
+        from pai_agent.requirements import refresh_requirements
+        from pai_agent.tools.cad_part import rebuild_part
+        from pai_agent.tools.gripper import grip_calc
+
+        changes = {str(body["name"]): body.get("value")} if "name" in body else dict(body)
+        ctx = self._ctx(auto_steps=False)
+        try:
+            result = await rebuild_part(ctx, changes)
+        except (TypeError, ValueError) as exc:
+            return {"ok": False, "error": str(exc), "detail": str(exc)}
+        if result.get("ok") and self.state.product == "gripper" and self.state.metrics:
+            # A longer finger is a longer lever: the grip numbers follow the slider.
+            await grip_calc(ctx, {})
+        await refresh_requirements(ctx)
+        return result
+
     async def open_current(self) -> dict:
         from pai_agent.freecad_run import FreeCADFailed, open_in_freecad
 
-        for name in ("frame.FCStd", "frame.step", "frame.stl"):
+        names = ("frame.FCStd", "frame.step", "frame.stl")
+        if self._part_is_current():
+            names = (Path(self.state.stl_path).with_suffix(".step").name,)
+        for name in names:
             path = self.state.directory / name
             if not path.is_file():
                 continue

@@ -8,12 +8,18 @@ import { ModelScene } from "./Scenes";
 
 export function RenderGallery() {
   const renders = useSession((s) => s.renders);
+  const product = useSession((s) => s.product);
   const [picked, setPicked] = useState<string | null>(null);
   const latest = renders.at(-1);
 
   // A new render takes the stage.
   useEffect(() => setPicked(null), [latest?.id]);
 
+  if (!renders.length && product !== "drone") {
+    return (
+      <div className="flex h-full items-center justify-center px-8 text-center text-[16px] font-semibold text-muted">No Blender render yet</div>
+    );
+  }
   if (!renders.length) {
     return (
       <div className="relative h-full">

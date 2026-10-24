@@ -11,6 +11,8 @@ from pai_agent.freecad_run import find_freecadcmd
 from pai_agent.tools.blender import blender_render, find_blender
 from pai_agent.tools.bom import bom_build
 from pai_agent.tools.cad import cad_frame
+from pai_agent.tools.cad_part import cad_part
+from pai_agent.tools.gripper import catalog_search, grip_calc, product_brief, simulate_grip
 from pai_agent.tools.isaac import isaac_lab_status, isaac_lab_train, isaac_sim_render
 from pai_agent.jamie_client import live_enabled
 from pai_agent.tools.ask import ask_user
@@ -40,6 +42,11 @@ TOOLS = {
     "physics_calc": physics_calc,
     "simulate_drone": simulate_drone,
     "cad_frame": cad_frame,
+    "cad_part": cad_part,
+    "product_brief": product_brief,
+    "catalog_search": catalog_search,
+    "grip_calc": grip_calc,
+    "simulate_grip": simulate_grip,
     "isaac_lab_train": isaac_lab_train,
     "isaac_lab_status": isaac_lab_status,
     "isaac_sim_render": isaac_sim_render,
@@ -57,6 +64,11 @@ _STEP = {
     "parts_search": "teile",
     "physics_calc": "teile",
     "cad_frame": "cad",
+    "cad_part": "cad",
+    "product_brief": "meeting",
+    "catalog_search": "teile",
+    "grip_calc": "teile",
+    "simulate_grip": "simulation",
     "blender_render": "render",
     "isaac_sim_render": "render",
     "simulate_drone": "simulation",
@@ -168,6 +180,72 @@ SCHEMAS = [
         },
     },
     {
+        "name": "cad_part",
+        "description": (
+            "General CAD for any part or small assembly (a mount, an enclosure, a gripper, a bracket). "
+            "Builds it headless in FreeCAD from a Python script and returns STEP, STL and GLB, volume, mass for the material and the bounding box. "
+            "Without script, Claude writes the script from description and params, and when FreeCAD reports an error it is fixed and retried up to 3 times. "
+            "You may pass script yourself: FreeCAD Python that sets `shape` or `parts` = {name: solid}; Part, App, Vector, math and P (the params) are predefined, "
+            "nothing else can be imported, no file access. template 'gripper' uses the tested robot gripper script. "
+            "For the gripper, the servo pocket follows the chosen servo automatically."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "description": {"type": "string", "description": "What the part is for, its features and key dimensions."},
+                "params": {"type": "object", "description": "Dimensions in mm, e.g. {\"width_mm\": 60}. They become sliders in the CAD tab."},
+                "material": {"type": "string", "enum": ["PLA", "PETG", "ABS", "ASA", "NYLON", "TPU", "ALUMINIUM", "STEEL"]},
+                "template": {"type": "string", "enum": ["gripper"]},
+                "script": {"type": "string"},
+            },
+            "required": ["name"],
+        },
+    },
+    {
+        "name": "product_brief",
+        "description": (
+            "Starts a build for a product and turns the request into requirement checks. product is drone or gripper. "
+            "For the gripper pass object_mass_g, object_width_mm, optionally max_weight_g and budget_eur, and quote, the user's sentence."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "product": {"type": "string", "enum": ["drone", "gripper"]},
+                "object_mass_g": {"type": "number"},
+                "object_width_mm": {"type": "number"},
+                "max_weight_g": {"type": "number"},
+                "budget_eur": {"type": "number"},
+                "quote": {"type": "string"},
+            },
+            "required": ["product"],
+        },
+    },
+    {
+        "name": "catalog_search",
+        "description": "Searches the gripper parts catalog (servo, pads, hardware, driver). select_id chooses a part, reason is your one-line reason. Prices are samples.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "category": {"type": "string", "enum": ["servo", "pads", "hardware", "driver"]},
+                "query": {"type": "string"},
+                "select_id": {"type": "string"},
+                "reason": {"type": "string"},
+            },
+            "required": ["category"],
+        },
+    },
+    {
+        "name": "grip_calc",
+        "description": "Gripper numbers from the chosen parts and the CAD finger length: finger force, holding force with pad friction, safety factor against the object weight (needs 2x), weight and sample price.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "simulate_grip",
+        "description": "MuJoCo grip test: the pads squeeze the object with the finger force, the arm lifts it 15 cm and shakes it. pass means it stays within 10 mm, fail means it slips or drops.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
         "name": "isaac_lab_train",
         "description": "Startet Isaac-Quadcopter-Direct-v0 headless auf dem RunPod. Ohne Pod kommt der Fallback aus agent/runs/fallback, und das ist kein echter Trainingslauf.",
         "input_schema": {"type": "object", "properties": {}},
@@ -251,6 +329,10 @@ def _running_detail(name: str, args: dict) -> str:
         return str(args.get("state", ""))
     if name == "jamie_search":
         return str(args.get("query", ""))
+    if name == "cad_part":
+        return str(args.get("name", ""))
+    if name in {"catalog_search", "product_brief"}:
+        return (str(args.get("category") or args.get("product") or "") + " " + str(args.get("query", ""))).strip()
     if name == "cad_frame":
         try:
             return "Arm " + f"{float(args.get('arm_length_mm')):g}".replace(".", ",") + " mm"
@@ -269,8 +351,10 @@ async def _advance(ctx: Ctx, name: str, result: dict, started: bool) -> None:
     if result.get("ok") is False:
         await ctx.step(step, "failed")
         return
-    if name == "simulate_drone":
+    if name in {"simulate_drone", "simulate_grip"}:
         await ctx.step("simulation", "done" if result.get("result") == "pass" else "failed")
+    elif name == "grip_calc" and float(result.get("safety_factor") or 0) >= 2:
+        await ctx.step("teile", "done")
     elif name == "physics_calc" and float(result.get("thrust_to_weight") or 0) >= 1.8:
         await ctx.step("teile", "done")
     elif name == "isaac_lab_train":
@@ -282,7 +366,7 @@ async def _advance(ctx: Ctx, name: str, result: dict, started: bool) -> None:
         await ctx.step("training", "done")
     elif name == "jamie_create_tasks":
         await ctx.step("stueckliste", "done")
-    elif name in {"blender_render", "isaac_sim_render", "cad_frame", "jamie_requirements", "jamie_meeting"}:
+    elif name in {"blender_render", "isaac_sim_render", "cad_frame", "cad_part", "product_brief", "jamie_requirements", "jamie_meeting"}:
         await ctx.step(step, "done")
 
 
@@ -334,6 +418,7 @@ async def emit_connections(publish) -> None:
         ("parts_search", "connected", "Katalog agent/data/parts.json"),
         ("simulate_drone", "connected", "MuJoCo auf diesem Rechner"),
         ("cad_frame", "connected", cad_detail),
+        ("cad_part", "connected" if find_freecadcmd() else "offline", "Generated parts, headless and sandboxed" if find_freecadcmd() else "freecadcmd is missing"),
         ("blender_render", blender_status, blender_detail),
         ("isaac_lab_train", isaac_status, isaac_detail),
         ("isaac_sim_render", isaac_status, isaac_detail),

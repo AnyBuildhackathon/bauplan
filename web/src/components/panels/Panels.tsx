@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ChevronRight, Quote as QuoteIcon } from "lucide-react";
 import { useSession } from "../../events/store";
-import type { Quote, RequirementEvent } from "../../events/types";
+import type { MetricCard, Quote, RequirementEvent } from "../../events/types";
 import { meets, type MetricKey } from "../../lib/derived";
 import { fmtEur, fmtGram, fmtMin, fmtNum, fmtRatio } from "../../lib/format";
 import { useShownBuild, useTargets } from "../../lib/hooks";
@@ -73,6 +73,27 @@ function limitText(key: MetricKey, value: number, direction: "max" | "min") {
   return `${direction === "max" ? "max." : "min."} ${v}`;
 }
 
+/** Key numbers a product sends itself (the gripper), already judged against its limits. */
+function CardGrid({ cards, busy }: { cards: MetricCard[]; busy: boolean }) {
+  return (
+    <div className="grid grid-cols-2 gap-2.5">
+      {cards.map((c) => (
+        <div key={c.key} data-target={`metric:${c.key} ${c.key}`} className="rounded-[20px] bg-page-2 px-3.5 pt-2.5 pb-3">
+          <div className="flex items-center gap-1.5 text-[14px] font-semibold text-ink-2">
+            <span className={`h-2 w-2 rounded-full ${c.ok ? "bg-ok" : "bg-fail"}`} />
+            {c.label}
+          </div>
+          <div className={`num mt-1 flex items-baseline gap-1 ${busy ? "text-agent-ink" : c.ok ? "text-ink" : "text-fail-ink"}`}>
+            <span className="text-[30px] leading-none font-extrabold tracking-[-0.02em]">{fmtNum(c.value, c.digits)}</span>
+            <span className="text-[15px] font-bold text-muted">{c.unit}</span>
+          </div>
+          <div className="num mt-1 truncate text-[13px] font-semibold text-muted">{c.limit || "\u00a0"}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function BuildPanel() {
   const requirements = useSession((s) => s.requirements);
   const bom = useSession((s) => s.bom);
@@ -80,6 +101,8 @@ export function BuildPanel() {
   const setBomOpen = useUi((s) => s.setBomOpen);
   const targets = useTargets();
   const { metrics, previous, version, pinned } = useShownBuild();
+  const product = useSession((s) => s.product);
+  const cards = useSession((s) => s.metrics?.cards);
   const [open, setOpen] = useState<string | null>(null);
   const met = requirements.filter((r) => r.met === true).length;
 
@@ -87,7 +110,7 @@ export function BuildPanel() {
     <aside className="card scroll-soft flex min-h-0 flex-col overflow-y-auto px-5 pt-4 pb-5">
       <div className="mb-1.5 flex items-center gap-2" data-target="requirements anforderungen">
         <h2 className="text-[18px] font-bold text-ink">Anforderungen</h2>
-        <JamieMark />
+        {product === "drone" ? <JamieMark /> : <span className="inline-flex h-6 items-center rounded-full bg-tile px-2.5 text-[12px] font-bold text-ink-2">Chat brief</span>}
         {requirements.length > 0 && (
           <span className="num ml-auto text-[14px] font-semibold text-muted">
             {met} / {requirements.length}
@@ -112,6 +135,11 @@ export function BuildPanel() {
           </span>
         )}
       </div>
+      {product !== "drone" && cards ? (
+        <CardGrid cards={cards} busy={simRunning} />
+      ) : product !== "drone" ? (
+        <p className="py-2 text-[15px] leading-snug text-muted">Appear once Bolzen has chosen the parts.</p>
+      ) : (
       <div className="grid grid-cols-2 gap-2.5">
         {METRICS.map((m) => {
           const value = metrics?.[m.key];
@@ -145,6 +173,7 @@ export function BuildPanel() {
           );
         })}
       </div>
+      )}
 
       <button
         type="button"

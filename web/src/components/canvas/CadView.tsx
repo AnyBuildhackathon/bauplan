@@ -3,13 +3,13 @@
 // the view), a small image of the real FreeCAD view and "In FreeCAD öffnen".
 import { OrbitControls } from "@react-three/drei";
 import { Canvas, useLoader, useThree } from "@react-three/fiber";
-import { ChevronRight, Download, ExternalLink, Layers } from "lucide-react";
+import { ChevronRight, Download, ExternalLink, FileCode2, Layers, X } from "lucide-react";
 import { Component, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { useSession } from "../../events/store";
 import { useSource } from "../../events/source";
-import type { CadNode, CadParam } from "../../events/types";
+import type { CadEvent, CadNode, CadParam } from "../../events/types";
 import { assetUrl } from "../../lib/api";
 import { fmtNum } from "../../lib/format";
 import { useHighlight } from "../../lib/hooks";
@@ -42,7 +42,7 @@ class LoadBoundary extends Component<{ children: ReactNode; fallback: ReactNode;
 
 const AGENT = new THREE.Color("#ff8a3d");
 
-function Part({ url }: { url: string }) {
+function Part({ url, zUp }: { url: string; zUp: boolean }) {
   const gltf = useLoader(GLTFLoader, url);
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
   const size = useThree((s) => s.size);
@@ -53,12 +53,20 @@ function Part({ url }: { url: string }) {
   // One calm CAD material plus crisp edges, whatever the exporter put in the file.
   const { object, center, radius, edges } = useMemo(() => {
     const root = gltf.scene.clone(true);
+    // Generated parts are modelled Z-up like FreeCAD; three.js is Y-up.
+    if (zUp) {
+      root.rotation.x = -Math.PI / 2;
+      root.updateMatrixWorld(true);
+    }
     const box = new THREE.Box3().setFromObject(root);
     const sphere = box.getBoundingSphere(new THREE.Sphere());
     const lines: THREE.LineSegments[] = [];
     root.traverse((o) => {
       if (o instanceof THREE.Mesh) {
-        o.material = new THREE.MeshStandardMaterial({ color: "#c9ccd3", roughness: 0.55, metalness: 0.08, emissive: AGENT, emissiveIntensity: 0 });
+        // A generated part names its colors `pai:#rrggbb`; everything else gets the calm CAD grey.
+        const named = (o.material as THREE.Material | undefined)?.name ?? "";
+        const color = named.startsWith("pai:") ? named.slice(4) : "#c9ccd3";
+        o.material = new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0.08, emissive: AGENT, emissiveIntensity: 0 });
         o.castShadow = true;
         const e = new THREE.LineSegments(new THREE.EdgesGeometry(o.geometry, 30), new THREE.LineBasicMaterial({ color: "#2b2d33", transparent: true, opacity: 0.55 }));
         e.matrixAutoUpdate = false;
@@ -67,7 +75,7 @@ function Part({ url }: { url: string }) {
       }
     });
     return { object: root, center: sphere.center, radius: sphere.radius || 1, edges: lines };
-  }, [gltf]);
+  }, [gltf, zUp]);
 
   useEffect(() => {
     object.traverse((o) => {
@@ -102,7 +110,7 @@ function Part({ url }: { url: string }) {
   );
 }
 
-function CadScene({ url }: { url: string }) {
+export function CadScene({ url, zUp = false }: { url: string; zUp?: boolean }) {
   return (
     <Canvas dpr={[1, 2]} camera={{ fov: 30 }} gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}>
       <AnchorScope primary>
@@ -111,7 +119,7 @@ function CadScene({ url }: { url: string }) {
         <directionalLight position={[3, 5, 2]} intensity={1.7} />
         <directionalLight position={[-3, 2, -2]} intensity={0.5} />
         <Suspense fallback={null}>
-          <Part url={url} />
+          <Part url={url} zUp={zUp} />
         </Suspense>
         <OrbitControls makeDefault enablePan={false} autoRotate autoRotateSpeed={0.5} />
       </AnchorScope>
@@ -194,12 +202,67 @@ function ParamSlider({
   );
 }
 
+/** The FreeCAD script behind a generated part, so everyone can see what Claude wrote. */
+function ScriptPanel({ url, onClose }: { url: string; onClose: () => void }) {
+  const [code, setCode] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let live = true;
+    fetch(url)
+      .then((r) => (r.ok ? r.text() : Promise.reject(new Error(String(r.status)))))
+      .then((text) => live && setCode(text))
+      .catch(() => live && setFailed(true));
+    return () => {
+      live = false;
+    };
+  }, [url]);
+  return (
+    <div className="absolute inset-0 z-20 flex flex-col bg-[#16171b]/95 backdrop-blur">
+      <div className="flex shrink-0 items-center gap-3 px-4 py-2.5">
+        <FileCode2 className="h-4 w-4 text-white/70" />
+        <span className="text-[14px] font-bold text-white">FreeCAD script</span>
+        <span className="text-[13px] font-semibold text-white/50">runs headless in a sandbox</span>
+        <button type="button" onClick={onClose} className="ml-auto rounded-full p-1.5 text-white/70 hover:bg-white/10" aria-label="Close script">
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+      <pre className="scroll-soft min-h-0 flex-1 overflow-auto px-4 pb-4 font-mono text-[12.5px] leading-[1.55] text-[#e7e8ec]">
+        {failed ? "The script could not be loaded." : code ?? "Loading …"}
+      </pre>
+    </div>
+  );
+}
+
+function PartFacts({ part }: { part: NonNullable<CadEvent["part"]> }) {
+  const b = part.bbox_mm;
+  const size = b.length === 6 ? [0, 1, 2].map((i) => fmtNum(b[i + 3] - b[i], 0)).join(" × ") : "";
+  const rows: [string, string][] = [
+    ["Printed mass", `${fmtNum(part.mass_g, 1)} g ${part.material}`],
+    ["Size", `${size} mm`],
+    ["Script", part.generated ? (part.attempts > 1 ? `by Claude, fixed after ${part.attempts - 1} error${part.attempts > 2 ? "s" : ""}` : "by Claude") : "library template"],
+  ];
+  return (
+    <section className="mt-4">
+      <h3 className="eyebrow mb-1">Part</h3>
+      <dl className="space-y-1">
+        {rows.map(([k, v]) => (
+          <div key={k} className="flex items-baseline justify-between gap-3 text-[14px]">
+            <dt className="font-semibold text-ink-2">{k}</dt>
+            <dd className="num truncate text-right font-bold text-ink">{v}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
 export function CadView() {
   const cad = useSession((s) => s.cad);
   const cadStep = useSession((s) => s.steps.cad.status);
   const { setCadParams, openInFreecad } = useSource.getState();
   const [values, setValues] = useState<Record<string, number>>({});
   const [pending, setPending] = useState<string | null>(null);
+  const [showScript, setShowScript] = useState(false);
   const answeredBy = useRef(0);
 
   // A new `cad` event is the backend's answer: take its values, clear the pending state.
@@ -223,6 +286,7 @@ export function CadView() {
   const view = assetUrl(cad.view_png_url);
   const stl = assetUrl(cad.stl_url);
   const step = assetUrl(cad.step_url);
+  const script = assetUrl(cad.script_url ?? null);
   const source = CAD_SOURCE_LABEL[cad.source] ?? cad.source;
 
   const commit = async (name: string) => {
@@ -245,7 +309,7 @@ export function CadView() {
             resetKey={glb}
             fallback={<div className="flex h-full items-center justify-center px-6 text-center text-[15px] text-muted">Das 3D-Modell ließ sich nicht laden ({glb}).</div>}
           >
-            <CadScene url={glb} />
+            <CadScene url={glb} zUp={!!cad.part} />
           </LoadBoundary>
         ) : (
           <div className="flex h-full items-center justify-center text-[15px] text-muted">Kein 3D-Modell im CAD-Ereignis.</div>
@@ -255,6 +319,17 @@ export function CadView() {
           {source}
           {pending && <span className="font-semibold text-agent-ink">· rechnet …</span>}
         </span>
+        {script && (
+          <button
+            type="button"
+            onClick={() => setShowScript(true)}
+            data-target="cad_script script"
+            className="absolute top-3 right-3 inline-flex h-8 items-center gap-1.5 rounded-full bg-ink px-3.5 text-[13px] font-bold text-white shadow-[var(--shadow-pill)] hover:bg-[#333]"
+          >
+            <FileCode2 className="h-3.5 w-3.5" /> Script
+          </button>
+        )}
+        {script && showScript && <ScriptPanel url={script} onClose={() => setShowScript(false)} />}
       </div>
 
       <div className="scroll-soft min-h-0 overflow-y-auto border-l border-line bg-card/70 px-4 py-3.5">
@@ -266,6 +341,8 @@ export function CadView() {
             ))}
           </ul>
         </section>
+
+        {cad.part && <PartFacts part={cad.part} />}
 
         {Object.keys(cad.params).length > 0 && (
           <section className="mt-4 space-y-3">
@@ -285,6 +362,8 @@ export function CadView() {
         )}
 
         <section className="mt-4">
+          {(view || !cad.part) && (
+            <>
           <h3 className="eyebrow mb-1.5">FreeCAD-Ansicht</h3>
           <div className="overflow-hidden rounded-2xl bg-tile ring-1 ring-line">
             {view ? (
@@ -295,6 +374,8 @@ export function CadView() {
               </div>
             )}
           </div>
+            </>
+          )}
           <button
             type="button"
             onClick={() => void openInFreecad()}

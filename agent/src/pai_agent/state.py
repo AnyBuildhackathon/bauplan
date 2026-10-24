@@ -34,3 +34,7 @@ class BuildState:
     templates_ready: bool = False
     last_read_live: bool = False
     complaints: list[dict] = field(default_factory=list)
+    # Which product this session builds (drone or gripper), and the last generated CAD part.
+    product: str = "drone"
+    part: dict | None = None
+    brief: dict = field(default_factory=dict)
