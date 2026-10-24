@@ -26,6 +26,7 @@ import { enLabel, enText } from "../../lib/copy";
 import { fmtDuration, fmtEur, fmtNum, stripMarkdown } from "../../lib/format";
 import { useUi } from "../../lib/ui";
 import { StressCard } from "../stress/StressCard";
+import { ExplainChatCard } from "../learn/Explain";
 
 const TOOL_LABELS: Record<string, { running: string; done: string }> = {
   Claude: { running: "Claude is thinking", done: "Claude" },
@@ -399,6 +400,8 @@ function ContentPartsRenderer({ item }: { item: Exclude<ChatItem, { kind: "msg" 
       return <AgentPartRenderer item={item} />;
     case "stress":
       return <StressCard run={item.run} />;
+    case "explain":
+      return <ExplainChatCard explainKey={item.key} />;
   }
 }
 

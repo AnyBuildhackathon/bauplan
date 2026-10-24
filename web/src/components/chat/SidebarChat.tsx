@@ -32,6 +32,7 @@ function group(chat: ChatItem[], display: Display): Row[] {
   for (const item of chat) {
     if (item.kind === "agent" && !display.agents) continue;
     if (item.kind === "jamie" && !display.jamie) continue;
+    if (item.kind === "explain" && !display.learning) continue;
     const last = rows.at(-1);
     if (item.kind === "tool" && !display.tools) {
       if (last?.kind === "progress") rows[rows.length - 1] = { ...last, items: [...last.items, item] };

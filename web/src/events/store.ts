@@ -6,6 +6,7 @@ import {
   type AgentRunEvent,
   type BomEvent,
   type BuildGuideEvent,
+  type ExplainEvent,
   type CadEvent,
   type DrawEvent,
   type FirmwareEvent,
@@ -57,6 +58,8 @@ export interface LoggedEvent {
   seq: number;
   at: number;
   ev: AgentEvent;
+  /** Replayed in bulk (backlog or seek), not live. */
+  instant?: boolean;
 }
 
 export interface StepState {
@@ -87,7 +90,8 @@ export type ChatItem =
   | { kind: "question"; id: string; seq: number; at: number; questionId: string }
   | { kind: "version"; id: string; seq: number; at: number; n: number }
   | { kind: "agent"; id: string; seq: number; at: number; agentId: string }
-  | { kind: "stress"; id: string; seq: number; at: number; run: number };
+  | { kind: "stress"; id: string; seq: number; at: number; run: number }
+  | { kind: "explain"; id: string; seq: number; at: number; key: string };
 
 export interface Run extends SimEvent {
   seq: number;
@@ -155,6 +159,8 @@ export interface SessionState {
   stress: Record<number, StressEvent & { seq: number; at: number }>;
   /** Step-by-step build guide for the latest bill of materials. */
   buildGuide: BuildGuideEvent | null;
+  /** Learning-mode explanations by key, the latest of each. */
+  explains: Record<string, ExplainEvent>;
   /** Reduces one contract event. `instant` marks events replayed in bulk (seek), so nothing animates for them. */
   apply: (ev: AgentEvent, opts?: { instant?: boolean }) => void;
   addLocalUserMessage: (text: string) => void;
@@ -293,6 +299,7 @@ function emptyState() {
     productLabel: "Any product",
     stress: {} as SessionState["stress"],
     buildGuide: null as BuildGuideEvent | null,
+    explains: {} as Record<string, ExplainEvent>,
   };
 }
 
@@ -331,7 +338,7 @@ export const useSession = create<SessionState>((set, get) => ({
     // The drone flow (Jamie kickoff, recordings) sends no product event; its own events name it.
     if (get().product === "" && isDroneEvent(ev)) set({ product: "drone", productLabel: "Drone" });
     const s = get();
-    const log = [...s.log, { seq, at, ev }];
+    const log = [...s.log, opts?.instant ? { seq, at, ev, instant: true } : { seq, at, ev }];
 
     switch (ev.type) {
       case "step": {
@@ -506,6 +513,12 @@ export const useSession = create<SessionState>((set, get) => ({
       }
       case "build_guide":
         return set({ log, buildGuide: ev });
+      case "explain": {
+        const explains = { ...s.explains, [ev.key]: ev };
+        const known = s.chat.some((c) => c.kind === "explain" && c.key === ev.key);
+        const chat: ChatItem[] = !ev.chat || known ? s.chat : [...s.chat, { kind: "explain", id: nextId("explain"), seq, at, key: ev.key }];
+        return set({ log, explains, chat });
+      }
       case "firmware":
         return set({ log, firmware: ev });
       case "training": {

@@ -9,6 +9,7 @@ import { fmtEur, fmtGram, fmtMin, fmtNum, fmtRatio } from "../../lib/format";
 import { useShownBuild, useTargets } from "../../lib/hooks";
 import { useUi } from "../../lib/ui";
 import { TrainedGains } from "../training/TrainedGains";
+import { WhyButton } from "../learn/Explain";
 
 export function JamieMark({ className = "" }: { className?: string }) {
   return (
@@ -67,6 +68,7 @@ function RequirementRow({ r, open, onToggle }: { r: RequirementEvent; open: bool
           )}
         </span>
       </button>
+      {r.met !== null && <WhyButton kind="requirement" id={r.id} className="pb-1.5 pl-[42px]" />}
     </li>
   );
 }

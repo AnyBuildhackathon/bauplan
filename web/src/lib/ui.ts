@@ -14,6 +14,8 @@ export interface Display {
   tools: boolean;
   jamie: boolean;
   allMetrics: boolean;
+  /** Learning mode: Mechanic explains every decision, with "Why?" links and a glossary. */
+  learning: boolean;
 }
 
 interface UiState {
@@ -27,6 +29,8 @@ interface UiState {
   selectedRun: number | null;
   bomOpen: boolean;
   lessonStep: StepId | null;
+  /** The decision the learning drawer explains (`part:battery`, `requirement:flight_time`), or null. */
+  why: string | null;
   concepts: Record<string, ConceptStatus>;
   /** Push-to-talk is held down. */
   listening: boolean;
@@ -50,6 +54,7 @@ interface UiState {
   setBomOpen: (open: boolean) => void;
   openLesson: (step: StepId) => void;
   closeLesson: () => void;
+  openWhy: (target: string | null) => void;
   markConcept: (id: string, status: ConceptStatus) => void;
   setListening: (on: boolean) => void;
   setMicMode: (mode: MicMode) => void;
@@ -64,14 +69,16 @@ const TABS: CanvasTab[] = ["modell", "cad", "simulation", "omniverse"];
 const params = () => new URLSearchParams(window.location.search);
 const VOICE_KEY = "bauplan.voice";
 const DISPLAY_KEY = "anybuild.display";
-const DISPLAY_DEFAULT: Display = { agents: false, tools: false, jamie: false, allMetrics: false };
+const DISPLAY_DEFAULT: Display = { agents: false, tools: false, jamie: false, allMetrics: false, learning: false };
 
 function storedDisplay(): Display {
+  // `?learning` turns learning mode on for this page, for a demo link.
+  const url: Partial<Display> = params().has("learning") ? { learning: true } : {};
   try {
     const raw = localStorage.getItem(DISPLAY_KEY);
-    return raw ? { ...DISPLAY_DEFAULT, ...(JSON.parse(raw) as Partial<Display>) } : DISPLAY_DEFAULT;
+    return { ...DISPLAY_DEFAULT, ...(raw ? (JSON.parse(raw) as Partial<Display>) : {}), ...url };
   } catch {
-    return DISPLAY_DEFAULT;
+    return { ...DISPLAY_DEFAULT, ...url };
   }
 }
 
@@ -116,6 +123,7 @@ export const useUi = create<UiState>((set) => ({
   selectedRun: null,
   bomOpen: params().has("bom"),
   lessonStep: initialLesson(),
+  why: null,
   concepts: {},
   listening: false,
   micMode: storedMicMode(),
@@ -143,6 +151,7 @@ export const useUi = create<UiState>((set) => ({
   openLesson: (lessonStep) =>
     set((s) => ({ lessonStep, concepts: s.concepts[lessonStep] ? s.concepts : { ...s.concepts, [lessonStep]: "gesehen" } })),
   closeLesson: () => set({ lessonStep: null }),
+  openWhy: (why) => set({ why }),
   markConcept: (id, status) => set((s) => ({ concepts: { ...s.concepts, [id]: status } })),
   setListening: (listening) => set({ listening }),
   setMicMode: (micMode) => {
@@ -163,5 +172,5 @@ export const useUi = create<UiState>((set) => ({
     }
     set({ voiceOn });
   },
-  resetUi: () => set({ selectedVersion: null, selectedRun: null, lessonStep: null, concepts: {}, bomOpen: false }),
+  resetUi: () => set({ selectedVersion: null, selectedRun: null, lessonStep: null, why: null, concepts: {}, bomOpen: false }),
 }));
