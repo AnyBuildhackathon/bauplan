@@ -4,6 +4,7 @@ import { useSession } from "../../events/store";
 import { useSource } from "../../events/source";
 import { assetUrl } from "../../lib/api";
 import { useShownBuild } from "../../lib/hooks";
+import { usePartners } from "../../lib/partners";
 import { TrendChart } from "../ui/TrendChart";
 
 const METRICS: Record<string, [string, string]> = {
@@ -29,6 +30,10 @@ export function OmniverseView() {
   // Without a GPU pod the backend answers with a recorded fixture; its synthetic values
   // are not shown, the tab says calmly that no GPU is connected instead.
   const latest = useSession((s) => s.omniverse);
+  const connection = usePartners((s) => s.isaac);
+  const product = useSession((s) => s.product);
+  const cad = useSession((s) => s.cad);
+  const supported = product === "drone" && !cad?.script_url;
   const offline = latest?.source === "recorded";
   const result = offline ? null : latest;
   const { metrics: shownMetrics, version: shownVersion } = useShownBuild();
@@ -51,6 +56,8 @@ export function OmniverseView() {
   const video = assetUrl(result?.video_url);
   const curve = result?.curve ?? [];
   const values = curve.map((p) => p[1]);
+  const lastRun = latest ?? connection.last_run;
+  const canRun = supported && connection.state === "live" && !busy;
 
   async function run(text: string) {
     setError("");
@@ -70,6 +77,16 @@ export function OmniverseView() {
         </span>
       </div>
 
+      <div className="mb-4 rounded-2xl border border-line bg-white p-3 text-[13px]" data-target="isaac:connection" role="status">
+        <p className={`font-semibold ${connection.state === "live" ? "text-ok-ink" : "text-muted"}`}>
+          {connection.state === "live" ? "Connected" : connection.state === "mock" ? "Recorded demo" : "Offline"} · {connection.gpu ?? "No GPU detected"}
+        </p>
+        <p className="mt-1 break-all text-muted">Host: {connection.host ?? "Not configured"}</p>
+        <p className="mt-1 text-muted">{connection.detail}</p>
+        <p className="mt-1 text-muted">Last run: {lastRun ? `${lastRun.mode} · ${lastRun.status}${lastRun.stage ? ` · ${lastRun.stage}` : ""}` : "No job in this session"}</p>
+        {!supported && <p className="mt-2 text-ink-2">Open the drone reference to run Isaac hover tests or reference policy training.</p>}
+      </div>
+
       {shownMetrics && <p className="mb-3 text-xs font-semibold text-muted">
         Displayed assembly{shownVersion ? ` · v${shownVersion.n}` : " · current build"}: {shownMetrics.weight_g.toFixed(1)} g before added payload.
       </p>}
@@ -81,15 +98,15 @@ export function OmniverseView() {
         <label className="min-w-0 flex-1 text-xs font-semibold text-muted">Payload (g)
           <input name="payload_g" aria-label="Payload in grams" type="number" min="0" max="500" value={payload}
             onChange={(e) => setPayload(Number(e.target.value))} className="mt-1 block w-full rounded-lg bg-tile px-3 py-2 text-sm text-ink" /></label>
-        <button type="button" disabled={busy || wind < 0 || wind > 20 || payload < 0 || payload > 500}
+        <button type="button" disabled={!canRun || wind < 0 || wind > 20 || payload < 0 || payload > 500}
           onClick={() => void run(`Test the product in Omniverse with ${wind} m/s wind gusts and a ${payload} g payload.`)}
           className="flex h-9 items-center gap-2 rounded-full bg-ink px-4 text-sm font-semibold text-white disabled:opacity-40">
           {busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Wind className="h-4 w-4" />}Run test</button>
       </div>
       <div className="mb-4 flex flex-wrap gap-2">
-        <button type="button" disabled={busy} onClick={() => void run("Test hover stability in Omniverse.")}
+        <button type="button" disabled={!canRun} onClick={() => void run("Test hover stability in Omniverse.")}
           className="rounded-full bg-white px-3 py-2 text-xs font-semibold text-ink-2 disabled:opacity-40">Hover stability</button>
-        <button type="button" disabled={busy} onClick={() => void run("Train the reference quadcopter in Isaac Lab.")}
+        <button type="button" disabled={!canRun} onClick={() => void run("Train the reference quadcopter in Isaac Lab.")}
           className="rounded-full bg-white px-3 py-2 text-xs font-semibold text-ink-2 disabled:opacity-40">Train reference policy</button>
       </div>
       {error && <p role="alert" className="mb-3 text-sm text-fail-ink">{error}</p>}

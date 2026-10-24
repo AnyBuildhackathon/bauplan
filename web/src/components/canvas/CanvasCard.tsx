@@ -86,7 +86,7 @@ function PartModel() {
 
 export function CanvasCard() {
   const tab = useUi((s) => s.tab);
-  const setTab = useUi((s) => s.setTab);
+  const selectTab = useUi((s) => s.selectTab);
   const look = useUi((s) => s.look);
   const setLook = useUi((s) => s.setLook);
   const compare = useUi((s) => s.compare);
@@ -96,13 +96,7 @@ export function CanvasCard() {
   const product = useSession((s) => s.product);
   const omniverse = useSession((s) => s.omniverse);
   const supportsOmniverse = product === "drone" && !cad?.script_url;
-  useEffect(() => {
-    if (supportsOmniverse && omniverse) setTab("omniverse");
-  }, [omniverse, supportsOmniverse, setTab]);
-  useEffect(() => {
-    if (!supportsOmniverse && tab === "omniverse") setTab("simulation");
-  }, [supportsOmniverse, tab, setTab]);
-  const tabs = TABS.filter((t) => t.value !== "omniverse" || supportsOmniverse);
+  const tabs = TABS.filter((t) => t.value !== "omniverse" || supportsOmniverse || tab === "omniverse");
   const agentsWorking = useSession((s) => Object.values(s.agents).some((a) => a.status === "running" || a.status === "queued"));
   const badges: Partial<Record<CanvasTab, boolean>> = { cad: !!cad, simulation: runs > 0, omniverse: !!omniverse, agents: agentsWorking };
   const showRender = tab === "modell" && look === "render";
@@ -128,7 +122,7 @@ export function CanvasCard() {
                 aria-selected={active}
                 data-target={`tab:${t.value}`}
                 data-control={`tab:${t.value === "modell" ? "model" : t.value}`}
-                onClick={() => setTab(t.value)}
+                onClick={() => selectTab(t.value)}
                 className={`-mb-px flex shrink-0 items-center gap-2 border-b-2 px-0.5 pb-3 text-[15px] whitespace-nowrap transition ${
                   active ? "border-ink font-semibold text-ink" : "border-transparent font-medium text-muted hover:text-ink"
                 }`}
@@ -175,12 +169,13 @@ export function CanvasCard() {
         }`}
         data-target="canvas viewport"
       >
+        <div key={tab} className="h-full min-h-0 motion-safe:animate-[canvas-enter_200ms_ease-out_both]">
         {tab === "simulation" && (
           <Segmented<"hover" | "training">
             size="sm"
             className="absolute top-3 right-3 z-10 bg-white/90 shadow-[var(--shadow-pill)] backdrop-blur"
             value={pane}
-            onChange={setPane}
+            onChange={(pane) => { selectTab("simulation"); setPane(pane); }}
             options={[
               { value: "hover", label: "Hover test", target: "sim:hover" },
               {
@@ -197,7 +192,7 @@ export function CanvasCard() {
             size="sm"
             className="absolute top-3 right-3 z-10 bg-white/90 shadow-[var(--shadow-pill)] backdrop-blur"
             value={look}
-            onChange={setLook}
+            onChange={(look) => { selectTab("modell"); setLook(look); }}
             options={[
               { value: "3d", label: "3D", target: "look:3d", control: "look:3d" },
               {
@@ -220,9 +215,10 @@ export function CanvasCard() {
         <PartCard />
         {tab === "cad" && <CadView />}
         {tab === "simulation" && (showTraining ? <BrowserTraining /> : <SimView />)}
-        {tab === "omniverse" && supportsOmniverse && <OmniverseView />}
+        {tab === "omniverse" && <OmniverseView />}
         {tab === "agents" && <AgentsView />}
         {tab !== "cad" && tab !== "omniverse" && tab !== "agents" && !(tab === "modell" && compare) && <SpokenLine lifted={(tab === "simulation" && (runs > 0 || showTraining)) || (showRender && renders > 1)} overSlider={tab === "modell" && !showRender} />}
+        </div>
       </div>
     </div>
   );

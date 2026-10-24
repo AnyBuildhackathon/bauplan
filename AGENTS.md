@@ -253,7 +253,7 @@ Never commit `.env` files or secret keys to the repository.
 - The captain owns visual styling and design polish; agents must not make visual design changes beyond what their task requires.
 - Visual styling follows the Bevel design system with rounded card surfaces, subtle borders, and soft drop shadows.
 - Maintain high projector readability on stage using dark ink text variants (`--color-agent-ink`, `--color-ok-ink`, `--color-fail-ink`) and tabular numbers.
-- Keep the display uncluttered with essentials only: chat on the left, at most three canvas tabs (`Model`, `CAD`, `Simulation`), a thin Jamie timeline, and the requirement checks and three key numbers as cards in the chat.
+- Keep the display uncluttered with essentials only: chat on the left, at most three canvas tabs (`Model`, `CAD`, `Simulation`), partner status chips in the top bar, Jamie meetings in the Logbook, and the requirement checks and three key numbers as cards in the chat.
 
 ## Planned Next Work
 
