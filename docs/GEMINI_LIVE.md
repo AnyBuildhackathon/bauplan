@@ -38,8 +38,10 @@ When `GOOGLE_CLOUD_PROJECT` is set, Vertex is selected by default; otherwise the
 Gemini Live is Mechanic's only speaking voice; there is no other voice engine and no voice setting.
 Availability reports configured credentials, not an assurance of remaining quota or project access.
 Mechanic speaks only inside a voice conversation the person started, to answer them, plus at most one short line when a build it started finishes; build progress stays text in the chat.
-Press **Talk** in the chat input to start the conversation; the button turns into **End**, a status line says the conversation is live, and pressing **End** stops it.
-Push-to-talk (Settings) only dictates a prompt; Mechanic answers it in text.
+One button turns the voice agent on and off: press **Talk** in the chat input, and Mechanic greets you right away ("Hey, I'm Mechanic. What should we build today?") and then listens hands-free; the button turns into **End**, a status line says the conversation is live, and pressing **End** stops it.
+The greeting is a text turn the gateway sends right after setup (`GREETING` in `gemini_live.py`), so it never shows up as something the person said; its first audio played about 2.2 s after the click on 2026-10-24.
+The conversation belongs to the page, not to one input, so it keeps running when the start screen gives way to the workbench.
+Push-to-talk (Settings) is an opt-in for the current page that only dictates a prompt; Mechanic answers it in text, and every load starts with the Talk button again.
 
 ## Audio and transcripts
 

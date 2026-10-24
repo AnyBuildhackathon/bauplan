@@ -241,7 +241,7 @@ class FakeUpstream:
     async def send(self, raw):
         data = json.loads(raw)
         self.sent.append(data)
-        if "realtimeInput" in data:
+        if "audio" in data.get("realtimeInput", {}):
             await self.queue.put(
                 {
                     "toolCall": {
@@ -306,3 +306,5 @@ def test_gateway_audio_tools_gemini_transcript_and_reconnect(tmp_path):
         assert all(
             any("toolResponse" in d for d in upstream.sent) for upstream in upstreams
         )
+        # Mechanic greets first: right after setup, before any microphone audio.
+        assert all(upstream.sent[1] == live.GREETING for upstream in upstreams)

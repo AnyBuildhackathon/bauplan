@@ -4,9 +4,47 @@
 import { apiStreamUrl } from "./api";
 import { openMic, voiceCapabilities, type HandsFree } from "./voice";
 import { playLivePcm, stopSpeaking, unlockAudio } from "./speech";
+import { create } from "zustand";
 import { useUi } from "./ui";
 
-export async function startVoiceConversation(onError: (message: string) => void, onHeard: (text: string) => void): Promise<HandsFree | null> {
+/** What Gemini heard of the current turn, and the last notice; shared by every chat input. */
+export const useVoiceChat = create<{ heard: string; notice: { text: string; at: number } | null }>(() => ({ heard: "", notice: null }));
+const notify = (text: string) => useVoiceChat.setState({ notice: { text, at: Date.now() } });
+const hear = (heard: string) => useVoiceChat.setState({ heard });
+
+// One conversation for the whole page: the start screen's input and the workbench's input
+// replace each other when the first chat line arrives, and the conversation must not end then.
+let conversation: HandsFree | null = null;
+let starting = false;
+
+/** The one Talk button: turns the voice agent on (Mechanic greets, then listens hands-free). */
+export async function startVoice() {
+  if (conversation || starting) return;
+  starting = true;
+  unlockAudio();
+  useUi.getState().setHandsFree(true);
+  const active = await startVoiceConversation(notify, hear).catch(() => {
+    notify("The microphone is unavailable. Check its permission or type instead.");
+    return null;
+  });
+  starting = false;
+  if (!active || !useUi.getState().handsFree) {
+    active?.stop();
+    useUi.getState().setHandsFree(false);
+    return;
+  }
+  conversation = active;
+}
+
+/** The same button again: the voice agent is off. */
+export function stopVoice() {
+  conversation?.stop();
+  conversation = null;
+  useUi.getState().setHandsFree(false);
+  hear("");
+}
+
+async function startVoiceConversation(onError: (message: string) => void, onHeard: (text: string) => void): Promise<HandsFree | null> {
   if (!voiceCapabilities().geminiLive) {
     onError("Gemini Live is not configured. Type to Mechanic instead.");
     return null;
@@ -32,6 +70,7 @@ export async function startVoiceConversation(onError: (message: string) => void,
     release();
     if (!useUi.getState().handsFree) return;
     onError(message);
+    conversation = null;
     useUi.getState().setHandsFree(false);
   };
   let resolveReady: (ok: boolean) => void = () => undefined;

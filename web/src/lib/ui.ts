@@ -49,7 +49,7 @@ interface UiState {
   concepts: Record<string, ConceptStatus>;
   /** Push-to-talk is held down. */
   listening: boolean;
-  /** Hands-free: the mic listens for turns and the button toggles it; push-to-talk is the fallback. Remembered per browser. */
+  /** Hands-free (the default): the Talk button turns the Gemini voice agent on and off; push-to-talk is an opt-in. */
   micMode: MicMode;
   /** The hands-free conversation is running. */
   handsFree: boolean;
@@ -118,7 +118,6 @@ function storedDisplay(): Display {
   }
 }
 
-const MIC_KEY = "anybuild.mic";
 const CLICKY_KEY = "anybuild.clicky";
 const DIRECTOR_KEY = "anybuild.director";
 
@@ -138,13 +137,6 @@ function storedClicky(): boolean {
   }
 }
 
-function storedMicMode(): MicMode {
-  try {
-    return localStorage.getItem(MIC_KEY) === "ptt" ? "ptt" : "handsfree";
-  } catch {
-    return "handsfree";
-  }
-}
 
 function storedVoice(): boolean {
   if (params().has("mute")) return false;
@@ -196,7 +188,8 @@ export const useUi = create<UiState>((set) => ({
   lessonStep: initialLesson(),
   concepts: {},
   listening: false,
-  micMode: storedMicMode(),
+  // Every load starts with the one Talk button; push-to-talk is an opt-in for this page only.
+  micMode: "handsfree",
   handsFree: false,
   userTalking: false,
   voiceOn: storedVoice(),
@@ -247,14 +240,8 @@ export const useUi = create<UiState>((set) => ({
   closeLesson: () => set({ lessonStep: null }),
   markConcept: (id, status) => set((s) => ({ concepts: { ...s.concepts, [id]: status } })),
   setListening: (listening) => set({ listening }),
-  setMicMode: (micMode) => {
-    try {
-      localStorage.setItem(MIC_KEY, micMode);
-    } catch {
-      // Private windows may refuse storage; the choice lasts for this page.
-    }
-    set({ micMode });
-  },
+  setMicMode: (micMode) => set({ micMode }),
+
   setHandsFree: (handsFree) => set(handsFree ? { handsFree } : { handsFree, userTalking: false }),
   setUserTalking: (userTalking) => set({ userTalking }),
   setVoiceOn: (voiceOn) => {

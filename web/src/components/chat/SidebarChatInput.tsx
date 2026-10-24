@@ -7,9 +7,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowUp, Mic, MousePointer2 } from "lucide-react";
 import { useUi } from "../../lib/ui";
-import { unlockAudio, useSpeech } from "../../lib/speech";
-import { startListening as listen, type HandsFree, type Listener } from "../../lib/voice";
-import { startVoiceConversation } from "../../lib/geminiLive";
+import { useSpeech } from "../../lib/speech";
+import { startListening as listen, type Listener } from "../../lib/voice";
+import { startVoice, stopVoice, useVoiceChat } from "../../lib/geminiLive";
 import { pickImage, SketchButton, SketchChip } from "./SketchDrop";
 
 interface SidebarChatInputProps {
@@ -63,7 +63,6 @@ export default function SidebarChatInput({
   const setListening = useUi((s) => s.setListening);
   const micMode = useUi((s) => s.micMode);
   const handsFree = useUi((s) => s.handsFree);
-  const setHandsFree = useUi((s) => s.setHandsFree);
   const userTalking = useUi((s) => s.userTalking);
   const speaking = useSpeech((s) => s.speaking);
   const [hint, setHint] = useState<string | null>(null);
@@ -82,50 +81,24 @@ export default function SidebarChatInput({
     adjustHeight();
   }, [value, adjustHeight]);
 
-  const [heard, setHeard] = useState("");
+  const [dictated, setHeard] = useState("");
+  const voiceHeard = useVoiceChat((s) => s.heard);
+  const notice = useVoiceChat((s) => s.notice);
   const listener = useRef<Promise<Listener | null> | null>(null);
   const flash = useCallback((text: string) => {
     setHint(text);
     setTimeout(() => setHint(null), 3600);
   }, []);
 
-  // --- hands-free -----------------------------------------------------------
-  const conversation = useRef<HandsFree | null>(null);
-  const starting = useRef(false);
-
-  const stopHandsFree = useCallback(() => {
-    conversation.current?.stop();
-    conversation.current = null;
-    setHandsFree(false);
-    setHeard("");
-  }, [setHandsFree]);
-
-  const startConversation = useCallback(async () => {
-    if (conversation.current || starting.current) return;
-    starting.current = true;
-    setHint(null);
-    unlockAudio();
-    setHandsFree(true);
-    const active = await startVoiceConversation(flash, setHeard).catch(() => {
-      flash("The microphone is unavailable. Check its permission or type instead.");
-      return null;
-    });
-    starting.current = false;
-    if (!active || !useUi.getState().handsFree) {
-      active?.stop();
-      setHandsFree(false);
-      return;
-    }
-    conversation.current = active;
-  }, [setHandsFree, flash]);
-
-  useEffect(() => () => {
-    useUi.getState().setHandsFree(false);
-    conversation.current?.stop();
-  }, []);
+  // --- voice agent (Gemini Live, lib/geminiLive.ts) ---------------------------
+  // The conversation lives outside this component, so it outlasts the start screen's input.
+  const heard = handsFree ? voiceHeard : dictated;
   useEffect(() => {
-    if (micMode === "ptt") stopHandsFree();
-  }, [micMode, stopHandsFree]);
+    if (notice && Date.now() - notice.at < 1000) flash(notice.text);
+  }, [notice, flash]);
+  useEffect(() => {
+    if (micMode === "ptt") stopVoice();
+  }, [micMode]);
 
   // --- push-to-talk -----------------------------------------------------------
   const startListening = useCallback(() => {
@@ -277,8 +250,9 @@ export default function SidebarChatInput({
           onPointerLeave={() => micMode === "ptt" && void stopListening()}
           onClick={() => {
             if (micMode !== "handsfree") return;
-            if (handsFree) stopHandsFree();
-            else void startConversation();
+            setHint(null);
+            if (handsFree) stopVoice();
+            else void startVoice();
           }}
           className={`flex shrink-0 items-center justify-center gap-1.5 rounded-full font-semibold transition select-none ${
             micHot ? "bg-accent text-white shadow-[0_0_0_6px_rgb(31_111_120/0.16)]" : "bg-tile text-ink-2 hover:bg-track hover:text-ink"
