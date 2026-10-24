@@ -226,7 +226,7 @@ Each mode maps to a `mascot` state in the app, and to an expression in [characte
 |---|---|---|---|---|
 | **Swagger** (default) | `ruhig` | Idle, intro, waiting | Relaxed, witty, confident | E1 Smirk |
 | **Thinking** | `denkt` | Spec, CAD, searching, simulating | Focused, brief, a little narration | E3 Focused (HUD glowing) |
-| **Explaining** | `erklaert` | Results, decisions, part picks | Clear, confident, teaching | E9 Talking |
+| **Explaining** | `erklaert` | Results, decisions, part picks | Clear, confident, teaching | Talking (prompt 4.2, panel 9) |
 | **Hype / Proud** | `freut_sich` | A pass, a render, the build is done | Showman, warm, rare compliments | E2 Finger-gun wink / E7 Proud |
 | **Concerned** | `besorgt` | Failures, warnings, safety, conflicts | Calm, direct, no jokes for safety | E4 Serious / E5 Facepalm (failures only) |
 | **Roast** | `erklaert` | The user picks a bad option | Playful, never mean | E8 Skeptical |
