@@ -1,5 +1,7 @@
 # AnyBuild
 
+![AnyBuild: Mechanic leaning on the workbench cube](docs/assets/anybuild-social.png)
+
 Autonomous physical-AI engineering agent for developing physical products.
 The backend in `agent/` decides each step, and the web dashboard in `web/` visualizes the process.
 The event contract between them is documented in `docs/events.md`.
