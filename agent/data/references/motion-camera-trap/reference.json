@@ -1,0 +1,273 @@
+{
+  "id": "motion-camera-trap",
+  "name": "Motion camera trap",
+  "summary": "An M5Stack Timer Camera that sleeps until a PIR sensor sees movement, then takes a photo; a month on one 18650 cell in a printed weatherproof box.",
+  "spec": {
+    "name": "Motion Camera Trap",
+    "function": "Photographs whatever moves in the garden: the ESP32 camera sleeps until the HC-SR505 PIR sensor sees movement, wakes, takes a picture, saves or sends it over Wi-Fi and goes back to sleep, from one 18650 cell in a holder that charges it over USB-C and boosts it to 5 V.",
+    "quote": "I want the ESP32-CAM PIR camera from Random Nerd Tutorials as a proper garden camera trap: a printed box with a rain lip that stands on a shelf or screws to a fence, running on an 18650 so I don't need a cable. It should last at least a month on one charge with about 20 visits a day, cost under 40 euros, weigh under 300 grams and not blow over.",
+    "assemblies": [],
+    "parts": [
+      {
+        "id": "housing",
+        "name": "Housing",
+        "kind": "printed",
+        "qty": 1,
+        "assembly": null,
+        "description": "Upright box 70 x 45 x 110 mm centred on X=Y=0 on the stand (Z 4 to 114), open at the back (+Y), 2.4 mm walls, a 12 mm lens hole at Z 98 and a 10.6 mm PIR hole at Z 72 in the front wall, a rain lip over the lens and four screw bosses for the back lid.",
+        "size_mm": [
+          70.0,
+          55.0,
+          110.0
+        ],
+        "position_mm": null,
+        "rotation_deg": null,
+        "material": "PETG",
+        "params": {
+          "width_mm": 70.0,
+          "depth_mm": 45.0,
+          "height_mm": 110.0,
+          "wall_mm": 2.4,
+          "lens_hole_mm": 12.0
+        }
+      },
+      {
+        "id": "back-lid",
+        "name": "Back lid",
+        "kind": "printed",
+        "qty": 1,
+        "assembly": null,
+        "description": "Plate 70 x 2.4 x 110 mm closing the back of the housing (Y 22.5 to 24.9), with four M2.5 holes, a USB-C charging hole and a keyhole to hang it on a fence screw.",
+        "size_mm": [
+          70.0,
+          2.4,
+          110.0
+        ],
+        "position_mm": null,
+        "rotation_deg": null,
+        "material": "PETG",
+        "params": {
+          "width_mm": 70.0,
+          "height_mm": 110.0,
+          "thickness_mm": 2.4
+        }
+      },
+      {
+        "id": "stand",
+        "name": "Stand",
+        "kind": "printed",
+        "qty": 1,
+        "assembly": null,
+        "description": "Foot plate 110 x 90 x 4 mm centred on X=Y=0 (Z 0 to 4) under the housing, with four screw holes.",
+        "size_mm": [
+          110.0,
+          90.0,
+          4.0
+        ],
+        "position_mm": null,
+        "rotation_deg": null,
+        "material": "PETG",
+        "params": {
+          "width_mm": 110.0,
+          "depth_mm": 90.0,
+          "thickness_mm": 4.0
+        }
+      },
+      {
+        "id": "camera",
+        "name": "ESP32 camera board",
+        "kind": "bought",
+        "qty": 1,
+        "assembly": null,
+        "description": "Lies across the top of the housing, lens in the front hole",
+        "size_mm": [
+          48.0,
+          15.0,
+          24.0
+        ],
+        "position_mm": [
+          0.0,
+          -13.0,
+          98.0
+        ],
+        "rotation_deg": null,
+        "mass_g": null,
+        "category": "controller",
+        "query": "ESP32 camera board"
+      },
+      {
+        "id": "pir",
+        "name": "PIR motion sensor",
+        "kind": "bought",
+        "qty": 1,
+        "assembly": null,
+        "description": "Wakes the camera; its lens sits in the front hole",
+        "size_mm": [
+          10.0,
+          23.0,
+          10.0
+        ],
+        "position_mm": [
+          0.0,
+          -12.0,
+          72.0
+        ],
+        "rotation_deg": null,
+        "mass_g": null,
+        "category": "sensor",
+        "query": "HC-SR505 PIR sensor"
+      },
+      {
+        "id": "cell",
+        "name": "18650 cell",
+        "kind": "bought",
+        "qty": 1,
+        "assembly": null,
+        "description": "Sits in the holder",
+        "size_mm": [
+          18.0,
+          18.0,
+          65.0
+        ],
+        "position_mm": [
+          -10.0,
+          8.0,
+          42.0
+        ],
+        "rotation_deg": null,
+        "mass_g": null,
+        "category": "battery",
+        "query": "18650 cell 3000 mAh"
+      },
+      {
+        "id": "holder",
+        "name": "18650 holder with USB-C charger and 5 V boost",
+        "kind": "bought",
+        "qty": 1,
+        "assembly": null,
+        "description": "Stands upright in the lower half of the housing",
+        "size_mm": [
+          21.0,
+          20.0,
+          77.0
+        ],
+        "position_mm": [
+          15.0,
+          8.0,
+          46.0
+        ],
+        "rotation_deg": null,
+        "mass_g": null,
+        "category": "battery",
+        "query": "18650 holder with TP4056 USB-C charger"
+      }
+    ],
+    "requirements": [
+      {
+        "id": "r_cost",
+        "text": "Parts under 40 euros",
+        "check": "cost",
+        "quote": "cost under 40 euros",
+        "max": 40.0,
+        "unit": "eur"
+      },
+      {
+        "id": "r_mass",
+        "text": "Weighs under 300 g",
+        "check": "mass",
+        "quote": "weigh under 300 grams",
+        "max": 300.0,
+        "unit": "g"
+      },
+      {
+        "id": "r_runtime",
+        "text": "Runs at least 30 days on one charge with 20 visits a day",
+        "check": "runtime",
+        "quote": "It should last at least a month on one charge with about 20 visits a day",
+        "min": 30.0,
+        "unit": "days"
+      },
+      {
+        "id": "r_tip",
+        "text": "Tips only beyond 25 degrees",
+        "check": "tip_over",
+        "quote": "not blow over",
+        "min": 25.0,
+        "unit": "deg"
+      },
+      {
+        "id": "r_print",
+        "text": "All printed parts are printable",
+        "check": "printable",
+        "quote": ""
+      }
+    ]
+  },
+  "scripts": {
+    "housing": {
+      "file": "housing.py",
+      "generated": true
+    },
+    "back-lid": {
+      "file": "back-lid.py",
+      "generated": true
+    },
+    "stand": {
+      "file": "stand.py",
+      "generated": true
+    }
+  },
+  "picks": {
+    "camera": {
+      "select_id": "m5stack-timer-camera-u082x",
+      "reason": "ESP32 camera with a real-time clock and deep sleep in microwatts, wakes on a GPIO from the PIR; the bare ESP32-CAM is out of stock at Berrybase today."
+    },
+    "pir": {
+      "select_id": "pir-hcsr505-bb",
+      "reason": "Mini PIR that fits a 10.6 mm hole and draws under 60 uA while it waits; the HC-SR501 is sold out."
+    },
+    "cell": {
+      "select_id": "battery-18650",
+      "reason": "One 3000 mAh 18650 holds a month of 20 photos a day."
+    },
+    "holder": {
+      "select_id": "battery-holder-18650",
+      "reason": "Charges the cell over USB-C through the back lid and boosts it to the camera's 5 V."
+    }
+  },
+  "checks": [
+    {
+      "tool": "check_totals",
+      "args": {}
+    },
+    {
+      "tool": "check_runtime",
+      "args": {
+        "battery_part_id": "cell",
+        "loads": [
+          {
+            "part_id": "camera",
+            "power_w": 1.3,
+            "duty": 0.0028
+          },
+          {
+            "part_id": "pir",
+            "power_w": 0.0003,
+            "duty": 1.0
+          },
+          {
+            "name": "Boost converter idle",
+            "power_w": 0.005,
+            "duty": 1.0
+          }
+        ]
+      }
+    },
+    {
+      "tool": "check_tip_over",
+      "args": {}
+    }
+  ],
+  "kind": "reference",
+  "saved_at": "2026-10-24T17:09:56"
+}
