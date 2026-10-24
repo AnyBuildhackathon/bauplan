@@ -90,6 +90,16 @@ class Session:
         except ValueError as exc:
             return {"ok": False, "error": str(exc)}
 
+    def share(self) -> dict:
+        from pai_agent.export import share
+
+        if self._busy():
+            return {"ok": False, "error": "Mechanic is building. Share when the build is done.", "busy": True}
+        try:
+            return {"ok": True, **share(self.state)}
+        except ValueError as exc:
+            return {"ok": False, "error": str(exc)}
+
     async def meeting_started(self, meeting_id: str, title: str) -> dict:
         meta = resolve_meeting(self.state, meeting_id, title)
         if meta["status"] != "done":

@@ -326,6 +326,38 @@ async def library_save(body: LibraryIn, request: Request) -> dict:
     return result
 
 
+@app.get("/api/export/project.zip")
+async def export_zip(request: Request) -> Response:
+    from pai_agent.export import project_zip, zip_name
+
+    session = request.app.state.session
+    try:
+        data = project_zip(session.state, session.bus.events)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    name = zip_name(session.state)
+    return Response(data, media_type="application/zip", headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+
+@app.get("/api/export/bom.csv")
+async def export_csv(request: Request) -> Response:
+    from pai_agent.export import bom_csv
+
+    bom = request.app.state.session.state.bom
+    if not bom:
+        raise HTTPException(status_code=404, detail="No bill of materials yet")
+    return Response(bom_csv(bom), media_type="text/csv; charset=utf-8", headers={"Content-Disposition": 'attachment; filename="bom.csv"'})
+
+
+@app.post("/api/export/share")
+async def export_share(request: Request) -> dict:
+    _require_json(request)
+    result = request.app.state.session.share()
+    if result.get("ok") is False:
+        raise HTTPException(status_code=409 if result.get("busy") else 400, detail=str(result["error"]))
+    return result
+
+
 @app.get("/api/settings")
 async def settings_get() -> dict:
     from pai_agent import settings
