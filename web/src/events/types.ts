@@ -587,6 +587,7 @@ export type AgentEvent =
   | AgentRunEvent
   | SayEvent
   | ExplainEvent
+  | OptimizeEvent
   | ResetEvent
   | ReplayedEvent;
 
@@ -637,4 +638,46 @@ export function parseEvent(raw: string): AgentEvent | null {
   const type = (value as { type?: unknown }).type;
   if (typeof type !== "string" || !EVENT_TYPES.has(type as AgentEvent["type"])) return null;
   return value as AgentEvent;
+}
+
+/** One variant the design optimizer checked: its parts, its numbers and every check. */
+export interface OptimizeVariant {
+  id: string;
+  label: string;
+  reason: string;
+  agent: string;
+  battery: string;
+  battery_id: string;
+  params: { arm_length_mm: number; thickness_mm: number };
+  frame_g: number;
+  weight_g: number;
+  thrust_to_weight: number;
+  flight_time_min: number;
+  price_eur: number;
+  /** Arm stiffness relative to the current build (1 = now). */
+  arm_stiffness: number;
+  warnings: string[];
+  checks: { id: string; label: string; pass: boolean; detail: string }[];
+  feasible: boolean;
+  pareto: boolean;
+}
+
+export type OptimizeGoal = "lighter" | "cheaper" | "longer_runtime" | "stronger";
+export type OptimizeNumber = "weight_g" | "flight_time_min" | "price_eur" | "thrust_to_weight" | "arm_stiffness";
+
+/** The design optimizer explored variants; sent running, done, and again once a variant is built. */
+export interface OptimizeEvent {
+  type: "optimize";
+  id: string;
+  status: "running" | "done";
+  goals: OptimizeGoal[];
+  keep: Record<string, number>;
+  axes: { x: OptimizeNumber; y: OptimizeNumber; color: OptimizeNumber };
+  /** The current build through the same checks, or null while running. */
+  baseline: (Omit<OptimizeVariant, "id" | "reason" | "agent" | "pareto"> & { label: string }) | null;
+  variants: OptimizeVariant[];
+  recommended: string | null;
+  /** The variant built as a version, and that version's number. */
+  applied: string | null;
+  version: number | null;
 }

@@ -38,6 +38,7 @@ from pai_agent.tools.jamie import (
     version_commit,
 )
 from pai_agent.tools.parts import parts_search
+from pai_agent.tools.optimize import optimize_apply, optimize_design
 from pai_agent.tools.physics import physics_calc
 from pai_agent.tools.simulate import simulate_drone
 from pai_agent.tools.stress import stress_test
@@ -93,6 +94,8 @@ TOOLS = {
     "mascot_say": mascot_say,
     "ui_control": ui_control,
     "train_in_browser": train_in_browser,
+    "optimize_design": optimize_design,
+    "optimize_apply": optimize_apply,
 }
 
 # With delegation on, these belong to the sub-agents; the orchestrator reaches them through delegate.
@@ -748,6 +751,47 @@ SCHEMAS = [
 ]
 
 
+_OPTIMIZE_SCHEMAS = [
+    {
+        "name": "optimize_design",
+        "description": (
+            "Explores variants of the built drone for the user's goals: lighter, cheaper, longer_runtime, stronger. "
+            "4 to 8 variant agents (Sonnet sub-agents, in parallel) each propose a battery and the frame's arm length and plate thickness; "
+            "every variant runs the CadQuery frame mass, physics_calc's numbers, the MuJoCo gust test, the prop clearance and the keep limits. "
+            "Returns every variant with pass/fail and the Pareto set; the chat shows them as a chart. keep holds the limits to keep, "
+            "e.g. {\"min_flight_time_min\": 8}. Then let the user pick a point; do not build one unasked."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "goals": {"type": "array", "items": {"type": "string", "enum": ["lighter", "cheaper", "longer_runtime", "stronger"]}},
+                "keep": {
+                    "type": "object",
+                    "properties": {
+                        "min_flight_time_min": {"type": "number"},
+                        "max_weight_g": {"type": "number"},
+                        "max_price_eur": {"type": "number"},
+                        "min_thrust_to_weight": {"type": "number"},
+                        "min_arm_stiffness": {"type": "number"},
+                    },
+                },
+                "count": {"type": "integer", "minimum": 4, "maximum": 8},
+            },
+            "required": ["goals"],
+        },
+    },
+    {
+        "name": "optimize_apply",
+        "description": (
+            "Builds one optimizer variant (variant is its letter, id the optimizer run; both default to the latest run's recommendation) "
+            "through parts_search, cad_frame, physics_calc, simulate_drone, blender_render and bom_build, and commits it as the next version with its difference."
+        ),
+        "input_schema": {"type": "object", "properties": {"id": {"type": "string"}, "variant": {"type": "string"}}},
+    },
+]
+SCHEMAS.extend(_OPTIMIZE_SCHEMAS)
+
+
 def _running_detail(name: str, args: dict) -> str:
     if name == "parts_search":
         return (str(args.get("category", "")) + " " + str(args.get("query", ""))).strip()
@@ -769,6 +813,10 @@ def _running_detail(name: str, args: dict) -> str:
         return str(args.get("sketch", ""))
     if name == "delegate":
         return str(args.get("agent", "")) + " agent"
+    if name == "optimize_design":
+        return ", ".join(str(goal) for goal in args.get("goals") or [])
+    if name == "optimize_apply":
+        return "variant " + str(args.get("variant") or "")
     if name == "simulate_assembly":
         return str(args.get("mode") or "push") + " test"
     if name in {"catalog_search", "product_brief"}:

@@ -51,6 +51,8 @@ interface SourceState {
   startReference: (id: string) => Promise<void>;
   /** Makes an old version current again by rebuilding it as a new version. */
   restoreVersion: (n: number) => Promise<void>;
+  /** Builds one design optimizer variant as the next version. */
+  applyVariant: (id: string, variant: string) => Promise<boolean>;
   /** Opens a community project on a fresh bench as a remix. */
   startRemix: (id: string) => Promise<void>;
   demo: DemoState;
@@ -462,6 +464,26 @@ export const useSource = create<SourceState>((set, get) => {
         await ensureOk(res);
       } catch (err) {
         notify(failure("The restore did not start", err));
+      }
+    },
+
+    applyVariant: async (id, variant) => {
+      if (get().mode === "demo") return false;
+      try {
+        const res = await apiFetch("/api/optimize/apply", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id, variant }),
+        });
+        if (res.status === 409) {
+          set({ notice: "Mechanic is building. Pick a variant when the build is done." });
+          return false;
+        }
+        await ensureOk(res);
+        return true;
+      } catch (err) {
+        notify(failure("The variant did not start", err));
+        return false;
       }
     },
 

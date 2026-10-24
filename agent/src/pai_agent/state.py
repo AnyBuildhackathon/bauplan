@@ -51,3 +51,5 @@ class BuildState:
     checks: dict[str, dict] = field(default_factory=dict)
     # The community project this build was opened from: {"id", "title", "author"}, or None.
     remixed_from: dict | None = None
+    # Design optimizer runs by id: the `optimize` event with its variants, and which one was built.
+    optimize: dict[str, dict] = field(default_factory=dict)

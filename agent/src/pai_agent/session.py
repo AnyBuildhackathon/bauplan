@@ -167,6 +167,22 @@ class Session:
         self.task = asyncio.create_task(self._run(work(), ctx))
         return {"ok": True, "mode": mode, "status": "started", "restoring": n}
 
+    async def apply_variant(self, opt_id: str, variant: str) -> dict:
+        """Someone clicked a point in the optimizer chart: that variant is built and committed as the next version."""
+
+        from pai_agent.tools.optimize import apply_variant
+
+        mode = "claude" if claude_enabled() else "mock"
+        if self._busy():
+            return {"ok": False, "busy": True, "error": "Mechanic is building. Pick a variant when the build is done."}
+        event = self.state.optimize.get(opt_id)
+        if event is None or not any(v["id"] == variant for v in event["variants"]):
+            return {"ok": False, "missing": True, "error": "No variant " + variant + " in optimizer run " + opt_id + "."}
+        ctx = self._ctx(auto_steps=True)
+        await self.bus.publish({"type": "chat", "role": "user", "text": "Build variant " + variant + "."})
+        self.task = asyncio.create_task(self._run(apply_variant(ctx, opt_id, variant), ctx))
+        return {"ok": True, "mode": mode, "status": "started", "variant": variant}
+
     async def start_sketch(self, data: bytes, note: str) -> dict:
         """A photo of a hand sketch starts a new product on a fresh bench. Raises ValueError for a bad photo."""
 

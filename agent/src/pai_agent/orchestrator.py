@@ -16,6 +16,7 @@ from pai_agent.mock_product import run_product_mock, wants_product
 from pai_agent.mock_story import run_mock, run_mock_followup, run_review
 from pai_agent.scene import STEPS
 from pai_agent.tools.browser_train import run_mock_training
+from pai_agent.tools.optimize import run_optimize_mock, run_pick_mock, wants_optimize, wants_pick
 from pai_agent.tools.registry import DELEGATED, SCHEMAS, call_tool
 from pai_agent.timeouts import model_timeout
 from pai_agent.tools.stress import run_stress_mock, wants_stress
@@ -86,6 +87,8 @@ Rebuild after a review:
 5. Then as above from physics_calc to version_commit with the meeting_id of the review. Name the difference in weight, flight time and price at the end.
 The motor thrust is the datasheet value; a higher cell voltage creates no extra thrust.
 A catalog motor sits four times in the scene; for the motor type point at motor_front_left.
+Asked to make the built drone lighter, cheaper, longer-running or stronger, or for options and trade-offs: optimize_design with the goals and the limits to keep,
+then name the recommended variant and what each trade costs, and let the user click a point; optimize_apply builds the pick when they choose one.
 
 The robot gripper (gripper, claw, end effector): product_brief with product gripper, object_mass_g, object_width_mm, max_weight_g, budget_eur and quote.
 Then catalog_search with select_id for servo, pads, hardware and driver, grip_calc, simulate_grip. On fail, swap to a stronger servo and test again.
@@ -140,6 +143,12 @@ async def run_prompt(ctx: Ctx, text: str, messages: list[dict]) -> None:
         return
     first = await _first(ctx)
     if not claude_enabled():
+        if ctx.state.optimize and wants_pick(text):
+            await run_pick_mock(ctx, wants_pick(text))
+            return
+        if wants_optimize(text) and ctx.state.product == "drone" and not wants_gripper(text) and (ctx.state.selected or _DRONE.search(text)):
+            await run_optimize_mock(ctx, text)
+            return
         if wants_gripper(text) and not (ctx.state.product == "gripper" and ctx.state.finished):
             await run_gripper_mock(ctx, text)
             return
@@ -191,6 +200,7 @@ async def _mock_omniverse(ctx: Ctx, text: str) -> bool:
     return True
 
 
+_DRONE = re.compile(r"\b(drone|quad\w*)\b", re.IGNORECASE)
 _TRAIN = re.compile(r"\btrain|\btrainier", re.IGNORECASE)
 _OMNIVERSE = re.compile(r"\b(omniverse|isaac)\b", re.IGNORECASE)
 _TRAIN_THEN_STRESS = re.compile(r"\btrain\w*\b.*\b(then|and|before)\b.*\bstress", re.IGNORECASE)

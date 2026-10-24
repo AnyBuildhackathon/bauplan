@@ -30,6 +30,7 @@ import {
   type ToolStatus,
   type TrainingEvent,
   type OmniverseEvent,
+  type OptimizeEvent,
   type UiEvent,
 } from "./types";
 
@@ -94,7 +95,8 @@ export type ChatItem =
   | { kind: "version"; id: string; seq: number; at: number; n: number }
   | { kind: "agent"; id: string; seq: number; at: number; agentId: string }
   | { kind: "stress"; id: string; seq: number; at: number; run: number }
-  | { kind: "explain"; id: string; seq: number; at: number; key: string };
+  | { kind: "explain"; id: string; seq: number; at: number; key: string }
+  | { kind: "optimize"; id: string; seq: number; at: number; optimizeId: string };
 
 export interface Run extends SimEvent {
   seq: number;
@@ -168,6 +170,8 @@ export interface SessionState {
   buildGuide: BuildGuideEvent | null;
   /** Learning-mode explanations by key, the latest of each. */
   explains: Record<string, ExplainEvent>;
+  /** Design optimizer runs by id, the latest event of each. */
+  optimizes: Record<string, OptimizeEvent>;
   /** The newest dashboard control Mechanic operates (lib/pilot.ts plays it). */
   ui: (UiEvent & { at: number }) | null;
   /** Reduces one contract event. `instant` marks events replayed in bulk (seek), so nothing animates for them. */
@@ -312,6 +316,7 @@ function emptyState() {
     stress: {} as SessionState["stress"],
     buildGuide: null as BuildGuideEvent | null,
     explains: {} as Record<string, ExplainEvent>,
+    optimizes: {} as Record<string, OptimizeEvent>,
     ui: null as SessionState["ui"],
   };
 }
@@ -479,6 +484,12 @@ export const useSession = create<SessionState>((set, get) => ({
           ...ev.warnings.map((warning) => ({ kind: "warning" as const, id: nextId("warn"), seq, at, part: ev.name, warning })),
         ];
         return set({ log, parts, partsByName, chat });
+      }
+      case "optimize": {
+        const optimizes = { ...s.optimizes, [ev.id]: ev };
+        const known = s.chat.some((c) => c.kind === "optimize" && c.optimizeId === ev.id);
+        const chat: ChatItem[] = known ? s.chat : [...s.chat, { kind: "optimize", id: nextId("optimize"), seq, at, optimizeId: ev.id }];
+        return set({ log, optimizes, chat });
       }
       case "question": {
         const questions = { ...s.questions, [ev.id]: ev };
