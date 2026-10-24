@@ -183,7 +183,7 @@ Shell variables override values in `.env`.
 
 | Variable | Description |
 | --- | --- |
-| `ANTHROPIC_API_KEY` | Leave empty for mock mode, never committing secrets to the repository. |
+| `ANTHROPIC_API_KEY` | Leave empty for mock mode, never committing secrets to the repository. With a key, the bill of materials searches live shop prices, also in mock mode. |
 | `ANTHROPIC_MODEL` | Orchestrator model when `PAI_ORCHESTRATOR_MODEL` is unset, defaulting to `claude-opus-5-5`. |
 | `PAI_ORCHESTRATOR_MODEL` | Model of the orchestrator, defaulting to `ANTHROPIC_MODEL` or `claude-opus-5-5`. |
 | `PAI_ORCHESTRATOR_EFFORT` | Orchestrator effort (`low`, `medium`, `high`, `xhigh`, `max`), defaulting to `high`. |
