@@ -29,6 +29,7 @@ import { StressCard } from "../stress/StressCard";
 import { PrintPlanCard } from "../print/PrintPlanCard";
 import { ExplainChatCard } from "../learn/Explain";
 import { RequirementsCard, ResultsCard } from "./BuildCards";
+import { SafetyCard } from "../safety/SafetyCard";
 import { OptimizeCard } from "./OptimizeCard";
 
 const TOOL_LABELS: Record<string, { running: string; done: string }> = {
@@ -390,6 +391,8 @@ function ContentPartsRenderer({ item }: { item: Exclude<ChatItem, { kind: "msg" 
       return <ExplainChatCard explainKey={item.key} />;
     case "print":
       return <PrintPlanCard plan={item.plan} />;
+    case "safety":
+      return <SafetyCard safety={item.safety} />;
     case "optimize":
       return <OptimizeCard optimizeId={item.optimizeId} />;
   }

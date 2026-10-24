@@ -578,6 +578,15 @@ When a training run finishes after the firmware was made and changes the gains, 
 The dashboard shows the source next to Download firmware: Isaac Lab gains, Browser-tuned gains, or Default gains.
 `wiring` is a list of `{component, connects_to, pin, wire, note}`, one row per connection of a chosen part.
 
+### safety
+
+The safety and regulations check before anyone orders parts, from the `safety_check` tool (the mock stories call it right before `bom_build`).
+`{"type": "safety", "product": "drone", "label": "the drone", "findings": [...], "summary": "2 safety note(s) for the drone: 1 warning, 1 info", "disclaimer": "Hints from a fixed rule set and the agent, not legal advice. ..."}`
+`findings` are sorted `danger`, then `warning`, then `info`; each is `{id, severity, title, reason, rule, fix, source}`.
+`rule` names the rule or source the finding rests on (for example `Delegated Regulation (EU) 2019/945` for the drone class, `EU Low Voltage Directive 2014/35/EU` for mains); `fix` is a change the agent can apply; `source` is `rule` (the fixed rule set in `agent/src/pai_agent/tools/safety.py`) or `claude` (Claude's own findings passed in the tool's `findings` argument).
+The rule set covers the EU drone class by take-off mass (C0 under 250 g with registration and remote ID hints, C1, C2), lithium battery shipping (Wh, UN3480/UN3481, IATA PI 965 to 967), mains voltage, pinch points on grippers and mechanisms, tip-over for tall products, heat in closed enclosures, small parts for children and coin cells.
+The chat shows one compact card per event, findings collapsed to a line each, the top one open; Mechanic says the top finding as a hint.
+
 ### stress
 
 The stress test runs the current product in 50 randomized MuJoCo worlds (`stress_test`).
@@ -670,7 +679,7 @@ Closing buttons are tagged `{control}:close`, and `look:3d` is the 3D switch of 
 
 ## Tools
 
-`jamie_templates`, `jamie_requirements`, `jamie_search`, `jamie_meeting`, `requirements_accept`, `ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `stress_test`, `cad_frame`, `cad_part`, `product_brief`, `product_spec`, `sketch_to_spec`, `reference_load`, `delegate`, `part_pick`, `assemble`, `cad_update`, `check_totals`, `check_tip_over`, `check_deflection`, `check_torque`, `check_runtime`, `check_power`, `check_thermal`, `check_rollover`, `simulate_assembly`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `blender_render`, `bom_build`, `print_prep`, `build_guide`, `firmware`, `jamie_create_tasks`, `version_commit`, `ui_point_at`, `ui_draw`, `ui_control`, `mascot_say`, `train_in_browser`, `optimize_design`, `optimize_apply`.
+`jamie_templates`, `jamie_requirements`, `jamie_search`, `jamie_meeting`, `requirements_accept`, `ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `stress_test`, `cad_frame`, `cad_part`, `product_brief`, `product_spec`, `sketch_to_spec`, `reference_load`, `delegate`, `part_pick`, `assemble`, `cad_update`, `check_totals`, `check_tip_over`, `check_deflection`, `check_torque`, `check_runtime`, `check_power`, `check_thermal`, `check_rollover`, `simulate_assembly`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `blender_render`, `bom_build`, `print_prep`, `build_guide`, `firmware`, `safety_check`, `jamie_create_tasks`, `version_commit`, `ui_point_at`, `ui_draw`, `ui_control`, `mascot_say`, `train_in_browser`, `optimize_design`, `optimize_apply`.
 
 `optimize_design` (drone, after a build) takes `goals`, `keep` and `count` (4 to 8, default 6). With a key, `count` variant agents on the sub-agent model run in parallel (`agent` events with `role` `optimizer`, `label` "Variant agent A" ...), each proposing one battery, arm length and plate thickness; without one, fixed strategies propose them. A proposal that repeats the current build or another variant is replaced by the next strategy. Every variant runs the same checks and the result is the `optimize` event; `optimize_apply` takes `id` and `variant` (default the latest run and its recommendation) and builds it as `POST /api/optimize/apply` does.
 
@@ -764,6 +773,8 @@ Mechanic turns the request into checks, tries the 2.49 € SG90 first: 1.1 N per
 The swap to the MG996R gives 6.0 N per finger and passes with 0.4 mm slip.
 FreeCAD builds the gripper headless from the library template with the servo pocket sized for the MG996R (58 g PLA), Blender renders it, and the bill of materials comes to 18.65 € and 128 g.
 The drone and gripper stories call `firmware` right after `bom_build`: the drone gets a Betaflight CLI file, the gripper an Arduino sketch.
+Both call `safety_check` right before `bom_build`: the drone gets the EU class C0 note (under 250 g, register the operator, no remote ID) and the lithium battery shipping note, the gripper the pinch-point warning with a gear cover and a firmware travel limit as the fix.
+A prompt that asks for a lamp on mains (`lamp` with `230 V`, `mains` or `wall socket`) plays the safety story: Mechanic writes a 230 V desk lamp spec, `safety_check` flags mains voltage inside printed PETG, Mechanic asks whether to switch to a USB-C 5 V supply (the default), revises the spec and runs the check again without the mains finding. The run stops before FreeCAD; with a key Claude builds it.
 A prompt that asks for a phone stand (`phone`, `tablet` with `stand`, `holder`, `dock` or `mount`) plays the generic story: Mechanic writes the spec, FreeCAD builds the base plate and the back rest from the phone stand reference build (`agent/data/references/phone-stand/`), the rubber feet come from the catalog, and the assembly with the 200 g phone tips at 0.35 N, under the 0.75 N tap it must take; the MuJoCo push knocks it over.
 Mechanic deepens the base from 60 to 110 mm with `cad_update`, every check runs again and passes (0.81 N, the push only rocks it), then Blender renders it and the bill of materials comes to 3.32 € and 116 g.
 Once the drone is built, a prompt that asks for it lighter, cheaper, stronger or longer-running ("make the drone lighter but keep 8 minutes") runs `optimize_design` with goals and limits read from the sentence (`8 minutes` keeps the flight time, `under 50 g` the weight; without a number the flight-time requirement holds); before any build it builds v1 first.

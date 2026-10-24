@@ -579,6 +579,28 @@ export interface FirmwareEvent {
   wiring: WiringRow[];
 }
 
+export type SafetySeverity = "danger" | "warning" | "info";
+/** One safety or regulatory note: why it fires, the rule or source it rests on, and a fix the agent can apply. */
+export interface SafetyFinding {
+  id: string;
+  severity: SafetySeverity;
+  title: string;
+  reason: string;
+  rule: string;
+  fix: string;
+  /** `rule` from the fixed rule set, `claude` from the agent's own reasoning. */
+  source: "rule" | "claude";
+}
+/** The safety check before ordering parts, findings sorted danger first. Hints, not legal advice. */
+export interface SafetyEvent {
+  type: "safety";
+  product: string;
+  label: string;
+  findings: SafetyFinding[];
+  summary: string;
+  disclaimer: string;
+}
+
 /**
  * Mechanic's spoken line, streamed live: `delta` pieces while the fast model writes it,
  * then `done` with the whole `text`. `kind` is `reply` (an answer to the person) or
@@ -638,6 +660,7 @@ export type AgentEvent =
   | BuildGuideEvent
   | PrintEvent
   | FirmwareEvent
+  | SafetyEvent
   | AgentRunEvent
   | SayEvent
   | ExplainEvent
@@ -674,6 +697,7 @@ const EVENT_TYPES = new Set<AgentEvent["type"]>([
   "build_guide",
   "print",
   "firmware",
+  "safety",
   "agent",
   "say",
   "explain",
