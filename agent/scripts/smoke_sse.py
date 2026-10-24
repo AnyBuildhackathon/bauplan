@@ -149,6 +149,13 @@ def _assert_story(events: list[dict]) -> None:
     weight = round(sum(item["weight_g"] * item["qty"] for item in bom["items"]), 1)
     if abs(weight - second["weight_g"]) > 0.15:
         raise SystemExit("Gewicht der Stückliste weicht ab: " + str(weight))
+    firmware = [event for event in events if event.get("type") == "firmware"]
+    if len(firmware) != 2 or firmware[-1]["kind"] != "betaflight" or not firmware[-1]["content"].rstrip().endswith("save"):
+        raise SystemExit("Firmware per version missing: " + str([event.get("filename") for event in firmware]))
+    wired = " ".join(row["component"] + " " + row["connects_to"] for row in firmware[-1]["wiring"])
+    electrical = [second["parts"][category] for category in ("motor", "battery", "flight_controller")]
+    if not all(name in wired for name in electrical):
+        raise SystemExit("Wiring does not match the parts: " + str(electrical))
     parts = {}
     warnings = 0
     for event in events:
