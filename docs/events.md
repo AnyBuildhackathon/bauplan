@@ -101,6 +101,16 @@ The response is like `POST /api/prompt`, with `reference`: `{"ok": true, "mode":
 `POST /api/settings` with any of those five fields changes them for the next request and answers the same shape; HTTP 400 for an unknown effort or a model id that does not start with `claude-`.
 The defaults come from `PAI_ORCHESTRATOR_MODEL` (else `ANTHROPIC_MODEL`), `PAI_ORCHESTRATOR_EFFORT`, `PAI_SUBAGENT_MODEL`, `PAI_SUBAGENT_EFFORT` and `PAI_DELEGATION`.
 
+### Learning mode
+
+`POST /api/explain` with `{"kind": "...", "id": "...", "chat": false}` explains one decision of the current build (`agent/src/pai_agent/explain.py`).
+`kind` is `swap` (`id` a part category: the part before and after, the numbers on each side and the runs around it), `part` (a category or spec part id), `requirement` (a requirement id), `sim` (a run number) or `param` (a CAD parameter, `arm_length_mm` or `{part_id}.{param}`).
+It answers `{"ok": true, "key", "kind", "target_id", "title", "text", "formula", "numbers": [{"label", "value", "unit"}], "source": "claude"|"template", "model": "claude-haiku-5-5"|null}`; HTTP 404 when the decision does not exist yet, such as a requirement whose check has not run.
+The facts and the formula line come from the build state and the published events (the same formulas as `analysis.py` and `tools/physics.py`), so their numbers are computed.
+With `ANTHROPIC_API_KEY` Claude Haiku (`ANTHROPIC_VOICE_MODEL`) writes `text` from the facts and the formula only; a reply with a number that is not in them, a 6 s timeout or no key gives the template text and `source: "template"`.
+Answers are cached in memory by `key` (kind, id and a hash of the facts), so a repeated call is instant and a rebuild with new numbers gets a new explanation.
+Every answer is also published as an `explain` event; `chat` is copied into it.
+
 `POST /api/training/{job_id}/claim` with `{"client": "..."}` lets one dashboard tab take a queued browser training job; it returns the job's `spec`, `population`, and `generations`.
 It is HTTP 409 when another client already holds the job, and 404 for a job of an earlier session.
 `POST /api/training/{job_id}/progress` with `{"client", "status": "running"|"done"|"failed", "step", "generation", "best_score", "best_params", "best_metrics", "gains", "error"}` from the claiming client publishes a `training` event (`gains` is kept only with `status: "done"`); other clients get HTTP 409.
@@ -141,6 +151,12 @@ While the line is written, events carry `delta` (the next piece of text) and `do
 The last event has `done: true` and the whole `text`; `cancelled: true` means a newer prompt replaced the reply mid-way.
 A reply is also published as a normal agent `chat` event once it is done; updates are only spoken.
 Updates follow `sim`, `cad`, `version` and failed `step` events of a running build, never slider changes, and wait until the reply is finished.
+
+### explain
+
+One decision explained, the `POST /api/explain` answer without `ok`, plus `chat`.
+`chat: true` means a live event asked for it (learning mode on: a part swap after its new numbers, a requirement turning `met: false`, a failed `sim`, a changed CAD parameter), so the client shows it as a chat card; otherwise it is the answer to a "Why?" click and only shows there.
+The client keeps the latest event per `key`.
 
 ### replayed
 
