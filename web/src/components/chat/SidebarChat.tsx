@@ -5,7 +5,7 @@
 // speaker toggle for Bolzen's voice, Bevel styling. The scroll handling is kept from core-oss.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowDown, CornerDownRight, ImagePlus, RotateCcw, Volume2, VolumeX } from "lucide-react";
+import { ArrowDown, CornerDownRight, GitFork, ImagePlus, RotateCcw, Volume2, VolumeX } from "lucide-react";
 import { currentStep, useSession } from "../../events/store";
 import { useSource } from "../../events/source";
 import { useUi, type Display } from "../../lib/ui";
@@ -87,6 +87,8 @@ export default function SidebarChat() {
   const rows = useMemo(() => group(chat, display), [chat, display]);
   const mascot = useSession((s) => s.mascot);
   const productLabel = useSession((s) => s.productLabel);
+  const remixedFrom = useSession((s) => s.remixedFrom);
+  const openCommunity = useUi((s) => s.openCommunity);
   const product = useSession((s) => s.product);
   const steps = useSession((s) => s.steps);
   const sendPrompt = useSource((s) => s.sendPrompt);
@@ -189,6 +191,20 @@ export default function SidebarChat() {
           <RotateCcw className="h-4.5 w-4.5" />
         </button>
       </div>
+      {remixedFrom && (
+        <button
+          type="button"
+          onClick={() => openCommunity(remixedFrom.id)}
+          data-target="remixed_from"
+          className="mx-6 mt-2 flex shrink-0 items-center gap-1.5 self-start rounded-full bg-tile px-3 py-1 text-[13px] font-medium text-ink-2 transition hover:bg-track"
+          title="Open the original in the community"
+        >
+          <GitFork className="h-3.5 w-3.5 shrink-0" />
+          <span className="truncate">
+            Remixed from {remixedFrom.title} by {remixedFrom.author}
+          </span>
+        </button>
+      )}
 
       {/* Content */}
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">

@@ -1,0 +1,44 @@
+{
+  "id": "two-finger-gripper",
+  "base": "robot-gripper",
+  "title": "Two-finger gripper for a desktop arm",
+  "description": "Gear-driven parallel gripper that picks up a 200 g soda can. Servo pocket sized in FreeCAD, grip checked in MuJoCo through lift and shake.",
+  "author": "jonas_robotics",
+  "published_at": "2026-10-22T10:40:00",
+  "remixes": 9,
+  "product": "gripper",
+  "product_label": "Robot gripper",
+  "remixed_from": null,
+  "metrics": {
+    "requirements_passed": 5,
+    "requirements": 5,
+    "parts": 4,
+    "cost_eur": 18.65,
+    "mass_g": 128.0,
+    "grip_force_n": 5.95
+  },
+  "bom": [
+    {
+      "name": "Robot gripper body, printed PLA",
+      "qty": 1,
+      "unit_price_eur": 1.45
+    },
+    {
+      "name": "TowerPro MG996R servo",
+      "qty": 1,
+      "unit_price_eur": 8.9
+    },
+    {
+      "name": "M3 screws, nuts and axle bolts",
+      "qty": 1,
+      "unit_price_eur": 2.4
+    },
+    {
+      "name": "PCA9685 16-channel servo driver",
+      "qty": 1,
+      "unit_price_eur": 5.9
+    }
+  ],
+  "versions": [],
+  "files": []
+}

@@ -470,6 +470,71 @@ async def export_order(request: Request) -> dict:
     return {"ok": True, **order(_bom_state(request))}
 
 
+class PublishIn(BaseModel):
+    title: str
+    description: str = ""
+    author: str
+
+
+@app.get("/api/community")
+async def community(sort: str = "new", q: str = "") -> dict:
+    from pai_agent.community import list_entries
+
+    if sort not in {"new", "popular"}:
+        raise HTTPException(status_code=400, detail="sort is new or popular")
+    return {"ok": True, "items": list_entries(sort, q)}
+
+
+@app.get("/api/community/{entry_id}")
+async def community_entry(entry_id: str) -> dict:
+    from pai_agent.community import get_entry
+
+    row = get_entry(entry_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="unknown community project")
+    return {"ok": True, "item": row}
+
+
+@app.post("/api/community")
+async def community_publish(body: PublishIn, request: Request) -> dict:
+    _require_json(request)
+    result = request.app.state.session.publish(body.title, body.description, body.author)
+    if result.get("ok") is False:
+        raise HTTPException(status_code=409 if result.get("busy") else 400, detail=str(result["error"]))
+    return result
+
+
+@app.post("/api/community/{entry_id}/remix")
+async def community_remix(entry_id: str, request: Request) -> dict:
+    _require_json(request)
+    from pai_agent.community import get_entry
+
+    row = get_entry(entry_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="unknown community project")
+    return await request.app.state.session.start_remix(row)
+
+
+@app.get("/api/community/{entry_id}/thumbnail")
+async def community_thumbnail(entry_id: str) -> FileResponse:
+    from pai_agent.community import thumbnail
+
+    path = thumbnail(entry_id)
+    if path is None:
+        raise HTTPException(status_code=404, detail="no thumbnail")
+    return FileResponse(path, media_type="image/png")
+
+
+@app.get("/api/community/{entry_id}/files/{name}")
+async def community_file(entry_id: str, name: str) -> FileResponse:
+    from pai_agent.community import file_of
+
+    path = file_of(entry_id, name)
+    if path is None:
+        raise HTTPException(status_code=404)
+    return FileResponse(path, media_type=_media(name), filename=name)
+
+
 @app.get("/api/settings")
 async def settings_get() -> dict:
     from pai_agent import settings

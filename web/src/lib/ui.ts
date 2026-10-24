@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { STEP_IDS, type StepId } from "../events/types";
 
 /** The main screen is the Werkbank; Library, Training and Logbuch sit on the icon rail. */
-export type View = "werkbank" | "library" | "training" | "logbuch";
+export type View = "werkbank" | "library" | "community" | "training" | "logbuch";
 export type CanvasTab = "modell" | "cad" | "simulation" | "omniverse";
 export type ModelLook = "3d" | "render";
 export type ConceptStatus = "verstanden" | "gesehen";
@@ -63,6 +63,9 @@ interface UiState {
   setClicky: (on: boolean) => void;
   setDisplay: (patch: Partial<Display>) => void;
   setView: (view: View) => void;
+  /** The community project to show selected when the Community view opens next. */
+  communityFocus: string | null;
+  openCommunity: (id: string | null) => void;
   setTab: (tab: CanvasTab) => void;
   setLook: (look: ModelLook) => void;
   selectVersion: (n: number | null) => void;
@@ -81,7 +84,7 @@ interface UiState {
   resetUi: () => void;
 }
 
-const VIEWS: View[] = ["werkbank", "library", "training", "logbuch"];
+const VIEWS: View[] = ["werkbank", "library", "community", "training", "logbuch"];
 const TABS: CanvasTab[] = ["modell", "cad", "simulation", "omniverse"];
 const params = () => new URLSearchParams(window.location.search);
 const VOICE_KEY = "bauplan.voice";
@@ -187,6 +190,8 @@ export const useUi = create<UiState>((set) => ({
     }),
   stt: "SpeechRecognition" in window || "webkitSpeechRecognition" in window ? "browser" : "none",
   setView: (view) => set({ view }),
+  communityFocus: null,
+  openCommunity: (communityFocus) => set({ view: "community", communityFocus }),
   setTab: (tab) => set({ tab }),
   setLook: (look) => set({ look, tab: "modell" }),
   selectVersion: (selectedVersion) => set({ selectedVersion }),

@@ -13,7 +13,7 @@ from pai_agent.app_control import describe, match_commands
 from pai_agent.bus import EventBus
 from pai_agent.context import Ctx
 from pai_agent.env import claude_enabled
-from pai_agent.orchestrator import run_meeting, run_prompt, run_reference, run_sketch
+from pai_agent.orchestrator import run_meeting, run_prompt, run_reference, run_remix, run_sketch
 from pai_agent.paths import SESSIONS_DIR
 from pai_agent.scene import STEPS
 from pai_agent.speech import Voice
@@ -183,6 +183,28 @@ class Session:
         ctx = self._ctx(auto_steps=claude_enabled())
         self.task = asyncio.create_task(self._run(run_sketch(ctx, name, note, self.messages), ctx))
         return {"ok": True, "mode": mode, "status": "started", "sketch": name, "url": event["url"]}
+
+    async def start_remix(self, entry: dict) -> dict:
+        """Opens a community project on a fresh bench as a remix; the chat then changes it."""
+
+        mode = "claude" if claude_enabled() else "mock"
+        if self._busy():
+            return {"ok": True, "mode": mode, "status": "already_running"}
+        if self.state.started:
+            await self.reset()
+        ctx = self._ctx(auto_steps=False)
+        self.task = asyncio.create_task(self._run(run_remix(ctx, entry), ctx))
+        return {"ok": True, "mode": mode, "status": "started", "remix": entry["id"]}
+
+    def publish(self, title: str, description: str, author: str) -> dict:
+        from pai_agent.community import publish
+
+        if self._busy():
+            return {"ok": False, "error": "Mechanic is building. Publish when the build is done.", "busy": True}
+        try:
+            return {"ok": True, "item": publish(self.state, title, description, author)}
+        except ValueError as exc:
+            return {"ok": False, "error": str(exc)}
 
     def save_reference(self, ref_id: str | None, name: str | None, summary: str) -> dict:
         from pai_agent.references import save_reference

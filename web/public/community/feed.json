@@ -1,0 +1,307 @@
+[
+  {
+    "id": "plant-watering-robot",
+    "title": "Plant-watering robot",
+    "description": "1 litre printed tank, 5 V pump, capacitive soil sensor and an ESP32 on one 18650. Runs about a month and stays stable with a full tank.",
+    "author": "studio_fern",
+    "published_at": "2026-10-23T21:15:00",
+    "product": "generic",
+    "product_label": "Windowsill Plant-Watering Robot",
+    "base": "plant-waterer",
+    "seed": true,
+    "remixed_from": null,
+    "remixes": 2,
+    "metrics": {
+      "requirements_passed": 6,
+      "requirements": 6,
+      "parts": 10,
+      "cost_eur": 36.65,
+      "mass_g": 459.9,
+      "printed": 3
+    },
+    "bom": [
+      {
+        "name": "Base housing, printed PETG",
+        "qty": 1,
+        "unit_price_eur": 4.39
+      },
+      {
+        "name": "Water tank, printed PETG",
+        "qty": 1,
+        "unit_price_eur": 3.45
+      },
+      {
+        "name": "Sensor arm, printed PETG",
+        "qty": 1,
+        "unit_price_eur": 0.31
+      },
+      {
+        "name": "5 V mini submersible water pump",
+        "qty": 1,
+        "unit_price_eur": 3.5
+      },
+      {
+        "name": "Capacitive soil moisture sensor v1.2",
+        "qty": 1,
+        "unit_price_eur": 2.5
+      },
+      {
+        "name": "ESP32 DevKit C board",
+        "qty": 1,
+        "unit_price_eur": 7.9
+      },
+      {
+        "name": "Li-ion 18650 cell 3000 mAh",
+        "qty": 1,
+        "unit_price_eur": 5.9
+      },
+      {
+        "name": "18650 holder with TP4056 USB-C charger",
+        "qty": 1,
+        "unit_price_eur": 3.9
+      },
+      {
+        "name": "Silicone tube 8 mm, 1 m",
+        "qty": 1,
+        "unit_price_eur": 2.9
+      },
+      {
+        "name": "MOSFET switch module IRF520",
+        "qty": 1,
+        "unit_price_eur": 1.9
+      }
+    ],
+    "versions": [],
+    "files": [],
+    "thumbnail_url": "/community/plant-watering-robot.png"
+  },
+  {
+    "id": "quiet-desk-fan",
+    "title": "Quiet USB desk fan",
+    "description": "An 80 mm USB fan on a printed neck, bracket and 150 mm base. 280 g in total and it takes a light bump without tipping.",
+    "author": "maker.kai",
+    "published_at": "2026-10-23T09:30:00",
+    "product": "generic",
+    "product_label": "USB Desk Fan",
+    "base": "desk-fan",
+    "seed": true,
+    "remixed_from": null,
+    "remixes": 4,
+    "metrics": {
+      "requirements_passed": 6,
+      "requirements": 6,
+      "parts": 5,
+      "cost_eur": 16.53,
+      "mass_g": 280.1,
+      "printed": 3
+    },
+    "bom": [
+      {
+        "name": "Base, printed PETG",
+        "qty": 1,
+        "unit_price_eur": 2.77
+      },
+      {
+        "name": "Neck, printed PETG",
+        "qty": 1,
+        "unit_price_eur": 0.44
+      },
+      {
+        "name": "Fan bracket, printed PETG",
+        "qty": 1,
+        "unit_price_eur": 0.92
+      },
+      {
+        "name": "80 mm 5 V USB fan 80x80x25",
+        "qty": 1,
+        "unit_price_eur": 5.5
+      },
+      {
+        "name": "USB-C cable and 5 V 2 A wall adapter",
+        "qty": 1,
+        "unit_price_eur": 6.9
+      }
+    ],
+    "versions": [],
+    "files": [],
+    "thumbnail_url": "/community/quiet-desk-fan.png"
+  },
+  {
+    "id": "desk-phone-stand",
+    "title": "Desk phone stand, 65 degrees",
+    "description": "Two PETG parts and four rubber feet. Holds a 200 g phone and does not tip when you tap the screen.",
+    "author": "lena.prints",
+    "published_at": "2026-10-22T16:05:00",
+    "product": "generic",
+    "product_label": "Phone stand",
+    "base": "phone-stand",
+    "seed": true,
+    "remixed_from": null,
+    "remixes": 6,
+    "metrics": {
+      "requirements_passed": 6,
+      "requirements": 6,
+      "parts": 3,
+      "cost_eur": 3.32,
+      "mass_g": 115.7,
+      "printed": 2
+    },
+    "bom": [
+      {
+        "name": "Base plate, printed PETG",
+        "qty": 1,
+        "unit_price_eur": 1.5
+      },
+      {
+        "name": "Back rest, printed PETG",
+        "qty": 1,
+        "unit_price_eur": 1.34
+      },
+      {
+        "name": "Self-adhesive rubber feet 10 x 3 mm",
+        "qty": 4,
+        "unit_price_eur": 0.12
+      }
+    ],
+    "versions": [],
+    "files": [],
+    "thumbnail_url": "/community/desk-phone-stand.png"
+  },
+  {
+    "id": "two-finger-gripper",
+    "title": "Two-finger gripper for a desktop arm",
+    "description": "Gear-driven parallel gripper that picks up a 200 g soda can. Servo pocket sized in FreeCAD, grip checked in MuJoCo through lift and shake.",
+    "author": "jonas_robotics",
+    "published_at": "2026-10-22T10:40:00",
+    "product": "gripper",
+    "product_label": "Robot gripper",
+    "base": "robot-gripper",
+    "seed": true,
+    "remixed_from": null,
+    "remixes": 9,
+    "metrics": {
+      "requirements_passed": 5,
+      "requirements": 5,
+      "parts": 4,
+      "cost_eur": 18.65,
+      "mass_g": 128.0,
+      "grip_force_n": 5.95
+    },
+    "bom": [
+      {
+        "name": "Robot gripper body, printed PLA",
+        "qty": 1,
+        "unit_price_eur": 1.45
+      },
+      {
+        "name": "TowerPro MG996R servo",
+        "qty": 1,
+        "unit_price_eur": 8.9
+      },
+      {
+        "name": "M3 screws, nuts and axle bolts",
+        "qty": 1,
+        "unit_price_eur": 2.4
+      },
+      {
+        "name": "PCA9685 16-channel servo driver",
+        "qty": 1,
+        "unit_price_eur": 5.9
+      }
+    ],
+    "versions": [],
+    "files": [],
+    "thumbnail_url": "/models/robot-gripper.png"
+  },
+  {
+    "id": "micro-fpv-toothpick",
+    "title": "1S micro FPV toothpick",
+    "description": "The 1S 2-inch toothpick from Mediocre Nerd's \"Build a Micro FPV Drone for $59\" video, part for part: Twiglet carbon frame, 1103 motors, Caddx Ant camera, Matrix 1S AIO. Passes the MuJoCo gust test.",
+    "author": "AnyBuild team",
+    "published_at": "2026-10-21T19:12:00",
+    "product": "drone",
+    "product_label": "Micro FPV drone",
+    "base": "micro-drone",
+    "seed": true,
+    "remixed_from": null,
+    "remixes": 14,
+    "metrics": {
+      "requirements_passed": 5,
+      "requirements": 5,
+      "parts": 8,
+      "cost_eur": 117.38,
+      "mass_g": 47.2,
+      "thrust_to_weight": 4.24,
+      "flight_time_min": 8.5
+    },
+    "bom": [
+      {
+        "name": "1103 15000KV (no-name)",
+        "qty": 4,
+        "unit_price_eur": 8.05
+      },
+      {
+        "name": "Gemfan 2020 51 mm 4-blade",
+        "qty": 4,
+        "unit_price_eur": 0.56
+      },
+      {
+        "name": "Tattu R-Line 1S 550mAh 95C",
+        "qty": 1,
+        "unit_price_eur": 5.36
+      },
+      {
+        "name": "BetaFPV Matrix 1S 5IN1 V2 AIO",
+        "qty": 1,
+        "unit_price_eur": 49.13
+      },
+      {
+        "name": "Twiglet 2\" carbon toothpick frame",
+        "qty": 1,
+        "unit_price_eur": 8.4
+      },
+      {
+        "name": "Caddx Ant 1200TVL nano camera",
+        "qty": 1,
+        "unit_price_eur": 15.99
+      },
+      {
+        "name": "Toothpick canopy and battery holder (TPU)",
+        "qty": 1,
+        "unit_price_eur": 3.7
+      },
+      {
+        "name": "M1.4 x 3 mm motor bolts",
+        "qty": 12,
+        "unit_price_eur": 0.03
+      }
+    ],
+    "versions": [
+      {
+        "n": 1,
+        "meeting_id": "kickoff-drohne-2026-10-24",
+        "meeting_title": "Drone kickoff",
+        "weight_g": 47.2,
+        "thrust_to_weight": 4.24,
+        "flight_time_min": 8.5,
+        "price_eur": 117.38,
+        "sim": "pass",
+        "parts": {
+          "motor": "1103 15000KV (no-name)",
+          "propeller": "Gemfan 2020 51 mm 4-blade",
+          "battery": "Tattu R-Line 1S 550mAh 95C",
+          "flight_controller": "BetaFPV Matrix 1S 5IN1 V2 AIO",
+          "frame": "Twiglet 2\" carbon toothpick frame",
+          "camera": "Caddx Ant 1200TVL nano camera",
+          "canopy": "Toothpick canopy and battery holder (TPU)",
+          "hardware": "M1.4 x 3 mm motor bolts"
+        },
+        "diff": [],
+        "summary": "47.2 g · 8.5 min · 117.38 €",
+        "note": "Bauplan v1 aus Drone kickoff: 47.2 g · 8.5 min · 117.38 €."
+      }
+    ],
+    "files": [],
+    "thumbnail_url": "/models/hero-drone.png"
+  }
+]

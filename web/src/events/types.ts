@@ -360,6 +360,14 @@ export interface MeetingEvent {
   /** A live Jamie meeting that took over a planned timeline station names that station here. */
   replaces?: string;
 }
+/** The bench holds a remix of a community project; publishing it links back to that original. */
+export interface RemixEvent {
+  type: "remix";
+  /** The community entry id it was opened from. */
+  id: string;
+  title: string;
+  author: string;
+}
 /** Starts every stream and follows every server reset: drop all session state. */
 export interface ResetEvent {
   type: "reset";
@@ -573,6 +581,7 @@ export type AgentEvent =
   | TasksEvent
   | ProductEvent
   | SketchEvent
+  | RemixEvent
   | BuildGuideEvent
   | FirmwareEvent
   | AgentRunEvent
@@ -606,6 +615,7 @@ const EVENT_TYPES = new Set<AgentEvent["type"]>([
   "tasks",
   "product",
   "sketch",
+  "remix",
   "build_guide",
   "firmware",
   "agent",
