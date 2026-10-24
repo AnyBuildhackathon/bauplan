@@ -7,6 +7,7 @@ import { useSource } from "./events/source";
 import { useBolzenVoice } from "./lib/bolzenVoice";
 import { useUi } from "./lib/ui";
 import { BomDrawer } from "./views/BomDrawer";
+import { BuildGuide } from "./views/BuildGuide";
 import { LessonModal } from "./views/LessonModal";
 import { LogbookView } from "./views/LogbookView";
 import { TrainingView } from "./views/TrainingView";
@@ -58,6 +59,7 @@ export default function App() {
         {view === "logbuch" && <LogbookView />}
       </main>
       <BomDrawer />
+      <BuildGuide />
       <DrawLayer />
       <PointerLayer />
       <LessonModal />

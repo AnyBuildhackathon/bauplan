@@ -13,6 +13,7 @@ import { assetUrl } from "../lib/api";
 import { fmtEur, fmtGram } from "../lib/format";
 import { useTargets } from "../lib/hooks";
 import { useUi } from "../lib/ui";
+import { BuildGuideButton } from "./BuildGuide";
 
 function iconFor(name: string) {
   const n = name.toLowerCase();
@@ -155,6 +156,7 @@ export function BomDrawer() {
           >
             <Download className="h-4.5 w-4.5" /> Frame STL
           </a>
+          <BuildGuideButton />
           <button type="button" onClick={() => setOpen(false)} className="rounded-full p-2.5 text-muted hover:bg-card" aria-label="Close">
             <X className="h-5 w-5" />
           </button>

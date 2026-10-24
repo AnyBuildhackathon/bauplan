@@ -4,6 +4,7 @@ import {
   STEP_IDS,
   type AgentEvent,
   type BomEvent,
+  type BuildGuideEvent,
   type CadEvent,
   type DrawEvent,
   type RenderEvent,
@@ -139,6 +140,8 @@ export interface SessionState {
   tasks: TasksEvent | null;
   /** The product this session builds; the drone until a `product` event says otherwise. */
   product: ProductEvent["id"];
+  /** Step-by-step build guide for the latest bill of materials. */
+  buildGuide: BuildGuideEvent | null;
   /** Reduces one contract event. `instant` marks events replayed in bulk (seek), so nothing animates for them. */
   apply: (ev: AgentEvent, opts?: { instant?: boolean }) => void;
   addLocalUserMessage: (text: string) => void;
@@ -192,6 +195,7 @@ const TOOL_ALIASES: Record<string, string> = {
   parts_search: "Parts",
   physics_calc: "Physics",
   bom_build: "BOM",
+  build_guide: "Build guide",
   version_commit: "Version",
   ask_user: "Question",
 };
@@ -256,6 +260,7 @@ function emptyState() {
     questions: {} as Record<string, QuestionEvent>,
     tasks: null as TasksEvent | null,
     product: "drone" as ProductEvent["id"],
+    buildGuide: null as BuildGuideEvent | null,
   };
 }
 
@@ -427,12 +432,15 @@ export const useSession = create<SessionState>((set, get) => ({
           runs: [],
           draws: [],
           bom: null,
+          buildGuide: null,
           cad: null,
           renders: [],
           parts: {},
           versions: [],
         });
       }
+      case "build_guide":
+        return set({ log, buildGuide: ev });
       case "training": {
         const prev = s.training;
         let chat = s.chat;
