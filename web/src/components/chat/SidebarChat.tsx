@@ -16,6 +16,7 @@ import ChatMessage from "./SidebarChatMessage";
 import SidebarChatInput from "./SidebarChatInput";
 import { useSketchDrop } from "./SketchDrop";
 import { EXAMPLES } from "./examples";
+import { ConfirmDesign } from "./ConfirmDesign";
 
 const FRESH_MS = 2500;
 
@@ -312,6 +313,7 @@ export default function SidebarChat() {
                   </motion.div>
                 ))}
               </AnimatePresence>
+              <ConfirmDesign onShow={onRevealProgress} />
             </div>
           </div>
         )}

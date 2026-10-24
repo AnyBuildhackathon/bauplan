@@ -5,6 +5,11 @@
   to { opacity: 1; }
 }
 
+@keyframes drawer-in {
+  from { opacity: 0; transform: translateX(32px); }
+  to { opacity: 1; transform: none; }
+}
+
 /* AnyBuild look as tokens, tuned toward Foundable's type and surfaces.
    Plus Jakarta Sans carries the interface, reading text and the small grey meta lines.
    Inter Tight stays loaded for canvas labels that name it directly. Caveat stays the hand.

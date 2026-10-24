@@ -2,7 +2,7 @@
 // link, a "Warum?" with the Jamie quote behind it, warnings from earlier meetings,
 // and the order tasks per person that live in Jamie (ticking "bestellt" ticks them there).
 import { useEffect, useState } from "react";
-import { AlertTriangle, ArrowUpRight, Battery, Box, Cable, Camera, CircuitBoard, Cog, Download, Fan, Shield, Wrench, X } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, Battery, Box, Cable, Camera, Check, CircuitBoard, Cog, Download, Fan, Shield, Wrench, X } from "lucide-react";
 import { useSession } from "../events/store";
 import { useSource } from "../events/source";
 import type { BomEvent, BomItem, PartEvent, TaskItem } from "../events/types";
@@ -19,7 +19,7 @@ import { Segmented } from "../components/ui/primitives";
 import { BuildGuideButton } from "./BuildGuide";
 import { WhyButton } from "../components/learn/Explain";
 import { ExportMenu } from "./ExportMenu";
-import { OrderView } from "./OrderView";
+import { OrderView, groupByShop } from "./OrderView";
 
 function iconFor(name: string) {
   const n = name.toLowerCase();
@@ -140,6 +140,30 @@ function TaskRow({ task }: { task: TaskItem }) {
   );
 }
 
+/** Leads the drawer after "Confirm design": what it costs in total and how many shops it takes. */
+function PricingSummary({ bom, priceOk }: { bom: BomEvent; priceOk: boolean }) {
+  const { shops, printed } = groupByShop(bom.items);
+  const bought = bom.items.length - printed.length;
+  return (
+    <section className="rounded-[22px] bg-card px-5 py-4 shadow-[var(--shadow-pill)]" data-target="pricing_summary">
+      <div className="flex items-center gap-2 text-[14px] font-semibold text-ok-ink">
+        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-ok-soft">
+          <Check className="h-3 w-3" strokeWidth={3.2} />
+        </span>
+        Design confirmed
+      </div>
+      <div className="mt-2 flex items-end gap-3">
+        <span className={`num text-[44px] leading-none font-extrabold tracking-[-0.03em] ${priceOk ? "text-ink" : "text-fail-ink"}`}>{fmtEur(bom.total_eur)}</span>
+        <span className="num pb-1 text-[15px] font-semibold text-muted">in total</span>
+      </div>
+      <p className="num mt-2 text-[15px] leading-snug text-ink-2">
+        {bought} {bought === 1 ? "part" : "parts"} from {shops.length} {shops.length === 1 ? "shop" : "shops"}
+        {printed.length > 0 ? `, ${printed.length} printed yourself` : ""}. Open each shop below to buy.
+      </p>
+    </section>
+  );
+}
+
 function priceNote(prices: BomEvent["prices"], live: number, total: number): string {
   if (prices === "searching") return "Searching shops for live prices…";
   if (live > 0) return `Live prices from the web for ${live} of ${total} lines, catalog samples for the rest. Check before ordering.`;
@@ -155,10 +179,13 @@ export function BomDrawer() {
   const cadStl = useSession((s) => s.cad?.stl_url ?? null);
   const product = useSession((s) => s.product);
   const targets = useTargets();
-  const [ordering, setOrdering] = useState(false);
+  const pricing = useUi((s) => s.bomPricing);
+  // null follows how the drawer was opened: the order by shop after "Confirm design", else the parts.
+  const [picked, setOrdering] = useState<boolean | null>(null);
+  const ordering = picked ?? pricing;
 
   useEffect(() => {
-    if (!open) setOrdering(false);
+    if (!open) setOrdering(null);
   }, [open]);
 
   useEffect(() => {
@@ -178,9 +205,12 @@ export function BomDrawer() {
   const liveCount = bom.items.filter((i) => i.price_source === "live").length;
 
   return (
-    <div className="fixed inset-0 z-[70] flex justify-end bg-ink/25 backdrop-blur-[2px]" onPointerDown={() => setOpen(false)}>
+    <div
+      className="fixed inset-0 z-[70] flex justify-end bg-ink/25 backdrop-blur-[2px] motion-safe:animate-[canvas-enter_240ms_ease-out_both]"
+      onPointerDown={() => setOpen(false)}
+    >
       <div
-        className="flex h-full w-[min(760px,100vw)] animate-rise flex-col bg-page shadow-[var(--shadow-float)]"
+        className="flex h-full w-[min(760px,100vw)] flex-col motion-safe:animate-[drawer-in_380ms_cubic-bezier(0.16,1,0.3,1)_both] bg-page shadow-[var(--shadow-float)]"
         onPointerDown={(e) => e.stopPropagation()}
         role="dialog"
         aria-label="Bill of materials"
@@ -211,6 +241,7 @@ export function BomDrawer() {
           </button>
         </div>
         <div className="scroll-soft min-h-0 flex-1 space-y-5 overflow-y-auto px-6 pb-6">
+          {pricing && <PricingSummary bom={bom} priceOk={priceOk} />}
           <Segmented
             size="sm"
             value={ordering ? "order" : "parts"}
