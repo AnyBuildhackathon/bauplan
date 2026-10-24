@@ -273,3 +273,44 @@ Adhere strictly to the following collaboration rules:
 - Never commit secrets, API keys, or `.env` files.
 - Do not reformat or clean up code in files outside your active task scope.
 - Coordinate shared files (such as `docs/events.md` and primary layout components) in pull request descriptions.
+
+### Git Worktree Recipe
+
+Use git worktrees to keep parallel tasks completely isolated without duplicate full clones.
+Clone the repository once to your machine.
+Before starting a new task, fetch the latest default branch:
+
+```bash
+git fetch origin main
+```
+
+Create a fresh worktree and branch for the task:
+
+```bash
+git worktree add ../bauplan-<task> -b <name>/<task> origin/main
+```
+
+Launch one independent Claude session inside that worktree directory.
+Implement and test the changes within that worktree.
+Push the branch and open a pull request directed into `main`.
+After the pull request is merged, delete the branch and remove the worktree:
+
+```bash
+git worktree remove ../bauplan-<task>
+```
+
+### Port Allocation for Parallel Sessions
+
+Parallel servers running across worktrees must use distinct ports to avoid bind collisions.
+Assign each active worktree a unique port pair, such as 8102/5182 or 8103/5183.
+Start the backend with an explicit `PORT`:
+
+```bash
+cd agent && PORT=8102 uv run physical-ai-agent
+```
+
+Start the web dashboard with `BACKEND_URL` and `--port`:
+
+```bash
+cd web && BACKEND_URL=http://localhost:8102 npm run dev -- --port 5182
+```
