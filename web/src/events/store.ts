@@ -446,7 +446,9 @@ export const useSession = create<SessionState>((set, get) => ({
       }
       case "version": {
         const versions = [...s.versions.filter((v) => v.n !== ev.n), ev].sort((a, b) => a.n - b.n);
-        const chat: ChatItem[] = [...s.chat, { kind: "version", id: nextId("version"), seq, at, n: ev.n }];
+        // A version published again with its snapshot fields keeps its one chat card.
+        const known = s.chat.some((c) => c.kind === "version" && c.n === ev.n);
+        const chat: ChatItem[] = known ? s.chat : [...s.chat, { kind: "version", id: nextId("version"), seq, at, n: ev.n }];
         return set({ log, versions, chat });
       }
       case "part": {

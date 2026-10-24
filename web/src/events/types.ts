@@ -343,7 +343,25 @@ export interface VersionEvent {
   summary: string;
   /** The note AnyBuild wrote back to the meeting in Jamie. */
   note?: string;
+  /** What started the rebuild; older recordings have none (read them as "meeting"). */
+  trigger?: VersionTrigger;
+  product?: "drone" | "gripper" | "generic";
+  /** One line naming the trigger: the meeting title, the chat request, the restored version. */
+  label?: string;
+  /** The metric cards of a non-drone product as the panel showed them. */
+  cards?: MetricCard[];
+  requirements?: { id: string; text: string; met: boolean | null; detail: string }[];
+  /** CAD parameters by name: frame params for the drone, `{part_id}.{param}` for a product. */
+  params?: Record<string, number>;
+  /** A product's part id to its body name in the GLB, so a compare can light the changed bodies. */
+  nodes?: Record<string, string>;
+  /** Copies of the model and render made for this version, so an old one can still be drawn. */
+  files?: { glb_url: string | null; render_url: string | null };
+  restored_from?: number | null;
+  /** ISO time the version was committed. */
+  at?: string;
 }
+export type VersionTrigger = "meeting" | "chat" | "library" | "check_failed" | "restore";
 export interface PartWarning extends Quote {
   note: string;
 }
