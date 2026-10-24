@@ -308,4 +308,5 @@ def _render_settings(scene, png_path: str) -> None:
     scene.render.image_settings.file_format = "PNG"
 
 
-main()
+if __name__ == "__main__":
+    main()

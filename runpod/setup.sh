@@ -1,75 +1,47 @@
 #!/usr/bin/env bash
-# Install Isaac Sim and Isaac Lab on a RunPod RTX 4090, then smoke-test the quadcopter task.
-# Run this on the pod, not on the demo Mac. Isaac Sim needs an NVIDIA RTX GPU.
-# The backend expects the checkout at $HOME/IsaacLab and job logs under $HOME/pai-runs.
-# Set RUN_ON_POD=1 to actually run it. Set PAI_ISAAC_FULL=1 to let the train finish.
-# Without that flag the smoke stops after 900 seconds, which only proves the task started.
-
+# Run on Ubuntu 22.04+ RTX (RunPod, NVIDIA Brev or an Isaac Sim container):
+# RUN_ON_POD=1 bash runpod/setup.sh
+# Installs a pinned compatible Isaac stack. No training starts during setup.
 set -euo pipefail
-
-if [[ "${RUN_ON_POD:-}" != "1" ]]; then
-  echo "This script runs on the RunPod pod. Read the header, then set RUN_ON_POD=1." >&2
+if [[ "${RUN_ON_POD:-}" != "1" || "$(uname -s)" != "Linux" ]]; then
+  echo "Run this on the Linux RTX pod with RUN_ON_POD=1." >&2
   exit 1
 fi
-
-if [[ "$(uname -s)" != "Linux" ]]; then
-  echo "Isaac Sim wheels need Linux with GLIBC 2.35 or newer." >&2
-  exit 1
-fi
-
+nvidia-smi
 export DEBIAN_FRONTEND=noninteractive
-apt-get update
-apt-get install -y --no-install-recommends \
-  ca-certificates \
-  cmake \
-  curl \
-  git \
-  build-essential
-
+privilege=()
+if [[ "$(id -u)" != "0" ]]; then
+  privilege=(sudo)
+fi
+"${privilege[@]}" apt-get update
+"${privilege[@]}" apt-get install -y --no-install-recommends ca-certificates cmake curl git build-essential \
+  ffmpeg libgl1 libglib2.0-0 libxrender1 libxi6 libxkbcommon0 libsm6 libice6 libegl1 libvulkan1 vulkan-tools \
+  libglu1-mesa libx11-6 libxext6 libxt6 libxrandr2 libxinerama1 libxcursor1 libnss3 libfreetype6
 if ! command -v uv >/dev/null 2>&1; then
   curl -LsSf https://astral.sh/uv/install.sh | sh
-  # shellcheck disable=SC1091
-  source "$HOME/.local/bin/env" 2>/dev/null || true
-  export PATH="$HOME/.local/bin:$PATH"
 fi
-
+export PATH="$HOME/.local/bin:$PATH"
+venv="$HOME/.venvs/anybuild-isaac"
+if [[ ! -x "$venv/bin/python" ]]; then
+  uv venv --seed --python 3.11 "$venv"
+fi
+uv pip install --python "$venv/bin/python" pip
+uv pip install --python "$venv/bin/python" 'isaacsim[all,extscache]==5.1.0' --extra-index-url https://pypi.nvidia.com
 if [[ ! -d "$HOME/IsaacLab/.git" ]]; then
-  git clone --branch release/3.0.0 --depth 1 \
-    https://github.com/isaac-sim/IsaacLab.git \
-    "$HOME/IsaacLab"
+  git clone --branch v2.3.0 --depth 1 https://github.com/isaac-sim/IsaacLab.git "$HOME/IsaacLab"
 fi
-
-cd "$HOME/IsaacLab"
+if [[ "$(git -C "$HOME/IsaacLab" describe --tags --exact-match)" != "v2.3.0" ]]; then
+  echo 'Existing IsaacLab checkout must be v2.3.0; use a fresh pod or prepare that version.' >&2
+  exit 1
+fi
+export VIRTUAL_ENV="$venv"
+export PATH="$venv/bin:$PATH"
 export OMNI_KIT_ACCEPT_EULA=YES
-
-# Isaac Lab 3.0 installs Newton by default. The isaacsim extra pulls Isaac Sim 6.2.
-# The first launch downloads extensions and can sit there for more than ten minutes.
-# Driver 580 or newer, 16 GB VRAM, and an RTX 4090 match the pod this demo uses.
-
-train=(
-  uv run --extra isaacsim isaaclab train
-  --rl_library rsl_rl
-  --task Isaac-Quadcopter-Direct-v0
-  --headless
-  --video
-  --video_length 200
-)
-
-if [[ "${PAI_ISAAC_FULL:-}" == "1" ]]; then
-  "${train[@]}"
-  exit 0
-fi
-
-set +e
-timeout 900 "${train[@]}"
-code=$?
-set -e
-
-if [[ "$code" -eq 0 ]]; then
-  echo "Train finished inside the 900s smoke window."
-elif [[ "$code" -eq 124 ]]; then
-  echo "Smoke window ended after 900s. The task did start. A full train needs PAI_ISAAC_FULL=1."
-else
-  echo "Isaac smoke failed with exit ${code}." >&2
-  exit "$code"
-fi
+export ACCEPT_EULA=Y
+cd "$HOME/IsaacLab"
+./isaaclab.sh --install rsl_rl
+uv pip install --python "$venv/bin/python" 'imageio[ffmpeg]' tensorboard
+# Initial Kit/extension startup is bounded, and errors are never reported as success.
+timeout --kill-after=15s 600s "$venv/bin/python" -c \
+  'from isaaclab.app import AppLauncher; app = AppLauncher(headless=True, enable_cameras=True).app; app.close()'
+echo 'AnyBuild GPU environment ready. Set ISAAC_SSH_HOST, ISAAC_SSH_PORT and ISAAC_SSH_USER on the Mac.'

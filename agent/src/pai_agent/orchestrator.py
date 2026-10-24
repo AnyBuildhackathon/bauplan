@@ -16,8 +16,8 @@ from pai_agent.tools.registry import SCHEMAS, call_tool
 
 log = logging.getLogger(__name__)
 
-_SYSTEM = """Du bist Bolzen, ein ehrlicher, etwas großspuriger Mentor-Roboter.
-Du baust eine kleine Drohne und erklärst jeden Schritt auf Deutsch, in kurzen Sätzen.
+_SYSTEM = """You are Bolzen, AnyBuild's engineering agent. Help develop physical products; the drone is the demo example.
+Respond in English, in short sentences, including when the user speaks another language.
 Du rufst Werkzeuge auf, statt Zahlen zu erfinden. Jamie ist euer Gedächtnis: jede Entscheidung hängt an einem Satz aus einem Meeting.
 
 Neuer Bau aus dem Kickoff:
@@ -50,6 +50,14 @@ Der Motor-Schub ist der Datenblattwert. Eine höhere Zellenspannung erzeugt kein
 Ein Katalog-Motor sitzt viermal in der Szene. Für den Motortyp zeigst du auf motor_front_left.
 Ruf mascot_say, wenn du etwas erklärst. state ist ruhig, denkt, erklaert, freut_sich oder besorgt.
 Wenn ein Werkzeug einen Fehler zurückgibt, lies ihn und ruf es mit korrigierten Argumenten noch einmal auf.
+
+Omniverse requests: use isaac_test for gusty wind, a camera/payload mass or hover stability.
+Build CAD and select the parts first when a live product test needs them. USD export happens automatically.
+Use isaac_train for Isaac Lab reinforcement learning; it trains the stock Crazyflie reference task.
+The tools return finished MP4 and JSON artifacts, so no polling or live stream is needed.
+Read source and status: recorded means an illustrative replay, never a new test of the user's product.
+Explain the recorded conditions separately from requested wind/payload. Never claim a recorded value was measured for this request.
+Only change the design after actual measured evidence and describe any approximation.
 """
 
 
@@ -64,6 +72,8 @@ async def _first(ctx: Ctx) -> bool:
 
 async def run_prompt(ctx: Ctx, text: str, messages: list[dict]) -> None:
     await ctx.chat("user", text)
+    if not claude_enabled() and await _mock_omniverse(ctx, text):
+        return
     first = await _first(ctx)
     if not claude_enabled():
         if wants_gripper(text) and not (ctx.state.product == "gripper" and ctx.state.finished):
@@ -81,6 +91,31 @@ async def run_prompt(ctx: Ctx, text: str, messages: list[dict]) -> None:
             await run_mock(ctx)
         return
     await _run_claude(ctx, text, messages)
+
+
+async def _mock_omniverse(ctx: Ctx, text: str) -> bool:
+    """Exercise the real tool dispatch without an LLM key in the offline demo."""
+    if not re.search(r"\b(omniverse|isaac|gusty|gusts?|wind|payload|hover stability|train|training)\b|\d\s*g\s+camera", text, re.I):
+        return False
+    training = bool(re.search(r"\b(train|training|learn|policy)\b", text, re.I))
+    payload = re.search(r"(\d+(?:\.\d+)?)\s*g\b", text, re.I)
+    wind = re.search(r"(\d+(?:\.\d+)?)\s*m/s\b", text, re.I)
+    args = {} if training else {"scenario": "payload" if payload else "wind" if re.search(r"wind|gust", text, re.I) else "hover"}
+    if payload and not training:
+        args["payload_g"] = float(payload[1])
+    if wind and not training:
+        args["wind_m_s"] = float(wind[1])
+    result = await call_tool(ctx, "isaac_train" if training else "isaac_test", args)
+    explanation = result.get("detail") or result.get("error") or "Omniverse job finished."
+    if result.get("source") == "live" and result.get("status") == "done":
+        metrics = result["metrics"]
+        if training:
+            explanation += f" Final mean reward: {metrics['final_reward']:.2f}. This is the stock Crazyflie reference policy."
+        else:
+            outcome = "passed" if result["passed"] else "failed"
+            explanation += f" Hover criteria {outcome}: error {metrics['hover_rmse_m']:.3f} m, peak tilt {metrics['max_tilt_deg']:.1f} degrees, lateral drift {metrics['max_drift_m']:.3f} m."
+    await ctx.chat("agent", explanation)
+    return True
 
 
 _REVIEW_DONE = re.compile(

@@ -208,6 +208,8 @@ def _media(name: str) -> str:
         ".glb": "model/gltf-binary",
         ".png": "image/png",
         ".mp4": "video/mp4",
+        ".json": "application/json",
+        ".zip": "application/zip",
         ".fcstd": "application/octet-stream",
         ".py": "text/plain; charset=utf-8",
     }.get(Path(name).suffix.lower(), "application/octet-stream")

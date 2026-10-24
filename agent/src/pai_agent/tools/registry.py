@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import os
-
 from pai_agent.context import Ctx
 from pai_agent.requirements import refresh_requirements
 from pai_agent.scene import DRAW_KINDS, MASCOT_STATES, PART_CATEGORIES, TARGETS
@@ -13,7 +11,8 @@ from pai_agent.tools.bom import bom_build
 from pai_agent.tools.cad import cad_frame
 from pai_agent.tools.cad_part import cad_part
 from pai_agent.tools.gripper import catalog_search, grip_calc, product_brief, simulate_grip
-from pai_agent.tools.isaac import isaac_lab_status, isaac_lab_train, isaac_sim_render
+from pai_agent.tools.isaac import isaac_lab_status, isaac_lab_train, isaac_sim_render, isaac_test, isaac_train, ssh_setting
+from pai_agent.tools.usd import product_usd
 from pai_agent.jamie_client import live_enabled
 from pai_agent.tools.ask import ask_user
 from pai_agent.tools.jamie import (
@@ -50,6 +49,9 @@ TOOLS = {
     "isaac_lab_train": isaac_lab_train,
     "isaac_lab_status": isaac_lab_status,
     "isaac_sim_render": isaac_sim_render,
+    "isaac_test": isaac_test,
+    "isaac_train": isaac_train,
+    "product_usd": product_usd,
     "blender_render": blender_render,
     "bom_build": bom_build,
     "jamie_create_tasks": jamie_create_tasks,
@@ -73,12 +75,36 @@ _STEP = {
     "isaac_sim_render": "render",
     "simulate_drone": "simulation",
     "isaac_lab_train": "training",
+    "isaac_train": "training",
     "isaac_lab_status": "training",
     "bom_build": "stueckliste",
     "jamie_create_tasks": "stueckliste",
 }
 
 SCHEMAS = [
+    {
+        "name": "product_usd",
+        "description": "Export the current CAD product through Blender as a portable USD assembly with per-part masses in kilograms. Build CAD and select all parts first.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "isaac_test",
+        "description": "Test the current exported product in NVIDIA Isaac Sim on an SSH GPU host. Returns a completed video and JSON measurements for wind gusts, added payload or hover stability. Without a working host, returns an explicitly recorded illustrative demo whose numbers do not describe this request.",
+        "input_schema": {"type": "object", "properties": {
+            "scenario": {"type": "string", "enum": ["wind", "payload", "hover"]},
+            "wind_m_s": {"type": "number", "minimum": 0, "maximum": 20},
+            "payload_g": {"type": "number", "minimum": 0, "maximum": 500},
+            "duration_s": {"type": "number", "minimum": 2, "maximum": 20},
+        }},
+    },
+    {
+        "name": "isaac_train",
+        "description": "Train Isaac Lab's reference Crazyflie task Isaac-Quadcopter-Direct-v0 on an SSH GPU host. Returns video and learning curve. This trains the stock reference robot, not the CAD product. Recorded fallback is illustrative, never a fresh training result.",
+        "input_schema": {"type": "object", "properties": {
+            "iterations": {"type": "integer", "minimum": 1, "maximum": 1000},
+            "num_envs": {"type": "integer", "minimum": 1, "maximum": 256},
+        }},
+    },
     {
         "name": "jamie_templates",
         "description": "Legt bei Jamie die Zusammenfassungs-Vorlagen Hardware-Anforderungen und Drohnen-Review an (upsert_template). Einmal pro Sitzung.",
@@ -247,12 +273,12 @@ SCHEMAS = [
     },
     {
         "name": "isaac_lab_train",
-        "description": "Startet Isaac-Quadcopter-Direct-v0 headless auf dem RunPod. Ohne Pod kommt der Fallback aus agent/runs/fallback, und das ist kein echter Trainingslauf.",
+        "description": "Compatibility alias for isaac_train. Returns a completed reference Crazyflie training result or an explicitly recorded illustrative fallback.",
         "input_schema": {"type": "object", "properties": {}},
     },
     {
         "name": "isaac_lab_status",
-        "description": "Fragt einen laufenden Isaac-Lab-Job ab und kopiert Kurve und Video zurück.",
+        "description": "Return the latest Omniverse session result or progress. New jobs return finished artifacts without polling.",
         "input_schema": {
             "type": "object",
             "properties": {"job_id": {"type": "string"}},
@@ -260,7 +286,7 @@ SCHEMAS = [
     },
     {
         "name": "isaac_sim_render",
-        "description": "Render-Naht für Isaac Sim auf dem Pod. Ohne Pod ist das Werkzeug offline.",
+        "description": "Compatibility alias for isaac_test with the default wind scenario. Use isaac_test to specify experiment conditions.",
         "input_schema": {"type": "object", "properties": {}},
     },
     {
@@ -357,8 +383,8 @@ async def _advance(ctx: Ctx, name: str, result: dict, started: bool) -> None:
         await ctx.step("teile", "done")
     elif name == "physics_calc" and float(result.get("thrust_to_weight") or 0) >= 1.8:
         await ctx.step("teile", "done")
-    elif name == "isaac_lab_train":
-        if result.get("served") or result.get("training_status") == "done":
+    elif name in {"isaac_lab_train", "isaac_train"}:
+        if result.get("status") in {"done", "recorded"}:
             await ctx.step("training", "done")
         elif result.get("status") == "offline":
             await ctx.step("training", "failed")
@@ -399,9 +425,9 @@ async def call_tool(ctx: Ctx, name: str, args: dict | None) -> dict:
 
 
 async def emit_connections(publish) -> None:
-    host = os.environ.get("RUNPOD_SSH_HOST", "").strip()
+    host = ssh_setting("HOST")
     isaac_status = "connected" if host else "offline"
-    isaac_detail = "RunPod SSH ist gesetzt" if host else "RUNPOD_SSH_HOST fehlt"
+    isaac_detail = "GPU SSH is configured" if host else "Waiting for pod: GPU SSH is not configured"
     if find_blender():
         blender_status = "connected"
         blender_detail = "Blender kann headless rendern."

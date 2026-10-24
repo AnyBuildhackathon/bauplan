@@ -327,3 +327,17 @@ Bolzen turns the request into checks, tries the 2.49 € SG90 first: 1.1 N per f
 The swap to the MG996R gives 6.0 N per finger and passes with 0.4 mm slip.
 FreeCAD builds the gripper headless from the library template with the servo pocket sized for the MG996R (58 g PLA), Blender renders it, and the bill of materials comes to 18.65 € and 128 g.
 The dashboard's `?demo` replays exactly the drone run from `web/src/events/recording.json`, written by `agent/scripts/record_demo.py`.
+
+## Omniverse results
+
+`omniverse` events update the fourth canvas tab.
+`mode` is `test` or `train`; `status` is `running`, `done`, or `recorded`; `source` is `live` or `recorded`.
+`requested` holds the user's parameters, while `parameters` holds the actual run or fixed fixture conditions.
+`metrics` maps English metric keys to finite numeric values, and `curve` holds `[iteration, mean_reward]` pairs.
+`video_url` and `json_url` point to completed artifacts, or are null while running.
+`stage`, when running, is `export`, `upload`, `execute`, or `download`.
+`detail` explains progress, the result or fallback reason; `passed` is present only for a live product test.
+`product_tested: false` identifies reference training and illustrative replays.
+A recorded result is never evidence that the requested product or conditions were simulated.
+The tools `product_usd`, `isaac_test`, and `isaac_train` are documented in [Omniverse experiments](omniverse.md).
+

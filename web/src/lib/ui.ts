@@ -3,7 +3,7 @@ import { STEP_IDS, type StepId } from "../events/types";
 
 /** The main screen is the Werkbank; Training and Logbuch stay reachable from the menu. */
 export type View = "werkbank" | "training" | "logbuch";
-export type CanvasTab = "modell" | "cad" | "simulation";
+export type CanvasTab = "modell" | "cad" | "simulation" | "omniverse";
 export type ModelLook = "3d" | "render";
 export type ConceptStatus = "verstanden" | "gesehen";
 
@@ -39,7 +39,7 @@ interface UiState {
 }
 
 const VIEWS: View[] = ["werkbank", "training", "logbuch"];
-const TABS: CanvasTab[] = ["modell", "cad", "simulation"];
+const TABS: CanvasTab[] = ["modell", "cad", "simulation", "omniverse"];
 const params = () => new URLSearchParams(window.location.search);
 const VOICE_KEY = "bauplan.voice";
 
