@@ -13,6 +13,8 @@ async def bom_build(ctx: Ctx, args: dict) -> dict:
     del args
     if ctx.state.product == "gripper":
         return await _gripper_bom(ctx)
+    if ctx.state.product == "generic":
+        return await _generic_bom(ctx)
     missing = [category for category in PART_CATEGORIES if category not in ctx.state.selected]
     if missing:
         message = "Parts missing: " + ", ".join(missing)
@@ -127,3 +129,59 @@ async def _sync_metrics(ctx: Ctx, total: float) -> None:
             "price_eur": total,
         }
     )
+
+
+async def _generic_bom(ctx: Ctx) -> dict:
+    """Printed parts at filament cost, bought parts with their price source; external loads are not ordered."""
+
+    from pai_agent.assembly import COST_EUR_PER_G
+    from pai_agent.tools.product import ensure_assembly
+
+    state = ctx.state
+    if not state.spec:
+        message = "Call product_spec first."
+        return {"ok": False, "error": message, "detail": message}
+    missing = [p["name"] for p in state.spec["parts"] if p["kind"] == "printed" and p["id"] not in state.built]
+    unpicked = [p["name"] for p in state.spec["parts"] if p["kind"] == "bought" and p["id"] not in state.picked]
+    if missing or unpicked:
+        message = "Not ready: " + ", ".join(["build " + n for n in missing] + ["pick " + n for n in unpicked])
+        return {"ok": False, "error": message, "detail": message}
+    await ensure_assembly(ctx)
+    items = []
+    for part in state.spec["parts"]:
+        if part["kind"] == "printed":
+            info = state.built[part["id"]]
+            mass = float(info["mass_g"])
+            items.append(
+                {
+                    "name": part["name"] + ", printed " + info["material"],
+                    "qty": part["qty"],
+                    "unit_price_eur": round(mass * COST_EUR_PER_G.get(info["material"], 0.03), 2),
+                    "weight_g": round(mass, 2),
+                    "shop": "printed",
+                    "url": "/files/" + state.session_id + "/part-" + part["id"] + ".stl",
+                    "price_source": "estimated",
+                    "category": part["id"],
+                }
+            )
+        elif part["kind"] == "bought":
+            item = state.picked[part["id"]]
+            items.append(
+                {
+                    "name": item["name"],
+                    "qty": part["qty"],
+                    "unit_price_eur": round(float(item.get("unit_price_eur") or 0.0), 2),
+                    "weight_g": round(float(item.get("mass_g") or 0.0), 2),
+                    "shop": item.get("shop", ""),
+                    "url": item.get("url", ""),
+                    "price_source": item.get("price_source", "sample"),
+                    "category": part["id"],
+                }
+            )
+    estimated = sum(1 for item in items if item["price_source"] == "estimated" and item["shop"] != "printed")
+
+    def detail(total: float) -> str:
+        text = "Bill of materials " + f"{total:.2f}" + " €, catalog prices are samples"
+        return text + (", " + str(estimated) + " estimated" if estimated else "")
+
+    return await _priced_bom(ctx, items, detail)

@@ -14,15 +14,19 @@ import logging
 import re
 from pathlib import Path
 
+from pai_agent import settings
+from pai_agent.agents import CAD_ROLE, AgentRun
 from pai_agent.cad_script import DENSITY_G_CM3, ScriptFailed, ScriptRejected, run_script
 from pai_agent.context import Ctx
-from pai_agent.env import claude_enabled, model_name
+from pai_agent.env import claude_enabled
 from pai_agent.paths import AGENT_ROOT, REPO_ROOT
 
 log = logging.getLogger(__name__)
 
 LIBRARY_DIR = AGENT_ROOT / "freecad" / "library"
 MAX_ATTEMPTS = 3
+# Several parts can be written by their CAD agents at once; FreeCAD builds and the assembly go one at a time.
+_BUILD = asyncio.Lock()
 
 # Templates: a known script plus slider ranges for its parameters.
 LIBRARY = {
@@ -114,26 +118,30 @@ def _extract_code(text: str) -> str:
     return (match.group(1) if match else text).strip() + "\n"
 
 
-def _write_script(description: str, params: dict, previous: str | None, error: str | None) -> str:
-    """Asks Claude for a script; with a previous script and its error, asks for the fix."""
+def _write_script(description: str, params: dict, previous: str | None, error: str | None, context: str = "", run=None) -> str:
+    """The CAD sub-agent writes a script; with a previous script and its error, it writes the fix."""
 
-    import anthropic
+    from pai_agent.agents import create_message
 
     example = library_script("gripper")
     prompt = (
-        "Part to build: " + description + "\nParameters P (mm): " + repr(params) + "\n\n"
+        context
+        + "Part to build: " + description + "\nParameters P (mm): " + repr(params) + "\n\n"
         "Here is a working example of the style (a robot gripper):\n```python\n" + example + "```\n"
     )
     if previous is not None:
         prompt += "\nYour last script failed in FreeCAD.\n```python\n" + previous + "```\nError:\n" + str(error) + "\nWrite the corrected full script."
-    client = anthropic.Anthropic()
-    response = client.messages.create(
-        model=model_name(),
-        max_tokens=6000,
+    config = settings.current()
+    response = create_message(
+        config["subagent_model"],
+        config["subagent_effort"],
+        max_tokens=16000,
         system=_CONTRACT,
         messages=[{"role": "user", "content": prompt}],
     )
-    text = "".join(str(getattr(block, "text", "")) for block in response.content)
+    if run is not None:
+        run.count(response)
+    text = "".join(str(getattr(block, "text", "")) for block in response.content if getattr(block, "type", None) == "text")
     return _extract_code(text)
 
 
@@ -145,14 +153,69 @@ def _tree(name: str, parts: list[dict]) -> list[dict]:
     return [{"id": _slug(name), "label": name, "children": children}]
 
 
+def _product_context(state, part: dict) -> str:
+    """What the script writer needs to know about the rest of the product, so the parts fit."""
+
+    spec = state.spec
+    lines = [
+        "Product: " + spec["name"] + ". " + spec["function"],
+        "Assembly frame: millimetres, Z up, the product stands on Z = 0, centred on X = Y = 0, -Y is the front.",
+        "Build this part where it sits in the assembly, as its description says.",
+        "position_mm is the centre of a part's bounding box: " + ("this part is moved so its centre sits at " + str(part["position_mm"]) + "." if part.get("position_mm") else "this part has none, so it stays exactly where you build it."),
+        "Its envelope is about " + " x ".join(f"{v:g}" for v in part["size_mm"]) + " mm (X x Y x Z); the build is checked against it.",
+        "The other parts:",
+    ]
+    for other in spec["parts"]:
+        if other["id"] == part["id"]:
+            continue
+        line = "- " + other["name"] + " (" + other["kind"] + ")"
+        info = state.built.get(other["id"])
+        if info:
+            line += ", built, bbox " + str([round(v) for v in info["bbox_mm"]])
+        elif other.get("size_mm"):
+            line += ", about " + " x ".join(f"{v:g}" for v in other["size_mm"]) + " mm"
+        if other.get("position_mm"):
+            line += " centred at " + str(other["position_mm"])
+        if other.get("description"):
+            line += ": " + other["description"]
+        lines.append(line)
+    return "\n".join(lines) + "\n\n"
+
+
+def _block_script(size: list[float], center: list[float] | None) -> str:
+    """The last resort after failed attempts: a plain block of the part's envelope, so the build goes on."""
+
+    cx, cy, cz = center or (0.0, 0.0, size[2] / 2.0)
+    return (
+        "# Simplified block: the generated script failed, this keeps the assembly buildable.\n"
+        f"shape = Part.makeBox({size[0]:g}, {size[1]:g}, {size[2]:g}, Vector({cx - size[0] / 2:g}, {cy - size[1] / 2:g}, {cz - size[2] / 2:g}))\n"
+    )
+
+
 async def cad_part(ctx: Ctx, args: dict) -> dict:
+    spec_part = None
+    if ctx.state.product == "generic" and ctx.state.spec:
+        from pai_agent.spec import find_part
+
+        spec_part = find_part(ctx.state.spec, str(args.get("part_id") or args.get("name") or ""), "printed")
+        if spec_part is None or spec_part["kind"] != "printed":
+            printed = ", ".join(p["id"] for p in ctx.state.spec["parts"] if p["kind"] == "printed")
+            return _fail("part_id must be a printed part of the spec: " + printed + ".")
+        args = {
+            **args,
+            "name": spec_part["name"],
+            "description": args.get("description") or spec_part["description"],
+            "material": args.get("material") or spec_part["material"],
+            "params": {**spec_part["params"], **(args.get("params") or {})},
+        }
     name = str(args.get("name") or "").strip() or "Part"
     description = str(args.get("description") or "").strip()
     material = str(args.get("material") or "PLA").strip().upper()
     if material.replace("ALUMINUM", "ALUMINIUM") not in DENSITY_G_CM3:
         return _fail("material must be one of " + ", ".join(sorted(DENSITY_G_CM3)) + ".")
     params = _numbers(args.get("params"))
-    template = _template_for(args)
+    # A spec part only uses a template when it asks for one by name; keywords in its description do not count.
+    template = _template_for(args) if spec_part is None or args.get("template") else None
     script = str(args.get("script") or "").strip() or None
     if script is None and template is not None and (args.get("template") or not claude_enabled()):
         script = library_script(template)
@@ -169,30 +232,55 @@ async def cad_part(ctx: Ctx, args: dict) -> dict:
         # The chosen servo decides the pocket, whoever wrote the script.
         params.update(servo_params(ctx.state))
 
-    stem = "part-" + _slug(name)
+    stem = "part-" + _slug(spec_part["id"] if spec_part else name)
     directory = Path(ctx.state.directory)
+    expected = spec_part["size_mm"] if spec_part else None
+    context = _product_context(ctx.state, spec_part) if spec_part else ""
+    passed_script = bool(args.get("script"))
     attempts: list[dict] = []
     build = None
     error = None
+    fallback = False
+    agent = None
     for attempt in range(1, MAX_ATTEMPTS + 1):
         if script is None or attempt > 1:
             if not claude_enabled():
                 break
-            await _progress(ctx, ("Claude writes the FreeCAD script" if attempt == 1 else "Claude fixes the script, attempt " + str(attempt)))
+            if agent is None:
+                config = settings.current()
+                agent = AgentRun(ctx, "cad", CAD_ROLE["label"], config["subagent_model"], config["subagent_effort"], "FreeCAD script for " + name)
+            await agent.emit("running", "writes the script" if attempt == 1 else "fixes the script, attempt " + str(attempt))
+            await _progress(ctx, ("CAD agent writes the FreeCAD script for " + name if attempt == 1 else "CAD agent fixes the script, attempt " + str(attempt)))
             try:
-                script = await asyncio.to_thread(_write_script, description or name, params, script if attempt > 1 else None, error)
+                script = await asyncio.to_thread(_write_script, description or name, params, script if attempt > 1 else None, error, context, agent)
             except Exception as exc:
                 log.exception("script writer failed")
+                await agent.emit("error", str(exc)[:160])
                 return _fail("Claude could not write the script: " + str(exc))
         await _progress(ctx, "freecadcmd builds " + name + (" (attempt " + str(attempt) + ")" if attempt > 1 else ""))
         try:
-            build = await asyncio.to_thread(run_script, script, params, directory, stem, material)
+            async with _BUILD:
+                build = await asyncio.to_thread(run_script, script, params, directory, stem, material, expected_mm=expected)
             attempts.append({"attempt": attempt, "ok": True})
             break
         except (ScriptRejected, ScriptFailed, ValueError) as exc:
             error = str(exc)
             attempts.append({"attempt": attempt, "ok": False, "error": error[:300]})
             await _progress(ctx, "Attempt " + str(attempt) + " failed: " + error.splitlines()[0][:90])
+    if agent is not None:
+        outcome = "built" if build is not None else "failed"
+        await agent.emit("done" if build is not None else "error", name + " " + outcome + " after " + str(len(attempts)) + " FreeCAD run(s)")
+    if build is None and spec_part is not None and not passed_script:
+        # Never leave a live build without geometry: a plain block of the envelope stands in, clearly marked.
+        failed_script = script
+        script = _block_script(spec_part["size_mm"], spec_part.get("position_mm"))
+        try:
+            async with _BUILD:
+                build = await asyncio.to_thread(run_script, script, params, directory, stem, material)
+            fallback = True
+            attempts.append({"attempt": len(attempts) + 1, "ok": True, "fallback": True})
+        except (ScriptRejected, ScriptFailed, ValueError):
+            script = failed_script
     if build is None:
         return {
             **_fail("The part script failed " + str(len(attempts)) + " time(s). Last error: " + str(error)),
@@ -218,6 +306,17 @@ async def cad_part(ctx: Ctx, args: dict) -> dict:
     }
     state.frame_mass_g = build.mass_g
     state.stl_path = build.stl.relative_to(REPO_ROOT).as_posix()
+    generated = bool(args.get("_generated", template is None or passed_script)) and not fallback
+    if spec_part is not None:
+        state.built[spec_part["id"]] = {
+            **state.part,
+            "parts": [{**row, "material": row.get("material") or material} for row in build.parts],
+            "attempts": len(attempts),
+            "generated": generated,
+            "fallback": fallback,
+            "last_error": error if fallback else None,
+        }
+        state.assembly_stale = True
     state.cad_builds += 1
     n = state.cad_builds
     session = state.session_id
@@ -242,16 +341,32 @@ async def cad_part(ctx: Ctx, args: dict) -> dict:
                 "mass_g": build.mass_g,
                 "bbox_mm": build.bbox_mm,
                 "attempts": len(attempts),
-                "generated": template is None or bool(args.get("script")),
+                "generated": generated,
             },
         }
     )
+    if spec_part is not None:
+        # The part goes into the assembly right away, so the model grows part by part.
+        from pai_agent.tools.product import ensure_assembly
+
+        async with _BUILD:
+            await ensure_assembly(ctx)
     size = build.bbox_mm
     dims = " x ".join(f"{size[i + 3] - size[i]:.0f}" for i in range(3))
     detail = "FreeCAD headless, " + f"{build.mass_g:.1f}" + " g " + material + ", " + dims + " mm"
-    if len(attempts) > 1:
+    if fallback:
+        detail = "Simplified block for " + name + " after " + str(len(attempts) - 1) + " failed script(s)"
+    elif len(attempts) > 1:
         detail += ", fixed after " + str(len(attempts) - 1) + " failed attempt(s)"
+    extra = {}
+    if fallback:
+        extra = {
+            "fallback": True,
+            "last_error": str(error)[:400],
+            "note": "The script failed every attempt, so a plain block of the envelope stands in. Call cad_part again with a simpler description or your own script.",
+        }
     return {
+        **extra,
         "ok": True,
         "detail": detail,
         "source": "freecad",

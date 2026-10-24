@@ -147,7 +147,12 @@ def stls_to_glb(parts: list[tuple[str, Path, str | None]], glb_path: Path) -> No
         if color:
             rgb = _hex_rgb(color)
             if rgb is not None:
-                materials.append({"name": "pai:" + color, "pbrMetallicRoughness": {"baseColorFactor": [*rgb, 1.0], "roughnessFactor": 0.6}})
+                # #rrggbbaa: a see-through body, such as a load the product carries.
+                alpha = _hex_alpha(color)
+                material = {"name": "pai:" + color, "pbrMetallicRoughness": {"baseColorFactor": [*rgb, alpha], "roughnessFactor": 0.6}}
+                if alpha < 1.0:
+                    material["alphaMode"] = "BLEND"
+                materials.append(material)
                 primitive["material"] = len(materials) - 1
         meshes.append({"name": name, "primitives": [primitive]})
         nodes.append({"name": name, "mesh": len(meshes) - 1})
@@ -177,8 +182,18 @@ def stls_to_glb(parts: list[tuple[str, Path, str | None]], glb_path: Path) -> No
     glb_path.write_bytes(b"glTF" + struct.pack("<II", 2, 12 + len(chunks)) + chunks)
 
 
+def _hex_alpha(color: str) -> float:
+    value = color.strip().lstrip("#")
+    try:
+        return int(value[6:8], 16) / 255.0 if len(value) == 8 else 1.0
+    except ValueError:
+        return 1.0
+
+
 def _hex_rgb(color: str) -> tuple[float, float, float] | None:
     value = color.strip().lstrip("#")
+    if len(value) == 8:
+        value = value[:6]
     if len(value) != 6:
         return None
     try:

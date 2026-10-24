@@ -1,0 +1,20 @@
+"""Claude's door to the reference builds: list them, or load one onto the bench."""
+
+from __future__ import annotations
+
+from pai_agent.context import Ctx
+from pai_agent.references import build_reference, list_references
+
+
+async def reference_load(ctx: Ctx, args: dict) -> dict:
+    ref_id = str(args.get("id") or "").strip()
+    if not ref_id:
+        rows = list_references()
+        return {"ok": True, "detail": str(len(rows)) + " reference build(s)", "references": rows}
+    try:
+        result = await build_reference(ctx, ref_id)
+    except ValueError as exc:
+        return {"ok": False, "error": str(exc), "detail": str(exc)[:160]}
+    ctx.state.finished = True
+    detail = result["name"] + f": {float(result['product_mass_g'] or 0):.0f} g, {float(result['cost_eur'] or 0):.2f} €, " + f"{result['requirements_passed']}/{result['requirements']} requirements pass"
+    return {**result, "detail": detail}

@@ -210,15 +210,16 @@ def unit_price_eur(part: dict) -> float:
 
 
 def catalog_line(item: dict) -> dict:
-    return {**item, "price_source": "catalog", "currency": "EUR", "availability": "unknown"}
+    # A spec product already says sample or estimated; the drone and gripper lines are catalog.
+    return {"price_source": "catalog", **item, "currency": "EUR", "availability": "unknown"}
 
 
 async def live_lines(items: list[dict]) -> list[dict]:
     """Every BOM line with a live quote where one was found, else its catalog price."""
 
     async def one(item: dict) -> dict:
-        # The printed frame has no shop page to search.
-        if not item.get("url"):
+        # Printed parts (no shop page, or an STL path) are not searched.
+        if item.get("shop") == "printed" or not str(item.get("url") or "").startswith(("http://", "https://")):
             return catalog_line(item)
         quote = await find_price(item)
         if quote is None:

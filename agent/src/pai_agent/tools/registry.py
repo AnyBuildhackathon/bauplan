@@ -10,6 +10,10 @@ from pai_agent.tools.blender import blender_render, find_blender
 from pai_agent.tools.bom import bom_build
 from pai_agent.tools.cad import cad_frame
 from pai_agent.tools.cad_part import cad_part
+from pai_agent.tools.checks import check_deflection, check_runtime, check_tip_over, check_torque, check_totals, simulate_assembly
+from pai_agent.tools.product import assemble, cad_update, part_pick, product_spec
+from pai_agent.tools.reference import reference_load
+from pai_agent.agents import delegate
 from pai_agent.tools.gripper import catalog_search, grip_calc, product_brief, simulate_grip
 from pai_agent.tools.isaac import isaac_lab_status, isaac_lab_train, isaac_sim_render, isaac_test, isaac_train, ssh_setting
 from pai_agent.tools.usd import product_usd
@@ -43,6 +47,18 @@ TOOLS = {
     "cad_frame": cad_frame,
     "cad_part": cad_part,
     "product_brief": product_brief,
+    "product_spec": product_spec,
+    "reference_load": reference_load,
+    "delegate": delegate,
+    "part_pick": part_pick,
+    "assemble": assemble,
+    "cad_update": cad_update,
+    "check_totals": check_totals,
+    "check_tip_over": check_tip_over,
+    "check_deflection": check_deflection,
+    "check_torque": check_torque,
+    "check_runtime": check_runtime,
+    "simulate_assembly": simulate_assembly,
     "catalog_search": catalog_search,
     "grip_calc": grip_calc,
     "simulate_grip": simulate_grip,
@@ -60,6 +76,9 @@ TOOLS = {
     "mascot_say": mascot_say,
 }
 
+# With delegation on, these belong to the sub-agents; the orchestrator reaches them through delegate.
+DELEGATED = {"part_pick", "check_totals", "check_tip_over", "check_deflection", "check_torque", "check_runtime", "simulate_assembly"}
+
 _STEP = {
     "jamie_requirements": "meeting",
     "jamie_meeting": "meeting",
@@ -68,6 +87,17 @@ _STEP = {
     "cad_frame": "cad",
     "cad_part": "cad",
     "product_brief": "meeting",
+    "product_spec": "meeting",
+    "reference_load": "meeting",
+    "part_pick": "teile",
+    "assemble": "cad",
+    "cad_update": "cad",
+    "check_totals": "teile",
+    "check_tip_over": "simulation",
+    "check_deflection": "simulation",
+    "check_torque": "simulation",
+    "check_runtime": "simulation",
+    "simulate_assembly": "simulation",
     "catalog_search": "teile",
     "grip_calc": "teile",
     "simulate_grip": "simulation",
@@ -194,7 +224,7 @@ SCHEMAS = [
     },
     {
         "name": "cad_frame",
-        "description": "Builds the parametric frame in FreeCAD, otherwise in CadQuery. Writes STL, STEP and GLB. arm_length_mm is the distance from the center to the motor shaft. motor_spacing_mm is the bolt-circle diameter of the motor screws. On the 1102 that is 6.6.",
+        "description": "Builds the parametric frame in FreeCAD, otherwise in CadQuery. Writes STL, STEP and GLB. arm_length_mm is the distance from the center to the motor shaft. motor_spacing_mm is the bolt-circle diameter of the motor screws. On the 1103 that is 6.6.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -245,6 +275,226 @@ SCHEMAS = [
                 "quote": {"type": "string"},
             },
             "required": ["product"],
+        },
+    },
+    {
+        "name": "product_spec",
+        "description": (
+            "Starts a build for ANY physical product that is not the drone or the gripper (a phone stand, a desk fan, a plant-watering robot, a bike light mount). "
+            "Pass the full spec: name, function, quote (the user's own sentence), requirements and parts. The code validates it and lists every problem; fix them and call again. "
+            "Coordinates: millimetres, Z up, the product stands on Z = 0 centred on X = Y = 0, -Y is the front. "
+            "printed parts are designed in FreeCAD by cad_part: give material, a precise description (shape, features, wall thickness, holes, where it sits in the assembly), "
+            "size_mm (the envelope [x, y, z] the build is checked against) and params (the key dimensions in mm, they become sliders). "
+            "position_mm is always the centre of a part's bounding box in the assembly; a printed part with it is moved there, one without it stays where its script builds it. "
+            "bought parts are ordered: give category and query for the catalog; give size_mm and position_mm so they show in the model and count for the centre of mass. "
+            "external parts are loads that are not part of the product (the phone it holds, the water in the tank): mass_g, position_mm (centre of mass) and size_mm. "
+            "Each requirement names the check that judges it: mass (max g, product without loads), cost (max eur), size (max mm, largest side), "
+            "tip_over (min deg tip angle, or min N push at the top), deflection (max mm, with part_id), torque (min x safety), runtime (min with unit min, h or days), "
+            "stability (max deg tilt after the MuJoCo push), drop (max g peak load), printable (no limit). Keep it to six printed parts or fewer."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "function": {"type": "string", "description": "What the product does, in one or two sentences."},
+                "quote": {"type": "string", "description": "The user's request, word for word."},
+                "requirements": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "id": {"type": "string"},
+                            "text": {"type": "string", "description": "Short and checkable, e.g. 'Weighs under 150 g'."},
+                            "check": {"type": "string", "enum": ["mass", "cost", "size", "tip_over", "deflection", "torque", "runtime", "stability", "drop", "printable"]},
+                            "max": {"type": "number"},
+                            "min": {"type": "number"},
+                            "unit": {"type": "string", "description": "g, eur, mm, deg, N, x, min, h or days."},
+                            "part_id": {"type": "string"},
+                            "quote": {"type": "string"},
+                        },
+                        "required": ["text", "check"],
+                    },
+                },
+                "assemblies": {"type": "array", "items": {"type": "object", "properties": {"id": {"type": "string"}, "name": {"type": "string"}}, "required": ["name"]}},
+                "parts": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "id": {"type": "string"},
+                            "name": {"type": "string"},
+                            "kind": {"type": "string", "enum": ["printed", "bought", "external"]},
+                            "qty": {"type": "integer"},
+                            "assembly": {"type": "string"},
+                            "description": {"type": "string"},
+                            "material": {"type": "string", "enum": ["PLA", "PETG", "ABS", "ASA", "NYLON", "TPU", "ALUMINIUM", "STEEL"]},
+                            "params": {"type": "object"},
+                            "size_mm": {"type": "array", "items": {"type": "number"}},
+                            "position_mm": {"type": "array", "items": {"type": "number"}},
+                            "rotation_deg": {"type": "array", "items": {"type": "number"}},
+                            "category": {"type": "string"},
+                            "query": {"type": "string"},
+                            "mass_g": {"type": "number"},
+                        },
+                        "required": ["name", "kind"],
+                    },
+                },
+            },
+            "required": ["name", "function", "requirements", "parts"],
+        },
+    },
+    {
+        "name": "delegate",
+        "description": (
+            "Hands a bounded job to a smaller sub-agent that has only the tools it needs and reports back. "
+            "agent parts picks bought parts (part_pick), agent checks runs the checks and the MuJoCo test (check_*, simulate_assembly), "
+            "agent pricing builds and prices the bill of materials (bom_build, part_pick). task says exactly what to do and what matters. "
+            "The report, the tool calls, tokens and cost come back."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {"agent": {"type": "string", "enum": ["parts", "checks", "pricing"]}, "task": {"type": "string"}},
+            "required": ["agent", "task"],
+        },
+    },
+    {
+        "name": "reference_load",
+        "description": (
+            "Reference builds are known products with all their real parts. Without id it lists them; with id it loads one onto the bench: "
+            "spec, printed parts from their tested scripts, the bought parts, the assembly, every check, the render and the bill of materials. "
+            "Use it when the user wants to start from a known product, then change it as they ask."
+        ),
+        "input_schema": {"type": "object", "properties": {"id": {"type": "string"}}},
+    },
+    {
+        "name": "part_pick",
+        "description": (
+            "Chooses the bought part for a spec part. With query (and no select_id) it searches every catalog (hobby electronics, motors, fans, pumps, batteries, servos, hardware). "
+            "select_id binds a catalog part (prices are samples to verify). When nothing fits, pass estimate {name, mass_g, unit_price_eur, and specs such as power_w, capacity_mah, voltage_v, stall_torque_nm} "
+            "and it is marked as an estimated price. reason is your one-line reason. A swap after checks reruns them."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "part_id": {"type": "string"},
+                "query": {"type": "string"},
+                "category": {"type": "string"},
+                "select_id": {"type": "string"},
+                "estimate": {"type": "object"},
+                "reason": {"type": "string"},
+            },
+            "required": ["part_id"],
+        },
+    },
+    {
+        "name": "assemble",
+        "description": (
+            "Puts the built printed parts, the picked bought parts and the external loads together: one model with mass, cost, centre of mass, size and the footprint it stands on. "
+            "cad_part already assembles after each part; call this to move parts with placements {part_id: {position_mm, rotation_deg}} (position_mm is the centre of the part's bounding box, rotation about that centre) "
+            "and read warnings such as a part that floats."
+        ),
+        "input_schema": {"type": "object", "properties": {"placements": {"type": "object"}}},
+    },
+    {
+        "name": "cad_update",
+        "description": (
+            "Changes the numbers of a built printed part (params, e.g. {\"depth_mm\": 110}): FreeCAD rebuilds it from the same script, the product is reassembled "
+            "and every check that ran before runs again; the new results come back. Use it to fix a failed check, and say why."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {"part_id": {"type": "string"}, "params": {"type": "object"}},
+            "required": ["part_id", "params"],
+        },
+    },
+    {
+        "name": "check_totals",
+        "description": "Mass (product without external loads), cost (printed parts at filament cost plus bought parts) and size against the mass, cost and size requirements.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "check_tip_over",
+        "description": (
+            "Centre of mass and tip-over stability: the tip angle about the weakest edge of the footprint and the horizontal push at push_height_mm (default the top) that tips it. "
+            "Judges tip_over requirements."
+        ),
+        "input_schema": {"type": "object", "properties": {"push_height_mm": {"type": "number"}}},
+    },
+    {
+        "name": "check_deflection",
+        "description": (
+            "Load estimate for a beam-like printed part (an arm, a shelf, a clip, a lip): span_mm, width_mm, thickness_mm of the section, load_n, "
+            "support cantilever (fixed at one end, load at the tip) or simple (both ends, load in the middle). "
+            "Gives deflection and the stress safety (needs 2x, printed plastic at 60 % strength). Judges deflection requirements."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "part_id": {"type": "string"},
+                "span_mm": {"type": "number"},
+                "width_mm": {"type": "number"},
+                "thickness_mm": {"type": "number"},
+                "load_n": {"type": "number"},
+                "support": {"type": "string", "enum": ["cantilever", "simple"]},
+            },
+            "required": ["part_id", "span_mm", "width_mm", "thickness_mm", "load_n"],
+        },
+    },
+    {
+        "name": "check_torque",
+        "description": (
+            "Motor or servo torque sufficiency: actuator_part_id (a picked motor or servo), and required_torque_nm, or lever_mm with force_n or load_mass_g. "
+            "Usable torque is 70 % of stall for a servo, 80 % for a stepper, 50 % for a DC motor. Judges torque requirements (safety factor)."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "actuator_part_id": {"type": "string"},
+                "required_torque_nm": {"type": "number"},
+                "lever_mm": {"type": "number"},
+                "force_n": {"type": "number"},
+                "load_mass_g": {"type": "number"},
+            },
+            "required": ["actuator_part_id"],
+        },
+    },
+    {
+        "name": "check_runtime",
+        "description": (
+            "Battery runtime: battery_part_id (a picked battery) and loads [{part_id or name, power_w, duty}], duty the share of time the load is on; "
+            "a picked controller with sleep_power_w sleeps the rest of the time. 80 % of the battery energy counts. Judges runtime requirements."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "battery_part_id": {"type": "string"},
+                "loads": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {"part_id": {"type": "string"}, "name": {"type": "string"}, "power_w": {"type": "number"}, "duty": {"type": "number"}},
+                    },
+                },
+            },
+            "required": ["battery_part_id", "loads"],
+        },
+    },
+    {
+        "name": "simulate_assembly",
+        "description": (
+            "MuJoCo test of the whole assembly as one rigid body (convex hull, real masses and centre of mass). "
+            "mode push: it stands on the table and force_n (default 1 N) pushes for 0.3 s at push_point_mm (default the top) towards its weakest side; "
+            "it passes when it settles within the stability limit (default 5 deg). mode drop: it falls from drop_height_mm (default 300) and reports the peak load in g. "
+            "The run plays in the Simulation tab."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "mode": {"type": "string", "enum": ["push", "drop"]},
+                "force_n": {"type": "number"},
+                "push_point_mm": {"type": "array", "items": {"type": "number"}},
+                "drop_height_mm": {"type": "number"},
+            },
         },
     },
     {
@@ -355,8 +605,14 @@ def _running_detail(name: str, args: dict) -> str:
         return str(args.get("state", ""))
     if name == "jamie_search":
         return str(args.get("query", ""))
-    if name == "cad_part":
+    if name in {"cad_part", "cad_update", "part_pick"}:
+        return str(args.get("part_id") or args.get("name") or "")
+    if name == "product_spec":
         return str(args.get("name", ""))
+    if name == "delegate":
+        return str(args.get("agent", "")) + " agent"
+    if name == "simulate_assembly":
+        return str(args.get("mode") or "push") + " test"
     if name in {"catalog_search", "product_brief"}:
         return (str(args.get("category") or args.get("product") or "") + " " + str(args.get("query", ""))).strip()
     if name == "cad_frame":
@@ -377,8 +633,12 @@ async def _advance(ctx: Ctx, name: str, result: dict, started: bool) -> None:
     if result.get("ok") is False:
         await ctx.step(step, "failed")
         return
-    if name in {"simulate_drone", "simulate_grip"}:
+    if name in {"simulate_drone", "simulate_grip", "simulate_assembly"}:
         await ctx.step("simulation", "done" if result.get("result") == "pass" else "failed")
+    elif name in {"check_tip_over", "check_deflection", "check_torque", "check_runtime"}:
+        await ctx.step("simulation", "done" if result.get("result") == "pass" else "failed")
+    elif name == "check_totals":
+        await ctx.step("teile", "done" if result.get("result") == "pass" else "failed")
     elif name == "grip_calc" and float(result.get("safety_factor") or 0) >= 2:
         await ctx.step("teile", "done")
     elif name == "physics_calc" and float(result.get("thrust_to_weight") or 0) >= 1.8:
@@ -392,7 +652,7 @@ async def _advance(ctx: Ctx, name: str, result: dict, started: bool) -> None:
         await ctx.step("training", "done")
     elif name == "jamie_create_tasks":
         await ctx.step("stueckliste", "done")
-    elif name in {"blender_render", "isaac_sim_render", "cad_frame", "cad_part", "product_brief", "jamie_requirements", "jamie_meeting"}:
+    elif name in {"blender_render", "isaac_sim_render", "cad_frame", "cad_part", "cad_update", "assemble", "product_brief", "product_spec", "reference_load", "part_pick", "jamie_requirements", "jamie_meeting"}:
         await ctx.step(step, "done")
 
 

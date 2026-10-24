@@ -2,7 +2,7 @@
 // link, a "Warum?" with the Jamie quote behind it, warnings from earlier meetings,
 // and the order tasks per person that live in Jamie (ticking "bestellt" ticks them there).
 import { useEffect, useState } from "react";
-import { AlertTriangle, ArrowUpRight, Battery, Box, Cable, CircuitBoard, Cog, Download, Fan, X } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, Battery, Box, Cable, Camera, CircuitBoard, Cog, Download, Fan, Shield, Wrench, X } from "lucide-react";
 import { useSession } from "../events/store";
 import { useSource } from "../events/source";
 import type { BomEvent, BomItem, PartEvent, TaskItem } from "../events/types";
@@ -16,6 +16,9 @@ import { useUi } from "../lib/ui";
 
 function iconFor(name: string) {
   const n = name.toLowerCase();
+  if (/canopy|holder|halter/.test(n)) return Shield;
+  if (/bolt|screw|schraube/.test(n)) return Wrench;
+  if (/camera|kamera|caddx/.test(n)) return Camera;
   if (/akku|batter|lipo|li-?ion|lava|funfly/.test(n)) return Battery;
   if (/motor|kv\b|\d{4,5}kv/.test(n)) return Cog;
   if (/propeller|prop|gemfan/.test(n)) return Fan;
@@ -28,14 +31,14 @@ const AVAILABILITY = { in_stock: "in stock", out_of_stock: "out of stock", unkno
 
 /** "live" when the price came from a shop page found by web search, else the catalog sample. */
 function PriceSource({ item, searching }: { item: BomItem; searching: boolean }) {
+  if (item.shop === "printed") return null;
   const live = item.price_source === "live";
-  const label = live ? "live" : searching ? "searching" : "catalog";
+  const estimated = item.price_source === "estimated";
+  const label = live ? "live" : estimated ? "estimated" : searching ? "searching" : "catalog";
   const title = live && item.checked_at ? `Checked ${new Date(item.checked_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}` : undefined;
+  const tone = live ? "bg-ok-soft text-ok-ink" : estimated ? "bg-agent-soft text-agent-ink" : "bg-tile text-muted";
   return (
-    <span
-      title={title}
-      className={`shrink-0 rounded-full px-2.5 py-1 text-[12px] font-bold ${live ? "bg-ok-soft text-ok-ink" : "bg-tile text-muted"}`}
-    >
+    <span title={title} className={`shrink-0 rounded-full px-2.5 py-1 text-[12px] font-bold ${tone}`}>
       {label}
     </span>
   );
@@ -132,7 +135,7 @@ function TaskRow({ task }: { task: TaskItem }) {
 function priceNote(prices: BomEvent["prices"], live: number, total: number): string {
   if (prices === "searching") return "Searching shops for live prices…";
   if (live > 0) return `Live prices from the web for ${live} of ${total} lines, catalog samples for the rest. Check before ordering.`;
-  return "Catalog sample prices to verify, not a live checkout.";
+  return "Catalog prices are samples to verify, estimated prices are marked; this is not a live checkout.";
 }
 
 export function BomDrawer() {
@@ -142,6 +145,7 @@ export function BomDrawer() {
   const parts = useSession((s) => s.parts);
   const tasks = useSession((s) => s.tasks);
   const cadStl = useSession((s) => s.cad?.stl_url ?? null);
+  const product = useSession((s) => s.product);
   const targets = useTargets();
 
   useEffect(() => {
@@ -155,6 +159,7 @@ export function BomDrawer() {
   const weight = bom.items.reduce((s, i) => s + i.qty * i.weight_g, 0);
   const priceOk = meets(targets.price_eur, bom.total_eur);
   const byName = new Map(Object.values(parts).map((p) => [p.name, p]));
+  const drone = product === "drone";
   const stlHref = cadStl ? assetUrl(cadStl) ?? cadStl : href(bom.stl_path);
   const ordered = tasks?.items.filter((t) => t.done).length ?? 0;
   const liveCount = bom.items.filter((i) => i.price_source === "live").length;
@@ -177,10 +182,10 @@ export function BomDrawer() {
           </div>
           <a
             href={stlHref}
-            download="frame.stl"
+            download={drone ? "frame.stl" : `${product}.stl`}
             className="ml-auto inline-flex h-11 items-center gap-2 rounded-full bg-agent px-5 text-[15px] font-bold text-white shadow-[0_8px_20px_-8px_rgb(255_138_61/0.7)] hover:brightness-105"
           >
-            <Download className="h-4.5 w-4.5" /> Frame STL
+            <Download className="h-4.5 w-4.5" /> {drone ? "Frame STL" : "Model STL"}
           </a>
           <button type="button" onClick={() => setOpen(false)} className="rounded-full p-2.5 text-muted hover:bg-card" aria-label="Close">
             <X className="h-5 w-5" />
@@ -189,7 +194,12 @@ export function BomDrawer() {
         <div className="scroll-soft min-h-0 flex-1 space-y-5 overflow-y-auto px-6 pb-6">
           <ul className="space-y-2">
             {bom.items.map((item) => (
-              <PartRow key={item.name} item={item} part={byName.get(item.name)} searching={bom.prices === "searching"} />
+              <PartRow
+                key={item.name}
+                item={item}
+                part={(item.category ? parts[item.category] : undefined) ?? byName.get(item.name)}
+                searching={bom.prices === "searching"}
+              />
             ))}
           </ul>
           <p className="text-[13px] text-faint">{priceNote(bom.prices, liveCount, bom.items.length)}</p>
