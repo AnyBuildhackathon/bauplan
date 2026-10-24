@@ -100,6 +100,8 @@ def order(state) -> dict:
     shops: dict[str, dict] = {}
     printed = {"items": [], "filament_g": 0.0, "cost_eur": 0.0}
     for item in (state.bom or {}).get("items", []):
+        if item.get("category") == "filament":
+            continue
         qty = item.get("qty", 1)
         line = round(qty * float(item.get("unit_price_eur", 0)), 2)
         if _printed(item):

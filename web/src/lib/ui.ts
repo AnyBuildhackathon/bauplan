@@ -3,7 +3,7 @@ import { STEP_IDS, type StepId } from "../events/types";
 
 /** The main screen is the Werkbank; Library, Training and Logbuch sit on the icon rail. */
 export type View = "werkbank" | "library" | "community" | "training" | "logbuch";
-export type CanvasTab = "modell" | "cad" | "simulation" | "omniverse";
+export type CanvasTab = "modell" | "cad" | "simulation" | "omniverse" | "agents";
 export type ModelLook = "3d" | "render";
 export type ConceptStatus = "verstanden" | "gesehen";
 export type MicMode = "handsfree" | "ptt";
@@ -61,6 +61,9 @@ interface UiState {
   setSettingsOpen: (open: boolean) => void;
   setLibraryPick: (id: string | null) => void;
   setClicky: (on: boolean) => void;
+  /** The chat fills the window beside the icon rail instead of sitting in its column. */
+  chatExpanded: boolean;
+  setChatExpanded: (on: boolean) => void;
   setDisplay: (patch: Partial<Display>) => void;
   setView: (view: View) => void;
   /** The community project to show selected when the Community view opens next. */
@@ -85,7 +88,7 @@ interface UiState {
 }
 
 const VIEWS: View[] = ["werkbank", "library", "community", "training", "logbuch"];
-const TABS: CanvasTab[] = ["modell", "cad", "simulation", "omniverse"];
+const TABS: CanvasTab[] = ["modell", "cad", "simulation", "omniverse", "agents"];
 const params = () => new URLSearchParams(window.location.search);
 const VOICE_KEY = "bauplan.voice";
 const DISPLAY_KEY = "anybuild.display";
@@ -178,6 +181,8 @@ export const useUi = create<UiState>((set) => ({
     }
     set({ clicky });
   },
+  chatExpanded: false,
+  setChatExpanded: (chatExpanded) => set({ chatExpanded }),
   setDisplay: (patch) =>
     set((s) => {
       const display = { ...s.display, ...patch };
@@ -189,9 +194,9 @@ export const useUi = create<UiState>((set) => ({
       return { display };
     }),
   stt: "SpeechRecognition" in window || "webkitSpeechRecognition" in window ? "browser" : "none",
-  setView: (view) => set({ view }),
+  setView: (view) => set({ view, chatExpanded: false }),
   communityFocus: null,
-  openCommunity: (communityFocus) => set({ view: "community", communityFocus }),
+  openCommunity: (communityFocus) => set({ view: "community", communityFocus, chatExpanded: false }),
   setTab: (tab) => set({ tab }),
   setLook: (look) => set({ look, tab: "modell" }),
   selectVersion: (selectedVersion) => set({ selectedVersion }),

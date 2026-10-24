@@ -61,6 +61,9 @@ Claude works like a lead engineer with a small team.
 The orchestrator (Claude Opus 5.5 by default, effort `high`, configurable up to `max`) plans the build, writes the spec, decides the fixes and reviews every report.
 It delegates bounded jobs to sub-agents on a smaller model (Claude Sonnet 5.5 by default), each with only the tools its job needs: the CAD agent writes one part's FreeCAD script (several parts run side by side), the parts agent picks the bought parts, the analysis agent runs the checks and the MuJoCo test, and the pricing agent builds and prices the bill of materials.
 Every agent shows up as its own card in the chat with model, effort, job, status, tokens and cost.
+The **Agents** canvas tab draws the team live: the orchestrator in the middle, each sub-agent as a node that appears when it is spawned, joined by an edge that flows while it works, with its model, status, the tool it runs now (FreeCAD, Blender, MuJoCo, the catalog), tokens and cost.
+A Gantt-like timeline below shows which jobs ran in parallel, and a click on a node opens that agent's log: its job, numbers, tool calls and every report.
+Without a key the mock story fans out the same way: a Parts agent, then three CAD agents and a Pricing agent side by side, and an Analysis agent that waits for the geometry.
 The models, the effort levels and delegation are set with `PAI_ORCHESTRATOR_MODEL`, `PAI_ORCHESTRATOR_EFFORT`, `PAI_SUBAGENT_MODEL`, `PAI_SUBAGENT_EFFORT` and `PAI_DELEGATION`, or at runtime with the sliders button in the top bar (`/api/settings`).
 
 The dashboard renders any product from the spec and the check results: requirement rows with the measured value, four key-number cards, the assembly tree and per-part sliders in the CAD tab (moving one reruns the checks without a model call), the before/after MuJoCo replay, and a bill of materials with sample, estimated and live prices marked.
@@ -307,6 +310,28 @@ For drones, the **Omniverse** tab runs wind, payload and hover experiments in NV
 Blender exports the current CAD assembly as USD with per-part masses.
 Without a working GPU pod, the app shows a clearly labelled recorded result with synthetic fixture values.
 See [Omniverse setup, tools, limitations and verification](docs/omniverse.md) for the full contract, including local ports 8113 and 5193.
+
+## Bench results
+
+AnyBuild Bench measures how often the agent turns a product prompt into a valid, checked product.
+`agent/bench/prompts.json` holds 20 prompts (drone variants, gripper, phone stand, desk lamp, desk fan, Pi enclosure, plant-watering robot, RC car, wall hook, cable organizer and more), each with the checks that judge it: the build finished, CAD geometry, a bill of materials, a render, and the requirements that must be met (`req:mass`, `req:tip_over`, `req:deflection`, ...).
+The runner sends each prompt through the real flow (orchestrator, tools, checks) on its own fresh bench, in its own process, and records pass or fail per check, retries, time, tokens and cost:
+
+```bash
+cd agent && uv run python -m bench.run --limit 8 -j 2 --timeout 900 --budget 3600   # live, needs ANTHROPIC_API_KEY
+cd agent && uv run python -m bench.run --mock                                        # mock: the recorded subset
+```
+
+`-j` limits how many prompts run at once, `--timeout` stops one prompt, `--budget` skips prompts that cannot start in time, `--only id,id` picks prompts.
+Results go to `agent/bench/results/live.json` or `mock.json`; open them in the app under Settings → AnyBuild Bench results (or `?benchmark`), where "Open on bench" builds a prompt again.
+
+| Run | Prompts | Valid products | Checks passed | Cost per product |
+| --- | --- | --- | --- | --- |
+| Mock (no Claude, no FreeCAD) | 5 of 20 | 1 of 5 | 31 of 36 | $0 |
+| Live | not run yet | | | |
+
+The mock row is **not a result of the live agent**: it replays the recorded mock stories for the five products the mock knows, on a machine without FreeCAD, where printed parts fall back to simplified CadQuery blocks and come out too heavy.
+A live run with a key is the measurement that counts.
 
 ## Smoke Test
 

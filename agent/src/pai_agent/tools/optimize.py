@@ -293,6 +293,43 @@ async def _propose_live(ctx: Ctx, goals: list[str], keep: dict, plans: list[dict
     return list(await asyncio.gather(*(one(i, plan) for i, plan in enumerate(plans))))
 
 
+def _distinct(state, base: dict, plans: list[dict]) -> list[dict]:
+    """The strategies whose variant is neither the current build nor another strategy's."""
+
+    seen = {json.dumps(base, sort_keys=True)}
+    out = []
+    for plan in plans:
+        fingerprint = json.dumps(_config(state, base, plan), sort_keys=True)
+        if fingerprint not in seen:
+            seen.add(fingerprint)
+            out.append(plan)
+    return out
+
+
+async def _propose_mock(ctx: Ctx, plans: list[dict]) -> list[dict]:
+    """Without a key the variant agents are scripted like the mock team: fixed proposals, real agent events."""
+
+    from pai_agent import settings
+    from pai_agent.agents import AgentRun
+    from pai_agent.mock_team import SUB_ROUND, TICK_S
+
+    config = settings.current()
+
+    async def one(index: int, plan: dict) -> dict:
+        letter = _LETTERS[index]
+        run = AgentRun(ctx, "optimizer", "Variant agent " + letter, config["subagent_model"], config["subagent_effort"], "Variant " + letter + ": " + plan["label"])
+        run.rounds += 1
+        settings.add_usage(run.usage, SUB_ROUND)
+        await run.emit("running", "thinking")
+        await run.use("propose_variant", plan["label"])
+        await asyncio.sleep(TICK_S)
+        run.called("propose_variant", {"detail": plan["reason"]})
+        await run.emit("done", plan["label"] + ": " + plan["reason"])
+        return {**plan, "agent": run.label}
+
+    return list(await asyncio.gather(*(one(i, plan) for i, plan in enumerate(plans))))
+
+
 async def optimize_design(ctx: Ctx, args: dict) -> dict:
     from pai_agent.env import claude_enabled
 
@@ -314,7 +351,7 @@ async def optimize_design(ctx: Ctx, args: dict) -> dict:
         # Spare strategies stay behind the live proposals, so a copy of the current design is replaced.
         proposals = await _propose_live(ctx, goals, keep, plans[:count], base) + plans[count:]
     else:
-        proposals = list(plans)
+        proposals = await _propose_mock(ctx, _distinct(state, base, plans)[:count])
 
     def run_all() -> tuple[dict, list[dict]]:
         baseline = evaluate(state, base, base, keep)

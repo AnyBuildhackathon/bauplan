@@ -45,6 +45,8 @@ BUDGET_S = {
     "version_commit": 15.0,
     # Live shop prices search the web per line, 45 s each at most.
     "bom_build": 120.0,
+    # A slicer takes seconds to a minute per part; its own subprocess timeout is 180 s.
+    "print_prep": 300.0,
     "part_pick": 90.0,
     "delegate": 240.0,
     # Pressing Rebuild runs FreeCAD and the test inside the call; the other controls return at once.

@@ -156,6 +156,7 @@ async def product_spec(ctx: Ctx, args: dict) -> dict:
     state.spec = spec
     state.assembly = None
     state.assembly_stale = True
+    state.bom = None
     state.requirements = _requirement_rows(spec, stamp)
     await ctx.emit(
         {"type": "product", "id": spec["id"], "label": spec["name"], "kind": "generic", "requirements": [r["id"] for r in spec["requirements"]]}
@@ -247,6 +248,7 @@ async def part_pick(ctx: Ctx, args: dict) -> dict:
     item = price({**item, "query": part["query"], "reason": reason})
     ctx.state.picked[part_id] = item
     ctx.state.assembly_stale = True
+    ctx.state.bom = None
     await ctx.emit(
         {
             "type": "part",
@@ -396,6 +398,7 @@ async def assemble(ctx: Ctx, args: dict) -> dict:
     missing = [p["name"] for p in spec["parts"] if p["kind"] == "printed" and p["id"] not in ctx.state.built]
     unpicked = [p["name"] for p in spec["parts"] if p["kind"] == "bought" and p["id"] not in ctx.state.picked]
     ctx.state.assembly_stale = True
+    ctx.state.bom = None
     try:
         built = await ensure_assembly(ctx)
     except ValueError as exc:
@@ -505,7 +508,7 @@ async def emit_cards(ctx: Ctx) -> None:
         {
             "type": "metrics",
             "weight_g": built.get("product_mass_g", 0.0),
-            "price_eur": built.get("cost_eur", 0.0),
+            "price_eur": next((c["value"] for c in cards if c["key"] == "cost_eur"), built.get("cost_eur", 0.0)),
             "cards": cards,
         }
     )

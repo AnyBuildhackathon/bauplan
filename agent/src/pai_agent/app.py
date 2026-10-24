@@ -25,6 +25,8 @@ from pai_agent.tools.stress import router as stress_router
 
 class PromptIn(BaseModel):
     text: str
+    # The text is a spoken turn (Reson8 or the browser), not typed.
+    voice: bool = False
 
 
 class SketchIn(BaseModel):
@@ -130,7 +132,7 @@ async def prompt(body: PromptIn, request: Request) -> dict:
     text = body.text.strip()
     if not text:
         raise HTTPException(status_code=400, detail="text is required")
-    return await request.app.state.session.start(text)
+    return await request.app.state.session.start(text, voice=body.voice)
 
 
 @app.post("/api/sketch")
@@ -378,6 +380,23 @@ async def library() -> dict:
     from pai_agent.references import list_references
 
     return {"ok": True, "items": list_references()}
+
+
+@app.get("/api/bench")
+async def bench_results() -> dict:
+    """The AnyBuild Bench results bench.run wrote: the live run first, then the mock run."""
+
+    from pai_agent.paths import AGENT_ROOT
+
+    runs = []
+    for mode in ("live", "mock"):
+        path = AGENT_ROOT / "bench" / "results" / (mode + ".json")
+        if path.is_file():
+            try:
+                runs.append(json.loads(path.read_text(encoding="utf-8")))
+            except (OSError, ValueError):
+                continue
+    return {"ok": True, "runs": runs}
 
 
 @app.post("/api/library/{item_id}/open")

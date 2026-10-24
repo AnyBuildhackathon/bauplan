@@ -39,6 +39,7 @@ from pai_agent.tools.jamie import (
 )
 from pai_agent.tools.parts import parts_search
 from pai_agent.tools.optimize import optimize_apply, optimize_design
+from pai_agent.tools.print_prep import print_prep
 from pai_agent.tools.physics import physics_calc
 from pai_agent.tools.simulate import simulate_drone
 from pai_agent.tools.stress import stress_test
@@ -86,6 +87,7 @@ TOOLS = {
     "product_usd": product_usd,
     "blender_render": blender_render,
     "bom_build": bom_build,
+    "print_prep": print_prep,
     "build_guide": build_guide,
     "firmware": firmware,
     "jamie_create_tasks": jamie_create_tasks,
@@ -134,6 +136,7 @@ _STEP = {
     "isaac_train": "training",
     "isaac_lab_status": "training",
     "bom_build": "stueckliste",
+    "print_prep": "stueckliste",
     "jamie_create_tasks": "stueckliste",
     "train_in_browser": "training",
 }
@@ -667,6 +670,17 @@ SCHEMAS = [
         "name": "bom_build",
         "description": "Builds the bill of materials from the chosen parts, including the STL path. With ANTHROPIC_API_KEY set it searches live shop prices on the web; each line says price_source live or catalog.",
         "input_schema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "print_prep",
+        "description": "Makes every printed part print-ready after bom_build: slices each STL headless with PrusaSlicer or OrcaSlicer when installed (G-code per part for download), else estimates time and filament from the mesh at a 0.2 mm, 20 % infill profile and says 'estimate'. Returns print time, filament grams and cost per part and in total, and printability warnings (overhangs past 45 degrees, walls under 0.8 mm, parts over a 220 mm bed). Adds a filament line to the bill of materials. orientation flat puts the smallest extent on the bed, upright the largest, as_modeled keeps the CAD pose; orientations sets it per part id.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "orientation": {"type": "string", "enum": ["flat", "upright", "as_modeled"]},
+                "orientations": {"type": "object", "additionalProperties": {"type": "string", "enum": ["flat", "upright", "as_modeled"]}},
+            },
+        },
     },
     BUILD_GUIDE_SCHEMA,
     {

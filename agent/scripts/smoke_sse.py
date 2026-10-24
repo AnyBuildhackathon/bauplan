@@ -144,11 +144,18 @@ def _assert_story(events: list[dict]) -> None:
     if metrics["weight_g"] != second["weight_g"] or metrics["price_eur"] != second["price_eur"]:
         raise SystemExit("Kennzahlen und Version weichen ab.")
     bom = [event for event in events if event.get("type") == "bom"][-1]
-    if abs(bom["total_eur"] - second["price_eur"]) > 0.01 or len(bom["items"]) != 8:
+    if abs(bom["total_eur"] - second["price_eur"]) > 0.01 or sum(1 for item in bom["items"] if item.get("category") != "filament") != 8:
         raise SystemExit("Stückliste passt nicht zur Version: " + str(bom["total_eur"]))
     weight = round(sum(item["weight_g"] * item["qty"] for item in bom["items"]), 1)
     if abs(weight - second["weight_g"]) > 0.15:
         raise SystemExit("Gewicht der Stückliste weicht ab: " + str(weight))
+    plans = [event for event in events if event.get("type") == "print"]
+    if len(plans) != 2 or plans[-1]["parts"][0]["id"] != "frame" or not plans[-1]["totals"]["filament_g"] > 0:
+        raise SystemExit("Print plan per version missing: " + str([plan.get("totals") for plan in plans]))
+    if plans[-1]["source"] == "estimate" and any(row["gcode_url"] for row in plans[-1]["parts"]):
+        raise SystemExit("An estimate must not offer G-code.")
+    if not any(item.get("category") == "filament" for item in bom["items"]):
+        raise SystemExit("The bill of materials has no filament line.")
     guides = [event for event in events if event.get("type") == "build_guide"]
     if [guide["version"] for guide in guides] != [1, 2] or not all(guide["steps"] for guide in guides):
         raise SystemExit("Build guide missing for v1 and v2: " + str([guide["version"] for guide in guides]))
