@@ -43,7 +43,7 @@ The team divides responsibilities across the captain, the teammate, and the agen
     - Two-tier training architecture: 1,024 parallel browser simulations using MuJoCo WASM and Web Workers for a fast stage check in seconds, complementing cloud GPU Isaac Lab training.
     - Browser stress test with randomized physics evaluating gait and flight survival across 50 trials with varied friction, mass, and motor torque (reusing the browser MuJoCo workers).
     - Step-by-step build guide with interactive exploded 3D model view highlighting components per step.
-    - Firmware generation (.ino Arduino sketch download or Betaflight CLI) using Isaac Lab trained controller gains when available, falling back to browser-tuned values, plus hardware wiring table.
+    - Firmware generation (.ino Arduino sketch download or Betaflight CLI) using Isaac Lab trained controller gains when available, falling back to Betaflight default gains, plus hardware wiring table.
     - Live component web prices and purchasing links.
     - Stretch goal: Sketch image input integration.
 
