@@ -54,7 +54,7 @@ function PartModel() {
   if (!url) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 px-8 text-center">
-        <Box className="h-8 w-8 text-faint" />
+        <img src={`${import.meta.env.BASE_URL}logo-full.webp`} alt="" draggable={false} className="h-44 w-44 select-none" />
         <p className="text-[18px] font-semibold text-ink-2">{running ? "FreeCAD is building the part …" : "No model yet"}</p>
         <p className="max-w-sm text-[15px] text-muted">The assembly shows up here once FreeCAD has built it.</p>
       </div>
