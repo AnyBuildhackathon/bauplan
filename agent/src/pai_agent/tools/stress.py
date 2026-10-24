@@ -25,14 +25,19 @@ import math
 import random
 import re
 import uuid
+from collections.abc import AsyncIterator, Callable
 from dataclasses import asdict, dataclass, fields
-from typing import AsyncIterator, Callable
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from pai_agent.context import Ctx
-from pai_agent.tools.browser_train import claim_timeout, product_spec, run_timeout, stall_timeout
+from pai_agent.tools.browser_train import (
+    claim_timeout,
+    product_spec,
+    run_timeout,
+    stall_timeout,
+)
 from pai_agent.tools.physics import PhysicsError, compute
 
 # The browser drone hovers at 1 m (DRONE_TARGET in web/src/sim/drone.ts).
@@ -269,7 +274,12 @@ def _drone_plan(ctx: Ctx, args: dict) -> StressPlan:
 
 def _gripper_plan(state) -> StressPlan:
     from pai_agent.tools.gripper import compute_grip
-    from pai_agent.tools.stress_grip import grip_row, grip_weakest, run_grip_world, sample_grip_worlds
+    from pai_agent.tools.stress_grip import (
+        grip_row,
+        grip_weakest,
+        run_grip_world,
+        sample_grip_worlds,
+    )
 
     try:
         metrics = compute_grip(state)

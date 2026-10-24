@@ -14,12 +14,22 @@ import os
 
 os.environ.setdefault("SMOKE_PORT", "8101")
 
-import json  # noqa: E402
-import subprocess  # noqa: E402
-import time  # noqa: E402
-from pathlib import Path  # noqa: E402
+import json
+import subprocess
+import time
+from pathlib import Path
 
-from smoke_train import EXPORTED, PORT, _backlog, _expect_status, _healthy, _post, _stop, _wait_events, _wait_healthy  # noqa: E402
+from smoke_train import (
+    EXPORTED,
+    PORT,
+    _backlog,
+    _expect_status,
+    _healthy,
+    _post,
+    _stop,
+    _wait_events,
+    _wait_healthy,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -81,7 +91,7 @@ def _outcome(world: dict) -> dict:
 def _stress(run: int, fly: bool) -> dict:
     _prompt_when_idle("stress test it")
     events = _wait_events(lambda es: any(e.get("type") == "stress" and e["run"] == run for e in es))
-    queued = [e for e in events if e.get("type") == "stress" and e["run"] == run][0]
+    queued = next(e for e in events if e.get("type") == "stress" and e["run"] == run)
     if queued["status"] != "queued" or queued.get("source") != "browser" or not queued.get("job_id") or queued["spec"].get("product") != "drone":
         raise SystemExit("Stress test was not queued for the browser: " + json.dumps(queued)[:400])
     if not fly:
