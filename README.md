@@ -308,6 +308,28 @@ Blender exports the current CAD assembly as USD with per-part masses.
 Without a working GPU pod, the app shows a clearly labelled recorded result with synthetic fixture values.
 See [Omniverse setup, tools, limitations and verification](docs/omniverse.md) for the full contract, including local ports 8113 and 5193.
 
+## Bench results
+
+AnyBuild Bench measures how often the agent turns a product prompt into a valid, checked product.
+`agent/bench/prompts.json` holds 20 prompts (drone variants, gripper, phone stand, desk lamp, desk fan, Pi enclosure, plant-watering robot, RC car, wall hook, cable organizer and more), each with the checks that judge it: the build finished, CAD geometry, a bill of materials, a render, and the requirements that must be met (`req:mass`, `req:tip_over`, `req:deflection`, ...).
+The runner sends each prompt through the real flow (orchestrator, tools, checks) on its own fresh bench, in its own process, and records pass or fail per check, retries, time, tokens and cost:
+
+```bash
+cd agent && uv run python -m bench.run --limit 8 -j 2 --timeout 900 --budget 3600   # live, needs ANTHROPIC_API_KEY
+cd agent && uv run python -m bench.run --mock                                        # mock: the recorded subset
+```
+
+`-j` limits how many prompts run at once, `--timeout` stops one prompt, `--budget` skips prompts that cannot start in time, `--only id,id` picks prompts.
+Results go to `agent/bench/results/live.json` or `mock.json`; open them in the app under Settings → AnyBuild Bench results (or `?benchmark`), where "Open on bench" builds a prompt again.
+
+| Run | Prompts | Valid products | Checks passed | Cost per product |
+| --- | --- | --- | --- | --- |
+| Mock (no Claude, no FreeCAD) | 5 of 20 | 1 of 5 | 31 of 36 | $0 |
+| Live | not run yet | | | |
+
+The mock row is **not a result of the live agent**: it replays the recorded mock stories for the five products the mock knows, on a machine without FreeCAD, where printed parts fall back to simplified CadQuery blocks and come out too heavy.
+A live run with a key is the measurement that counts.
+
 ## Smoke Test
 
 Run the end-to-end SSE smoke test script:

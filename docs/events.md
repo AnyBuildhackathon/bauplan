@@ -176,6 +176,15 @@ HTTP 400 without a title or author or without a finished build (no bill of mater
 `POST /api/community/{id}/remix` (HTTP 404 for an unknown id) opens the entry on a fresh bench: it sends a `remix` event, rebuilds the entry through the same tools and events as `POST /api/library/{id}/open`, and Mechanic asks what to change.
 The response is like `POST /api/prompt`, with `remix`: `{"ok": true, "mode": "mock", "status": "started", "remix": "quiet-desk-fan"}`, or `status: already_running`.
 
+### Bench
+
+`GET /api/bench` answers `{"ok": true, "runs": [run, ...]}`: the results `agent/bench/run.py` wrote to `agent/bench/results/live.json` and `agent/bench/results/mock.json`, the live run first; a missing file is left out, so no run yet is `"runs": []`.
+A run is `{"mode": "live" | "mock", "note", "started_at", "finished_at", "orchestrator_model", "subagent_model", "concurrency", "timeout_s", "budget_s", "prompts_total", "summary", "results"}`; `note` says a mock run is not a measure of the live agent, and the models are `null` in mock mode.
+`summary` is `{"prompts", "ran", "passed", "pass_rate", "checks_passed", "checks_total", "check_pass_rate", "cost_usd", "cost_per_product_usd", "cost_per_valid_product_usd", "time_s", "retries", "cad_fallbacks", "input_tokens", "output_tokens"}`.
+Each result is one prompt: `{"id", "title", "category", "prompt", "status": "done" | "timeout" | "error" | "skipped", "error", "pass", "checks": [{"id", "label", "pass", "detail"}], "checks_passed", "checks_total", "time_s", "tool_calls", "tool_errors", "fixes", "retries", "cad_fallbacks", "input_tokens", "output_tokens", "cache_read_tokens", "cost_usd", "agents", "model_rounds", "product", "mass_g", "parts_eur", "session_id"}`.
+`pass` is true when the run finished and every expected check passed. A check id is `built`, `cad`, `bom`, `render`, or `req:<id or check>`, which passes when the build has that requirement and it is met.
+The bench sends no SSE events of its own; "Open on bench" in the drawer runs the prompt again with `POST /api/reset` and `POST /api/prompt`.
+
 ### Settings
 
 `GET /api/settings` answers `{"ok": true, "orchestrator_model": "claude-opus-5-5", "orchestrator_effort": "high", "subagent_model": "claude-sonnet-5-5", "subagent_effort": "medium", "delegation": true, "models": [{id, label}], "efforts": ["low", "medium", "high", "xhigh", "max"]}`.
