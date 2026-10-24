@@ -39,6 +39,7 @@ const PHRASES: [RegExp, string][] = [
   [/Übernommen: /g, "Accepted: "],
   [/„/g, '"'],
   [/“/g, '"'],
+  [/”/g, '"'],
   [/(drohne(?:-v\d+)?) an /g, "$1 on "],
 ];
 
