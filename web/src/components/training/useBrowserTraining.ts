@@ -27,7 +27,8 @@ export function useBrowserTraining() {
   useEffect(() => {
     const handle = (t: BrowserTrainingEvent | null) => {
       if (!t) {
-        if (useTrainer.getState().status !== "idle") resetTrainer();
+        const { status } = useTrainer.getState();
+        if (status !== "idle" && status !== "running" && status !== "claiming") resetTrainer();
         return;
       }
       if (t.source !== "browser" || !t.job_id) return;

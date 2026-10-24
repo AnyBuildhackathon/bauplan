@@ -106,7 +106,7 @@ const sleep = (ms: number, signal: AbortSignal) =>
     signal.addEventListener("abort", () => (clearTimeout(id), resolve()), { once: true });
   });
 
-/** Drops the local run (session reset). A running loop stops at its next await. */
+/** Drops the local run (the backend no longer knows its job). A running loop stops at its next await. */
 export function resetTrainer() {
   abort?.abort();
   abort = null;
@@ -156,7 +156,13 @@ export async function runBrowserTraining(jobId: string, fallback: { productId: s
   useTrainer.setState({ status: "running", productId, spec, population, generations, workers: pool.size, startedAt: Date.now() });
 
   const report = (body: Record<string, unknown>) =>
-    post(`/api/training/${jobId}/progress`, { client: CLIENT, ...body }).catch(() => undefined);
+    post(`/api/training/${jobId}/progress`, { client: CLIENT, ...body }).then(
+      (res) => {
+        if (res.status === 404 && useTrainer.getState().jobId === jobId) resetTrainer();
+        else if (res.status === 409) abandonTraining(jobId, "rejected");
+      },
+      () => undefined,
+    );
 
   try {
     const product = productFor(productId);

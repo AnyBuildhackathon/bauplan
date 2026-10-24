@@ -55,7 +55,7 @@ It prefers `frame.FCStd`, then STEP, then STL.
 
 `POST /api/training/{job_id}/claim` with `{"client": "..."}` lets one dashboard tab take a queued browser training job; it returns the job's `spec`, `population`, and `generations`.
 It is HTTP 409 when another client already holds the job, and 404 for a job of an earlier session.
-`POST /api/training/{job_id}/progress` with `{"client", "status": "running"|"done"|"failed", "step", "generation", "best_score", "best_params", "best_metrics", "error"}` from the claiming client publishes a `training` event; other clients get HTTP 409.
+`POST /api/training/{job_id}/progress` with `{"client", "status": "running"|"done"|"failed", "step", "generation", "best_score", "best_params", "best_metrics", "gains", "error"}` from the claiming client publishes a `training` event (`gains` is kept only with `status: "done"`); other clients get HTTP 409.
 `GET /api/training/browser` returns `{"ok": true, "job": {...}}` with the latest browser job of the session in the `training` event shape without `type`, or `job: null`.
 
 `GET /api/health` returns `{"ok": true, "mode": "mock"|"claude"}`.
@@ -270,7 +270,7 @@ for the drone also `mass_g`, `thrust_g` (total maximum thrust of all motors), `m
 The gripper trains its grasp (`squeeze` as a share of `max_force_n`, `ramp_s`, `settle_s`, `lift_s`) in the grip test above: a held grasp scores for less force, a shorter cycle, and less slip.
 `step` counts finished rollouts and `reward` is the best score so far, 0–100; `curve` holds one point per generation.
 `best_params` are in the trainer's own units (drone: attitude gains divided by the roll inertia, 1/s² and 1/s).
-The `done` event also carries `gains`, the trained controller for other modules, and the session keeps the same object as `trained_gains` and `controller_gains`.
+The `done` event also carries `gains`, the trained controller for other modules.
 For the drone it is `{kp_z, ki_z, kd_z, kp_xy, kd_xy, kp_att, kd_att, roll: {p, i}, pitch: {p, i}}`:
 `kp_z` (1/s²), `ki_z` (1/s³), `kd_z` (1/s), `kp_xy` (1/s²), and `kd_xy` (1/s) shape the commanded acceleration, `kp_att` (N m/rad) and `kd_att` (N m s/rad) are the attitude torque gains, and `roll` and `pitch` are Betaflight 4.4 rate P and I.
 Those are the Betaflight defaults (roll 45/80, pitch 47/84) scaled by the trained `kd_att` against 12 1/s and clamped to 0.5–2×, a starting point for the bench rather than a measured tune; yaw, D, and feed-forward are not trained and keep the firmware defaults.

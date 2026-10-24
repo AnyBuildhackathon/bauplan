@@ -216,10 +216,6 @@ async def train_in_browser(ctx: Ctx, args: dict) -> dict:
         message = "The browser run failed."
         return {"ok": False, "error": message, "detail": message, "job_id": job["id"]}
     metrics = job["best_metrics"] or {}
-    if job["gains"]:
-        # The stress test reads `trained_gains`, the firmware `controller_gains`; both take this one object.
-        ctx.state.trained_gains = job["gains"]
-        ctx.state.controller_gains = job["gains"]
     detail = f"{job['step']:,} rollouts · score {job['curve'][-1][1]:.1f}" if job["curve"] else f"{job['step']:,} rollouts"
     return {
         "ok": True,
@@ -352,9 +348,6 @@ def _result_line(product: str, result: dict) -> str:
         return line
     if metrics.get("rms_error_cm") is not None and metrics.get("max_tilt_deg") is not None:
         line += f" It holds position within {float(metrics['rms_error_cm']):.1f} cm RMS and tilts at most {float(metrics['max_tilt_deg']):.0f}°."
-    roll, pitch = exported.get("roll"), exported.get("pitch")
-    if isinstance(roll, dict) and isinstance(pitch, dict):
-        line += f" For the firmware: Betaflight roll P/I {roll.get('p')}/{roll.get('i')}, pitch {pitch.get('p')}/{pitch.get('i')}."
     params = result.get("best_params") or {}
     if params:
         line += " Gains: " + ", ".join(f"{key} {value:g}" for key, value in params.items()) + "."

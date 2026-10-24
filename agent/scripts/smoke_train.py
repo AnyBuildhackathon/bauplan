@@ -65,8 +65,6 @@ def _trained() -> None:
     _post("/api/training/" + job_id + "/progress", {"client": "tab-a", "status": "done", "step": 1024, "generation": 16, "best_score": 78.2, "best_params": GAINS, "best_metrics": METRICS, "gains": EXPORTED})
     _expect_status(409, "/api/training/" + job_id + "/progress", {"client": "tab-a", "status": "running"})
     events = _wait_events(lambda evs: any(e.get("type") == "chat" and "1,024 simulations" in e.get("text", "") for e in evs))
-    if not any("Betaflight roll P/I 51/90" in e.get("text", "") for e in events if e.get("type") == "chat"):
-        raise SystemExit("The summary does not hand the firmware gains over.")
     training = [e for e in events if e.get("type") == "training" and e.get("job_id") == job_id]
     if [e["status"] for e in training] != ["queued", "running", "running", "done"]:
         raise SystemExit("Training events out of order: " + str([e["status"] for e in training]))
