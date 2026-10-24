@@ -16,6 +16,7 @@ from pai_agent.mock_story import run_mock, run_mock_followup, run_review
 from pai_agent.scene import STEPS
 from pai_agent.tools.browser_train import run_mock_training
 from pai_agent.tools.registry import DELEGATED, SCHEMAS, call_tool
+from pai_agent.timeouts import model_timeout
 from pai_agent.tools.stress import run_stress_mock, wants_stress
 
 log = logging.getLogger(__name__)
@@ -290,17 +291,22 @@ async def _run_claude(ctx: Ctx, text: str, messages: list[dict]) -> None:
     await lead.emit("running", "plans the build")
     for _round in range(40):
         try:
-            response = await asyncio.to_thread(
-                create_message,
-                lead.model,
-                lead.effort,
-                max_tokens=16000,
-                system=_system(delegation),
-                tools=_tools(delegation),
-                messages=messages,
+            response = await asyncio.wait_for(
+                asyncio.to_thread(
+                    create_message,
+                    lead.model,
+                    lead.effort,
+                    max_tokens=16000,
+                    system=_system(delegation),
+                    tools=_tools(delegation),
+                    messages=messages,
+                ),
+                model_timeout(),
             )
         except Exception as exc:
             log.exception("anthropic call failed")
+            if isinstance(exc, TimeoutError):
+                exc = TimeoutError(f"no answer within {model_timeout():g} s (PAI_MODEL_TIMEOUT_S), the run stops here")
             await lead.emit("error", str(exc)[:160])
             await ctx.chat("agent", "The model request failed: " + str(exc))
             await call_tool(

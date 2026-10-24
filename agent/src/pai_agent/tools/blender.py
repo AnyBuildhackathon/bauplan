@@ -98,6 +98,26 @@ def _render(binary: str, stl: Path, png: Path, spec: dict) -> None:
         raise RuntimeError(tail)
 
 
+def _render_cached(binary: str, stl: Path, png: Path, spec: dict) -> None:
+    """An identical scene (same meshes, colours and script) reuses the last studio PNG instead of a new Blender run."""
+
+    from pai_agent import cache
+
+    def meshes(value):
+        # Paths differ per session; the mesh content decides the picture.
+        if isinstance(value, dict):
+            return {k: (cache.digest(Path(v)) if k == "stl" and isinstance(v, str) else meshes(v)) for k, v in value.items()}
+        if isinstance(value, list):
+            return [meshes(v) for v in value]
+        return value
+
+    entry = cache.key("render", cache.digest(stl), meshes(spec), cache.digest(_SCRIPT), cache.tool_version(binary))
+    if cache.restore("renders", entry, {"studio.png": png}) is not None:
+        return
+    _render(binary, stl, png, spec)
+    cache.store("renders", entry, {"studio.png": png})
+
+
 async def blender_render(ctx: Ctx, args: dict) -> dict:
     del args
     if not ctx.state.stl_path:
@@ -116,7 +136,7 @@ async def blender_render(ctx: Ctx, args: dict) -> dict:
                 spec = _part_spec(ctx.state)
             else:
                 spec = _assembly(ctx.state)
-            await asyncio.to_thread(_render, binary, stl, png, spec)
+            await asyncio.to_thread(_render_cached, binary, stl, png, spec)
         except (OSError, TimeoutError, RuntimeError, subprocess.SubprocessError):
             binary = None
     if binary is not None and png.is_file():
@@ -124,6 +144,12 @@ async def blender_render(ctx: Ctx, args: dict) -> dict:
         label = "v" + str(len(ctx.state.versions) + 1) + " · Studio"
         await ctx.emit({"type": "render", "source": "blender", "png_url": url, "label": label})
         return {"ok": True, "status": "ok", "detail": label + " render", "png_url": url}
+    return await recorded_still(ctx, "Blender is missing. Recorded still.")
+
+
+async def recorded_still(ctx: Ctx, detail: str) -> dict:
+    """The recorded still in place of a render: Blender is missing, failed or took too long."""
+
     _ensure_fallback()
     url = "/files/fallback/render.png"
     await ctx.emit(
@@ -137,7 +163,7 @@ async def blender_render(ctx: Ctx, args: dict) -> dict:
     return {
         "ok": True,
         "status": "offline",
-        "detail": "Blender is missing. Recorded still.",
+        "detail": detail,
         "png_url": url,
     }
 
