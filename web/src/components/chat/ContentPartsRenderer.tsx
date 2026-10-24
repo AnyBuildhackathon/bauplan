@@ -63,16 +63,17 @@ function getToolLabel(name: string, phase: string): string {
   return phase === "running" ? l.running : l.done;
 }
 
-function PhaseIcon({ phase }: { phase: "running" | "ok" | "error" }) {
+function PhaseIcon({ phase, small = false }: { phase: "running" | "ok" | "error"; small?: boolean }) {
+  const size = small ? "h-3.5 w-3.5" : "h-5 w-5";
   if (phase === "running") {
     return (
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center">
-        <span className="h-2.5 w-2.5 animate-pulse-soft rounded-full bg-agent" />
+      <span className={`flex shrink-0 items-center justify-center ${size}`}>
+        <span className={`animate-pulse-soft rounded-full bg-agent ${small ? "h-2 w-2" : "h-2.5 w-2.5"}`} />
       </span>
     );
   }
-  if (phase === "error") return <CircleX className="h-5 w-5 shrink-0 text-fail" strokeWidth={2.2} />;
-  return <CircleCheck className="h-5 w-5 shrink-0 text-ok" strokeWidth={2.2} />;
+  if (phase === "error") return <CircleX className={`shrink-0 text-fail ${size}`} strokeWidth={2.2} />;
+  return <CircleCheck className={`shrink-0 text-ok ${size}`} strokeWidth={2.2} />;
 }
 
 function ToolCallPartRenderer({ item }: { item: Extract<ChatItem, { kind: "tool" }> }) {
@@ -315,8 +316,8 @@ export function ProgressLineRenderer({ items }: { items: Extract<ChatItem, { kin
   const failed = items.some((i) => i.phase === "error");
   const names = [...new Set(items.map((i) => i.name))];
   return (
-    <div className="flex min-w-0 items-center gap-2 py-0.5 pl-9 text-[13px] text-muted" data-target="tool_progress">
-      <PhaseIcon phase={running ? "running" : failed ? "error" : "ok"} />
+    <div className="flex min-w-0 items-center gap-1.5 pl-8 text-[12px] text-faint" data-target="tool_progress">
+      <PhaseIcon phase={running ? "running" : failed ? "error" : "ok"} small />
       <span className="truncate">{running ? getToolLabel(running.name, "running") : names.join(" · ")}</span>
     </div>
   );

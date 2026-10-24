@@ -14,7 +14,7 @@ export interface Display {
   tools: boolean;
   jamie: boolean;
   allMetrics: boolean;
-  /** Learning mode: Mechanic explains every decision, with "Why?" links and a glossary. */
+  /** Learning mode: Mechanic explains every decision ("Why?" links, a glossary), and the logbook shows what was learned. */
   learning: boolean;
 }
 
@@ -29,8 +29,6 @@ interface UiState {
   selectedRun: number | null;
   bomOpen: boolean;
   lessonStep: StepId | null;
-  /** The decision the learning drawer explains (`part:battery`, `requirement:flight_time`), or null. */
-  why: string | null;
   concepts: Record<string, ConceptStatus>;
   /** Push-to-talk is held down. */
   listening: boolean;
@@ -54,7 +52,6 @@ interface UiState {
   setBomOpen: (open: boolean) => void;
   openLesson: (step: StepId) => void;
   closeLesson: () => void;
-  openWhy: (target: string | null) => void;
   markConcept: (id: string, status: ConceptStatus) => void;
   setListening: (on: boolean) => void;
   setMicMode: (mode: MicMode) => void;
@@ -123,7 +120,6 @@ export const useUi = create<UiState>((set) => ({
   selectedRun: null,
   bomOpen: params().has("bom"),
   lessonStep: initialLesson(),
-  why: null,
   concepts: {},
   listening: false,
   micMode: storedMicMode(),
@@ -151,7 +147,6 @@ export const useUi = create<UiState>((set) => ({
   openLesson: (lessonStep) =>
     set((s) => ({ lessonStep, concepts: s.concepts[lessonStep] ? s.concepts : { ...s.concepts, [lessonStep]: "gesehen" } })),
   closeLesson: () => set({ lessonStep: null }),
-  openWhy: (why) => set({ why }),
   markConcept: (id, status) => set((s) => ({ concepts: { ...s.concepts, [id]: status } })),
   setListening: (listening) => set({ listening }),
   setMicMode: (micMode) => {
@@ -172,5 +167,5 @@ export const useUi = create<UiState>((set) => ({
     }
     set({ voiceOn });
   },
-  resetUi: () => set({ selectedVersion: null, selectedRun: null, lessonStep: null, why: null, concepts: {}, bomOpen: false }),
+  resetUi: () => set({ selectedVersion: null, selectedRun: null, lessonStep: null, concepts: {}, bomOpen: false }),
 }));

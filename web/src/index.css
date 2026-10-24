@@ -1,13 +1,14 @@
 @import "tailwindcss";
 
 /* AnyBuild look as tokens: an off-white, airy, almost borderless reading surface.
-   Mechanic's answers and the Jamie quotes use the serif; everything else stays plain.
+   Inter Tight carries the interface; Mechanic's answers and the Jamie quotes use Inter,
+   the same family with more room, so long text reads calmly at a small size.
    Colors carry meaning: agent (orange) = what the agent is doing right now, ok (green)
    = passed or met, fail (red) = failed, accent (teal) = send and source citations.
    The *-ink variants are darker text shades that stay readable on a projector. */
 @theme {
   --font-sans: "Inter Tight", "Inter Tight Fallback", -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
-  --font-serif: "Newsreader", "Iowan Old Style", Georgia, serif;
+  --font-read: "Inter", "Inter Tight", -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
   --font-hand: "Caveat", "Bradley Hand", cursive;
 
   --color-page: #fafaf8;
@@ -49,6 +50,11 @@
   --animate-rise: rise 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   --animate-spin-slow: spin 1.2s linear infinite;
   --animate-indeterminate: indeterminate 1.6s ease-in-out infinite;
+  /* Mechanic: breathing for every state, a slow sway on top that depends on the state. */
+  --animate-mech-breathe: mech-breathe 4.8s ease-in-out infinite;
+  --animate-mech-sway: mech-sway 9s ease-in-out infinite;
+  --animate-mech-ponder: mech-sway 5.5s ease-in-out infinite;
+  --animate-mech-bounce: mech-bounce 2.2s ease-in-out infinite;
 
   @keyframes indeterminate {
     from {
@@ -68,6 +74,36 @@
     50% {
       opacity: 0.45;
       transform: scale(0.82);
+    }
+  }
+  @keyframes mech-breathe {
+    0%,
+    100% {
+      transform: translateY(0) scale(1);
+    }
+    50% {
+      transform: translateY(-0.6%) scale(1.012);
+    }
+  }
+  @keyframes mech-sway {
+    0%,
+    100% {
+      transform: rotate(-0.9deg);
+    }
+    50% {
+      transform: rotate(0.9deg);
+    }
+  }
+  @keyframes mech-bounce {
+    0%,
+    100% {
+      transform: translateY(0) rotate(0);
+    }
+    30% {
+      transform: translateY(-1.6%) rotate(-1.2deg);
+    }
+    60% {
+      transform: translateY(0) rotate(0.6deg);
     }
   }
   @keyframes rise {

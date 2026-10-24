@@ -27,8 +27,8 @@ export function QuoteBubble({ quote, className = "" }: { quote: Pick<Quote, "tex
   const by = [quote.speaker, quote.meeting_title, quote.time].filter(Boolean).join(" · ");
   return (
     <div className={`animate-rise rounded-[14px] bg-page-2 px-3.5 py-3 ${className}`}>
-      {by && <p className="mb-1 text-[13px] font-medium text-muted">{by}</p>}
-      <p className="font-serif text-[16px] leading-snug text-ink-2">“{quote.text}”</p>
+      {by && <p className="mb-1 text-[12px] font-medium text-muted">{by}</p>}
+      <p className="font-read text-[14px] leading-normal text-ink-2">“{quote.text}”</p>
     </div>
   );
 }
@@ -57,13 +57,13 @@ function RequirementRow({ r, open, onToggle }: { r: RequirementEvent; open: bool
       >
         <CheckDot state={state} />
         <span className="min-w-0 flex-1">
-          <span className={`block text-[16px] leading-snug font-semibold ${r.met === false ? "text-fail-ink" : "text-ink"}`}>{r.text}</span>
+          <span className={`block text-[15px] leading-snug font-medium ${r.met === false ? "text-fail-ink" : "text-ink"}`}>{r.text}</span>
           {r.changed_from && <span className="block text-[13px] font-medium text-muted line-through decoration-faint">{r.changed_from}</span>}
           {r.detail && <span className={`num block text-[13px] font-semibold ${r.met === false ? "text-fail-ink" : "text-muted"}`}>{r.detail}</span>}
           {open && (by || r.source_quote) && (
             <span className="mt-1.5 block animate-rise">
-              {by && <span className="block text-[13px] font-medium text-muted">{by}</span>}
-              {r.source_quote && <span className="block font-serif text-[16px] leading-snug text-ink-2">“{r.source_quote}”</span>}
+              {by && <span className="block text-[12px] font-medium text-muted">{by}</span>}
+              {r.source_quote && <span className="block font-read text-[14px] leading-normal text-ink-2">“{r.source_quote}”</span>}
             </span>
           )}
         </span>
@@ -123,7 +123,7 @@ export function BuildPanel() {
   return (
     <aside className="card flex max-h-full min-h-0 flex-col self-start overflow-hidden px-5 pt-4 pb-5">
       <div className="mb-3 flex items-center gap-2" data-target="metrics kennzahlen">
-        <h2 className="text-[16px] font-semibold text-ink">Requirements and key numbers</h2>
+        <h2 className="text-[15px] font-semibold text-ink">Requirements and key numbers</h2>
         {version && (
           <span className={`num ml-auto text-[13px] font-medium ${pinned ? "text-agent-ink" : "text-muted"}`} title={version.meeting_title}>
             v{version.n}
