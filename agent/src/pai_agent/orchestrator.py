@@ -10,6 +10,7 @@ import re
 from pai_agent.context import Ctx
 from pai_agent import settings
 from pai_agent.env import claude_enabled
+from pai_agent.mock_categories import NAMES as CATEGORY_NAMES, RUNS as CATEGORY_RUNS, wants_category
 from pai_agent.mock_gripper import run_gripper_mock, wants_gripper
 from pai_agent.mock_product import run_product_mock, wants_product
 from pai_agent.mock_story import run_mock, run_mock_followup, run_review
@@ -40,6 +41,8 @@ Any product (the default; a phone stand, a desk fan, a plant-watering robot, a b
    (printed, bought, external loads such as the phone it holds or the water in a tank). Pick checks that fit the product:
    mass and cost always, tip_over for anything that stands, deflection for arms, shelves, clips and brackets,
    torque when a motor or servo moves something, runtime when it runs on a battery, stability (MuJoCo push) for anything on a table.
+   power (check_power, min headroom x) when electronics run from a supply or battery, thermal (check_thermal, max °C) for electronics in a closed case,
+   rollover (check_rollover, min g lateral) for anything with wheels that turns.
    Describe each printed part precisely, with its position in the assembly frame (mm, Z up, the product stands on Z = 0 centred on X = Y = 0,
    -Y is the front), so the parts meet without placements. If product_spec lists problems, fix all of them and call it again.
 2. cad_part with part_id for each printed part. FreeCAD builds it headless from a script Claude writes; failed scripts are fixed and retried.
@@ -47,7 +50,7 @@ Any product (the default; a phone stand, a desk fan, a plant-watering robot, a b
 3. part_pick for each bought part: search with query, then select_id; when no catalog part fits, pass an honest estimate.
 4. assemble, read the warnings (a part that floats, a part without position) and fix them with placements.
 5. The checks, right after the first assembly and before you tune anything: check_totals, then the ones your requirements need
-   (check_tip_over, check_deflection, check_torque, check_runtime, simulate_assembly). Every check says pass or fail against the requirements.
+   (check_tip_over, check_deflection, check_torque, check_runtime, check_power, check_thermal, check_rollover, simulate_assembly). Every check says pass or fail against the requirements.
 6. On a fail: say which requirement failed and why in one sentence, point at it with ui_point_at, then change one parameter with cad_update
    (it rebuilds, reassembles and reruns every check) or swap a bought part with part_pick, and say whether it passes now. At most three fixes.
    Never relax a requirement's limit to make it pass. If it cannot be met, ask the user with ask_user (keep trying, or accept the lower limit),
@@ -134,6 +137,10 @@ async def run_prompt(ctx: Ctx, text: str, messages: list[dict]) -> None:
     if not claude_enabled():
         if wants_gripper(text) and not (ctx.state.product == "gripper" and ctx.state.finished):
             await run_gripper_mock(ctx, text)
+            return
+        category = wants_category(text)
+        if category and not (ctx.state.product == "generic" and ctx.state.finished and (ctx.state.spec or {}).get("name") == CATEGORY_NAMES[category]):
+            await CATEGORY_RUNS[category](ctx, text)
             return
         if wants_product(text) and not (ctx.state.product == "generic" and ctx.state.finished):
             await run_product_mock(ctx, text)

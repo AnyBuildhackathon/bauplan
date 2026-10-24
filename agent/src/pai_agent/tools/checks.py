@@ -15,7 +15,7 @@ from pai_agent.context import Ctx
 from pai_agent.spec import part_of, slug
 from pai_agent.tools.product import _fail, emit_cards, ensure_assembly, require_spec
 
-UNIT_LABEL = {"g": "g", "eur": "€", "mm": "mm", "deg": "°", "n": "N", "x": "×", "min": "min", "h": "h", "days": "days"}
+UNIT_LABEL = {"deg_c": "°C", "g": "g", "eur": "€", "mm": "mm", "deg": "°", "n": "N", "x": "×", "min": "min", "h": "h", "days": "days"}
 TIME_FACTOR = {"min": 60.0, "h": 1.0, "days": 1.0 / 24.0}
 
 
@@ -28,7 +28,7 @@ def _requirements(state, check: str, part_id: str | None = None) -> list[dict]:
 
 def _fmt(value: float, unit: str) -> str:
     digits = 2 if unit == "eur" or abs(value) < 1 else 0 if abs(value) >= 100 else 1
-    return f"{value:.{digits}f}" + ("" if unit in {"x", "deg"} else " ") + UNIT_LABEL.get(unit, unit)
+    return f"{value:.{digits}f}" + ("" if unit in {"x", "deg", "deg_c"} else " ") + UNIT_LABEL.get(unit, unit)
 
 
 def _value_for(state, requirement: dict) -> float | None:
@@ -51,8 +51,17 @@ def _value_for(state, requirement: dict) -> float | None:
         torque = state.checks.get("torque")
         return None if not torque else torque["safety"]
     if check == "runtime":
-        run = state.checks.get("runtime")
-        return None if not run else run["runtime_h"] * TIME_FACTOR[unit or "h"]
+        run = state.checks.get("runtime") or state.checks.get("power")
+        return None if not run or run.get("runtime_h") is None else run["runtime_h"] * TIME_FACTOR[unit or "h"]
+    if check == "power":
+        power = state.checks.get("power")
+        return None if not power else power["headroom"]
+    if check == "thermal":
+        heat = state.checks.get("thermal")
+        return None if not heat else heat["internal_c"]
+    if check == "rollover":
+        roll = state.checks.get("rollover")
+        return None if not roll else roll["side_slope_deg"] if unit == "deg" else roll["max_lateral_g"]
     if check == "stability":
         sim = state.checks.get("stability")
         return None if not sim else sim["final_tilt_deg"]
@@ -101,6 +110,9 @@ _CARD = {
     "stability": ("Push test tilt", "deg"),
     "drop": ("Drop load", "g"),
     "size": ("Size", "mm"),
+    "power": ("Power headroom", "x"),
+    "thermal": ("Thermal", "deg_c"),
+    "rollover": ("Roll-over", "g"),
 }
 
 
