@@ -3,9 +3,11 @@
 import asyncio
 import os
 import unittest
+from unittest import mock
 
 from bench.judge import judge, retries, usage
 from bench.run import load_prompts, run_one, summarize
+from pai_agent.bus import EventBus
 from pai_agent.session import _new_state
 
 CHECKS = {"built", "cad", "bom", "render"}
@@ -89,11 +91,21 @@ class MockRunTest(unittest.TestCase):
 
     def test_drone_prompt_through_the_real_flow(self):
         item = next(p for p in load_prompts() if p["id"] == "drone-micro")
-        result = asyncio.run(run_one(item, 120))
+        buses: list[EventBus] = []
+
+        class RecordedBus(EventBus):
+            def __init__(self) -> None:
+                super().__init__()
+                buses.append(self)
+
+        with mock.patch("pai_agent.bus.EventBus", RecordedBus):
+            result = asyncio.run(run_one(item, 120))
         self.assertEqual(result["status"], "done")
         self.assertEqual(result["checks_total"], len(item["checks"]))
         self.assertTrue(next(c for c in result["checks"] if c["id"] == "built")["pass"])
-        self.assertEqual(result["cost_usd"], 0)
+        # The scripted mock team reports what a real run would cost in its agent events; the result is their sum.
+        self.assertGreater(result["cost_usd"], 0)
+        self.assertAlmostEqual(result["cost_usd"], usage(buses[0].events)["cost_usd"])
 
 
 if __name__ == "__main__":

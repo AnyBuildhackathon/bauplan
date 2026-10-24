@@ -90,6 +90,8 @@ async def main() -> None:
     references = list_references()
     check([r["id"] for r in references[:2]] == ["micro-drone", "robot-gripper"], "the library starts with the drone and the gripper, built by their own code")
     check(any(r["id"] == "phone-stand" for r in references), "the registry has the phone stand reference")
+    ids = {r["id"] for r in references}
+    check({"desk-lamp", "bike-mount", "pet-feeder"} <= ids, "the registry has the desk lamp, the bike mount and the pet feeder")
     for row in references:
         folder = SESSIONS_DIR / ("smoke-ref-" + row["id"])
         shutil.rmtree(folder, ignore_errors=True)
