@@ -256,7 +256,23 @@ async def run_reference(ctx: Ctx, ref_id: str) -> None:
 
     await _first(ctx)
     await ctx.step("meeting", "running")
-    result = await build_reference(ctx, ref_id)
+    await _on_bench(ctx, await build_reference(ctx, ref_id))
+
+
+async def run_remix(ctx: Ctx, entry: dict) -> None:
+    """Opens a community project on a fresh bench as a remix: rebuilt through the same tools, linked to its original."""
+
+    from pai_agent.community import build_entry
+
+    await _first(ctx)
+    ctx.state.remixed_from = {"id": entry["id"], "title": entry["title"], "author": entry["author"]}
+    await ctx.emit({"type": "remix", **ctx.state.remixed_from})
+    await ctx.step("meeting", "running")
+    result = await build_entry(ctx, entry["id"])
+    await _on_bench(ctx, {**result, "name": entry["title"]})
+
+
+async def _on_bench(ctx: Ctx, result: dict) -> None:
     ctx.state.finished = True
     for step_id in ("meeting", "teile", "cad", "simulation", "render", "stueckliste"):
         await ctx.step(step_id, "done")

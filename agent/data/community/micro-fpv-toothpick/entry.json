@@ -1,0 +1,89 @@
+{
+  "id": "micro-fpv-toothpick",
+  "base": "micro-drone",
+  "title": "1S micro FPV toothpick",
+  "description": "The 1S 2-inch toothpick from Mediocre Nerd's \"Build a Micro FPV Drone for $59\" video, part for part: Twiglet carbon frame, 1103 motors, Caddx Ant camera, Matrix 1S AIO. Passes the MuJoCo gust test.",
+  "author": "AnyBuild team",
+  "published_at": "2026-10-21T19:12:00",
+  "remixes": 14,
+  "product": "drone",
+  "product_label": "Micro FPV drone",
+  "remixed_from": null,
+  "metrics": {
+    "requirements_passed": 5,
+    "requirements": 5,
+    "parts": 8,
+    "cost_eur": 117.38,
+    "mass_g": 47.2,
+    "thrust_to_weight": 4.24,
+    "flight_time_min": 8.5
+  },
+  "bom": [
+    {
+      "name": "1103 15000KV (no-name)",
+      "qty": 4,
+      "unit_price_eur": 8.05
+    },
+    {
+      "name": "Gemfan 2020 51 mm 4-blade",
+      "qty": 4,
+      "unit_price_eur": 0.56
+    },
+    {
+      "name": "Tattu R-Line 1S 550mAh 95C",
+      "qty": 1,
+      "unit_price_eur": 5.36
+    },
+    {
+      "name": "BetaFPV Matrix 1S 5IN1 V2 AIO",
+      "qty": 1,
+      "unit_price_eur": 49.13
+    },
+    {
+      "name": "Twiglet 2\" carbon toothpick frame",
+      "qty": 1,
+      "unit_price_eur": 8.4
+    },
+    {
+      "name": "Caddx Ant 1200TVL nano camera",
+      "qty": 1,
+      "unit_price_eur": 15.99
+    },
+    {
+      "name": "Toothpick canopy and battery holder (TPU)",
+      "qty": 1,
+      "unit_price_eur": 3.7
+    },
+    {
+      "name": "M1.4 x 3 mm motor bolts",
+      "qty": 12,
+      "unit_price_eur": 0.03
+    }
+  ],
+  "versions": [
+    {
+      "n": 1,
+      "meeting_id": "kickoff-drohne-2026-10-24",
+      "meeting_title": "Drone kickoff",
+      "weight_g": 47.2,
+      "thrust_to_weight": 4.24,
+      "flight_time_min": 8.5,
+      "price_eur": 117.38,
+      "sim": "pass",
+      "parts": {
+        "motor": "1103 15000KV (no-name)",
+        "propeller": "Gemfan 2020 51 mm 4-blade",
+        "battery": "Tattu R-Line 1S 550mAh 95C",
+        "flight_controller": "BetaFPV Matrix 1S 5IN1 V2 AIO",
+        "frame": "Twiglet 2\" carbon toothpick frame",
+        "camera": "Caddx Ant 1200TVL nano camera",
+        "canopy": "Toothpick canopy and battery holder (TPU)",
+        "hardware": "M1.4 x 3 mm motor bolts"
+      },
+      "diff": [],
+      "summary": "47.2 g · 8.5 min · 117.38 €",
+      "note": "Bauplan v1 aus Drone kickoff: 47.2 g · 8.5 min · 117.38 €."
+    }
+  ],
+  "files": []
+}

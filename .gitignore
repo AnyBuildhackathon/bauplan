@@ -6,5 +6,6 @@
 **/.pytest_cache/
 agent/runs/sessions/
 agent/runs/cache/
+agent/runs/community/
 web/test-results/
 web/playwright-report/

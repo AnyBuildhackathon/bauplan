@@ -126,6 +126,56 @@ All three answer HTTP 404 before the first `bom`.
 Share in the dashboard saves a spec product with `POST /api/library` and copies `?project={id}`; the drone and the gripper share their code reference id (`micro-drone`, `robot-gripper`) without saving.
 The dashboard opens `?project={id}` by calling `POST /api/library/{id}/open` once when the backend is live, then drops the parameter from the URL; an id that is not in the library shows a notice instead.
 
+### Community
+
+The community holds projects people published, for others to open and keep working on (remix).
+Seed entries live in the repository under `agent/data/community/{id}/entry.json` and rebuild from a library item; published entries live under `agent/runs/community/{id}/` (local, not committed) with the whole project.
+`agent/scripts/seed_community.py` rebuilds the seeds in mock mode, writes their real numbers into `entry.json`, and exports the same feed to `web/public/community/feed.json` for the recorded demo.
+
+`GET /api/community?sort=new|popular&q=...` answers `{"ok": true, "items": [entry, ...]}`: newest first, or with `sort=popular` the most remixed first; `q` keeps the entries whose title, description, author or product mentions it.
+HTTP 400 for another `sort`.
+Each entry is:
+
+```json
+{
+  "id": "quiet-desk-fan",
+  "title": "Quiet USB desk fan",
+  "description": "An 80 mm USB fan on a printed neck, bracket and 150 mm base.",
+  "author": "maker.kai",
+  "published_at": "2026-10-23T09:30:00",
+  "product": "generic",
+  "product_label": "USB Desk Fan",
+  "base": "desk-fan",
+  "seed": true,
+  "remixed_from": null,
+  "remixes": 4,
+  "metrics": {"requirements_passed": 6, "requirements": 6, "parts": 5, "cost_eur": 16.53, "mass_g": 280.1, "printed": 3},
+  "bom": [{"name": "80 mm 5 V USB fan 80x80x25", "qty": 1, "unit_price_eur": 5.5}],
+  "versions": [],
+  "files": [],
+  "thumbnail_url": "/api/community/quiet-desk-fan/thumbnail"
+}
+```
+
+`product` is `drone`, `gripper` or `generic`; `base` is the library id a remix rebuilds from, or `null` when the entry stores its own spec, FreeCAD scripts and picks (a published product built from a spec).
+`remixed_from` is `{"id", "title", "author"}` of the original or `null`.
+`remixes` is a seed's starting count plus the number of entries published as remixes of it.
+`metrics` always has `mass_g`, `cost_eur`, `parts` (bill of materials lines), `requirements_passed` and `requirements`; the drone adds `thrust_to_weight` and `flight_time_min`, the gripper `grip_force_n`, a spec product `printed`.
+`bom` is the bill of materials, `versions` the Jamie versions in the `version` event shape, `files` the studio renders and CAD files (STEP, STL) the entry keeps.
+
+`GET /api/community/{id}` answers `{"ok": true, "item": entry}`, HTTP 404 for an unknown id.
+`GET /api/community/{id}/thumbnail` returns the PNG (the entry's latest render, else its base library item's), HTTP 404 without one.
+`GET /api/community/{id}/files/{name}` returns one of the entry's `files`.
+
+`POST /api/community` with `{"title": "...", "description": "...", "author": "..."}` publishes the current build and answers `{"ok": true, "item": entry}`.
+It keeps the spec, the FreeCAD script of every printed part, the picks and the checks (a spec product), the bill of materials, the numbers, the versions, the studio renders and the CAD files.
+The drone and the gripper are built by their own code, so their entries rebuild through that flow (`base` is `micro-drone` or `robot-gripper`) and keep the published numbers, parts, renders and CAD files next to it.
+When the bench holds a remix, the new entry's `remixed_from` links to the original.
+HTTP 400 without a title or author or without a finished build (no bill of materials yet), 409 while Mechanic is building.
+
+`POST /api/community/{id}/remix` (HTTP 404 for an unknown id) opens the entry on a fresh bench: it sends a `remix` event, rebuilds the entry through the same tools and events as `POST /api/library/{id}/open`, and Mechanic asks what to change.
+The response is like `POST /api/prompt`, with `remix`: `{"ok": true, "mode": "mock", "status": "started", "remix": "quiet-desk-fan"}`, or `status: already_running`.
+
 ### Settings
 
 `GET /api/settings` answers `{"ok": true, "orchestrator_model": "claude-opus-5-5", "orchestrator_effort": "high", "subagent_model": "claude-sonnet-5-5", "subagent_effort": "medium", "delegation": true, "models": [{id, label}], "efforts": ["low", "medium", "high", "xhigh", "max"]}`.
@@ -259,6 +309,11 @@ Without this event a fresh bench has no product; the first drone event (drone me
 The photo of a hand sketch a build started from: `id` (`sketch-1`), `url` (under `/files/`, never the image data), `status` and `note` (what the user wrote with it).
 `reading` comes first, when the photo is stored; `sketch_to_spec` then publishes `read` with `summary` (one sentence), `read` (`[{label, value, unit, confidence}]`, confidence `high`, `medium` or `low`), `unreadable` (strings), `product` (the spec id) and `source` (`claude` or `recorded`), or `failed` with `error` and `unreadable`.
 The client shows the latest sketch in the Model tab; a `reset` drops it, and so does a `product` event for another product than the sketch's.
+
+### remix
+
+`{"type": "remix", "id": "quiet-desk-fan", "title": "Quiet USB desk fan", "author": "maker.kai"}` says the bench holds a remix of that community entry.
+Sent once when `POST /api/community/{id}/remix` starts; the client shows a "Remixed from" link back to the original until the next reset, and publishing the build links the new entry to it.
 
 ### sim
 

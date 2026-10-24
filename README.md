@@ -51,6 +51,9 @@ The empty bench offers two starts that run the same flow.
 "From a reference" loads a known product with all its real parts from the registry in `agent/data/references/`, rebuilt and rechecked through the same tools (no key needed), and then you change it in the chat, for example "make it hold a 480 g tablet", and live Claude reworks it.
 "From scratch" takes any description.
 The library (`GET /api/library`, `POST /api/library/{id}/open`, see `docs/events.md`) lists the micro FPV drone first and the robot gripper second, both built by their own code, then the reference builds and the projects users saved with `POST /api/library`: each is one `reference.json` with the spec, the picks and the checks, one FreeCAD script per printed part, and a studio render as thumbnail.
+The Community view (`GET /api/community`, `POST /api/community`, `POST /api/community/{id}/remix`, see `docs/events.md`) is a feed of published projects with their render, author, key numbers and remix count, searchable and sorted by new or popular.
+"Publish current build" shares the bench with its spec, parts, CAD files, renders and versions; "Remix" opens a published project on a fresh bench with a link back to the original, Mechanic keeps working on it by chat or voice, and publishing the remix counts toward the original's remixes.
+The feed is seeded from the library builds with their real numbers by `agent/scripts/seed_community.py`, and `agent/scripts/smoke_community.py` checks the remix and publish round trip.
 
 ### Orchestrator and sub-agents
 

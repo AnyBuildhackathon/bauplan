@@ -172,8 +172,6 @@ def list_references() -> list[dict]:
 async def build_reference(ctx, ref_id: str) -> dict:
     """Builds a reference through the normal tools. Raises ValueError for an unknown id or a failing tool."""
 
-    from pai_agent.tools.registry import call_tool
-
     code = CODE_REFERENCES.get(_slug(ref_id))
     if code is not None:
         await code["build"](ctx)
@@ -193,6 +191,15 @@ async def build_reference(ctx, ref_id: str) -> dict:
         raise ValueError("No reference " + str(ref_id) + ". References: " + known + ".")
     folder = folder_of(ref["id"])
     assert folder is not None
+    return await build_folder(ctx, folder)
+
+
+async def build_folder(ctx, folder: Path) -> dict:
+    """Builds the reference.json in folder (a library item or a published community project) through the normal tools."""
+
+    from pai_agent.tools.registry import call_tool
+
+    ref = json.loads((folder / "reference.json").read_text(encoding="utf-8"))
 
     async def need(name: str, args: dict) -> dict:
         result = await call_tool(ctx, name, args)
@@ -231,6 +238,17 @@ async def build_reference(ctx, ref_id: str) -> dict:
 def save_reference(state, ref_id: str | None = None, name: str | None = None, summary: str = "", kind: str = "project") -> dict:
     """Writes the current product build into the library, as a project by default. Returns its row."""
 
+    name = (name or (state.spec or {}).get("name") or "").strip()
+    ref_id = _slug(ref_id or name)
+    if ref_id in CODE_REFERENCES or (kind == "project" and (REFERENCES_DIR / ref_id).is_dir()):
+        raise ValueError(ref_id + " is a reference build; save the project under another id.")
+    write_snapshot(state, (REFERENCES_DIR if kind == "reference" else PROJECTS_DIR) / ref_id, ref_id, name, summary, kind)
+    return next(row for row in list_references() if row["id"] == ref_id)
+
+
+def write_snapshot(state, folder: Path, ref_id: str, name: str, summary: str = "", kind: str = "project") -> dict:
+    """Writes the current product build into folder as reference.json, one script per printed part and the latest render."""
+
     if state.product != "generic" or not state.spec:
         raise ValueError("Only a product built from a spec can be saved as a reference.")
     spec = json.loads(json.dumps({k: v for k, v in state.spec.items() if not k.startswith("_") and k != "id"}))
@@ -239,11 +257,7 @@ def save_reference(state, ref_id: str | None = None, name: str | None = None, su
     unpicked = [p["name"] for p in spec["parts"] if p["kind"] == "bought" and p["id"] not in state.picked]
     if missing or unpicked:
         raise ValueError("Finish the build first: " + ", ".join(missing + unpicked) + ".")
-    name = (name or spec["name"]).strip()
-    ref_id = _slug(ref_id or name)
-    if ref_id in CODE_REFERENCES or (kind == "project" and (REFERENCES_DIR / ref_id).is_dir()):
-        raise ValueError(ref_id + " is a reference build; save the project under another id.")
-    folder = (REFERENCES_DIR if kind == "reference" else PROJECTS_DIR) / ref_id
+    name = name or spec["name"]
     shutil.rmtree(folder, ignore_errors=True)
     folder.mkdir(parents=True)
     scripts = {}
@@ -278,7 +292,7 @@ def save_reference(state, ref_id: str | None = None, name: str | None = None, su
     if renders:
         shutil.copyfile(renders[-1], folder / "thumbnail.png")
     (folder / "reference.json").write_text(json.dumps(ref, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    return next(row for row in list_references() if row["id"] == ref_id)
+    return ref
 
 
 def build_context(state) -> str:

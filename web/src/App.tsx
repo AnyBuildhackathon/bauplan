@@ -17,6 +17,7 @@ import { BomDrawer } from "./views/BomDrawer";
 import { VersionDrawer } from "./views/VersionDrawer";
 import { BuildGuide } from "./views/BuildGuide";
 import { LessonModal } from "./views/LessonModal";
+import { CommunityView } from "./views/CommunityView";
 import { LibraryView } from "./views/LibraryView";
 import { LogbookView } from "./views/LogbookView";
 import { TrainingView } from "./views/TrainingView";
@@ -92,7 +93,7 @@ export default function App() {
   return (
     <div className="flex h-full min-h-0">
       <IconRail />
-      {(view === "werkbank" || view === "library") && (
+      {(view === "werkbank" || view === "library" || view === "community") && (
         <>
           <div className="h-full shrink-0 border-r border-line" style={{ width: chatWidth }}>
             <SidebarChat />
@@ -113,6 +114,7 @@ export default function App() {
         <main className="min-h-0 flex-1">
           {view === "werkbank" && <WorkbenchView panel={panel} />}
           {view === "library" && <LibraryView />}
+          {view === "community" && <CommunityView />}
           {view === "training" && <TrainingView />}
           {view === "logbuch" && <LogbookView />}
         </main>

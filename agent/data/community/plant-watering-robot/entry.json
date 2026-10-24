@@ -1,0 +1,74 @@
+{
+  "id": "plant-watering-robot",
+  "base": "plant-waterer",
+  "title": "Plant-watering robot",
+  "description": "1 litre printed tank, 5 V pump, capacitive soil sensor and an ESP32 on one 18650. Runs about a month and stays stable with a full tank.",
+  "author": "studio_fern",
+  "published_at": "2026-10-23T21:15:00",
+  "remixes": 2,
+  "product": "generic",
+  "product_label": "Windowsill Plant-Watering Robot",
+  "remixed_from": null,
+  "metrics": {
+    "requirements_passed": 6,
+    "requirements": 6,
+    "parts": 10,
+    "cost_eur": 36.65,
+    "mass_g": 459.9,
+    "printed": 3
+  },
+  "bom": [
+    {
+      "name": "Base housing, printed PETG",
+      "qty": 1,
+      "unit_price_eur": 4.39
+    },
+    {
+      "name": "Water tank, printed PETG",
+      "qty": 1,
+      "unit_price_eur": 3.45
+    },
+    {
+      "name": "Sensor arm, printed PETG",
+      "qty": 1,
+      "unit_price_eur": 0.31
+    },
+    {
+      "name": "5 V mini submersible water pump",
+      "qty": 1,
+      "unit_price_eur": 3.5
+    },
+    {
+      "name": "Capacitive soil moisture sensor v1.2",
+      "qty": 1,
+      "unit_price_eur": 2.5
+    },
+    {
+      "name": "ESP32 DevKit C board",
+      "qty": 1,
+      "unit_price_eur": 7.9
+    },
+    {
+      "name": "Li-ion 18650 cell 3000 mAh",
+      "qty": 1,
+      "unit_price_eur": 5.9
+    },
+    {
+      "name": "18650 holder with TP4056 USB-C charger",
+      "qty": 1,
+      "unit_price_eur": 3.9
+    },
+    {
+      "name": "Silicone tube 8 mm, 1 m",
+      "qty": 1,
+      "unit_price_eur": 2.9
+    },
+    {
+      "name": "MOSFET switch module IRF520",
+      "qty": 1,
+      "unit_price_eur": 1.9
+    }
+  ],
+  "versions": [],
+  "files": []
+}

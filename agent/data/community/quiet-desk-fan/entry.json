@@ -1,0 +1,49 @@
+{
+  "id": "quiet-desk-fan",
+  "base": "desk-fan",
+  "title": "Quiet USB desk fan",
+  "description": "An 80 mm USB fan on a printed neck, bracket and 150 mm base. 280 g in total and it takes a light bump without tipping.",
+  "author": "maker.kai",
+  "published_at": "2026-10-23T09:30:00",
+  "remixes": 4,
+  "product": "generic",
+  "product_label": "USB Desk Fan",
+  "remixed_from": null,
+  "metrics": {
+    "requirements_passed": 6,
+    "requirements": 6,
+    "parts": 5,
+    "cost_eur": 16.53,
+    "mass_g": 280.1,
+    "printed": 3
+  },
+  "bom": [
+    {
+      "name": "Base, printed PETG",
+      "qty": 1,
+      "unit_price_eur": 2.77
+    },
+    {
+      "name": "Neck, printed PETG",
+      "qty": 1,
+      "unit_price_eur": 0.44
+    },
+    {
+      "name": "Fan bracket, printed PETG",
+      "qty": 1,
+      "unit_price_eur": 0.92
+    },
+    {
+      "name": "80 mm 5 V USB fan 80x80x25",
+      "qty": 1,
+      "unit_price_eur": 5.5
+    },
+    {
+      "name": "USB-C cable and 5 V 2 A wall adapter",
+      "qty": 1,
+      "unit_price_eur": 6.9
+    }
+  ],
+  "versions": [],
+  "files": []
+}

@@ -49,3 +49,5 @@ class BuildState:
     assembly: dict | None = None
     assembly_stale: bool = True
     checks: dict[str, dict] = field(default_factory=dict)
+    # The community project this build was opened from: {"id", "title", "author"}, or None.
+    remixed_from: dict | None = None
