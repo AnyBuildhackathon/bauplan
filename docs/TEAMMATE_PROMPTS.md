@@ -91,7 +91,7 @@ The dependency comment on each issue lists its dependencies on the others and th
 
 | Issue | Task | Worktree | Ports (backend/web) |
 | --- | --- | --- | --- |
-| [#4](https://github.com/AnyBuildhackathon/bauplan/issues/4) | Browser training follow-up: default vs trained stress score, local training in `?demo` | `../bauplan-train` | 8121/5201 |
+| [#4](https://github.com/AnyBuildhackathon/bauplan/issues/4) | Browser training follow-up: default vs trained stress score, local training in the browser | `../bauplan-train` | 8121/5201 |
 | [#28](https://github.com/AnyBuildhackathon/bauplan/issues/28) | Sketch to build | `../bauplan-sketch-to-build` | 8131/5211 |
 | [#29](https://github.com/AnyBuildhackathon/bauplan/issues/29) | Version history and side-by-side compare | `../bauplan-version-history-and-` | 8132/5212 |
 | [#30](https://github.com/AnyBuildhackathon/bauplan/issues/30) | Learning mode | `../bauplan-learning-mode` | 8133/5213 |

@@ -9,6 +9,7 @@ import { SlidersHorizontal } from "lucide-react";
 import { useSource } from "../events/source";
 import { apiFetch } from "../lib/api";
 import { useUi, type Display } from "../lib/ui";
+import { selectedVoiceEngine, useVoiceEngine } from "../lib/voiceEngine";
 import { useBenchResults } from "../views/BenchResults";
 
 const DISPLAY: { key: keyof Display; label: string; hint: string; control?: string }[] = [
@@ -55,6 +56,7 @@ function Select({ label, value, options, onChange }: { label: string; value: str
     <label className="flex items-center justify-between gap-3 py-1 text-[14px] font-semibold text-ink-2">
       {label}
       <select
+        name={label.toLowerCase().replace(/\s+/g, "-")}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="h-8 rounded-full bg-tile px-3 text-[13px] font-semibold text-ink outline-none hover:bg-track"
@@ -82,6 +84,7 @@ export function BenchSettings() {
   const micMode = useUi((s) => s.micMode);
   const setMicMode = useUi((s) => s.setMicMode);
   const stt = useUi((s) => s.stt);
+  const voiceEngine = useVoiceEngine();
   const mode = useSource((s) => s.mode);
   const live = mode === "live";
 
@@ -139,6 +142,7 @@ export function BenchSettings() {
             <Toggle key={d.key} control={d.control} label={d.label} hint={d.hint} on={display[d.key]} onChange={(on) => setDisplay({ [d.key]: on })} />
           ))}
           <h3 className="eyebrow mt-3 mb-1 border-t border-line pt-3">Voice</h3>
+          {live && <Select label="Voice engine" value={selectedVoiceEngine()} options={[...(voiceEngine.available ? [{ value: "gemini", label: "Gemini Live" }] : []), { value: "elevenlabs", label: "ElevenLabs" }]} onChange={(v) => voiceEngine.choose(v as "gemini" | "elevenlabs")} />}
           <Toggle
             control="setting:push_to_talk"
             label="Push-to-talk"

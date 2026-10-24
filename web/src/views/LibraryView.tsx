@@ -10,7 +10,7 @@ import { useUi } from "../lib/ui";
 
 type Filter = "all" | "reference" | "project";
 
-/** The recorded demo has no backend, so it shows the code references and the registry builds with their renders. */
+/** Placeholder library shown until the backend answers: the code references and the registry builds. */
 const RECORDED: ReferenceBuild[] = [
   {
     id: "micro-drone",

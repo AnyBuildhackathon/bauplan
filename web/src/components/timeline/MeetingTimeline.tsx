@@ -70,12 +70,7 @@ export function MeetingTimeline() {
       ];
   const newest = versions.at(-1)?.n ?? null;
   // The next review can be started and ended from here when Jamie's webhook is not wired.
-  // The demo recording holds one review, so there the button only exists before it.
-  const mode = useSource((s) => s.mode);
-  const nextReview =
-    versions.length > 0 && (mode === "live" || versions.length === 1)
-      ? shown.find((m) => m.kind === "review" && m.status !== "done")
-      : undefined;
+  const nextReview = versions.length > 0 ? shown.find((m) => m.kind === "review" && m.status !== "done") : undefined;
   const current = selected ?? newest;
 
   return (

@@ -77,7 +77,7 @@ CODE_REFERENCES = {
         # The Twiglet frame is modelled in FreeCAD but bought in carbon, like every other part.
         "printed": 0,
         "bought": 8,
-        # The kickoff's studio render, written by agent/scripts/record_demo.py.
+        # The reference drone's studio render.
         "thumbnail": REPO_ROOT / "web" / "public" / "models" / "hero-drone-thumb.jpg",
     },
     "robot-gripper": {

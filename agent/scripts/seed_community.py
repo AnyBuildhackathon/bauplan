@@ -5,7 +5,7 @@
 Builds every seed's library item through the same tools as the bench (mock mode, no keys) and
 writes agent/data/community/<id>/entry.json with the build's mass, cost, part count, checks,
 bill of materials and versions. Then writes web/public/community/feed.json and the renders it
-needs, so the recorded demo (no backend) shows the same feed. Needs freecadcmd.
+needs, so the dashboard can show the same feed while the backend is offline. Needs freecadcmd.
 """
 
 from __future__ import annotations

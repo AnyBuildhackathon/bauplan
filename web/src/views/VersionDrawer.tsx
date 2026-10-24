@@ -121,7 +121,6 @@ export function VersionDrawer() {
   const setCompare = useUi((s) => s.setCompare);
   const versions = useSession((s) => s.versions);
   const building = useSession((s) => Object.values(s.steps).some((st) => st.status === "running"));
-  const demo = useSource((s) => s.mode) === "demo";
   const [picking, setPicking] = useState(false);
   const [pickA, setPickA] = useState<number | null>(null);
   const [pickB, setPickB] = useState<number | null>(null);
@@ -200,7 +199,7 @@ export function VersionDrawer() {
           ) : (
             <ul className="space-y-2">
               {listed.map((v) => (
-                <VersionRow key={v.n} v={v} newest={v.n === newest} selected={v.n === (selected ?? newest)} canRestore={!demo} building={building} />
+                <VersionRow key={v.n} v={v} newest={v.n === newest} selected={v.n === (selected ?? newest)} canRestore building={building} />
               ))}
             </ul>
           )}

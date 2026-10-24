@@ -19,7 +19,7 @@ cd web
 BACKEND_URL=http://localhost:8113 npm run dev -- --port 5193 --host 127.0.0.1
 ```
 
-Open `http://127.0.0.1:5193/?live&tab=omniverse&mute`.
+Open `http://127.0.0.1:5193/?tab=omniverse&mute`.
 Ask Mechanic **“Test 8 m/s wind gusts with a 10 g camera in Omniverse.”**, **“Test hover stability in Omniverse.”**, or **“Train the reference quadcopter in Isaac Lab.”**
 The tab's controls send the same chat requests.
 With an Anthropic key, Claude selects these tools through the existing tool loop.
@@ -37,9 +37,8 @@ The displayed assembly weight follows the same selected version as the key numbe
 Live results report `assembly_mass_g` before added payload and `total_mass_g` including it.
 
 `agent/runs/fallback/omniverse.json` is the canonical fixture.
-Its public copy and video under `web/public/demo/` support the static deployment with `?demo&tab=omniverse` and no backend.
-The backend serves its copy through `/files/fallback/omniverse.mp4` and `/files/fallback/omniverse.json`.
-Replace both copies with an actual pod recording and verified matching metadata when one is available; preserve the recorded label.
+The backend serves it through `/files/fallback/omniverse.mp4` and `/files/fallback/omniverse.json`.
+Replace that fixture with an actual pod recording and verified matching metadata when one is available; preserve the recorded label.
 
 ## Prepare a pod
 
@@ -61,7 +60,7 @@ Set connection variables in the Mac backend's environment, then restart that bac
 
 | Variable | Default and purpose |
 | --- | --- |
-| `ISAAC_SSH_HOST` | Required for live jobs; unset selects the recorded demo. |
+| `ISAAC_SSH_HOST` | Required for live jobs; unset selects the recorded fallback. |
 | `ISAAC_SSH_PORT` | `22`; use the pod's exposed SSH port. |
 | `ISAAC_SSH_USER` | `root`. |
 | `ISAAC_SSH_KEY` | `~/.ssh/id_ed25519`; path only, never key contents. |
