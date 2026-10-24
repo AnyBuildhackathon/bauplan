@@ -18,6 +18,7 @@ from pai_agent import explain
 from pai_agent.access import AccessGate, access_code
 from pai_agent.env import claude_enabled, load_env
 from pai_agent.paths import FALLBACK_DIR, REPO_ROOT, SESSIONS_DIR
+from pai_agent.gemini_live import router as gemini_live_router
 from pai_agent.session import Session
 from pai_agent.tools.browser_train import router as browser_train_router
 from pai_agent.tools.stress import router as stress_router
@@ -107,6 +108,7 @@ app.add_middleware(
 )
 app.include_router(browser_train_router)
 app.include_router(stress_router)
+app.include_router(gemini_live_router)
 
 
 @app.get("/api/health")

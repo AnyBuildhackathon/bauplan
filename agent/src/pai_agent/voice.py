@@ -98,7 +98,10 @@ def _key(name: str) -> str:
 
 
 def capabilities() -> dict:
+    from pai_agent.gemini_live import available
+
     return {
+        "gemini_live": available(),
         "stt": "reson8" if _key("RESON8_API_KEY") else "browser",
         "tts": "elevenlabs" if _key("ELEVENLABS_API_KEY") else "none",
         "realtime_url": RESON8_REALTIME_URL,

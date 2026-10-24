@@ -29,7 +29,8 @@ It targets diverse physical products, from a phone stand to a plant-watering rob
 - **Engineering checks and physics.** Mass, cost, size, tip-over, deflection, torque, runtime, power, thermal and roll-over checks, plus MuJoCo push, drop, hover and grip tests replayed in 3D.
 - **Fix loop.** When a check fails, Claude changes a dimension or swaps a part, rebuilds and reruns every check, and says why.
 - **Meeting memory with Jamie.** Warnings from earlier meetings surface before a part is chosen, contradictions become multiple-choice questions, each version is attached to its meeting with a diff note, and order tasks with assignees land in Jamie.
-- **Talk to Mechanic.** Hands-free voice with Reson8 and ElevenLabs, about one second from the end of your sentence to Mechanic's first word, with barge-in.
+- **Talk to Mechanic.** Gemini Live handles hands-free speech and barge-in while Claude handles engineering; Reson8 transcribes in parallel, with the existing ElevenLabs loop as fallback.
+  [Setup and measured latency](docs/GEMINI_LIVE.md).
 - **Orchestrator and sub-agents.** Claude Opus 5.5 plans and reviews; Claude Sonnet 5.5 sub-agents write CAD scripts in parallel, pick parts, run checks and price the bill of materials, each visible as its own card with tokens and cost.
 - **Controller training in the browser.** 1,024 MuJoCo simulations tune the drone's or gripper's controller, and a 50-world stress test reports robustness; optional NVIDIA Isaac Sim and Isaac Lab runs on a GPU host.
 - **Deliverables.** Studio render, bill of materials (CSV and order list per shop), step-by-step build guide, Betaflight or Arduino firmware with wiring table, and one ZIP with everything.
@@ -41,7 +42,7 @@ It targets diverse physical products, from a phone stand to a plant-watering rob
 ```mermaid
 flowchart LR
     M[Jamie meetings] -->|webhook and MCP| B
-    V[Voice: Reson8] --> W
+    V[Voice: Gemini Live + Reson8 transcript] --> W
     W[Web dashboard<br/>React, Three.js] -->|HTTP| B[FastAPI backend]
     B -->|SSE event stream| W
     B --> O[Orchestrator<br/>Claude Opus 5.5]
@@ -53,6 +54,8 @@ flowchart LR
     T --> BL[Blender]
     T --> PR[Catalogs and live prices]
     T --> J2[Jamie notes, tags, tasks]
+    W <-->|PCM WebSocket| B
+    B <-->|audio and Claude tool calls| G[Gemini Live]
     B --> H[Claude Haiku 5.5<br/>spoken replies]
     H -->|text| W
     W -->|speech| E[ElevenLabs]
@@ -91,12 +94,14 @@ Without a Jamie token, the same calls answer from local fixture meetings and wri
 Reson8 is Mechanic's ears.
 The browser streams microphone audio to Reson8's Turns endpoint with a short-lived token the backend vends (`POST /api/voice/token`), so the API key never reaches the browser.
 Reson8 decides that a turn has ended from acoustics and meaning, not silence alone, so a thinking pause does not cut the speaker off, and a phrase list biases recognition toward engineering vocabulary such as Twiglet, Caddx, 1103, KV and MuJoCo.
-Its turn-start signal pauses Mechanic mid-sentence (barge-in), and its turn-end text goes straight to the agent.
+With Gemini Live, Reson8 supplies the chat transcript and logbook while Gemini handles speech and calls Claude for engineering.
+In the ElevenLabs fallback loop, its turn-start signal pauses Mechanic and its turn-end text goes to the agent.
 Push-to-talk over Reson8's Realtime endpoint and the browser's Web Speech recognition are the fallbacks.
 
 ### Also used
 
-ElevenLabs Turbo v2.5 streams Mechanic's voice as PCM phrase by phrase.
+Google Gemini Live provides native realtime audio through Vertex AI or AI Studio; [configuration and protocol](docs/GEMINI_LIVE.md).
+ElevenLabs Turbo v2.5 streams the fallback voice as PCM phrase by phrase.
 FreeCAD, Blender, MuJoCo and NVIDIA Isaac Sim and Isaac Lab are the engineering tools Claude operates.
 The full stack with versions and licenses is in [docs/FRAMEWORKS.md](docs/FRAMEWORKS.md).
 
@@ -201,6 +206,7 @@ Every variable is optional.
 | `PAI_FORCE_MOCK` | `1` forces the mock even with a key. |
 | `JAMIE_MCP_TOKEN`, `JAMIE_MCP_URL` | Live Jamie MCP access (default URL `https://mcp.meetjamie.ai/mcp`); empty uses fixtures and the outbox. |
 | `JAMIE_WEBHOOK_SECRET` | Required in `X-Jamie-Secret` or `?secret=` on the webhook when set. |
+| `GEMINI_LIVE_PROVIDER`, `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION`, `GEMINI_API_KEY`, `GEMINI_LIVE_MODEL` | Gemini Live voice: Vertex with gcloud user OAuth or AI Studio with a server-only key; see [voice setup](docs/GEMINI_LIVE.md). |
 | `RESON8_API_KEY`, `RESON8_LANGUAGE`, `RESON8_CUSTOM_MODEL_ID` | Reson8 speech-to-text (default language `en`); empty uses browser speech recognition. |
 | `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID`, `ELEVENLABS_MODEL`, `ELEVENLABS_DEMO_MODEL` | Mechanic's voice (default voice "Roger", model `eleven_turbo_v2_5`, demo clips `eleven_multilingual_v2`); empty keeps Mechanic silent. |
 
