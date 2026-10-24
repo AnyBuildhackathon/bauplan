@@ -14,6 +14,7 @@ import { AccessScreen } from "./views/AccessScreen";
 import { useBolzenVoice } from "./lib/bolzenVoice";
 import { usePilotRunner } from "./lib/pilot";
 import { useUi } from "./lib/ui";
+import { BenchResults } from "./views/BenchResults";
 import { BomDrawer } from "./views/BomDrawer";
 import { VersionDrawer } from "./views/VersionDrawer";
 import { BuildGuide } from "./views/BuildGuide";
@@ -129,6 +130,7 @@ function Bench() {
       <BomDrawer />
       <VersionDrawer />
       <BuildGuide />
+      <BenchResults />
       <DrawLayer />
       <PointerLayer />
       <LessonModal />
