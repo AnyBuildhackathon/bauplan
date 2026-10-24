@@ -3,8 +3,9 @@
 The static demo has no backend to stream speech from, so every line the live app would say
 (the mascot's speech bubble, the last sentence of a question) becomes an mp3 under
 web/public/demo/voice/, named after a hash of voice, model and text, and the recording
-event gets a `voice` URL. The voice and model are the live loop's (`DEFAULT_VOICE`,
-`DEFAULT_TTS_MODEL` in pai_agent/voice.py), so the demo sounds like the app.
+event gets a `voice` URL. Voice and voice settings are the live loop's (`DEFAULT_VOICE`,
+`VOICE_SETTINGS` in pai_agent/voice.py), so the demo sounds like the app; the model is
+eleven_multilingual_v2, the richest one, since a recording has no latency to hit.
 
 Clips are cached by that hash: rerunning the recorder reuses them, and without
 ELEVENLABS_API_KEY it still attaches every clip that already exists and says which lines
@@ -19,15 +20,16 @@ import json
 import re
 from pathlib import Path
 
-from pai_agent.voice import DEFAULT_TTS_MODEL, DEFAULT_VOICE, VoiceError, _key, _post
+from pai_agent.voice import DEFAULT_VOICE, VOICE_SETTINGS, VoiceError, _key, _post
 
 OUT_VOICE = Path(__file__).resolve().parents[2] / "web" / "public" / "demo" / "voice"
 URL_PREFIX = "/demo/voice/"
+DEMO_MODEL = "eleven_multilingual_v2"
 _URL = "https://api.elevenlabs.io/v1/text-to-speech/{voice}?output_format=mp3_44100_64"
 
 
 def _voice_and_model() -> tuple[str, str]:
-    return _key("ELEVENLABS_VOICE_ID") or DEFAULT_VOICE, _key("ELEVENLABS_MODEL") or DEFAULT_TTS_MODEL
+    return _key("ELEVENLABS_VOICE_ID") or DEFAULT_VOICE, _key("ELEVENLABS_DEMO_MODEL") or DEMO_MODEL
 
 
 def last_sentence(text: str) -> str:
@@ -49,13 +51,13 @@ def spoken_text(event: dict) -> str:
 
 def _clip_name(text: str) -> str:
     voice, model = _voice_and_model()
-    return hashlib.sha1(f"{voice}|{model}|{text}".encode()).hexdigest()[:12] + ".mp3"
+    return hashlib.sha1(f"{voice}|{model}|{json.dumps(VOICE_SETTINGS, sort_keys=True)}|{text}".encode()).hexdigest()[:12] + ".mp3"
 
 
 async def _render(text: str) -> bytes:
     key = _key("ELEVENLABS_API_KEY")
     voice, model = _voice_and_model()
-    body = json.dumps({"text": text, "model_id": model}).encode()
+    body = json.dumps({"text": text, "model_id": model, "voice_settings": VOICE_SETTINGS}).encode()
     headers = {"xi-api-key": key, "Content-Type": "application/json", "Accept": "audio/mpeg"}
     return await asyncio.to_thread(_post, _URL.format(voice=voice), headers, body, 60)
 

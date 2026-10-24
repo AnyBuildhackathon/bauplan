@@ -182,7 +182,7 @@ mic ─16 kHz PCM─▶ Reson8 Turns ──turn_start──▶ Mechanic pauses (
                                                                └─▶ Claude Haiku: 1-2 spoken sentences
                                                                       │ `say` deltas over SSE
                                                                       ▼
-                                       browser cuts phrases ─▶ POST /api/voice/speak ─▶ ElevenLabs Flash (PCM stream) ─▶ Web Audio
+                                       browser cuts phrases ─▶ POST /api/voice/speak ─▶ ElevenLabs Turbo (PCM stream) ─▶ Web Audio
 ```
 
 - **Listening.** With `RESON8_API_KEY`, the browser streams 16 kHz PCM to the [Reson8](https://docs.reson8.dev) Turns endpoint (`wss://api.reson8.dev/v1/speech-to-text/turns`) with a short-lived token from `POST /api/voice/token`; the API key never leaves the backend.
@@ -192,7 +192,9 @@ mic ─16 kHz PCM─▶ Reson8 Turns ──turn_start──▶ Mechanic pauses (
 - **Answering.** Every prompt starts the orchestrator and, in parallel, a fast spoken reply from Claude Haiku (`claude-haiku-5-5`, thinking off) that acknowledges the request and says what happens next.
   The reply streams token by token as `say` events, and later milestones (a CAD part, a simulation result, a finished version) get one short spoken sentence each.
   These sentences come only from the facts in the milestone event, with a fixed sentence as the fallback.
-- **Speaking.** The browser cuts the streamed text into phrases (the first at a comma, the rest at sentence ends) and requests each one from ElevenLabs Flash v2.5 as a PCM stream the moment it is complete, so speech starts while Haiku is still writing.
+  Mechanic's persona (Haiku voice prompt and orchestrator system prompt) allows mild swearing when it fits ("damn", "hell", "holy crap"), never slurs or insults at the person, and stays honest: no claimed pass, price or number that a tool did not produce, and failures and estimates are said plainly.
+- **Speaking.** The browser cuts the streamed text into phrases (the first at a comma, the rest at sentence ends) and requests each one from ElevenLabs Turbo v2.5 as a PCM stream the moment it is complete, so speech starts while Haiku is still writing.
+  Voice settings are stability 0.4, similarity boost 0.8, style 0.45 and speaker boost on.
   Phrases play gaplessly through Web Audio, and each request passes the sentence before it so the intonation stays continuous.
   The voice is the stock ElevenLabs voice "Roger" (`CwhRBWXzGAHq8TQ4Fs17`, a confident, laid-back American male); override it with `ELEVENLABS_VOICE_ID`.
 - **Barge-in.** When Reson8 reports a new turn while Mechanic talks, playback pauses instantly; it stops for good once real words arrive, and resumes if the turn was only Mechanic's own voice echoing into the microphone.
@@ -202,13 +204,13 @@ mic ─16 kHz PCM─▶ Reson8 Turns ──turn_start──▶ Mechanic pauses (
 Push-to-talk stays as the fallback: turn on "Push-to-talk" in the Settings panel, then hold the microphone button or the space bar, with Reson8's Realtime endpoint.
 Without `RESON8_API_KEY`, the browser's own Web Speech recognition does the same, and typing always works.
 Without `ELEVENLABS_API_KEY`, Mechanic stays silent and his text is the caption; the system voice is never used.
-The recorded demo (`?demo`, and the Vercel deployment) plays pre-rendered clips in the same voice and model from `web/public/demo/voice/`, one per line of the recording, started and measured like live speech.
+The recorded demo (`?demo`, and the Vercel deployment) plays pre-rendered clips in the same voice and settings (model `eleven_multilingual_v2`, since a recording has no latency to hit) from `web/public/demo/voice/`, one per line of the recording, started and measured like live speech.
 `cd agent && uv run python scripts/record_demo.py` renders missing clips when `ELEVENLABS_API_KEY` is set and reuses cached ones otherwise.
 Without `ANTHROPIC_API_KEY`, there is no fast reply and Mechanic reads his speech bubble aloud instead (with an ElevenLabs key).
 The speaker button in the chat header mutes audio output; loading with `?mute` starts muted.
 The browser console logs `[voice] end of turn → first audio … ms` for every spoken turn, and `window.__voiceLatency` keeps the list.
 Measured on 2026-10-24 with a recorded question through a fake microphone, from Reson8's turn end to Mechanic's first sound with ElevenLabs: 960 ms, 997 ms and 1010 ms in one run, and 1646 ms (first turn after a backend start), 1256 ms, 1101 ms and 972 ms in another.
-Haiku's first token takes about 0.6 to 0.8 s of that, ElevenLabs Flash about 0.2 s.
+Haiku's first token takes about 0.6 to 0.8 s of that, ElevenLabs Turbo about 0.17 s (Flash about 0.13 s, measured as first PCM chunk through the backend client), so Turbo stays near the same 1 to 1.3 s.
 
 ## Environment Variables
 
@@ -237,7 +239,7 @@ Shell variables override values in `.env`.
 | `RESON8_CUSTOM_MODEL_ID` | Optional Reson8 custom model used instead of the built-in phrase list. |
 | `ELEVENLABS_API_KEY` | ElevenLabs API key for Mechanic's voice, also used to pre-render the demo clips; leaving it empty keeps Mechanic silent (text only). |
 | `ELEVENLABS_VOICE_ID` | ElevenLabs voice, defaulting to the stock voice "Roger" (`CwhRBWXzGAHq8TQ4Fs17`). |
-| `ELEVENLABS_MODEL` | ElevenLabs model, defaulting to `eleven_flash_v2_5` for low latency. |
+| `ELEVENLABS_MODEL` | ElevenLabs model, defaulting to `eleven_turbo_v2_5`; `eleven_flash_v2_5` is a little faster, `ELEVENLABS_DEMO_MODEL` (default `eleven_multilingual_v2`) sets the model of the pre-rendered demo clips. |
 | `FREECAD_GUI` | FreeCAD execution mode defaulting to `auto` (`auto` builds in open window, `launch` starts app, `off` forces headless). |
 | `FREECAD_MCP_URL` | FreeCAD MCP RPC server URL defaulting to `http://127.0.0.1:9875`. |
 | `PAI_ASK_TIMEOUT_S` | Seconds Mechanic waits for question response before choosing default option, defaulting to `20`. |

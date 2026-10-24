@@ -57,7 +57,9 @@ PHRASES = [
 _ELEVEN_STREAM_URL = "https://api.elevenlabs.io/v1/text-to-speech/{voice}/stream"
 # "Roger", a stock ElevenLabs voice: a confident, laid-back American male. Not a clone of anyone.
 DEFAULT_VOICE = "CwhRBWXzGAHq8TQ4Fs17"
-DEFAULT_TTS_MODEL = "eleven_flash_v2_5"
+# Turbo v2.5 sounds fuller than Flash at a similar latency; the recorded demo has no latency to hit, so it uses multilingual v2.
+DEFAULT_TTS_MODEL = "eleven_turbo_v2_5"
+VOICE_SETTINGS = {"stability": 0.4, "similarity_boost": 0.8, "style": 0.45, "use_speaker_boost": True}
 TTS_SAMPLE_RATE = 24000
 
 
@@ -131,7 +133,7 @@ async def reson8_token() -> dict:
     return {"access_token": token, "expires_in": int(body.get("expires_in") or 600)}
 
 
-async def elevenlabs_stream(text: str, previous_text: str = "") -> AsyncIterator[bytes]:
+async def elevenlabs_stream(text: str, previous_text: str = "", model: str = "") -> AsyncIterator[bytes]:
     """Opens an ElevenLabs stream for one sentence and yields 16-bit mono PCM at TTS_SAMPLE_RATE.
 
     The request is sent before the first chunk is yielded, so a missing key or an HTTP error
@@ -144,7 +146,11 @@ async def elevenlabs_stream(text: str, previous_text: str = "") -> AsyncIterator
     if not key:
         raise VoiceError("ELEVENLABS_API_KEY is missing")
     voice = _key("ELEVENLABS_VOICE_ID") or DEFAULT_VOICE
-    payload: dict = {"text": text[:600], "model_id": _key("ELEVENLABS_MODEL") or DEFAULT_TTS_MODEL}
+    payload: dict = {
+        "text": text[:600],
+        "model_id": model or _key("ELEVENLABS_MODEL") or DEFAULT_TTS_MODEL,
+        "voice_settings": VOICE_SETTINGS,
+    }
     if previous_text:
         # The sentence before keeps the intonation of one reply continuous across requests.
         payload["previous_text"] = previous_text[-400:]
