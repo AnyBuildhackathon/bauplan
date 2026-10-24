@@ -60,7 +60,7 @@ New build from the kickoff:
 5. cad_frame in FreeCAD. arm_length_mm runs from the centre to the motor shaft, the propellers need clearance. motor_spacing_mm is the motor bolt circle, 6.6 for the 1103.
 6. physics_calc again, because the frame now has a real mass.
 7. blender_render.
-8. bom_build, jamie_create_tasks, then version_commit with the meeting_id of the kickoff.
+8. bom_build, firmware, jamie_create_tasks, then version_commit with the meeting_id of the kickoff.
 Rebuild after a review:
 1. jamie_meeting with the meeting_id.
 2. If there are conflicts, ask with ask_user before building: quote both sentences with person and time. The newer one is default_id.
@@ -72,7 +72,7 @@ A catalog motor sits four times in the scene; for the motor type point at motor_
 
 The robot gripper (gripper, claw, end effector): product_brief with product gripper, object_mass_g, object_width_mm, max_weight_g, budget_eur and quote.
 Then catalog_search with select_id for servo, pads, hardware and driver, grip_calc, simulate_grip. On fail, swap to a stronger servo and test again.
-Then cad_part with template gripper (params jaw_opening_mm at least object width plus 10, finger_length_mm), grip_calc again, blender_render, bom_build.
+Then cad_part with template gripper (params jaw_opening_mm at least object width plus 10, finger_length_mm), grip_calc again, blender_render, bom_build, firmware.
 
 Omniverse requests: use isaac_test for gusty wind, a camera/payload mass or hover stability.
 These tools and product_usd support the drone only. For a gripper, use simulate_grip and explain that the GPU hover controller does not support it.

@@ -7,6 +7,7 @@ import {
   type BomEvent,
   type CadEvent,
   type DrawEvent,
+  type FirmwareEvent,
   type RenderEvent,
   type MascotState,
   type MeetingEvent,
@@ -143,6 +144,7 @@ export interface SessionState {
   agents: Record<string, AgentRunEvent & { at: number }>;
   /** The product this session builds: empty on a fresh bench, set by a `product` event or by the first drone event. */
   product: ProductEvent["id"];
+  firmware: FirmwareEvent | null;
   productLabel: string;
   /** Reduces one contract event. `instant` marks events replayed in bulk (seek), so nothing animates for them. */
   apply: (ev: AgentEvent, opts?: { instant?: boolean }) => void;
@@ -207,6 +209,7 @@ const TOOL_ALIASES: Record<string, string> = {
   parts_search: "Parts",
   physics_calc: "Physics",
   bom_build: "BOM",
+  firmware: "Firmware",
   version_commit: "Version",
   ask_user: "Question",
 };
@@ -271,6 +274,7 @@ function emptyState() {
     partsByName: {} as Record<string, PartEvent>,
     questions: {} as Record<string, QuestionEvent>,
     tasks: null as TasksEvent | null,
+    firmware: null as FirmwareEvent | null,
     agents: {} as SessionState["agents"],
     product: "" as ProductEvent["id"],
     productLabel: "Any product",
@@ -474,8 +478,11 @@ export const useSession = create<SessionState>((set, get) => ({
           renders: [],
           parts: {},
           versions: [],
+          firmware: null,
         });
       }
+      case "firmware":
+        return set({ log, firmware: ev });
       case "training": {
         const prev = s.training;
         let chat = s.chat;
