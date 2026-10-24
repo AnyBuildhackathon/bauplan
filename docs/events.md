@@ -33,7 +33,7 @@ Sample bodies are `agent/data/webhooks/meeting-ended.json` (kickoff) and `agent/
 
 `POST /api/answer` with `{"id": "...", "answer_id": "..."}` answers the open `question`.
 It is HTTP 409 when no such question is open.
-A `POST /api/prompt` while a question is open answers it when the text names an option's number ("fifteen", "15", "fünfzehn") or agrees ("yes", "agreed", "ja", "passt"), and returns `status: answered`.
+A `POST /api/prompt` while a question is open answers it when the text names an option's number ("fifteen", "15", "fünfzehn") or agrees ("yes", "ok", "agreed", "ja", "passt"), and returns `status: answered`.
 
 `POST /api/tasks/{id}` with `{"done": true}` ticks an order task as ordered and mirrors it to Jamie (`update_tasks`), then emits `tasks`.
 
@@ -49,7 +49,7 @@ For the gripper, `grip_calc` then runs again, so a longer finger shows up as a l
 The response is `{"ok": true, "path": "frame.FCStd"}` when the app launches, or `{"ok": false, "detail": "..."}` when there is no part or no FreeCAD app.
 It prefers `frame.FCStd`, then STEP, then STL.
 
-`GET /api/voice` returns `{"stt": "reson8"|"browser", "tts": "elevenlabs"|"browser", "realtime_url": "...", "language": "de"}`.
+`GET /api/voice` returns `{"stt": "reson8"|"browser", "tts": "elevenlabs"|"browser", "realtime_url": "...", "language": "en"}`.
 `POST /api/voice/token` returns `{"access_token": "...", "expires_in": 600}`, a short-lived Reson8 token for the browser's WebSocket (subprotocols `["bearer", token]`), or HTTP 503 without `RESON8_API_KEY`.
 `POST /api/voice/speak` with `{"text": "..."}` returns `audio/mpeg` from ElevenLabs, or HTTP 503 without `ELEVENLABS_API_KEY`.
 
@@ -86,7 +86,7 @@ Apply the backlog without animations.
 `id` is `meeting`, `teile`, `cad`, `render`, `simulation`, `training`, or `stueckliste`.
 The mock story does not use `training`.
 `status` is `pending`, `running`, `done`, or `failed`.
-`label` is `Meeting`, `Parts`, `CAD`, `Render`, `Simulation`, `Training`, or `BOM` (or `Teile` and `Stückliste` in legacy data).
+`label` is `Meeting`, `Parts`, `CAD`, `Render`, `Simulation`, `Training`, or `BOM`.
 
 A step can be `done` while a tool on that step is `offline`.
 In the mock story, render is done after Blender and Isaac Sim have both been asked.
@@ -102,7 +102,7 @@ The tool pill still shows `offline`.
 
 `name` is the tool name from the list below.
 `status` is `connected`, `running`, `ok`, `error`, or `offline`.
-`detail` is a short description line.
+`detail` is a short English line.
 
 ### requirement
 
@@ -137,7 +137,7 @@ Without this event the session is the drone.
 
 `run` is `1` for the heavy pack and `2` after the swap in the mock story.
 `result` is `pass` or `fail`.
-`summary` is one summary sentence.
+`summary` is one English sentence.
 `trajectory` is `[[t, x, y, z], ...]` in seconds and meters.
 The test climbs to 0.5 m; from 1.6 s to 1.9 s a downdraft of 35 % of the weight pushes on it.
 It passes when the drone never drops below 0.2 m after the gust and holds 0.35 m or more over the last half second.
@@ -150,8 +150,7 @@ It passes when the object never lags the hand by more than 10 mm.
 ### cad
 
 `source` is `freecad` or `cadquery`.
-`tree` is `[{id, label, children}]`.
-The mock frame is `Rahmen` with `Nabe`, `Arme`, and `Motorauflagen`.
+`tree` is `[{id, label, children}]`. The mock frame is `Frame` with `Hub`, `Arms`, and `Motor pads`.
 `params` maps each name to `{value, min, max, unit}`:
 `arm_length_mm` 20-80 mm, `thickness_mm` 1.2-6 mm, `motor_spacing_mm` 4-16 mm.
 `glb_url`, `stl_url`, and `step_url` are `/files/{session}/{file}` paths.
@@ -168,7 +167,7 @@ Generated parts are Z-up, like FreeCAD.
 
 `source` is `blender`.
 `png_url` is `/files/{session}/studio-v{n}.png` after a headless render, one file per version, or `/files/fallback/render.png` when Blender is missing.
-`label` is a short caption.
+`label` is a short English caption.
 The tool pill stays `offline` when the recorded still is served.
 
 ### draw
@@ -194,7 +193,7 @@ The tool pill stays `offline` when the recorded still is served.
 
 `action` is `meeting_ended`, `upsert_template`, `requirements`, `search`, `get_meeting`, `create_tasks`, `update_tasks`, `create_tag`, `add_tag_to_meetings`, or `note`.
 `status` is `ok` or `error`.
-`detail` is a short description line; it ends in `· local outbox` (or `· lokale Outbox`) when no live call was made.
+`detail` is a short English line; it ends in `· local outbox` when no live call was made. A leftover German phrase is shown in English by the dashboard.
 With `JAMIE_MCP_TOKEN` set, writes go to `https://mcp.meetjamie.ai/mcp` and are also logged to the session's `jamie_outbox.json`.
 Without the token, or when a live call fails, they only land in that outbox.
 A live call times out after 5 seconds; after a failure the server is skipped for 60 seconds, so a dead network costs one timeout, not one per call.
@@ -207,7 +206,7 @@ One meeting on the Jamie timeline.
 `kind` is `kickoff`, `review`, or `archive`; archive meetings hold earlier warnings and are not timeline stations.
 `status` is `done`, `live`, or `next`.
 `version` is the drone version built from this meeting, or `null`.
-`tags` are the Jamie tags AnyBuild put on it, such as `drone` and `drone-v1`.
+`tags` are the Jamie tags AnyBuild put on it, such as `drohne` and `drohne-v1`.
 `replaces` is set when a live Jamie meeting took over a planned station; drop the station with that id.
 The whole timeline is published at startup and after reset.
 
@@ -240,7 +239,7 @@ Without an answer the default applies after `timeout_s` (`PAI_ASK_TIMEOUT_S`, de
 
 The order tasks, one per part, published whole after every change.
 `meeting_id` is the meeting they hang on, `live` is `true` only when every task was created in Jamie, not in the outbox.
-Each item is `{id, title, assignee, due, done, part_category}`; `due` reads like `27.10.`.
+Each item is `{id, title, assignee, due, done, part_category}`; `due` reads like `27 Oct`.
 A rebuild keeps the tasks of unchanged parts with their `done` state and closes the tasks of replaced parts.
 
 ### point

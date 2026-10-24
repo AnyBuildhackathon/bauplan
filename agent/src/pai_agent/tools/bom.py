@@ -12,7 +12,7 @@ async def bom_build(ctx: Ctx, args: dict) -> dict:
         return await _gripper_bom(ctx)
     missing = [category for category in PART_CATEGORIES if category not in ctx.state.selected]
     if missing:
-        message = "Teile fehlen: " + ", ".join(missing)
+        message = "Parts missing: " + ", ".join(missing)
         return {"ok": False, "error": message, "detail": message}
     items = []
     for category in PART_CATEGORIES:
@@ -38,7 +38,7 @@ async def bom_build(ctx: Ctx, args: dict) -> dict:
     }
     ctx.state.bom = bom
     await ctx.emit({"type": "bom", **bom})
-    detail = "Stückliste " + de(total, 2) + " €, Preise sind Stichproben"
+    detail = "Bill of materials €" + de(total, 2) + ", prices are samples"
     return {"ok": True, "detail": detail, **bom}
 
 

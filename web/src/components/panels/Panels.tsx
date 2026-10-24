@@ -61,10 +61,10 @@ function RequirementRow({ r, open, onToggle }: { r: RequirementEvent; open: bool
 }
 
 const METRICS: { key: MetricKey; label: string; unit: string; target: string; format: (v: number) => string }[] = [
-  { key: "weight_g", label: "Gewicht", unit: "g", target: "metric:weight weight weight_g gewicht", format: (v) => fmtNum(v, v < 100 ? 1 : 0) },
-  { key: "thrust_to_weight", label: "Schub/Gewicht", unit: ": 1", target: "metric:thrust_to_weight thrust_to_weight schub tw", format: fmtRatio },
-  { key: "flight_time_min", label: "Flugzeit", unit: "min", target: "metric:flight_time flight_time flight_time_min flugzeit", format: fmtMin },
-  { key: "price_eur", label: "Preis", unit: "€", target: "metric:price price price_eur preis budget", format: (v) => fmtNum(v, 2) },
+  { key: "weight_g", label: "Weight", unit: "g", target: "metric:weight weight weight_g gewicht", format: (v) => fmtNum(v, v < 100 ? 1 : 0) },
+  { key: "thrust_to_weight", label: "Thrust/weight", unit: ": 1", target: "metric:thrust_to_weight thrust_to_weight schub tw", format: fmtRatio },
+  { key: "flight_time_min", label: "Flight time", unit: "min", target: "metric:flight_time flight_time flight_time_min flugzeit", format: fmtMin },
+  { key: "price_eur", label: "Price", unit: "€", target: "metric:price price price_eur preis budget", format: (v) => fmtNum(v, 2) },
 ];
 
 function limitText(key: MetricKey, value: number, direction: "max" | "min") {
@@ -109,7 +109,7 @@ export function BuildPanel() {
   return (
     <aside className="card scroll-soft flex min-h-0 flex-col overflow-y-auto px-5 pt-4 pb-5">
       <div className="mb-1.5 flex items-center gap-2" data-target="requirements anforderungen">
-        <h2 className="text-[18px] font-bold text-ink">Anforderungen</h2>
+        <h2 className="text-[18px] font-bold text-ink">Requirements</h2>
         {product === "drone" ? <JamieMark /> : <span className="inline-flex h-6 items-center rounded-full bg-tile px-2.5 text-[12px] font-bold text-ink-2">Chat brief</span>}
         {requirements.length > 0 && (
           <span className="num ml-auto text-[14px] font-semibold text-muted">
@@ -118,7 +118,7 @@ export function BuildPanel() {
         )}
       </div>
       {requirements.length === 0 ? (
-        <p className="py-2 text-[15px] leading-snug text-muted">Kommen aus eurem Meeting, sobald Bolzen es bei Jamie gelesen hat.</p>
+        <p className="py-2 text-[15px] leading-snug text-muted">They come from your meeting, once Bolzen has read it in Jamie.</p>
       ) : (
         <ul className="-mx-2">
           {requirements.map((r) => (
@@ -128,7 +128,7 @@ export function BuildPanel() {
       )}
 
       <div className="mt-4 mb-2 flex items-baseline gap-2" data-target="metrics kennzahlen">
-        <h2 className="text-[18px] font-bold text-ink">Kennzahlen</h2>
+        <h2 className="text-[18px] font-bold text-ink">Numbers</h2>
         {version && (
           <span className={`text-[14px] font-semibold ${pinned ? "text-agent-ink" : "text-muted"}`}>
             v{version.n} · {version.meeting_title}
@@ -161,7 +161,7 @@ export function BuildPanel() {
               <div className="num mt-1 text-[13px] font-semibold text-muted">
                 {changed ? (
                   <>
-                    vorher <span className="text-ink-2">{m.format(prev!)}</span>
+                    before <span className="text-ink-2">{m.format(prev!)}</span>
                   </>
                 ) : requirements.length > 0 ? (
                   limitText(m.key, t.value, t.direction)
@@ -182,10 +182,10 @@ export function BuildPanel() {
         data-target="bom stueckliste nav:stueckliste"
         className="group mt-4 flex h-14 w-full shrink-0 items-center gap-3 rounded-full bg-ink pr-3 pl-5 text-left text-white transition hover:bg-[#333] disabled:bg-tile disabled:text-faint"
       >
-        <span className="text-[16px] font-bold">Stückliste</span>
+        <span className="text-[16px] font-bold">Bill of materials</span>
         {bom && (
           <span className="num text-[15px] font-semibold text-white/70">
-            {bom.items.length} Teile · {fmtEur(bom.total_eur)}
+            {bom.items.length} parts · {fmtEur(bom.total_eur)}
           </span>
         )}
         <ChevronRight className="ml-auto h-5 w-5 transition group-hover:translate-x-0.5" />

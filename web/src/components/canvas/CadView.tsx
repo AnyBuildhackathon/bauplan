@@ -18,11 +18,11 @@ import { AnchorScope, useAnchor } from "./anchors";
 export const CAD_SOURCE_LABEL = { freecad: "FreeCAD", cadquery: "CadQuery" } as const;
 
 const PARAM_LABELS: Record<string, string> = {
-  arm_length_mm: "Armlänge",
-  thickness_mm: "Armstärke",
-  motor_spacing_mm: "Motor-Lochkreis",
-  diagonal_mm: "Diagonale",
-  plate_width_mm: "Plattenbreite",
+  arm_length_mm: "Arm length",
+  thickness_mm: "Arm thickness",
+  motor_spacing_mm: "Bolt circle",
+  diagonal_mm: "Diagonal",
+  plate_width_mm: "Plate width",
 };
 const paramLabel = (key: string) =>
   PARAM_LABELS[key] ?? key.replace(/_(mm|deg|g)$/, "").replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
@@ -276,8 +276,8 @@ export function CadView() {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 px-8 text-center">
         <Layers className="h-8 w-8 text-faint" />
-        <p className="text-[18px] font-semibold text-ink-2">{cadStep === "running" ? "Das CAD-Teil entsteht gerade …" : "Noch kein CAD-Teil"}</p>
-        <p className="max-w-sm text-[15px] text-muted">CadQuery oder FreeCAD baut den Rahmen im Schritt CAD. Danach kannst du hier die Maße mit Reglern ändern.</p>
+        <p className="text-[18px] font-semibold text-ink-2">{cadStep === "running" ? "The CAD part is being built …" : "No CAD part yet"}</p>
+        <p className="max-w-sm text-[15px] text-muted">CadQuery or FreeCAD builds the frame in the CAD step. After that you can change the dimensions with the sliders.</p>
       </div>
     );
   }
@@ -307,17 +307,17 @@ export function CadView() {
         {glb ? (
           <LoadBoundary
             resetKey={glb}
-            fallback={<div className="flex h-full items-center justify-center px-6 text-center text-[15px] text-muted">Das 3D-Modell ließ sich nicht laden ({glb}).</div>}
+            fallback={<div className="flex h-full items-center justify-center px-6 text-center text-[15px] text-muted">The 3D model failed to load ({glb}).</div>}
           >
             <CadScene url={glb} zUp={!!cad.part} />
           </LoadBoundary>
         ) : (
-          <div className="flex h-full items-center justify-center text-[15px] text-muted">Kein 3D-Modell im CAD-Ereignis.</div>
+          <div className="flex h-full items-center justify-center text-[15px] text-muted">No 3D model in the CAD event.</div>
         )}
         <span className="pointer-events-none absolute top-3 left-3 inline-flex h-8 items-center gap-2 rounded-full bg-white/90 px-3.5 text-[13px] font-bold text-ink-2 shadow-[var(--shadow-pill)]">
           <span className={`h-2 w-2 rounded-full ${cad.source === "freecad" ? "bg-[#d23f31]" : "bg-sky"}`} />
           {source}
-          {pending && <span className="font-semibold text-agent-ink">· rechnet …</span>}
+          {pending && <span className="font-semibold text-agent-ink">· computing …</span>}
         </span>
         {script && (
           <button
@@ -334,7 +334,7 @@ export function CadView() {
 
       <div className="scroll-soft min-h-0 overflow-y-auto border-l border-line bg-card/70 px-4 py-3.5">
         <section>
-          <h3 className="eyebrow mb-1">Feature-Baum</h3>
+          <h3 className="eyebrow mb-1">Feature tree</h3>
           <ul className="-mx-1">
             {cad.tree.map((n) => (
               <TreeNode key={n.id} node={n} depth={0} />
@@ -346,7 +346,7 @@ export function CadView() {
 
         {Object.keys(cad.params).length > 0 && (
           <section className="mt-4 space-y-3">
-            <h3 className="eyebrow">Parameter</h3>
+            <h3 className="eyebrow">Parameters</h3>
             {Object.entries(cad.params).map(([name, p]) => (
               <ParamSlider
                 key={name}
@@ -364,13 +364,13 @@ export function CadView() {
         <section className="mt-4">
           {(view || !cad.part) && (
             <>
-          <h3 className="eyebrow mb-1.5">FreeCAD-Ansicht</h3>
+          <h3 className="eyebrow mb-1.5">FreeCAD view</h3>
           <div className="overflow-hidden rounded-2xl bg-tile ring-1 ring-line">
             {view ? (
-              <img src={view} alt="Ansicht aus FreeCAD" className="block aspect-[4/3] w-full object-cover" />
+              <img src={view} alt="View from FreeCAD" className="block aspect-[4/3] w-full object-cover" />
             ) : (
               <div className="flex aspect-[4/3] items-center justify-center px-4 text-center text-[13px] text-muted">
-                Erscheint, sobald das Teil in FreeCAD offen ist.
+                Appears once the part is open in FreeCAD.
               </div>
             )}
           </div>
@@ -382,7 +382,7 @@ export function CadView() {
             data-target="freecad_open in_freecad_oeffnen"
             className="mt-2.5 flex h-10 w-full items-center justify-center gap-2 rounded-full bg-ink text-[14px] font-semibold text-white shadow-[var(--shadow-pill)] hover:bg-[#333]"
           >
-            <ExternalLink className="h-4 w-4" /> In FreeCAD öffnen
+            <ExternalLink className="h-4 w-4" /> Open in FreeCAD
           </button>
           {(stl || step) && (
             <div className="mt-2 flex gap-2">

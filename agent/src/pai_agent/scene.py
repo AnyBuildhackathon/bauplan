@@ -29,12 +29,12 @@ TARGETS = PART_TARGETS + UI_TARGETS
 
 STEPS = (
     ("meeting", "Meeting"),
-    ("teile", "Teile"),
+    ("teile", "Parts"),
     ("cad", "CAD"),
     ("render", "Render"),
     ("simulation", "Simulation"),
     ("training", "Training"),
-    ("stueckliste", "Stückliste"),
+    ("stueckliste", "BOM"),
 )
 
 STEP_LABELS = dict(STEPS)

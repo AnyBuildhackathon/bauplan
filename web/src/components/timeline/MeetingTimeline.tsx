@@ -7,7 +7,17 @@ import type { MeetingEvent, VersionEvent } from "../../events/types";
 import { meetingTitle } from "../../lib/derived";
 import { useUi } from "../../lib/ui";
 
-const STATUS_TEXT: Record<MeetingEvent["status"], string> = { done: "", live: "läuft", next: "geplant" };
+const STATUS_TEXT: Record<MeetingEvent["status"], string> = { done: "", live: "live", next: "planned" };
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function shortDate(iso: string): string {
+  const [, month, day] = iso.split("-");
+  const m = Number(month);
+  const d = Number(day);
+  if (!m || !d) return "";
+  return `${MONTHS[m - 1]} ${d}`;
+}
 
 function VersionBadge({ version, active }: { version: VersionEvent | undefined; active: boolean }) {
   if (!version) return null;
@@ -31,7 +41,10 @@ export function MeetingTimeline() {
   const building = useSession((s) => Object.values(s.steps).some((step) => step.status === "running"));
 
   // Archive meetings feed warnings, they are not stations on the timeline.
-  const meetings = allMeetings.filter((m) => m.kind !== "archive");
+  const meetings = allMeetings
+    .filter((m) => m.kind !== "archive")
+    .slice()
+    .sort((a, b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`));
   const shown: MeetingEvent[] = meetings.length
     ? meetings
     : [
@@ -56,9 +69,10 @@ export function MeetingTimeline() {
       ? shown.find((m) => m.kind === "review" && m.status !== "done")
       : undefined;
   const current = selected ?? newest;
+  const showDate = new Set(shown.map((m) => m.date).filter(Boolean)).size > 1;
 
   return (
-    <nav className="flex min-w-0 items-center" data-target="timeline meetings" aria-label="Jamie-Meetings">
+    <nav className="flex min-w-0 items-center" data-target="timeline meetings" aria-label="Jamie meetings">
       <span className="mr-3 inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full bg-lavender px-3 text-[13px] font-bold text-jamie">
         <span className="h-2 w-2 rounded-full bg-jamie" /> Jamie
       </span>
@@ -92,9 +106,9 @@ export function MeetingTimeline() {
                 <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${m.status === "next" ? "ring-[1.5px] ring-faint ring-inset" : active ? "bg-white" : "bg-jamie"}`} />
               )}
               <span className="truncate text-[15px] font-semibold">{m.title}</span>
-              {(m.time || STATUS_TEXT[m.status]) && (
+              {(m.time || m.date || STATUS_TEXT[m.status]) && (
                 <span className={`num shrink-0 text-[13px] font-semibold ${active ? "text-white/65" : m.status === "live" ? "text-fail-ink" : "text-muted"}`}>
-                  {m.status === "live" ? "live" : m.time || STATUS_TEXT[m.status]}
+                  {m.status === "live" ? "live" : [showDate ? shortDate(m.date) : "", m.time].filter(Boolean).join(" ") || STATUS_TEXT[m.status]}
                 </span>
               )}
               <VersionBadge version={version} active={active} />
@@ -107,9 +121,9 @@ export function MeetingTimeline() {
                 className={`ml-1.5 h-8 shrink-0 rounded-full px-3 text-[13px] font-bold transition ${
                   m.status === "live" ? "bg-fail text-white hover:brightness-110" : "bg-card text-ink-2 shadow-[var(--shadow-pill)] hover:bg-page-2"
                 }`}
-                title={m.status === "live" ? "Meeting beenden: Bauplan baut neu" : "Meeting starten"}
+                title={m.status === "live" ? "End the meeting: AnyBuild rebuilds" : "Start the meeting"}
               >
-                {m.status === "live" ? "Beenden" : "Starten"}
+                {m.status === "live" ? "End" : "Start"}
               </button>
             )}
           </Fragment>

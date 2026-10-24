@@ -7,40 +7,42 @@ import { memo, useEffect, useState } from "react";
 import { AlertTriangle, ArrowRight, Boxes, CircleCheck, CircleX, Cpu, GitCompareArrows, MessageCircleQuestion, NotebookPen } from "lucide-react";
 import { useSession, type ChatItem } from "../../events/store";
 import { useSource } from "../../events/source";
+import { enLabel, enText } from "../../lib/copy";
 import { fmtDuration, fmtEur, fmtNum } from "../../lib/format";
 import { useUi } from "../../lib/ui";
 
 const TOOL_LABELS: Record<string, { running: string; done: string }> = {
-  Claude: { running: "Claude denkt nach", done: "Claude" },
-  CadQuery: { running: "CadQuery baut", done: "CadQuery" },
-  MuJoCo: { running: "MuJoCo simuliert", done: "MuJoCo" },
-  Blender: { running: "Blender rendert", done: "Blender" },
-  "Isaac Sim": { running: "Isaac Sim startet", done: "Isaac Sim" },
-  "Isaac Lab": { running: "Isaac Lab trainiert", done: "Isaac Lab" },
-  RunPod: { running: "RunPod startet die GPU", done: "RunPod" },
-  Jamie: { running: "Jamie wird gefragt", done: "Jamie" },
-  Reson8: { running: "Reson8 hört zu", done: "Reson8" },
+  Claude: { running: "Claude is thinking", done: "Claude" },
+  CadQuery: { running: "CadQuery is building", done: "CadQuery" },
+  MuJoCo: { running: "MuJoCo is simulating", done: "MuJoCo" },
+  Blender: { running: "Blender is rendering", done: "Blender" },
+  "Isaac Sim": { running: "Isaac Sim is starting", done: "Isaac Sim" },
+  "Isaac Lab": { running: "Isaac Lab is training", done: "Isaac Lab" },
+  RunPod: { running: "RunPod is starting the GPU", done: "RunPod" },
+  Jamie: { running: "Asking Jamie", done: "Jamie" },
+  Parts: { running: "Picking parts", done: "Parts" },
+  Reson8: { running: "Reson8 is listening", done: "Reson8" },
 };
 
 const JAMIE_ACTIONS: Record<string, string> = {
-  requirements: "Anforderungen gelesen",
-  search: "Meetings durchsucht",
-  search_meetings: "Meetings durchsucht",
-  get_meeting: "Meeting gelesen",
-  get_meeting_transcript: "Transkript gelesen",
-  create_tasks: "Aufgaben angelegt",
-  update_tasks: "Aufgabe aktualisiert",
-  create_tag: "Tag angelegt",
-  add_tag_to_meetings: "Meeting getaggt",
-  upsert_template: "Vorlage angelegt",
-  note: "Notiz geschrieben",
-  meeting_ended: "Meeting beendet",
-  summary: "Zusammenfassung gelesen",
+  requirements: "Requirements read",
+  search: "Meetings searched",
+  search_meetings: "Meetings searched",
+  get_meeting: "Meeting read",
+  get_meeting_transcript: "Transcript read",
+  create_tasks: "Tasks created",
+  update_tasks: "Task updated",
+  create_tag: "Tag created",
+  add_tag_to_meetings: "Meeting tagged",
+  upsert_template: "Template saved",
+  note: "Note written",
+  meeting_ended: "Meeting ended",
+  summary: "Summary read",
 };
 
 function getToolLabel(name: string, phase: string): string {
   const l = TOOL_LABELS[name];
-  if (!l) return phase === "running" ? `${name} läuft` : name;
+  if (!l) return phase === "running" ? `${name} running` : name;
   return phase === "running" ? l.running : l.done;
 }
 
@@ -70,7 +72,7 @@ function ToolCallPartRenderer({ item }: { item: Extract<ChatItem, { kind: "tool"
         <div className={`text-[14px] font-semibold ${item.phase === "running" ? "text-agent-ink" : item.phase === "error" ? "text-fail-ink" : "text-ink-2"}`}>
           {getToolLabel(item.name, item.phase)}
         </div>
-        {item.detail && <div className="truncate text-[13px] text-muted">{item.detail}</div>}
+        {item.detail && <div className="truncate text-[13px] text-muted">{enText(item.detail)}</div>}
       </div>
       {duration != null && duration > 0 && <span className="num shrink-0 text-[12px] text-faint">{fmtDuration(duration)}</span>}
     </div>
@@ -85,7 +87,7 @@ function JamiePartRenderer({ item }: { item: Extract<ChatItem, { kind: "jamie" }
         <div className="text-[14px] font-semibold text-ink-2">
           <span className="text-jamie">Jamie</span> · {JAMIE_ACTIONS[item.action] ?? item.action.replace(/_/g, " ")}
         </div>
-        {item.detail && <div className="truncate text-[13px] text-muted">{item.detail}</div>}
+        {item.detail && <div className="truncate text-[13px] text-muted">{enText(item.detail)}</div>}
       </div>
       <NotebookPen className="h-4 w-4 shrink-0 text-jamie" />
     </div>
@@ -110,7 +112,7 @@ function SimPartRenderer({ item }: { item: Extract<ChatItem, { kind: "sim" }> })
       <div className="flex items-center gap-2">
         {pass ? <CircleCheck className="h-5 w-5 text-ok" strokeWidth={2.2} /> : <CircleX className="h-5 w-5 text-fail" strokeWidth={2.2} />}
         <span className={`text-[14px] font-bold ${pass ? "text-ok-ink" : "text-fail-ink"}`}>
-          Lauf {item.run} · {pass ? "bestanden" : "nicht bestanden"}
+          Run {item.run} · {pass ? "passed" : "failed"}
         </span>
         <ArrowRight className="ml-auto h-4 w-4 text-muted transition group-hover:translate-x-0.5" />
       </div>
@@ -131,8 +133,8 @@ function BomPartRenderer({ item }: { item: Extract<ChatItem, { kind: "bom" }> })
         <Boxes className="h-5 w-5 text-ink-2" />
       </span>
       <div className="min-w-0 flex-1">
-        <div className="text-[14px] font-bold text-ink">Stückliste · {item.count} Teile</div>
-        <div className="num text-[13px] text-muted">{fmtEur(item.total)} · mit Shop-Links und STL</div>
+        <div className="text-[14px] font-bold text-ink">Bill of materials · {item.count} parts</div>
+        <div className="num text-[13px] text-muted">{fmtEur(item.total)} · shop links and STL</div>
       </div>
       <ArrowRight className="h-4 w-4 text-muted transition group-hover:translate-x-0.5" />
     </button>
@@ -142,7 +144,7 @@ function BomPartRenderer({ item }: { item: Extract<ChatItem, { kind: "bom" }> })
 function TrainingPartRenderer({ item }: { item: Extract<ChatItem, { kind: "training" }> }) {
   const setView = useUi((s) => s.setView);
   const phase = item.status === "done" ? "ok" : item.status === "failed" || item.status === "offline" ? "error" : "running";
-  const title = { queued: "Training in der Warteschlange", running: "Training läuft", done: "Training fertig", failed: "Training abgebrochen", offline: "Training offline" }[item.status];
+  const title = { queued: "Training queued", running: "Training running", done: "Training done", failed: "Training stopped", offline: "Training offline" }[item.status];
   return (
     <button type="button" onClick={() => setView("training")} className="group flex w-full items-center gap-2.5 rounded-2xl bg-tile px-3 py-2.5 text-left">
       <PhaseIcon phase={phase} />
@@ -160,9 +162,9 @@ function WarningPartRenderer({ item }: { item: Extract<ChatItem, { kind: "warnin
   return (
     <div className="rounded-2xl bg-agent-soft px-3 py-2.5">
       <div className="flex items-center gap-2 text-[14px] font-bold text-agent-ink">
-        <AlertTriangle className="h-4.5 w-4.5 shrink-0" /> Warnung aus {w.meeting_title}
+        <AlertTriangle className="h-4.5 w-4.5 shrink-0" /> Warning from {w.meeting_title}
       </div>
-      <p className="mt-1 text-[15px] leading-snug text-ink">„{w.text}“</p>
+      <p className="mt-1 text-[15px] leading-snug text-ink">“{w.text}”</p>
       <p className="mt-0.5 text-[13px] font-semibold text-muted">
         {w.speaker} · {w.time} · {item.part}
       </p>
@@ -186,7 +188,7 @@ function QuestionPartRenderer({ item }: { item: Extract<ChatItem, { kind: "quest
   return (
     <div className={`rounded-2xl px-3 py-3 ${open ? "bg-lavender ring-2 ring-jamie/40" : "bg-lavender/50"}`} data-target="question rueckfrage">
       <div className="flex items-center gap-2 text-[14px] font-bold text-jamie">
-        <MessageCircleQuestion className="h-4.5 w-4.5" /> Rückfrage vor dem Bauen
+        <MessageCircleQuestion className="h-4.5 w-4.5" /> Question before building
       </div>
       {(() => {
         // The backend puts each quoted sentence on its own line and the question last.
@@ -221,12 +223,12 @@ function QuestionPartRenderer({ item }: { item: Extract<ChatItem, { kind: "quest
           </div>
           {q.timeout_s > 0 && (
             <p className="num mt-2 text-[13px] font-semibold text-muted">
-              Antworte per Sprache oder Klick · sonst gilt „{q.options.find((o) => o.id === q.default_id)?.label}“ in {left} s
+              Answer by voice or click · otherwise “{q.options.find((o) => o.id === q.default_id)?.label}” in {left} s
             </p>
           )}
         </>
       ) : (
-        <p className="mt-1.5 text-[14px] font-semibold text-ok-ink">✓ {picked?.label ?? "beantwortet"}</p>
+        <p className="mt-1.5 text-[14px] font-semibold text-ok-ink">✓ {picked?.label ?? "answered"}</p>
       )}
     </div>
   );
@@ -240,21 +242,21 @@ function VersionPartRenderer({ item }: { item: Extract<ChatItem, { kind: "versio
   return (
     <button type="button" onClick={() => selectVersion(null)} className="w-full rounded-2xl bg-ok-soft p-3 text-left">
       <div className="flex items-center gap-2 text-[14px] font-bold text-ok-ink">
-        <GitCompareArrows className="h-4.5 w-4.5" /> Version {v.n} · aus {v.meeting_title}
+        <GitCompareArrows className="h-4.5 w-4.5" /> Version {v.n} · from {v.meeting_title}
       </div>
       {v.diff.length > 0 ? (
         <ul className="num mt-1.5 space-y-0.5">
           {v.diff.map((d) =>
             d.unit ? (
               <li key={d.key} className="flex items-baseline gap-2 text-[15px]">
-                <span className="w-[118px] shrink-0 font-semibold text-ink-2">{d.label}</span>
+                <span className="w-[118px] shrink-0 font-semibold text-ink-2">{enLabel(d.label)}</span>
                 <span className="text-muted">{fmt(d.before, d.unit)}</span>
                 <ArrowRight className="h-3.5 w-3.5 shrink-0 self-center text-muted" />
                 <span className="font-bold text-ink">{fmt(d.after, d.unit)}</span>
               </li>
             ) : (
               <li key={d.key} className="flex gap-2 pt-0.5 text-[15px]">
-                <span className="w-[118px] shrink-0 font-semibold text-ink-2">{d.label}</span>
+                <span className="w-[118px] shrink-0 font-semibold text-ink-2">{enLabel(d.label)}</span>
                 <span className="min-w-0 leading-snug">
                   <span className="block truncate text-muted line-through decoration-faint">{d.before}</span>
                   <span className="block truncate font-bold text-ink">{d.after}</span>
@@ -270,7 +272,7 @@ function VersionPartRenderer({ item }: { item: Extract<ChatItem, { kind: "versio
   );
 }
 
-/** Several finished calls of one tool in a row, such as the five part choices. */
+/** Consecutive finished calls of one tool, such as the five part choices, as one card. */
 export function ToolGroupRenderer({ items }: { items: Extract<ChatItem, { kind: "tool" }>[] }) {
   return (
     <div className="rounded-2xl bg-tile px-3 py-2.5">
@@ -282,7 +284,7 @@ export function ToolGroupRenderer({ items }: { items: Extract<ChatItem, { kind: 
       <ul className="space-y-0.5 pl-[30px]">
         {items.map((item) => (
           <li key={item.id} className="truncate text-[13px] text-muted">
-            {item.detail.replace(/^Gewählt: /, "")}
+            {enText(item.detail).replace(/^(Picked|Gewählt): /, "")}
           </li>
         ))}
       </ul>
@@ -292,19 +294,19 @@ export function ToolGroupRenderer({ items }: { items: Extract<ChatItem, { kind: 
 
 /** Several Jamie writes in a row (tags, note, tasks) as one card. */
 export function JamieGroupRenderer({ items }: { items: Extract<ChatItem, { kind: "jamie" }>[] }) {
-  const local = items.some((item) => item.detail.endsWith("lokale Outbox"));
+  const local = items.some((item) => /lokale Outbox|local outbox/.test(item.detail));
   return (
     <div className="rounded-2xl bg-lavender/60 px-3 py-2.5">
       <div className="mb-1 flex items-center gap-2 text-[14px] font-bold text-jamie">
         <NotebookPen className="h-4 w-4" /> Jamie
-        {local && <span className="ml-auto rounded-full bg-white/70 px-2 py-0.5 text-[12px] font-semibold text-muted">lokale Outbox</span>}
+        {local && <span className="ml-auto rounded-full bg-white/70 px-2 py-0.5 text-[12px] font-semibold text-muted">local outbox</span>}
       </div>
       <ul className="space-y-0.5">
         {items.map((item) => (
           <li key={item.id} className="flex min-w-0 items-center gap-2">
             <PhaseIcon phase={item.phase} />
             <span className="shrink-0 text-[14px] font-semibold text-ink-2">{JAMIE_ACTIONS[item.action] ?? item.action.replace(/_/g, " ")}</span>
-            <span className="truncate text-[13px] text-muted">{item.detail.replace(/ · lokale Outbox$/, "")}</span>
+            <span className="truncate text-[13px] text-muted">{enText(item.detail).replace(/ · local outbox$/, "")}</span>
           </li>
         ))}
       </ul>

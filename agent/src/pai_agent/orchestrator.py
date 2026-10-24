@@ -16,26 +16,26 @@ from pai_agent.tools.registry import SCHEMAS, call_tool
 
 log = logging.getLogger(__name__)
 
-_SYSTEM = """You are Bolzen, AnyBuild's engineering agent. Help develop physical products; the drone is the demo example.
+_SYSTEM = """You are Bolzen, AnyBuild's engineering agent. Help develop physical products; the drone is the worked example.
 Respond in English, in short sentences, including when the user speaks another language.
-Du rufst Werkzeuge auf, statt Zahlen zu erfinden. Jamie ist euer Gedächtnis: jede Entscheidung hängt an einem Satz aus einem Meeting.
+You call tools instead of inventing numbers. Jamie is the team's memory: every decision hangs on a sentence from a meeting.
 
-Neuer Bau aus dem Kickoff:
-1. jamie_templates, dann jamie_requirements. Danach jamie_search nach den Teilen, die du nehmen willst, um Warnungen aus früheren Meetings zu finden.
-2. parts_search mit select_id, because und reason, bis Motor, Propeller, Akku, Flugregler und Rahmen gewählt sind. Nimm Warnungen ernst und sag, wer sie wann gesagt hat.
-3. physics_calc. Preise sind Stichproben zum Prüfen.
-4. simulate_drone. Bei fail zeigst du mit ui_point_at und ui_draw auf das schuldige Teil, tauschst genau ein Teil, rechnest neu und simulierst neu.
-5. cad_frame in FreeCAD. arm_length_mm ist die Strecke von der Mitte zur Motorwelle, die Propeller brauchen Luft zueinander. motor_spacing_mm ist der Lochkreis der Motorschrauben, beim 1102 sind das 6,6.
-6. physics_calc noch einmal, weil der Rahmen dann eine echte Masse hat.
+New build from the kickoff:
+1. jamie_templates, then jamie_requirements. Then jamie_search for the parts you want, to find warnings from earlier meetings.
+2. parts_search with select_id, because and reason, until motor, propeller, battery, flight controller and frame are chosen. Take warnings seriously and say who said them, and when.
+3. physics_calc. Prices are samples to check.
+4. simulate_drone. On fail, point at the guilty part with ui_point_at and ui_draw, swap exactly one part, recalculate and simulate again.
+5. cad_frame in FreeCAD. arm_length_mm is the distance from the center to the motor shaft. The propellers need clearance. motor_spacing_mm is the bolt circle of the motor screws. On the 1102 that is 6.6.
+6. physics_calc again, because the frame then has a real mass.
 7. blender_render.
-8. bom_build, jamie_create_tasks, dann version_commit mit der meeting_id des Kickoffs.
+8. bom_build, jamie_create_tasks, then version_commit with the kickoff meeting_id.
 
-Neubau nach einem Review:
-1. jamie_meeting mit der meeting_id.
-2. Gibt es conflicts, fragst du mit ask_user nach, bevor du baust: zitiere beide Sätze mit Person und Uhrzeit. Die neuere Vorgabe ist default_id.
-3. requirements_accept mit den ids, die gelten.
-4. Für jede Beschwerde tauschst du das Teil (parts_search mit because complaint). refers_to sagt, welches Teil 'letzte Woche' gemeint ist.
-5. Dann wie oben ab physics_calc bis version_commit mit der meeting_id des Reviews. Nenne am Ende die Differenz in Gewicht, Flugzeit und Preis.
+Rebuild after a review:
+1. jamie_meeting with the meeting_id.
+2. If there are conflicts, ask with ask_user before you build: quote both sentences with person and time. The newer requirement is default_id.
+3. requirements_accept with the ids that apply.
+4. For each complaint, swap the part (parts_search with because complaint). refers_to says which part 'last week' means.
+5. Then continue as above from physics_calc through version_commit with the review meeting_id. At the end, name the difference in weight, flight time and price.
 
 AnyBuild builds more than drones. Pick the product from the request:
 - A drone or a meeting that ended: the flow above (call product_brief with product drone first when the user asks in chat).
@@ -46,10 +46,10 @@ AnyBuild builds more than drones. Pick the product from the request:
   if the script fails, cad_part fixes and retries it. Report mass, size and material, then blender_render.
 For anything that is not the drone, answer in English.
 
-Der Motor-Schub ist der Datenblattwert. Eine höhere Zellenspannung erzeugt keinen extra Schub.
-Ein Katalog-Motor sitzt viermal in der Szene. Für den Motortyp zeigst du auf motor_front_left.
-Ruf mascot_say, wenn du etwas erklärst. state ist ruhig, denkt, erklaert, freut_sich oder besorgt.
-Wenn ein Werkzeug einen Fehler zurückgibt, lies ihn und ruf es mit korrigierten Argumenten noch einmal auf.
+Motor thrust is the datasheet value. A higher cell voltage does not create extra thrust.
+A catalog motor sits four times in the scene. For the motor type, point at motor_front_left.
+Call mascot_say when you explain something. state is ruhig, denkt, erklaert, freut_sich or besorgt.
+If a tool returns an error, read it and call the tool again with corrected arguments.
 
 Omniverse requests: use isaac_test for gusty wind, a camera/payload mass or hover stability.
 These tools and product_usd support the drone only. For a gripper, use simulate_grip and explain that the GPU hover controller does not support it.
@@ -82,9 +82,9 @@ async def run_prompt(ctx: Ctx, text: str, messages: list[dict]) -> None:
             return
         review = _next_review(ctx) if ctx.state.finished and _REVIEW_DONE.search(text) else None
         if review is not None:
-            # "Das Review ist durch" by voice or text does what the meeting-ended webhook does.
+            # "The review is done" by voice or text does what the meeting-ended webhook does.
             review["status"] = "done"
-            await ctx.emit({"type": "jamie", "action": "meeting_ended", "status": "ok", "detail": review["title"] + " ist zu Ende"})
+            await ctx.emit({"type": "jamie", "action": "meeting_ended", "status": "ok", "detail": review["title"] + " ended"})
             await run_review(ctx, review["id"])
         elif ctx.state.finished or (not first and (ctx.state.sim_run or ctx.state.selected)):
             await run_mock_followup(ctx)
@@ -120,7 +120,7 @@ async def _mock_omniverse(ctx: Ctx, text: str) -> bool:
 
 
 _REVIEW_DONE = re.compile(
-    r"\b(review|meeting)\b.*\b(durch|vorbei|zu ende|fertig|beendet|aus)\b|\b(bau|baue)\b.*\bneu\b",
+    r"\b(review|meeting)\b.*\b(durch|vorbei|zu ende|fertig|beendet|aus|done|over|ended|finished)\b|\b(bau|baue|rebuild|build)\b.*\b(neu|again)\b",
     re.IGNORECASE,
 )
 
@@ -142,10 +142,10 @@ async def run_meeting(ctx: Ctx, meta: dict, messages: list[dict]) -> None:
     await _first(ctx)
     title = meta["title"]
     if review:
-        text = "Das Meeting „" + title + "“ ist zu Ende (meeting_id " + meta["id"] + "). Lies es und bau die nächste Version."
+        text = "The meeting “" + title + "” has ended (meeting_id " + meta["id"] + "). Read it and build the next version."
     else:
-        text = "Das Meeting „" + title + "“ ist zu Ende (meeting_id " + meta["id"] + "). Bau die kleine Drohne aus dem Kickoff."
-    await ctx.emit({"type": "jamie", "action": "meeting_ended", "status": "ok", "detail": title + " ist zu Ende"})
+        text = "The meeting “" + title + "” has ended (meeting_id " + meta["id"] + "). Build the small drone from the kickoff."
+    await ctx.emit({"type": "jamie", "action": "meeting_ended", "status": "ok", "detail": title + " ended"})
     if not claude_enabled():
         if review:
             await run_review(ctx, meta["id"])
@@ -172,11 +172,11 @@ async def _run_claude(ctx: Ctx, text: str, messages: list[dict]) -> None:
             )
         except Exception as exc:
             log.exception("anthropic call failed")
-            await ctx.chat("agent", "Die Modellanfrage ist fehlgeschlagen: " + str(exc))
+            await ctx.chat("agent", "The model request failed: " + str(exc))
             await call_tool(
                 ctx,
                 "mascot_say",
-                {"state": "besorgt", "say": "Das Modell antwortet nicht."},
+                {"state": "besorgt", "say": "The model is not answering."},
             )
             return
         blocks = list(response.content)
@@ -202,7 +202,7 @@ async def _run_claude(ctx: Ctx, text: str, messages: list[dict]) -> None:
                 }
             )
         messages.append({"role": "user", "content": results})
-    await ctx.chat("agent", "Ich stoppe nach 30 Werkzeugrunden, damit der Lauf nicht hängt.")
+    await ctx.chat("agent", "I am stopping after 30 tool rounds so the run does not hang.")
 
 
 def _dump(block: object) -> dict:

@@ -39,7 +39,7 @@ function Notice() {
       }`}
     >
       {notice}
-      <button onClick={dismiss} className="rounded-full p-1.5 hover:bg-white/15" aria-label="Schließen">
+      <button onClick={dismiss} className="rounded-full p-1.5 hover:bg-white/15" aria-label="Close">
         <X className="h-4 w-4" />
       </button>
     </div>

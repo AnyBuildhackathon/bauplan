@@ -90,7 +90,7 @@ async def blender_render(ctx: Ctx, args: dict) -> dict:
         url = "/files/" + ctx.state.session_id + "/" + name
         label = "v" + str(len(ctx.state.versions) + 1) + " · Studio"
         await ctx.emit({"type": "render", "source": "blender", "png_url": url, "label": label})
-        return {"ok": True, "status": "ok", "detail": label + "-Render", "png_url": url}
+        return {"ok": True, "status": "ok", "detail": label + " render", "png_url": url}
     _ensure_fallback()
     url = "/files/fallback/render.png"
     await ctx.emit(
@@ -98,13 +98,13 @@ async def blender_render(ctx: Ctx, args: dict) -> dict:
             "type": "render",
             "source": "blender",
             "png_url": url,
-            "label": "Aufgezeichnet, Blender ist offline",
+            "label": "Recorded, Blender is offline",
         }
     )
     return {
         "ok": True,
         "status": "offline",
-        "detail": "Blender fehlt. Aufgezeichnetes Standbild.",
+        "detail": "Blender is missing. Recorded still.",
         "png_url": url,
     }
 

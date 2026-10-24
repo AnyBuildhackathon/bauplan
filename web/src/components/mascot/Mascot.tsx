@@ -20,11 +20,11 @@ const BUSTS: Record<MascotState, string> = {
 };
 
 export const MASCOT_LABEL: Record<MascotState, string> = {
-  ruhig: "ruhig",
-  denkt: "denkt",
-  erklaert: "erklärt",
-  freut_sich: "freut sich",
-  besorgt: "besorgt",
+  ruhig: "calm",
+  denkt: "thinking",
+  erklaert: "explaining",
+  freut_sich: "pleased",
+  besorgt: "worried",
 };
 
 /** Antenna tip colors from the Paper spec (0C): orange, green when happy, red when worried. */

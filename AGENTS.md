@@ -261,8 +261,7 @@ Never commit `.env` files or secret keys to the repository.
 
 - Generalize beyond drones: generalize CAD generation for arbitrary product classes, expand hardware component catalogs, and support flexible multi-physics simulation domains.
 - Integrate teammate modules: 1,024 parallel browser MuJoCo simulations, physics stress testing, step-by-step exploded build guide, and firmware download with wiring table.
-- Translate user interface and agent dialogue to English: update UI labels, Bolzen spoken lines, agent chat messages, and configure default Reson8 language to English (`RESON8_LANGUAGE=en`).
-- Rename remaining user interface elements and repository paths from Bauplan to AnyBuild.
+- Rename remaining repository paths and package identifiers from Bauplan to AnyBuild. The user-visible name is already AnyBuild, and the interface and agent dialogue are already English.
 - Connect NVIDIA Omniverse and Isaac Sim on RunPod RTX 4090 to load drone USD files, execute wind tests, run Isaac Lab training, and stream results to a dedicated tab.
 - Switch Jamie MCP and Reson8 STT to live production credentials once on-site keys are provided.
 

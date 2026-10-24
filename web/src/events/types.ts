@@ -238,7 +238,7 @@ export interface VersionEvent {
   parts: Record<string, string>;
   diff: VersionDiff[];
   summary: string;
-  /** The note Bauplan wrote back to the meeting in Jamie. */
+  /** The note AnyBuild wrote back to the meeting in Jamie. */
   note?: string;
 }
 export interface PartWarning extends Quote {

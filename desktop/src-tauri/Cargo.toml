@@ -1,7 +1,7 @@
 [package]
 name = "bauplan"
 version = "0.1.0"
-description = "Bauplan: the physical AI agent dashboard as a Mac app"
+description = "AnyBuild: the physical AI agent dashboard as a Mac app"
 edition = "2021"
 
 [lib]

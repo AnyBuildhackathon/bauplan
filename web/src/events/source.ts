@@ -47,7 +47,7 @@ interface SourceState {
   dismissNotice: () => void;
 }
 
-const MODE_KEY = "bauplan.source";
+const MODE_KEY = "anybuild.source";
 const SPEEDS = [1, 2, 4];
 
 function storedMode(): SourceMode | null {
@@ -66,17 +66,26 @@ function storeMode(mode: SourceMode) {
   }
 }
 
-/** The option a spoken or typed answer names: "fünfzehn", "15 bitte", or "ja" for the suggestion. */
+/** The option a spoken or typed answer names: "fifteen", "15", or "yes" for the suggestion. */
 export function matchAnswer(text: string, q: QuestionEvent): string | null {
   let lowered = text.toLowerCase();
-  for (const [word, digits] of Object.entries({ zehn: "10", zwölf: "12", fünfzehn: "15", zwanzig: "20" })) {
+  for (const [word, digits] of Object.entries({
+    zehn: "10",
+    ten: "10",
+    zwölf: "12",
+    twelve: "12",
+    fünfzehn: "15",
+    fifteen: "15",
+    zwanzig: "20",
+    twenty: "20",
+  })) {
     lowered = lowered.replace(new RegExp(`\\b${word}\\b`, "g"), digits);
   }
   for (const option of q.options) {
     const numbers = option.label.match(/\d+/g) ?? [];
     if (numbers.some((n) => new RegExp(`\\b${n}\\b`).test(lowered))) return option.id;
   }
-  return /\b(ja|passt|okay|ok|genau)\b/.test(lowered) ? q.default_id : null;
+  return /\b(ja|passt|okay|ok|genau|yes|fine|sure)\b/.test(lowered) ? q.default_id : null;
 }
 
 // --- live SSE ---------------------------------------------------------------
@@ -173,7 +182,7 @@ export const useSource = create<SourceState>((set, get) => {
   };
 
   return {
-    mode: "demo",
+    mode: "live",
     live: "idle",
     demo: { playing: false, started: false, speed: 1, index: 0, total: fixture.length },
     notice: null,
@@ -264,7 +273,7 @@ export const useSource = create<SourceState>((set, get) => {
           session.apply({
             type: "chat",
             role: "agent",
-            text: "Das hier ist die **Demo-Aufnahme**, ich spiele sie nur ab. Schalt oben auf **Live**, dann rechne ich wirklich mit dir.",
+            text: "This is a recorded session. Switch to **Live** up top and I will build with you.",
           });
         }, 700);
         return;
@@ -278,13 +287,13 @@ export const useSource = create<SourceState>((set, get) => {
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
       } catch (err) {
-        set({ notice: `Backend nicht erreichbar (${err instanceof Error ? err.message : "Fehler"}). Läuft agent/ auf Port 8100?` });
+        set({ notice: `Backend unreachable (${err instanceof Error ? err.message : "error"}). Is agent/ running on port 8100?` });
       }
     },
 
     setCadParams: async (params) => {
       if (get().mode === "demo") {
-        set({ notice: "In der Demo-Aufnahme rechnet CAD nicht neu. Schalt auf Live." });
+        set({ notice: "CAD does not recompute in the recorded session. Switch to Live." });
         return false;
       }
       try {
@@ -296,21 +305,21 @@ export const useSource = create<SourceState>((set, get) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return true;
       } catch (err) {
-        set({ notice: `CAD-Parameter nicht angekommen (${err instanceof Error ? err.message : "Fehler"}).` });
+        set({ notice: `CAD parameters did not arrive (${err instanceof Error ? err.message : "error"}).` });
         return false;
       }
     },
 
     openInFreecad: async () => {
       if (get().mode === "demo") {
-        set({ notice: "FreeCAD öffnet nur im Live-Modus, auf dem Mac mit dem Backend." });
+        set({ notice: "FreeCAD opens only in live mode, on the Mac that runs the backend." });
         return;
       }
       try {
         const res = await fetch(apiUrl("/api/cad/open"), { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
       } catch (err) {
-        set({ notice: `FreeCAD ließ sich nicht öffnen (${err instanceof Error ? err.message : "Fehler"}).` });
+        set({ notice: `FreeCAD could not be opened (${err instanceof Error ? err.message : "error"}).` });
       }
     },
 
@@ -325,7 +334,7 @@ export const useSource = create<SourceState>((set, get) => {
         const res = await fetch(apiUrl("/api/reset"), { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
       } catch {
-        set({ notice: "Reset nicht angekommen: Backend nicht erreichbar." });
+        set({ notice: "Reset did not arrive: backend unreachable." });
       }
     },
 
@@ -344,7 +353,7 @@ export const useSource = create<SourceState>((set, get) => {
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
       } catch (err) {
-        set({ notice: `Aufgabe nicht gespeichert (${err instanceof Error ? err.message : "Fehler"}).` });
+        set({ notice: `Task was not saved (${err instanceof Error ? err.message : "error"}).` });
       }
     },
 
@@ -363,7 +372,7 @@ export const useSource = create<SourceState>((set, get) => {
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
       } catch (err) {
-        set({ notice: `Jamie-Ereignis nicht angekommen (${err instanceof Error ? err.message : "Fehler"}).` });
+        set({ notice: `Jamie event did not arrive (${err instanceof Error ? err.message : "error"}).` });
       }
     },
 
@@ -383,7 +392,7 @@ export const useSource = create<SourceState>((set, get) => {
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
       } catch (err) {
-        set({ notice: `Antwort nicht angekommen (${err instanceof Error ? err.message : "Fehler"}).` });
+        set({ notice: `Answer did not arrive (${err instanceof Error ? err.message : "error"}).` });
       }
     },
 
@@ -391,7 +400,7 @@ export const useSource = create<SourceState>((set, get) => {
   };
 });
 
-/** Picks the start mode: URL (?demo / ?live) wins, then the remembered choice, else probe the backend. */
+/** Picks the start mode: URL (?demo / ?live) wins, then the remembered choice, else Live. */
 export function initSource() {
   const params = new URLSearchParams(window.location.search);
   const source = useSource.getState();
@@ -399,19 +408,7 @@ export function initSource() {
   if (speed) source.setSpeed(speed);
 
   const urlMode: SourceMode | null = params.has("live") ? "live" : params.has("demo") ? "demo" : null;
-  const mode = urlMode ?? storedMode();
-  if (mode) {
-    source.setMode(mode);
-  } else {
-    // No preference yet: try the backend, fall back to the recording if it does not answer.
-    source.setMode("live");
-    setTimeout(() => {
-      if (useSource.getState().live !== "open" && !useSource.getState().demo.started) {
-        useSource.getState().setMode("demo");
-        useSource.setState({ notice: "Kein Backend auf Port 8100, die Demo-Aufnahme ist bereit." });
-      }
-    }, 2500);
-  }
+  source.setMode(urlMode ?? storedMode() ?? "live");
 
   if (useSource.getState().mode === "demo") {
     const seek = params.get("seek");

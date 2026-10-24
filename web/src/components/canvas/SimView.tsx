@@ -21,7 +21,7 @@ function RunChip({ run, label }: { run: Run; label: string }) {
       }`}
     >
       <span className="h-2 w-2 rounded-full" style={{ background: RUN_COLOR[run.result] }} />
-      {label} · Lauf {run.run} · {pass ? "besteht" : "sackt ab"}
+      {label} · run {run.run} · {pass ? "holds" : "drops"}
     </span>
   );
 }
@@ -56,8 +56,8 @@ function HoverSimView() {
   if (!after) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
-        <p className="text-[18px] font-semibold text-ink-2">Noch kein Simulationslauf</p>
-        <p className="max-w-sm text-[15px] text-muted">Bolzen testet in MuJoCo, sobald Teile und Rahmen stehen. Jeder Lauf wird hier abgespielt.</p>
+        <p className="text-[18px] font-semibold text-ink-2">No simulation run yet</p>
+        <p className="max-w-sm text-[15px] text-muted">Bolzen tests in MuJoCo once the parts and the frame are in. Every run plays back here.</p>
       </div>
     );
   }
@@ -77,14 +77,14 @@ function HoverSimView() {
           <div className="relative min-h-0 min-w-0 overflow-hidden border-r border-line">
             <SimScene run={before.run} primary={false} color={RUN_COLOR[before.run.result]} bounds={bounds} />
             <div className="absolute top-3 left-3">
-              <RunChip run={before.run} label="Vorher" />
+              <RunChip run={before.run} label="Before" />
             </div>
           </div>
         )}
         <div className="relative min-h-0 min-w-0 overflow-hidden">
           <SimScene run={after.run} primary color={RUN_COLOR[after.run.result]} bounds={bounds} />
           <div className="absolute top-3 left-3">
-            <RunChip run={after.run} label={before ? "Nachher" : "Lauf"} />
+              <RunChip run={after.run} label={before ? "After" : "Run"} />
           </div>
         </div>
       </div>
@@ -94,13 +94,13 @@ function HoverSimView() {
           type="button"
           onClick={() => setPlaying(!playing)}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink text-white shadow-[var(--shadow-pill)]"
-          aria-label={playing ? "Pause" : "Abspielen"}
+          aria-label={playing ? "Pause" : "Play"}
         >
           {playing ? <Pause className="h-4 w-4" fill="currentColor" /> : <Play className="h-4 w-4 translate-x-[1px]" fill="currentColor" />}
         </button>
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline justify-between text-[13px] font-semibold text-muted">
-            <span>Höhe über Zeit</span>
+            <span>Altitude over time</span>
             <span className="num text-ink-2">
               {fmtNum(t, 1)} / {fmtNum(duration, 1)} s
             </span>
@@ -117,7 +117,7 @@ function HoverSimView() {
               yDomain={[0, zMax]}
               yTicks={[0, 0.5]}
               formatY={(v) => `${fmtNum(v * 100)} cm`}
-              marker={{ y: 0.5, label: "Ziel 50 cm" }}
+              marker={{ y: 0.5, label: "Target 50 cm" }}
             />
           </div>
         </div>

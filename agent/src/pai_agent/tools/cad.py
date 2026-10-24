@@ -34,11 +34,11 @@ _LIMITS = {
 _TREE = [
     {
         "id": "frame",
-        "label": "Rahmen",
+        "label": "Frame",
         "children": [
-            {"id": "hub", "label": "Nabe", "children": []},
-            {"id": "arms", "label": "Arme", "children": []},
-            {"id": "pads", "label": "Motorauflagen", "children": []},
+            {"id": "hub", "label": "Hub", "children": []},
+            {"id": "arms", "label": "Arms", "children": []},
+            {"id": "pads", "label": "Motor pads", "children": []},
         ],
     }
 ]
@@ -133,7 +133,7 @@ def apply_param_body(current: dict, body: dict) -> dict:
     if "name" in body or "value" in body:
         name = body.get("name")
         if name not in _LIMITS or "value" not in body:
-            raise ValueError("name und value müssen ein bekanntes Maß nennen.")
+            raise ValueError("name and value must name a known dimension.")
         params[str(name)] = float(body["value"])
         return params
     for key in _LIMITS:
@@ -168,13 +168,13 @@ async def cad_frame(ctx: Ctx, args: dict) -> dict:
     thickness = _number(args, "thickness_mm")
     motor_spacing = _number(args, "motor_spacing_mm")
     if arm_length is None or thickness is None or motor_spacing is None:
-        return _fail("arm_length_mm, thickness_mm und motor_spacing_mm müssen Zahlen sein.")
+        return _fail("arm_length_mm, thickness_mm and motor_spacing_mm must be numbers.")
     if not 20 <= arm_length <= 80:
-        return _fail("arm_length_mm muss zwischen 20 und 80 liegen. Das ist die Strecke von der Mitte zur Motorwelle.")
+        return _fail("arm_length_mm must be between 20 and 80. That is the distance from the center to the motor shaft.")
     if not 1.2 <= thickness <= 6:
-        return _fail("thickness_mm muss zwischen 1,2 und 6 liegen.")
+        return _fail("thickness_mm must be between 1.2 and 6.")
     if not 4 <= motor_spacing <= 16:
-        return _fail("motor_spacing_mm ist der Lochkreis der Motorschrauben und muss zwischen 4 und 16 liegen.")
+        return _fail("motor_spacing_mm is the bolt circle of the motor screws and must be between 4 and 16.")
 
     propeller = ctx.state.selected.get("propeller")
     clearance = None
@@ -184,15 +184,15 @@ async def cad_frame(ctx: Ctx, args: dict) -> dict:
         if clearance < _PROP_GAP_MM:
             needed = (float(propeller["diameter_mm"]) + _PROP_GAP_MM) / math.sqrt(2)
             return _fail(
-                "Bei "
+                "At "
                 + de(arm_length, 0)
-                + " mm Arm stehen die Motoren "
+                + " mm of arm the motors are "
                 + de(arm_length * math.sqrt(2), 1)
-                + " mm auseinander, die "
+                + " mm apart, and the "
                 + de(float(propeller["diameter_mm"]), 0)
-                + "-mm-Propeller berühren sich. Mindestens "
+                + " mm propellers touch. At least "
                 + de(math.ceil(needed), 0)
-                + " mm Arm."
+                + " mm of arm."
             )
 
     params = {
@@ -213,7 +213,7 @@ async def cad_frame(ctx: Ctx, args: dict) -> dict:
         # A reset cancels the run but not this thread; stop before the next step instead of
         # writing into the new session.
         if stop.is_set():
-            raise FreeCADFailed("abgebrochen")
+            raise FreeCADFailed("cancelled")
         asyncio.run_coroutine_threadsafe(
             ctx.emit({"type": "tool", "name": "cad_frame", "status": "running", "detail": detail}), loop
         )
@@ -228,7 +228,7 @@ async def cad_frame(ctx: Ctx, args: dict) -> dict:
             raise
         except (FreeCADFailed, OSError, TimeoutError, ValueError) as exc:
             log.warning("FreeCAD-Fenster fällt auf headless zurück: %s", exc)
-            await ctx.emit({"type": "tool", "name": "cad_frame", "status": "running", "detail": "FreeCAD-Fenster hängt, baue im Hintergrund weiter"})
+            await ctx.emit({"type": "tool", "name": "cad_frame", "status": "running", "detail": "FreeCAD window stalled, continuing in the background"})
     if mass_g is None:
         try:
             mass_g = await asyncio.to_thread(build_with_freecad, directory, params)
@@ -238,11 +238,11 @@ async def cad_frame(ctx: Ctx, args: dict) -> dict:
             try:
                 mass_g = await asyncio.to_thread(_cadquery_bundle, directory, params)
             except Exception as fallback:
-                message = "CadQuery konnte den Rahmen nicht bauen: " + str(fallback)
+                message = "CadQuery could not build the frame: " + str(fallback)
                 return _fail(message)
     stl = directory / "frame.stl"
     if not stl.is_file() or stl.stat().st_size < 100 or not (directory / "frame.step").is_file():
-        return _fail("STL oder STEP fehlt.")
+        return _fail("STL or STEP is missing.")
     if not (directory / "frame.glb").is_file():
         await asyncio.to_thread(stl_to_glb, stl, directory / "frame.glb")
 
@@ -267,8 +267,8 @@ async def cad_frame(ctx: Ctx, args: dict) -> dict:
             "view_png_url": view_url,
         }
     )
-    where = "FreeCAD-Fenster" if viewed else ("FreeCAD headless" if source == "freecad" else "CadQuery")
-    detail = where + ", " + de(mass_g, 1) + " g PLA, STL und STEP"
+    where = "FreeCAD window" if viewed else ("FreeCAD headless" if source == "freecad" else "CadQuery")
+    detail = where + ", " + de(mass_g, 1) + " g PLA, STL and STEP"
     return {
         "ok": True,
         "detail": detail,

@@ -107,7 +107,7 @@ The part shows up in the CAD tab like the drone frame, with its parameters as sl
 Moving a slider reruns the same script without a model call.
 The harness is `agent/freecad/part_harness.py`, the runner `agent/src/pai_agent/cad_script.py`, the tool `agent/src/pai_agent/tools/cad_part.py`.
 
-The second demo product is a parametric two-finger robot gripper, chosen because it has moving parts, a real physics question (does it hold the object while the arm moves?) and a parts choice that changes the CAD.
+The second example product is a parametric two-finger robot gripper, chosen because it has moving parts, a real physics question (does it hold the object while the arm moves?) and a parts choice that changes the CAD.
 Ask for it in the chat, for example with the "Robot gripper" example on the empty chat:
 
 ```text
@@ -148,9 +148,9 @@ Shell variables override values in `.env`.
 | `JAMIE_MCP_URL` | Jamie MCP server URL defaulting to `https://mcp.meetjamie.ai/mcp`. |
 | `JAMIE_WEBHOOK_SECRET` | Secret token verified against `X-Jamie-Secret` header or `?secret=` when tunneling requests. |
 | `RESON8_API_KEY` | Reson8 API key for speech-to-text, leaving empty for browser speech recognition. |
-| `RESON8_LANGUAGE` | Language code for Reson8 speech-to-text defaulting to `de`, to be updated to `en` in the UI translation task. |
+| `RESON8_LANGUAGE` | Language code for Reson8 speech-to-text, defaulting to `en`. |
 | `ELEVENLABS_API_KEY` | ElevenLabs API key for Bolzen speech synthesis, leaving empty for browser speech synthesis. |
-| `ELEVENLABS_VOICE_ID` | Custom voice identifier for ElevenLabs audio generation. |
+| `ELEVENLABS_VOICE_ID` | Optional English voice identifier for ElevenLabs audio generation. |
 | `FREECAD_GUI` | FreeCAD execution mode defaulting to `auto` (`auto` builds in open window, `launch` starts app, `off` forces headless). |
 | `FREECAD_MCP_URL` | FreeCAD MCP RPC server URL defaulting to `http://127.0.0.1:9875`. |
 | `PAI_ASK_TIMEOUT_S` | Seconds Bolzen waits for question response before choosing default option, defaulting to `20`. |
@@ -176,9 +176,9 @@ cd agent && uv run python scripts/smoke_sse.py
 
 The smoke test launches an isolated server instance on port 8101 (`SMOKE_PORT`), forces mock mode, and runs both kickoff and review flows through the SSE stream.
 
-## Demo Recording
+## Recorded session
 
-The `?demo` parameter in the dashboard replays an authentic recorded mock run ensuring identical metrics and outputs.
+The app opens in Live. `?demo` still replays a recorded mock run, so the numbers on that path match the backend.
 After making changes to the story, component catalogs, or physics parameters, re-record the fixture:
 
 ```bash

@@ -129,7 +129,7 @@ class Session:
 
         assert self.question is not None
         lowered = text.lower()
-        words = {"zehn": "10", "fünfzehn": "15", "zwölf": "12", "zwanzig": "20"}
+        words = {"zehn": "10", "ten": "10", "fünfzehn": "15", "fifteen": "15", "zwölf": "12", "twelve": "12", "zwanzig": "20", "twenty": "20"}
         for word, digits in words.items():
             lowered = re.sub(r"\b" + word + r"\b", digits, lowered)
         for option in self.question["options"]:
@@ -137,7 +137,7 @@ class Session:
             if numbers and any(re.search(r"\b" + n + r"\b", lowered) for n in numbers):
                 await self.bus.publish({"type": "chat", "role": "user", "text": text})
                 return await self.answer(self.question["id"], option["id"])
-        if re.search(r"\b(ja|passt|okay|ok|genau|neu|neue)\b", lowered):
+        if re.search(r"\b(ja|passt|okay|ok|genau|neu|neue|yes|fine|sure|new)\b", lowered):
             await self.bus.publish({"type": "chat", "role": "user", "text": text})
             return await self.answer(self.question["id"], self.question["default_id"])
         return False
@@ -149,7 +149,7 @@ class Session:
         from pai_agent.tools.cad import apply_param_body, cad_frame
 
         if self._busy():
-            message = "Bolzen baut gerade. Gleich noch einmal."
+            message = "Bolzen is building. Try again in a moment."
             return {"ok": False, "error": message, "detail": message, "busy": True}
         if self._part_is_current():
             return await self._rebuild_part(body)
@@ -226,8 +226,8 @@ class Session:
             raise
         except Exception as exc:
             log.exception("run failed")
-            await ctx.chat("agent", "Der Lauf ist umgefallen: " + str(exc))
-            await ctx.emit({"type": "mascot", "state": "besorgt", "say": "Da ist etwas im Lauf umgefallen."})
+            await ctx.chat("agent", "The run stopped: " + str(exc))
+            await ctx.emit({"type": "mascot", "state": "besorgt", "say": "Something went wrong in the run."})
 
     async def _baseline(self) -> None:
         # Every stream starts with this marker, so a client that reconnects or misses a reset starts clean.

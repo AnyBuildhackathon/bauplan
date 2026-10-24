@@ -29,7 +29,7 @@ def _public(part: dict) -> dict:
 async def parts_search(ctx: Ctx, args: dict) -> dict:
     category = str(args.get("category", "")).strip()
     if category not in PART_CATEGORIES:
-        message = "category muss motor, propeller, battery, flight_controller oder frame sein."
+        message = "category must be motor, propeller, battery, flight_controller or frame."
         return {"ok": False, "error": message, "detail": message}
     query = str(args.get("query", "")).strip().lower()
     matches = []
@@ -43,7 +43,7 @@ async def parts_search(ctx: Ctx, args: dict) -> dict:
             continue
         matches.append(part)
     if not matches:
-        message = "Kein Treffer für " + category + (" " + query if query else "") + "."
+        message = "No match for " + category + (" " + query if query else "") + "."
         return {"ok": False, "error": message, "detail": message}
 
     from pai_agent.tools.jamie import emit_part, part_notes, warn_candidates
@@ -54,7 +54,7 @@ async def parts_search(ctx: Ctx, args: dict) -> dict:
         chosen = next((part for part in matches if part["id"] == select_id), None)
         if chosen is None:
             known = ", ".join(part["id"] for part in matches)
-            message = "select_id " + select_id + " ist nicht in dieser Suche. Da sind: " + known + "."
+            message = "select_id " + select_id + " is not in this search. Here: " + known + "."
             return {"ok": False, "error": message, "detail": message}
         ctx.state.selected[category] = dict(chosen)
         selected = select_id
@@ -69,9 +69,9 @@ async def parts_search(ctx: Ctx, args: dict) -> dict:
             {key: note[key] for key in ("speaker", "time", "meeting_title", "text", "tone")} for note in part_notes(ctx.state, part)
         ]
         shown.append(public)
-    detail = category + ": " + str(len(shown)) + " Treffer"
+    detail = category + ": " + str(len(shown)) + " hits"
     if selected:
-        detail = "Gewählt: " + ctx.state.selected[category]["name"]
+        detail = "Picked: " + ctx.state.selected[category]["name"]
     return {
         "ok": True,
         "detail": detail,

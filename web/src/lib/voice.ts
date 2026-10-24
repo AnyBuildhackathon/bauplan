@@ -21,7 +21,7 @@ let caps: Capabilities = {
   stt: BROWSER_STT ? "browser" : "none",
   tts: BROWSER_TTS ? "browser" : "none",
   realtimeUrl: "wss://api.reson8.dev/v1/speech-to-text/realtime",
-  language: "de",
+  language: "en",
 };
 
 /** Asks the backend which voice services have keys. The demo recording keeps the browser's own. */
@@ -34,7 +34,7 @@ export async function loadVoiceCapabilities(): Promise<Capabilities> {
         stt: body.stt === "reson8" ? "reson8" : BROWSER_STT ? "browser" : "none",
         tts: body.tts === "elevenlabs" ? "elevenlabs" : BROWSER_TTS ? "browser" : "none",
         realtimeUrl: body.realtime_url || caps.realtimeUrl,
-        language: body.language || "de",
+        language: body.language || "en",
       };
     }
   } catch {
@@ -61,11 +61,11 @@ export async function startListening(handlers: ListenHandlers): Promise<Listener
     try {
       return await listenReson8(handlers);
     } catch (err) {
-      handlers.onError(`Reson8 nicht erreichbar (${err instanceof Error ? err.message : "Fehler"}), Browser hört zu.`);
+      handlers.onError(`Reson8 is unreachable (${err instanceof Error ? err.message : "error"}). The browser is listening.`);
     }
   }
   if (BROWSER_STT) return listenBrowser(handlers);
-  handlers.onError("Dieser Browser hat keine Spracherkennung. Tipp es einfach.");
+  handlers.onError("This browser has no speech recognition. Type it instead.");
   return null;
 }
 
@@ -216,7 +216,7 @@ function listenBrowser({ onInterim, onError }: ListenHandlers): Listener {
   const w = window as unknown as { SpeechRecognition?: new () => RecognitionLike; webkitSpeechRecognition?: new () => RecognitionLike };
   const Ctor = (w.SpeechRecognition ?? w.webkitSpeechRecognition)!;
   const rec = new Ctor();
-  rec.lang = "de-DE";
+  rec.lang = "en-US";
   rec.interimResults = true;
   rec.continuous = true;
   let text = "";
@@ -233,7 +233,7 @@ function listenBrowser({ onInterim, onError }: ListenHandlers): Listener {
     onInterim(text);
   };
   rec.onerror = (e) => {
-    if (e.error !== "aborted" && e.error !== "no-speech") onError(`Spracherkennung: ${e.error}`);
+    if (e.error !== "aborted" && e.error !== "no-speech") onError(`Speech recognition: ${e.error}`);
   };
   rec.onend = () => ended?.();
   rec.start();
@@ -252,14 +252,14 @@ function listenBrowser({ onInterim, onError }: ListenHandlers): Listener {
 // --- Bolzen speaks ---------------------------------------------------------------------
 
 let audio: HTMLAudioElement | null = null;
-let germanVoice: SpeechSynthesisVoice | null = null;
+let englishVoice: SpeechSynthesisVoice | null = null;
 
 function pickVoice(): SpeechSynthesisVoice | null {
   if (!BROWSER_TTS) return null;
-  if (germanVoice) return germanVoice;
-  const voices = window.speechSynthesis.getVoices().filter((v) => v.lang.toLowerCase().startsWith("de"));
-  germanVoice = voices.find((v) => /anna|markus|yannick|helena|google/i.test(v.name)) ?? voices[0] ?? null;
-  return germanVoice;
+  if (englishVoice) return englishVoice;
+  const voices = window.speechSynthesis.getVoices().filter((v) => v.lang.toLowerCase().startsWith("en"));
+  englishVoice = voices.find((v) => /samantha|daniel|google uk|google us|alex/i.test(v.name)) ?? voices[0] ?? null;
+  return englishVoice;
 }
 
 export function stopSpeaking() {
@@ -315,7 +315,7 @@ async function say(line: string, mode: "live" | "demo", mine: number): Promise<v
   if (!BROWSER_TTS || mine !== generation) return;
   await new Promise<void>((resolve) => {
     const utterance = new SpeechSynthesisUtterance(line);
-    utterance.lang = "de-DE";
+    utterance.lang = "en-US";
     const voice = pickVoice();
     if (voice) utterance.voice = voice;
     utterance.rate = 1.05;
