@@ -23,16 +23,19 @@ def export_product(state: BuildState, directory: Path) -> dict:
     stl = REPO_ROOT / (state.stl_path or "")
     if not state.stl_path or not stl.is_file():
         raise ValueError("Build the CAD frame before exporting a product to USD.")
-    spec = {"battery_mm": [68.0, 15.5, 6.7], **_assembly(state)}
+    spec = {"arm_mm": float(state.cad_params.get("arm_length_mm") or 36),
+            "thickness_mm": float(state.cad_params.get("thickness_mm") or 2),
+            "battery_mm": [68.0, 15.5, 6.7], **_assembly(state)}
     parts = []
-    for category in ("frame", "motor", "propeller", "battery", "flight_controller"):
+    required = ("frame", "motor", "propeller", "battery", "flight_controller")
+    for category in dict.fromkeys((*required, *state.selected)):
         selected = state.selected.get(category)
         if not selected:
             raise ValueError("Select a " + category + " before exporting the assembly.")
         mass = float(state.frame_mass_g if category == "frame" and state.frame_mass_g is not None else selected["mass_g"]) / 1000
         quantity = int(selected["bom_qty"])
-        expected = 4 if category in ("motor", "propeller") else 1
-        if quantity != expected or not math.isfinite(mass) or mass <= 0:
+        expected = 4 if category in ("motor", "propeller") else 1 if category in required else quantity
+        if quantity < 1 or quantity != expected or not math.isfinite(mass) or mass <= 0:
             raise ValueError("Invalid mass or quantity for " + category)
         for index in range(quantity):
             name = f"{category}_{index}"
