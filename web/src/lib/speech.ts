@@ -254,17 +254,26 @@ export function unlockAudio() {
   return audioCtx;
 }
 
+// ElevenLabs answers in well under a second; without headers by then, the browser voice speaks instead.
+const SPEAK_FIRST_BYTE_MS = 3000;
+
 async function requestAudio(phrase: Phrase): Promise<ReadableStreamDefaultReader<Uint8Array> | null> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), SPEAK_FIRST_BYTE_MS);
   try {
     const res = await fetch(apiUrl("/api/voice/speak"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: phrase.text, previous_text: phrase.previous }),
+      signal: controller.signal,
     });
     if (!res.ok || !res.body) return null;
     return res.body.getReader();
   } catch {
     return null;
+  } finally {
+    // Only the wait for the first response is limited; the stream itself may run as long as the sentence.
+    clearTimeout(timer);
   }
 }
 
