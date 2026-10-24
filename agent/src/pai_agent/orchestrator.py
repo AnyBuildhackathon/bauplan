@@ -10,12 +10,14 @@ import re
 from pai_agent.context import Ctx
 from pai_agent import settings
 from pai_agent.env import claude_enabled
+from pai_agent.mock_categories import NAMES as CATEGORY_NAMES, RUNS as CATEGORY_RUNS, wants_category
 from pai_agent.mock_gripper import run_gripper_mock, wants_gripper
 from pai_agent.mock_product import run_product_mock, wants_product
 from pai_agent.mock_story import run_mock, run_mock_followup, run_review
 from pai_agent.scene import STEPS
 from pai_agent.tools.browser_train import run_mock_training
 from pai_agent.tools.registry import DELEGATED, SCHEMAS, call_tool
+from pai_agent.timeouts import model_timeout
 from pai_agent.tools.stress import run_stress_mock, wants_stress
 
 log = logging.getLogger(__name__)
@@ -39,6 +41,8 @@ Any product (the default; a phone stand, a desk fan, a plant-watering robot, a b
    (printed, bought, external loads such as the phone it holds or the water in a tank). Pick checks that fit the product:
    mass and cost always, tip_over for anything that stands, deflection for arms, shelves, clips and brackets,
    torque when a motor or servo moves something, runtime when it runs on a battery, stability (MuJoCo push) for anything on a table.
+   power (check_power, min headroom x) when electronics run from a supply or battery, thermal (check_thermal, max °C) for electronics in a closed case,
+   rollover (check_rollover, min g lateral) for anything with wheels that turns.
    Describe each printed part precisely, with its position in the assembly frame (mm, Z up, the product stands on Z = 0 centred on X = Y = 0,
    -Y is the front), so the parts meet without placements. If product_spec lists problems, fix all of them and call it again.
 2. cad_part with part_id for each printed part. FreeCAD builds it headless from a script Claude writes; failed scripts are fixed and retried.
@@ -46,7 +50,7 @@ Any product (the default; a phone stand, a desk fan, a plant-watering robot, a b
 3. part_pick for each bought part: search with query, then select_id; when no catalog part fits, pass an honest estimate.
 4. assemble, read the warnings (a part that floats, a part without position) and fix them with placements.
 5. The checks, right after the first assembly and before you tune anything: check_totals, then the ones your requirements need
-   (check_tip_over, check_deflection, check_torque, check_runtime, simulate_assembly). Every check says pass or fail against the requirements.
+   (check_tip_over, check_deflection, check_torque, check_runtime, check_power, check_thermal, check_rollover, simulate_assembly). Every check says pass or fail against the requirements.
 6. On a fail: say which requirement failed and why in one sentence, point at it with ui_point_at, then change one parameter with cad_update
    (it rebuilds, reassembles and reruns every check) or swap a bought part with part_pick, and say whether it passes now. At most three fixes.
    Never relax a requirement's limit to make it pass. If it cannot be met, ask the user with ask_user (keep trying, or accept the lower limit),
@@ -57,6 +61,7 @@ A reference build is a known product with its real parts (reference_load lists a
 use cad_update for dimensions, part_pick to swap a bought part, or product_spec with the revised spec for new parts or requirements
 (parts whose definition did not change keep their build); then rerun the checks, blender_render and bom_build.
 Keep runs short: at most four printed parts unless the product really needs more.
+When the user uploaded a sketch, call sketch_to_spec first, say in one sentence what you read and what you guessed, then product_spec with that spec.
 
 The drone (a drone, or a Jamie meeting that ended). Jamie is the team's memory: every drone decision hangs on a sentence from a meeting.
 New build from the kickoff:
@@ -115,6 +120,12 @@ async def _first(ctx: Ctx) -> bool:
 
 async def run_prompt(ctx: Ctx, text: str, messages: list[dict]) -> None:
     await ctx.chat("user", text)
+    # "Train it, then stress test it": training first, so the stress test flies the trained gains.
+    if not claude_enabled() and wants_train_then_stress(text):
+        await _first(ctx)
+        await run_mock_training(ctx, offer_stress=False)
+        await run_stress_mock(ctx)
+        return
     # "Stress test the trained controller" is a stress test, not a training run.
     if not claude_enabled() and _TRAIN.search(text) and not _OMNIVERSE.search(text) and not wants_stress(text, ctx.state.finished):
         await _first(ctx)
@@ -126,6 +137,10 @@ async def run_prompt(ctx: Ctx, text: str, messages: list[dict]) -> None:
     if not claude_enabled():
         if wants_gripper(text) and not (ctx.state.product == "gripper" and ctx.state.finished):
             await run_gripper_mock(ctx, text)
+            return
+        category = wants_category(text)
+        if category and not (ctx.state.product == "generic" and ctx.state.finished and (ctx.state.spec or {}).get("name") == CATEGORY_NAMES[category]):
+            await CATEGORY_RUNS[category](ctx, text)
             return
         if wants_product(text) and not (ctx.state.product == "generic" and ctx.state.finished):
             await run_product_mock(ctx, text)
@@ -173,6 +188,13 @@ async def _mock_omniverse(ctx: Ctx, text: str) -> bool:
 
 _TRAIN = re.compile(r"\btrain|\btrainier", re.IGNORECASE)
 _OMNIVERSE = re.compile(r"\b(omniverse|isaac)\b", re.IGNORECASE)
+_TRAIN_THEN_STRESS = re.compile(r"\btrain\w*\b.*\b(then|and|before)\b.*\bstress", re.IGNORECASE)
+
+
+def wants_train_then_stress(text: str) -> bool:
+    """One prompt that asks for a training run followed by a stress test."""
+
+    return bool(_TRAIN_THEN_STRESS.search(text))
 
 _REVIEW_DONE = re.compile(
     r"\b(review|meeting)\b.*\b(durch|vorbei|zu ende|fertig|beendet|aus|done|over|ended|finished)\b|\b(bau|baue|rebuild|build)\b.*\b(neu|again)\b",
@@ -207,6 +229,18 @@ async def run_meeting(ctx: Ctx, meta: dict, messages: list[dict]) -> None:
         else:
             await run_mock(ctx, meta["id"])
         return
+    await _run_claude(ctx, text, messages)
+
+
+async def run_sketch(ctx: Ctx, name: str, note: str, messages: list[dict]) -> None:
+    """The photo of a hand sketch starts a product: sketch_to_spec reads it, product_spec and the any-product flow build it."""
+
+    await _first(ctx)
+    await ctx.chat("user", "Build this from my sketch" + (": " + note if note else "."))
+    if not claude_enabled():
+        await run_product_mock(ctx, note, sketch=True)
+        return
+    text = "The user uploaded a sketch (" + name + ")" + (": " + note if note else "") + ". Read it with sketch_to_spec, then build it with product_spec and the normal flow."
     await _run_claude(ctx, text, messages)
 
 
@@ -264,17 +298,22 @@ async def _run_claude(ctx: Ctx, text: str, messages: list[dict]) -> None:
     await lead.emit("running", "plans the build")
     for _round in range(40):
         try:
-            response = await asyncio.to_thread(
-                create_message,
-                lead.model,
-                lead.effort,
-                max_tokens=16000,
-                system=_system(delegation),
-                tools=_tools(delegation),
-                messages=messages,
+            response = await asyncio.wait_for(
+                asyncio.to_thread(
+                    create_message,
+                    lead.model,
+                    lead.effort,
+                    max_tokens=16000,
+                    system=_system(delegation),
+                    tools=_tools(delegation),
+                    messages=messages,
+                ),
+                model_timeout(),
             )
         except Exception as exc:
             log.exception("anthropic call failed")
+            if isinstance(exc, TimeoutError):
+                exc = TimeoutError(f"no answer within {model_timeout():g} s (PAI_MODEL_TIMEOUT_S), the run stops here")
             await lead.emit("error", str(exc)[:160])
             await ctx.chat("agent", "The model request failed: " + str(exc))
             await call_tool(

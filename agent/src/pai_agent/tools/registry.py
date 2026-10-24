@@ -2,19 +2,25 @@
 
 from __future__ import annotations
 
+import asyncio
+import time
+
 from pai_agent.context import Ctx
+from pai_agent.timeouts import limit, timed_out
 from pai_agent.requirements import refresh_requirements
 from pai_agent.scene import DRAW_KINDS, MASCOT_STATES, PART_CATEGORIES, TARGETS
 from pai_agent.freecad_run import find_freecadcmd
-from pai_agent.tools.blender import blender_render, find_blender
+from pai_agent.tools.blender import blender_render, find_blender, recorded_still
 from pai_agent.tools.bom import bom_build
 from pai_agent.tools.browser_train import train_in_browser
 from pai_agent.tools.build_guide import SCHEMA as BUILD_GUIDE_SCHEMA, build_guide
 from pai_agent.tools.cad import cad_frame
 from pai_agent.tools.cad_part import cad_part
 from pai_agent.tools.checks import check_deflection, check_runtime, check_tip_over, check_torque, check_totals, simulate_assembly
+from pai_agent.tools.checks_more import check_power, check_rollover, check_thermal
 from pai_agent.tools.product import assemble, cad_update, part_pick, product_spec
 from pai_agent.tools.reference import reference_load
+from pai_agent.tools.sketch import sketch_to_spec
 from pai_agent.agents import delegate
 from pai_agent.tools.gripper import catalog_search, grip_calc, product_brief, simulate_grip
 from pai_agent.tools.firmware import firmware, refresh_after_training
@@ -53,6 +59,7 @@ TOOLS = {
     "cad_part": cad_part,
     "product_brief": product_brief,
     "product_spec": product_spec,
+    "sketch_to_spec": sketch_to_spec,
     "reference_load": reference_load,
     "delegate": delegate,
     "part_pick": part_pick,
@@ -63,6 +70,9 @@ TOOLS = {
     "check_deflection": check_deflection,
     "check_torque": check_torque,
     "check_runtime": check_runtime,
+    "check_power": check_power,
+    "check_thermal": check_thermal,
+    "check_rollover": check_rollover,
     "simulate_assembly": simulate_assembly,
     "catalog_search": catalog_search,
     "grip_calc": grip_calc,
@@ -85,7 +95,7 @@ TOOLS = {
 }
 
 # With delegation on, these belong to the sub-agents; the orchestrator reaches them through delegate.
-DELEGATED = {"part_pick", "check_totals", "check_tip_over", "check_deflection", "check_torque", "check_runtime", "simulate_assembly"}
+DELEGATED = {"part_pick", "check_totals", "check_tip_over", "check_deflection", "check_torque", "check_runtime", "check_power", "check_thermal", "check_rollover", "simulate_assembly"}
 
 _STEP = {
     "jamie_requirements": "meeting",
@@ -96,6 +106,7 @@ _STEP = {
     "cad_part": "cad",
     "product_brief": "meeting",
     "product_spec": "meeting",
+    "sketch_to_spec": "meeting",
     "reference_load": "meeting",
     "part_pick": "teile",
     "assemble": "cad",
@@ -105,6 +116,9 @@ _STEP = {
     "check_deflection": "simulation",
     "check_torque": "simulation",
     "check_runtime": "simulation",
+    "check_power": "simulation",
+    "check_thermal": "simulation",
+    "check_rollover": "simulation",
     "simulate_assembly": "simulation",
     "catalog_search": "teile",
     "grip_calc": "teile",
@@ -324,7 +338,7 @@ SCHEMAS = [
                         "properties": {
                             "id": {"type": "string"},
                             "text": {"type": "string", "description": "Short and checkable, e.g. 'Weighs under 150 g'."},
-                            "check": {"type": "string", "enum": ["mass", "cost", "size", "tip_over", "deflection", "torque", "runtime", "stability", "drop", "printable"]},
+                            "check": {"type": "string", "enum": ["mass", "cost", "size", "tip_over", "deflection", "torque", "runtime", "stability", "drop", "printable", "power", "thermal", "rollover"]},
                             "max": {"type": "number"},
                             "min": {"type": "number"},
                             "unit": {"type": "string", "description": "g, eur, mm, deg, N, x, min, h or days."},
@@ -375,6 +389,16 @@ SCHEMAS = [
             "properties": {"agent": {"type": "string", "enum": ["parts", "checks", "pricing"]}, "task": {"type": "string"}},
             "required": ["agent", "task"],
         },
+    },
+    {
+        "name": "sketch_to_spec",
+        "description": (
+            "Use it when a sketch image is on the bench (the user uploaded one): Claude vision reads the photo of the hand sketch "
+            "and returns spec (a validated product_spec), read (each dimension and label with value, unit and confidence), unreadable and summary. "
+            "It does not start the build: say what you read and guessed, then call product_spec with spec. "
+            "sketch is the file name from the user's message (sketch-1.png); note is what the user wrote with it."
+        ),
+        "input_schema": {"type": "object", "properties": {"sketch": {"type": "string"}, "note": {"type": "string"}}},
     },
     {
         "name": "reference_load",
@@ -496,6 +520,78 @@ SCHEMAS = [
                 },
             },
             "required": ["battery_part_id", "loads"],
+        },
+    },
+    {
+        "name": "check_power",
+        "description": (
+            "Power budget: supply_part_id (a picked supply with voltage_v and max_current_a, or a battery with c_rating and capacity_mah) and loads "
+            "[{part_id or name, power_w or current_a, voltage_v, duty, peak_factor}]. Loads at another voltage go through a regulator at 85 %. "
+            "Headroom is the supply current limit over the peak current; a battery supply also gives the runtime. Judges power (min headroom x) and runtime requirements."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "supply_part_id": {"type": "string"},
+                "loads": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "part_id": {"type": "string"},
+                            "name": {"type": "string"},
+                            "power_w": {"type": "number"},
+                            "current_a": {"type": "number"},
+                            "voltage_v": {"type": "number"},
+                            "duty": {"type": "number"},
+                            "peak_factor": {"type": "number"},
+                        },
+                    },
+                },
+            },
+            "required": ["supply_part_id", "loads"],
+        },
+    },
+    {
+        "name": "check_thermal",
+        "description": (
+            "Heat in a closed case: enclosure_part_id (the printed shell), power_w or heat_part_ids (picked parts with tdp_w or power_w), optional wall_mm, "
+            "vents_mm2 (else the vents_mm2 parameter of a built part), ambient_c, component_limit_c (default 70). Every picked part with airflow_m3h counts as a fan. "
+            "Natural convection h = 5 W/m2K on the outer area through the wall, plus air exchange through vents and fans; the inside temperature must stay under "
+            "the wall material limit (PLA 55, PETG 75, ABS 95 °C) and the component limit. Judges thermal requirements (max °C)."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "enclosure_part_id": {"type": "string"},
+                "power_w": {"type": "number"},
+                "heat_part_ids": {"type": "array", "items": {"type": "string"}},
+                "fan_part_ids": {"type": "array", "items": {"type": "string"}},
+                "bbox_mm": {"type": "array", "items": {"type": "number"}},
+                "wall_mm": {"type": "number"},
+                "vents_mm2": {"type": "number"},
+                "ambient_c": {"type": "number"},
+                "component_limit_c": {"type": "number"},
+            },
+            "required": ["enclosure_part_id"],
+        },
+    },
+    {
+        "name": "check_rollover",
+        "description": (
+            "Vehicle roll-over: track_mm and wheelbase_mm (else the track_mm and wheelbase_mm parameters of a built printed part), the centre of mass height from the "
+            "assembly (or com_height_mm), and a turn: speed_mps on turn_radius_m. Static stability factor T / 2h is the lateral g it rolls at; the turn needs v^2 / (r g). "
+            "Judges rollover requirements (min g lateral, or min deg side slope)."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "track_mm": {"type": "number"},
+                "wheelbase_mm": {"type": "number"},
+                "com_height_mm": {"type": "number"},
+                "speed_mps": {"type": "number"},
+                "turn_radius_m": {"type": "number"},
+            },
         },
     },
     {
@@ -644,6 +740,8 @@ def _running_detail(name: str, args: dict) -> str:
         return str(args.get("part_id") or args.get("name") or "")
     if name == "product_spec":
         return str(args.get("name", ""))
+    if name == "sketch_to_spec":
+        return str(args.get("sketch", ""))
     if name == "delegate":
         return str(args.get("agent", "")) + " agent"
     if name == "simulate_assembly":
@@ -670,7 +768,7 @@ async def _advance(ctx: Ctx, name: str, result: dict, started: bool) -> None:
         return
     if name in {"simulate_drone", "simulate_grip", "simulate_assembly"}:
         await ctx.step("simulation", "done" if result.get("result") == "pass" else "failed")
-    elif name in {"check_tip_over", "check_deflection", "check_torque", "check_runtime"}:
+    elif name in {"check_tip_over", "check_deflection", "check_torque", "check_runtime", "check_power", "check_thermal", "check_rollover"}:
         await ctx.step("simulation", "done" if result.get("result") == "pass" else "failed")
     elif name == "check_totals":
         await ctx.step("teile", "done" if result.get("result") == "pass" else "failed")
@@ -689,7 +787,7 @@ async def _advance(ctx: Ctx, name: str, result: dict, started: bool) -> None:
         await ctx.step("training", "done")
     elif name == "jamie_create_tasks":
         await ctx.step("stueckliste", "done")
-    elif name in {"blender_render", "isaac_sim_render", "cad_frame", "cad_part", "cad_update", "assemble", "product_brief", "product_spec", "reference_load", "part_pick", "jamie_requirements", "jamie_meeting"}:
+    elif name in {"blender_render", "isaac_sim_render", "cad_frame", "cad_part", "cad_update", "assemble", "product_brief", "product_spec", "sketch_to_spec", "reference_load", "part_pick", "jamie_requirements", "jamie_meeting"}:
         await ctx.step(step, "done")
 
 
@@ -704,8 +802,20 @@ async def call_tool(ctx: Ctx, name: str, args: dict | None) -> dict:
         {"type": "tool", "name": name, "status": "running", "detail": _running_detail(name, payload)}
     )
     await _advance(ctx, name, {}, started=True)
+    seconds = limit(name)
+    started = time.perf_counter()
     try:
-        result = await function(ctx, payload)
+        from pai_agent.versions import commit_with_snapshot
+
+        call = commit_with_snapshot(ctx, function, payload) if name == "version_commit" else function(ctx, payload)
+        result = await asyncio.wait_for(call, seconds)
+    except TimeoutError:
+        # A stuck tool ends here with a message the room can read, not a frozen run.
+        message = timed_out(name, seconds or 0)
+        result = {"ok": False, "error": message, "detail": message, "timed_out": True}
+        await ctx.chat("agent", message)
+        if name == "blender_render":
+            result = {**await recorded_still(ctx, message), "timed_out": True}
     except Exception as exc:
         result = {"ok": False, "error": str(exc)}
     status = "error"
@@ -714,12 +824,21 @@ async def call_tool(ctx: Ctx, name: str, args: dict | None) -> dict:
         if status not in {"connected", "running", "ok", "error", "offline"}:
             status = "ok"
     detail = str(result.get("detail") or result.get("error") or "")
-    await ctx.emit({"type": "tool", "name": name, "status": status, "detail": detail})
+    final = {"type": "tool", "name": name, "status": status, "detail": detail, "ms": round((time.perf_counter() - started) * 1000)}
+    if result.get("timed_out"):
+        final["timed_out"] = True
+    if result.get("cached"):
+        final["cached"] = True
+    await ctx.emit(final)
     await _advance(ctx, name, result, started=False)
     if result.get("ok") is not False:
         await refresh_requirements(ctx)
         if name in {"train_in_browser", "isaac_train", "isaac_lab_train"}:
             await refresh_after_training(ctx)
+        if name == "bom_build":
+            from pai_agent.versions import after_tool
+
+            await after_tool(ctx, name, payload, result)
     return result
 
 

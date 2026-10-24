@@ -12,7 +12,7 @@ from pathlib import Path
 from pai_agent.bus import EventBus
 from pai_agent.context import Ctx
 from pai_agent.env import claude_enabled
-from pai_agent.orchestrator import run_meeting, run_prompt, run_reference
+from pai_agent.orchestrator import run_meeting, run_prompt, run_reference, run_sketch
 from pai_agent.paths import SESSIONS_DIR
 from pai_agent.scene import STEPS
 from pai_agent.speech import Voice
@@ -65,6 +65,8 @@ class Session:
             return {"ok": True, "mode": mode, "status": "already_running"}
         self.voice.reply(text, self.state, "started")
         ctx = self._ctx(auto_steps=claude_enabled())
+        ctx.trigger = "chat"
+        ctx.label = text.strip()[:80]
         self.task = asyncio.create_task(self._run(run_prompt(ctx, text, self.messages), ctx))
         return {"ok": True, "mode": mode, "status": "started"}
 
@@ -77,8 +79,47 @@ class Session:
         if self.state.started:
             await self.reset()
         ctx = self._ctx(auto_steps=False)
+        ctx.trigger = "library"
+        ctx.label = "Library: " + ref_id
         self.task = asyncio.create_task(self._run(run_reference(ctx, ref_id), ctx))
         return {"ok": True, "mode": mode, "status": "started", "reference": ref_id}
+
+    async def restore_version(self, n: int) -> dict:
+        """Makes an old version current: it is rebuilt through the normal tools and committed as a new version."""
+
+        from pai_agent.versions import restore
+
+        mode = "claude" if claude_enabled() else "mock"
+        if self._busy():
+            return {"ok": False, "busy": True, "error": "Mechanic is building. Restore when the build is done."}
+        if n not in self.state.version_files:
+            return {"ok": False, "missing": True, "error": "No version " + str(n) + " to restore."}
+        ctx = self._ctx(auto_steps=True)
+
+        async def work() -> None:
+            await ctx.chat("agent", "Restoring v" + str(n) + ": I rebuild it with the same tools and keep it as a new version.")
+            version = await restore(ctx, n)
+            await ctx.chat("agent", "v" + str(version["n"]) + " is v" + str(n) + " again: " + version["summary"] + ".")
+
+        self.task = asyncio.create_task(self._run(work(), ctx))
+        return {"ok": True, "mode": mode, "status": "started", "restoring": n}
+
+    async def start_sketch(self, data: bytes, note: str) -> dict:
+        """A photo of a hand sketch starts a new product on a fresh bench. Raises ValueError for a bad photo."""
+
+        from pai_agent.tools.sketch import sketch_event, store_sketch
+
+        mode = "claude" if claude_enabled() else "mock"
+        if self._busy():
+            return {"ok": False, "mode": mode, "status": "already_running", "busy": True}
+        if self.state.started:
+            await self.reset()
+        name = store_sketch(self.state, data)
+        event = sketch_event(self.state, name, "reading", note=note)
+        await self.bus.publish(event)
+        ctx = self._ctx(auto_steps=claude_enabled())
+        self.task = asyncio.create_task(self._run(run_sketch(ctx, name, note, self.messages), ctx))
+        return {"ok": True, "mode": mode, "status": "started", "sketch": name, "url": event["url"]}
 
     def save_reference(self, ref_id: str | None, name: str | None, summary: str, kind: str = "project") -> dict:
         from pai_agent.references import save_reference
@@ -113,6 +154,7 @@ class Session:
                 meta = resolve_meeting(self.state, meeting_id, title)
             await self.bus.publish(meeting_event(meta))
             ctx = self._ctx(auto_steps=claude_enabled())
+            ctx.trigger = "meeting"
             self.task = asyncio.create_task(self._run(run_meeting(ctx, meta, self.messages), ctx))
             return {"ok": True, "mode": mode, "status": "started", "meeting_id": meta["id"], "kind": meta["kind"]}
 

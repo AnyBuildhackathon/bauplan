@@ -1,0 +1,229 @@
+{
+  "about": "What Claude vision read from phone-stand.png, recorded for runs without a key: propose_spec's answer.",
+  "sketch": "phone-stand.png",
+  "summary": "A desk phone stand: 80 x 60 mm base with a 12 mm lip and cable slot, a 70 x 95 mm back rest at 65 degrees in 5 mm PETG, four rubber feet; I guessed a 0.75 N tap and the gusset size.",
+  "read": [
+    {
+      "label": "Product",
+      "value": "Phone stand for the desk, video calls",
+      "unit": "",
+      "confidence": "high"
+    },
+    {
+      "label": "Base width",
+      "value": "80",
+      "unit": "mm",
+      "confidence": "high"
+    },
+    {
+      "label": "Base depth",
+      "value": "60",
+      "unit": "mm",
+      "confidence": "high"
+    },
+    {
+      "label": "Front lip height",
+      "value": "12",
+      "unit": "mm",
+      "confidence": "high"
+    },
+    {
+      "label": "Back rest width",
+      "value": "70",
+      "unit": "mm",
+      "confidence": "high"
+    },
+    {
+      "label": "Back rest length",
+      "value": "95",
+      "unit": "mm",
+      "confidence": "high"
+    },
+    {
+      "label": "Back rest angle",
+      "value": "65",
+      "unit": "deg",
+      "confidence": "high"
+    },
+    {
+      "label": "Wall thickness",
+      "value": "5",
+      "unit": "mm",
+      "confidence": "high"
+    },
+    {
+      "label": "Material",
+      "value": "PETG",
+      "unit": "",
+      "confidence": "high"
+    },
+    {
+      "label": "Cable slot",
+      "value": "through the front lip",
+      "unit": "",
+      "confidence": "medium"
+    },
+    {
+      "label": "Rubber feet",
+      "value": "4",
+      "unit": "pcs",
+      "confidence": "high"
+    },
+    {
+      "label": "Phone mass",
+      "value": "200",
+      "unit": "g",
+      "confidence": "medium"
+    },
+    {
+      "label": "Mass limit",
+      "value": "150",
+      "unit": "g",
+      "confidence": "high"
+    },
+    {
+      "label": "Parts cost limit",
+      "value": "6",
+      "unit": "eur",
+      "confidence": "high"
+    },
+    {
+      "label": "Tap on the screen",
+      "value": "must not tip",
+      "unit": "",
+      "confidence": "high"
+    },
+    {
+      "label": "Tap force",
+      "value": "0.75",
+      "unit": "N",
+      "confidence": "low"
+    }
+  ],
+  "unreadable": [
+    "Gusset size: drawn, not dimensioned"
+  ],
+  "spec": {
+    "name": "Phone stand",
+    "function": "Holds a smartphone at 65 degrees on a desk for video calls, with a slot for the charging cable through the front lip.",
+    "quote": "Hand sketch: phone stand for the desk and video calls. Must not tip when I tap the screen.",
+    "assemblies": [
+      {
+        "id": "stand",
+        "name": "Stand"
+      }
+    ],
+    "requirements": [
+      {
+        "id": "mass",
+        "text": "Weighs under 150 g",
+        "check": "mass",
+        "max": 150,
+        "unit": "g"
+      },
+      {
+        "id": "cost",
+        "text": "Parts under 6 €",
+        "check": "cost",
+        "max": 6,
+        "unit": "eur"
+      },
+      {
+        "id": "tap",
+        "text": "A 0.75 N tap on the phone top does not tip it",
+        "check": "tip_over",
+        "min": 0.75,
+        "unit": "N"
+      },
+      {
+        "id": "push",
+        "text": "Settles upright after the MuJoCo push",
+        "check": "stability",
+        "max": 5,
+        "unit": "deg"
+      },
+      {
+        "id": "stiff",
+        "text": "Back rest bends under 1 mm at 5 N",
+        "check": "deflection",
+        "max": 1,
+        "unit": "mm",
+        "part_id": "back-rest"
+      },
+      {
+        "id": "printable",
+        "text": "Printable parts with STL and STEP",
+        "check": "printable"
+      }
+    ],
+    "parts": [
+      {
+        "id": "base",
+        "name": "Base plate",
+        "kind": "printed",
+        "assembly": "stand",
+        "material": "PETG",
+        "description": "Flat plate 80 mm wide from y = -25 backwards, 5 mm thick, with a 12 mm front lip the phone stands behind and a cable slot through the lip.",
+        "size_mm": [
+          80,
+          60,
+          17
+        ],
+        "params": {
+          "width_mm": 80,
+          "depth_mm": 60,
+          "thickness_mm": 5,
+          "lip_height_mm": 12
+        }
+      },
+      {
+        "id": "back-rest",
+        "name": "Back rest",
+        "kind": "printed",
+        "assembly": "stand",
+        "material": "PETG",
+        "description": "Plate 70 mm wide and 95 mm long leaning back at 65 degrees on the base top at y = -10, braced by two triangular gussets.",
+        "size_mm": [
+          70,
+          45,
+          88
+        ],
+        "params": {
+          "width_mm": 70,
+          "support_length_mm": 95,
+          "thickness_mm": 5,
+          "angle_deg": 65
+        }
+      },
+      {
+        "id": "feet",
+        "name": "Rubber feet",
+        "kind": "bought",
+        "qty": 4,
+        "category": "hardware",
+        "query": "rubber feet"
+      },
+      {
+        "id": "phone",
+        "name": "Smartphone",
+        "kind": "external",
+        "mass_g": 200,
+        "size_mm": [
+          75,
+          9,
+          160
+        ],
+        "position_mm": [
+          0,
+          19.7,
+          79.4
+        ],
+        "rotation_deg": [
+          -25,
+          0,
+          0
+        ]
+      }
+    ]
+  }
+}

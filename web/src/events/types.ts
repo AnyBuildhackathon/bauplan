@@ -107,6 +107,31 @@ export interface ProductEvent {
   /** A spec's requirement ids; a revised spec drops the rows it no longer has. */
   requirements?: string[];
 }
+/** One dimension or label read off a sketch. */
+export interface SketchReading {
+  label: string;
+  value: string;
+  unit?: string;
+  confidence?: "high" | "medium" | "low";
+}
+/** The photo of a hand sketch a build started from, and what Claude vision read off it. */
+export interface SketchEvent {
+  type: "sketch";
+  /** "sketch-1" */
+  id: string;
+  /** The stored photo, served by the backend under /files/. */
+  url: string;
+  status: "reading" | "read" | "failed";
+  note?: string;
+  summary?: string;
+  read?: SketchReading[];
+  unreadable?: string[];
+  /** The spec id the sketch became, once read. */
+  product?: string;
+  /** "claude" for a live vision read, "recorded" for the sample's recorded reading. */
+  source?: "claude" | "recorded";
+  error?: string;
+}
 export interface DrawEvent {
   type: "draw";
   kind: DrawKind;
@@ -345,7 +370,25 @@ export interface VersionEvent {
   summary: string;
   /** The note AnyBuild wrote back to the meeting in Jamie. */
   note?: string;
+  /** What started the rebuild; older recordings have none (read them as "meeting"). */
+  trigger?: VersionTrigger;
+  product?: "drone" | "gripper" | "generic";
+  /** One line naming the trigger: the meeting title, the chat request, the restored version. */
+  label?: string;
+  /** The metric cards of a non-drone product as the panel showed them. */
+  cards?: MetricCard[];
+  requirements?: { id: string; text: string; met: boolean | null; detail: string }[];
+  /** CAD parameters by name: frame params for the drone, `{part_id}.{param}` for a product. */
+  params?: Record<string, number>;
+  /** A product's part id to its body name in the GLB, so a compare can light the changed bodies. */
+  nodes?: Record<string, string>;
+  /** Copies of the model and render made for this version, so an old one can still be drawn. */
+  files?: { glb_url: string | null; render_url: string | null };
+  restored_from?: number | null;
+  /** ISO time the version was committed. */
+  at?: string;
 }
+export type VersionTrigger = "meeting" | "chat" | "library" | "check_failed" | "restore";
 export interface PartWarning extends Quote {
   note: string;
 }
@@ -492,6 +535,7 @@ export type AgentEvent =
   | QuestionEvent
   | TasksEvent
   | ProductEvent
+  | SketchEvent
   | BuildGuideEvent
   | FirmwareEvent
   | AgentRunEvent
@@ -522,6 +566,7 @@ const EVENT_TYPES = new Set<AgentEvent["type"]>([
   "question",
   "tasks",
   "product",
+  "sketch",
   "build_guide",
   "firmware",
   "agent",
