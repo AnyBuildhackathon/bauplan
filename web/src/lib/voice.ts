@@ -8,7 +8,7 @@ import { apiUrl } from "./api";
 import { stopSpeaking } from "./speech";
 
 export type SttMode = "reson8" | "browser" | "none";
-export type TtsMode = "elevenlabs" | "browser" | "none";
+export type TtsMode = "elevenlabs" | "none";
 
 interface Capabilities {
   stt: SttMode;
@@ -24,11 +24,10 @@ interface Capabilities {
 }
 
 const BROWSER_STT = typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
-const BROWSER_TTS = typeof window !== "undefined" && "speechSynthesis" in window;
 
 let caps: Capabilities = {
   stt: BROWSER_STT ? "browser" : "none",
-  tts: BROWSER_TTS ? "browser" : "none",
+  tts: "none",
   realtimeUrl: "wss://api.reson8.dev/v1/speech-to-text/realtime",
   turnsUrl: "wss://api.reson8.dev/v1/speech-to-text/turns",
   language: "en",
@@ -38,7 +37,7 @@ let caps: Capabilities = {
   narrator: false,
 };
 
-/** Asks the backend which voice services have keys. The demo recording keeps the browser's own. */
+/** Asks the backend which voice services have keys. The demo recording plays its pre-rendered clips. */
 export async function loadVoiceCapabilities(): Promise<Capabilities> {
   try {
     const res = await fetch(apiUrl("/api/voice"));
@@ -46,7 +45,7 @@ export async function loadVoiceCapabilities(): Promise<Capabilities> {
       const body = await res.json();
       caps = {
         stt: body.stt === "reson8" ? "reson8" : BROWSER_STT ? "browser" : "none",
-        tts: body.tts === "elevenlabs" ? "elevenlabs" : BROWSER_TTS ? "browser" : "none",
+        tts: body.tts === "elevenlabs" ? "elevenlabs" : "none",
         realtimeUrl: body.realtime_url || caps.realtimeUrl,
         turnsUrl: body.turns_url || caps.turnsUrl,
         language: body.language || "en",
@@ -57,7 +56,7 @@ export async function loadVoiceCapabilities(): Promise<Capabilities> {
       };
     }
   } catch {
-    // No backend: the browser's own speech stays.
+    // No backend: Mechanic speaks the recording's pre-rendered clips, or stays silent.
   }
   return caps;
 }
