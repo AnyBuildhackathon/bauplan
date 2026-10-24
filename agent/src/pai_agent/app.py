@@ -293,12 +293,12 @@ async def library_open(item_id: str, request: Request) -> dict:
 
 @app.get("/api/library/{item_id}/thumbnail")
 async def library_thumbnail(item_id: str) -> FileResponse:
-    from pai_agent.references import folder_of
+    from pai_agent.references import thumbnail_of
 
-    folder = folder_of(item_id)
-    if folder is None or not (folder / "thumbnail.png").is_file():
+    path = thumbnail_of(item_id)
+    if path is None:
         raise HTTPException(status_code=404, detail="no thumbnail")
-    return FileResponse(folder / "thumbnail.png", media_type="image/png")
+    return FileResponse(path, media_type="image/png")
 
 
 @app.post("/api/library")

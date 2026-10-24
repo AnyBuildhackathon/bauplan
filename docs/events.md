@@ -206,7 +206,11 @@ A drop falls from `drop_height_mm` with a 5° tilt and reports the peak load in 
 ### cad
 
 `source` is `freecad` or `cadquery`.
-`tree` is `[{id, label, children}]`. The mock frame is `Frame` with `Hub`, `Arms`, and `Motor pads`.
+`tree` is `[{id, label, children}]`.
+A FreeCAD drone build has the tree `Drone` with `Printed parts` (`X-frame`, `Canopy with antenna tube`, `Battery holder`), then the motors, propellers, flight controller stack, FPV camera, battery and strap, and receiver antenna, each labelled with the chosen part's name.
+Its GLB is the whole drone, Y-up in metres with the nose at -Z, one node per part target below plus `canopy`, `camera`, `battery_strap`, and `antenna`; each propeller node is a child of its motor and spins about its own origin, and the `battery` node's extras carry `size_mm`.
+Its materials are named `pai:#rrggbb {look}`, the CAD-tab colour then the look (`carbon`, `prop`, `bell`, ...).
+A CadQuery fallback has the tree `Frame` with `Hub`, `Arms`, and `Motor pads` and a frame-only GLB.
 `params` maps each name to `{value, min, max, unit}`:
 `arm_length_mm` 20-80 mm, `thickness_mm` 1.2-6 mm, `motor_spacing_mm` 4-16 mm.
 `glb_url`, `stl_url`, and `step_url` are `/files/{session}/{file}` paths.
@@ -280,7 +284,7 @@ A finished build, attached to the meeting it came from.
 `parts` maps each category to the part name.
 `diff` lists what changed against the previous version: `{key, label, before, after, unit}`.
 Number rows have a `unit`; part rows have `key` `part:{category}`, names in `before` and `after`, and an empty `unit`.
-`summary` is one line such as `49.3 g · 15.6 min · 72.36 €`.
+`summary` is one line such as `48.4 g · 10.4 min · 115.12 €`.
 
 ### part
 
@@ -407,23 +411,24 @@ Without `ANTHROPIC_API_KEY` only templates and passed scripts build.
 `simulate_grip` runs the MuJoCo grip test above.
 
 `cad_frame` arguments are `arm_length_mm` (center to motor shaft), `thickness_mm`, and `motor_spacing_mm` (bolt-circle diameter of the motor screws).
-The 1102 mount is 6.6 mm.
+The 1103 mount is 6.6 mm.
 With a propeller chosen, an arm whose neighbouring motors stand closer than the propeller diameter plus 4 mm is an error that names the minimum arm.
 The open FreeCAD window builds first when its RPC answers; on an error or a step over 12 seconds, `freecadcmd` builds headless.
 CadQuery writes the same STL, STEP, and GLB when FreeCAD is missing or the script fails.
-`blender_render` runs `blender -b -P` on the current STL.
+`blender_render` runs `blender -b -P` on the current drone GLB, or on the frame STL after a CadQuery fallback.
 `jamie_requirements` reads the `Hardware-Anforderungen` fields first.
 
 ## Mock story
 
 Without a key, the kickoff (webhook or first prompt) plays v1 through those tools.
-The agent reads the kickoff, finds the 22000KV from last week's flight test and Lea's warning about the FunFly 4S.
-It tries the FunFly anyway: the MuJoCo gust pushes it to the floor, the swap to the Lava 1S 550 passes.
-A 28 mm arm lets the 40 mm propellers touch, so the frame becomes 36 mm.
-v1 is 36.7 g, 11.7 min, 68.95 €.
-The review "Review 1" asks for 15 minutes and says last week's motor was too loud.
-Mechanic asks which flight time counts, resolves "last week's motor" to the 22000KV from the flight test, swaps to the quieter 18000KV and a 1S 1100 mAh pack.
-v2 is 49.3 g, 15.6 min, 72.36 €, and the difference goes back to the review as a note.
+The story arrives at the reference micro build from Mediocre Nerd's "Build a Micro FPV Drone for $59" video: Twiglet 2" carbon frame, 1103 15000KV motors, Gemfan 2020 four-blade props, Caddx Ant camera, BetaFPV Matrix 1S 5in1 V2 AIO, canopy with battery holder, M1.4 bolts and a 1S pack (`agent/data/parts.json`, prices are samples).
+The agent reads the kickoff (under 120 €, at least 8 minutes, under 50 g, hover, frame as STL and STEP), finds the 1103 15000KV from last week's flight test and Lea's warning about the FunFly 4S.
+It tries the FunFly anyway: the MuJoCo gust pushes it to the floor, the swap to the Tattu R-Line 1S 550 passes.
+A 34 mm arm lets the 51 mm propellers touch, so the frame becomes the Twiglet's 42.5 mm.
+v1 is 47.2 g, 8.5 min, 113.64 €.
+The review "Review 1" asks for 10 minutes.
+Mechanic asks which flight time counts and swaps to the BetaFPV LAVA II 1S 680, the other pack from the video.
+v2 is 48.4 g, 10.4 min, 115.12 €, and the difference goes back to the review as a note.
 A later prompt in the same session does not rebuild.
 Reset starts the story over.
 A prompt that asks for a gripper (`gripper`, `claw`, `end effector`) plays the gripper story instead.

@@ -224,7 +224,7 @@ SCHEMAS = [
     },
     {
         "name": "cad_frame",
-        "description": "Builds the parametric frame in FreeCAD, otherwise in CadQuery. Writes STL, STEP and GLB. arm_length_mm is the distance from the center to the motor shaft. motor_spacing_mm is the bolt-circle diameter of the motor screws. On the 1102 that is 6.6.",
+        "description": "Builds the parametric frame in FreeCAD, otherwise in CadQuery. Writes STL, STEP and GLB. arm_length_mm is the distance from the center to the motor shaft. motor_spacing_mm is the bolt-circle diameter of the motor screws. On the 1103 that is 6.6.",
         "input_schema": {
             "type": "object",
             "properties": {

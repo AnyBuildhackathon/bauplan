@@ -9,15 +9,19 @@
     {
       "speaker": "Lea",
       "time": "18:14",
-      "text": "Do not put the FunFly 4S 1300 on the 1102s. A 150 gram battery, and the motors are 1S.",
-      "about": ["tattu-funfly-4s-1300"],
+      "text": "Do not put the FunFly 4S 1300 on the 1103s. A 150 gram battery, and the motors are 1S.",
+      "about": [
+        "tattu-funfly-4s-1300"
+      ],
       "tone": "warning"
     },
     {
       "speaker": "Ben",
       "time": "18:16",
       "text": "That will not lift off, no matter how big the milliamp-hours look.",
-      "about": ["tattu-funfly-4s-1300"],
+      "about": [
+        "tattu-funfly-4s-1300"
+      ],
       "tone": "warning"
     }
   ]

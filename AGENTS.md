@@ -28,7 +28,7 @@ Offline fallbacks run the complete workflow when API keys are absent.
 For the hackathon stage demonstration, AnyBuild implements a complete end-to-end worked example for racing drone design.
 The current codebase implements drone-specific part catalogs, aerodynamic wind testing in MuJoCo, and a parametric quadcopter frame in FreeCAD.
 The stage demo begins with a kickoff meeting recording that builds drone version 1.
-During kickoff, the agent catches warnings about the FunFly 4S motor, fails an initial downdraft test in MuJoCo, and switches to the Lava 1S 550 pack.
+During kickoff, the agent catches warnings about the FunFly 4S battery, fails an initial downdraft test in MuJoCo, and switches to the Tattu R-Line 1S 550 pack.
 FreeCAD builds the frame visibly in an open window, with headless FreeCAD and CadQuery fallbacks.
 Blender renders the assembled drone in a virtual studio environment.
 MuJoCo simulates drone flight stability against wind gusts.
@@ -38,8 +38,8 @@ Every part links to a specific quote naming the speaker, timestamp, and meeting 
 Earlier meeting notes surface as warnings before part selection.
 Contradictions between meetings trigger user questions from mascot Mechanic before building.
 The agent creates the Jamie templates "Hardware-Anforderungen" and "Drohnen-Review" automatically.
-A live review follows requesting 15 minutes of flight time and noting that last week's motor was too loud.
-Mechanic asks for clarification on flight time requirements and resolves the motor reference.
+A live review follows requesting 10 minutes of flight time.
+Mechanic asks which flight time counts and swaps to the BetaFPV LAVA II 1S 680 pack.
 AnyBuild rebuilds to version 2, showing metrics differences, quotes, warnings, and updated order tasks.
 When a meeting ends, AnyBuild rebuilds the drone and posts differences back to Jamie as notes.
 Jamie tags mark drone versions on meetings.

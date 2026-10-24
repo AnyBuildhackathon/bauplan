@@ -32,7 +32,7 @@ import shutil
 import time
 from pathlib import Path
 
-from pai_agent.paths import DATA_DIR, PARTS_PATH, RUNS_DIR
+from pai_agent.paths import DATA_DIR, REPO_ROOT, RUNS_DIR
 
 REFERENCES_DIR = DATA_DIR / "references"
 PROJECTS_DIR = RUNS_DIR / "library"
@@ -60,22 +60,47 @@ def _gripper_summary() -> str:
 
 
 def _drone_summary() -> str:
-    from pai_agent.scene import PART_CATEGORIES
-
-    parts = json.loads(PARTS_PATH.read_text(encoding="utf-8"))["parts"]
-    counts = [str(sum(1 for p in parts if p["category"] == c)) + " " + c.replace("_", " ") for c in PART_CATEGORIES]
-    return "1S micro quad built by the drone flow from its catalog (" + ", ".join(counts) + "), with the MuJoCo gust test."
+    return (
+        "The 1S 2-inch toothpick from Mediocre Nerd's \"Build a Micro FPV Drone for $59\" video, built by the drone flow "
+        "from its catalog: Twiglet 2\" carbon frame, 1103 15000KV motors, Gemfan 2020 four-blade props, Caddx Ant camera, "
+        "BetaFPV Matrix 1S 5in1 V2, canopy with battery holder, M1.4 bolts and a 1S pack, with the MuJoCo gust test."
+    )
 
 
 # Products whose own code builds them. Each entry: name, summary(), build(ctx), printed and bought counts.
 CODE_REFERENCES = {
-    "micro-drone": {"name": "Micro FPV drone", "product": "drone", "summary": _drone_summary, "build": _build_drone, "printed": 1, "bought": 4},
+    "micro-drone": {
+        "name": "Micro FPV drone ($59 video build)",
+        "product": "drone",
+        "summary": _drone_summary,
+        "build": _build_drone,
+        # The Twiglet frame is modelled in FreeCAD but bought in carbon, like every other part.
+        "printed": 0,
+        "bought": 8,
+        # The kickoff's studio render, written by agent/scripts/record_demo.py.
+        "thumbnail": REPO_ROOT / "web" / "public" / "models" / "hero-drone.png",
+    },
     "robot-gripper": {"name": "Robot gripper", "product": "gripper", "summary": _gripper_summary, "build": _build_gripper, "printed": 1, "bought": 4},
 }
 
 
 def _slug(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", str(text).lower()).strip("-")[:40] or "reference"
+
+
+def _code_thumbnail(ref_id: str) -> Path | None:
+    path = CODE_REFERENCES.get(ref_id, {}).get("thumbnail")
+    return path if path is not None and path.is_file() else None
+
+
+def thumbnail_of(ref_id: str) -> Path | None:
+    """The library thumbnail: a code reference's render, else thumbnail.png in the item's folder."""
+
+    code = _code_thumbnail(_slug(ref_id))
+    if code is not None:
+        return code
+    folder = folder_of(ref_id)
+    return folder / "thumbnail.png" if folder is not None and (folder / "thumbnail.png").is_file() else None
 
 
 def folder_of(ref_id: str) -> Path | None:
@@ -122,7 +147,7 @@ def list_references() -> list[dict]:
             "printed": ref["printed"],
             "bought": ref["bought"],
             "requirements": None,
-            "thumbnail_url": None,
+            "thumbnail_url": "/api/library/" + ref_id + "/thumbnail" if _code_thumbnail(ref_id) else None,
             "saved_at": None,
         }
         for ref_id, ref in CODE_REFERENCES.items()

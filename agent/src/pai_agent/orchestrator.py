@@ -54,10 +54,10 @@ Keep runs short: at most four printed parts unless the product really needs more
 The drone (a drone, or a Jamie meeting that ended). Jamie is the team's memory: every drone decision hangs on a sentence from a meeting.
 New build from the kickoff:
 1. product_brief with product drone when the user asks in chat, then jamie_templates and jamie_requirements, then jamie_search for the parts you plan to take, to find warnings from earlier meetings.
-2. parts_search with select_id, because and reason until motor, propeller, battery, flight controller and frame are chosen. Take warnings seriously and say who said them and when.
+2. parts_search with select_id, because and reason until motor, propeller, battery, flight controller, frame, camera, canopy and hardware are chosen. Take warnings seriously and say who said them and when.
 3. physics_calc. Prices are samples to verify.
 4. simulate_drone. On fail point at the guilty part with ui_point_at and ui_draw, swap exactly one part, recalculate and simulate again.
-5. cad_frame in FreeCAD. arm_length_mm runs from the centre to the motor shaft, the propellers need clearance. motor_spacing_mm is the motor bolt circle, 6.6 for the 1102.
+5. cad_frame in FreeCAD. arm_length_mm runs from the centre to the motor shaft, the propellers need clearance. motor_spacing_mm is the motor bolt circle, 6.6 for the 1103.
 6. physics_calc again, because the frame now has a real mass.
 7. blender_render.
 8. bom_build, jamie_create_tasks, then version_commit with the meeting_id of the kickoff.
