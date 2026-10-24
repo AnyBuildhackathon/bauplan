@@ -32,6 +32,7 @@ Work in small steps, commit with plain messages, open one PR into main when it w
 
 ```
 Task: add training to AnyBuild that runs 1,024 physics simulations in the browser and shows it live.
+Two-tier training architecture: this browser training is the quick check (1,024 MuJoCo WASM rollouts in seconds live on stage, always works without GPU). Meanwhile, NVIDIA Isaac Lab runs deep policy training in the GPU cloud (via PR #2's Isaac runner).
 - Use MuJoCo WASM (@mujoco/mujoco) in Web Workers (cores minus one) and an evolution strategy: 64 candidates x 16 generations = 1,024 rollouts.
 - What is trained depends on the product: for the drone, the hover/flight controller gains (stay level and hold position for 10 s); for a legged or gripper product later, its gait or grip parameters. Build a small interface so the product supplies the model (MJCF), the parameters and the fitness function.
 - Build the MJCF from the current product's parts and masses (the backend already computes them; read them from the SSE events or add a small endpoint).
@@ -65,7 +66,7 @@ Done when: in mock mode, opening the guide walks through all steps with the righ
 
 ```
 Task: generate the firmware and wiring for the built product.
-- For the drone: a Betaflight CLI configuration for the chosen flight controller (motor order, rates and the trained controller gains); for an Arduino-based product: an .ino sketch. Deterministic templates filled from the product data, Claude only fills the explanation.
+- For the drone: a Betaflight CLI configuration for the chosen flight controller (motor order, rates, and trained controller gains from Isaac Lab if available, falling back to browser-tuned values); for an Arduino-based product: an .ino sketch. Deterministic templates filled from the product data, Claude only fills the explanation.
 - A wiring table (component, pin, wire color) generated from the parts.
 - UI: a "Download firmware" button and the wiring table next to the build guide entry in the bill-of-materials panel.
 - Agent tool `firmware` in a new module; emit an SSE event documented in docs/events.md.
