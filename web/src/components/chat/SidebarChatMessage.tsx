@@ -8,6 +8,7 @@ import remarkGfm from "remark-gfm";
 import type { Components } from "react-markdown";
 import { Check, Copy } from "lucide-react";
 import type { MascotState } from "../../events/types";
+import { enText } from "../../lib/copy";
 import { MascotHead } from "../mascot/Mascot";
 
 interface ChatMessageProps {
@@ -105,7 +106,7 @@ function AssistantMessage({ content, animate, mascot, onRevealProgress }: Omit<C
             <button
               onClick={handleCopyMessage}
               className="rounded-md p-1 text-faint transition-colors hover:bg-tile hover:text-ink-2"
-              title="Kopieren"
+              title="Copy"
             >
               {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
             </button>
@@ -116,9 +117,10 @@ function AssistantMessage({ content, animate, mascot, onRevealProgress }: Omit<C
   );
 }
 
-function SidebarChatMessage({ role, ...rest }: ChatMessageProps) {
-  if (role === "user") return <UserMessage content={rest.content} />;
-  return <AssistantMessage {...rest} />;
+function SidebarChatMessage({ role, content, ...rest }: ChatMessageProps) {
+  const text = enText(content);
+  if (role === "user") return <UserMessage content={text} />;
+  return <AssistantMessage content={text} {...rest} />;
 }
 
 export default memo(SidebarChatMessage);

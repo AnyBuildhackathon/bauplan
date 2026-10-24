@@ -1,5 +1,5 @@
-// The one compact panel on the right: the Jamie requirements as checks, the four
-// key numbers, and the button that opens the bill of materials.
+// The one compact panel on the right: the requirements as checks (from Jamie or the chat
+// request), the four key numbers, and the button that opens the bill of materials.
 import { useState } from "react";
 import { ChevronRight, Quote as QuoteIcon } from "lucide-react";
 import { useSession } from "../../events/store";
@@ -48,6 +48,7 @@ function RequirementRow({ r, open, onToggle }: { r: RequirementEvent; open: bool
         <span className="min-w-0 flex-1">
           <span className={`block text-[16px] leading-snug font-semibold ${r.met === false ? "text-fail-ink" : "text-ink"}`}>{r.text}</span>
           {r.changed_from && <span className="block text-[13px] font-semibold text-muted line-through decoration-faint">{r.changed_from}</span>}
+          {r.detail && <span className={`num block text-[13px] font-semibold ${r.met === false ? "text-fail-ink" : "text-muted"}`}>{r.detail}</span>}
         </span>
       </button>
       {open && (
@@ -61,10 +62,10 @@ function RequirementRow({ r, open, onToggle }: { r: RequirementEvent; open: bool
 }
 
 const METRICS: { key: MetricKey; label: string; unit: string; target: string; format: (v: number) => string }[] = [
-  { key: "weight_g", label: "Gewicht", unit: "g", target: "metric:weight weight weight_g gewicht", format: (v) => fmtNum(v, v < 100 ? 1 : 0) },
-  { key: "thrust_to_weight", label: "Schub/Gewicht", unit: ": 1", target: "metric:thrust_to_weight thrust_to_weight schub tw", format: fmtRatio },
-  { key: "flight_time_min", label: "Flugzeit", unit: "min", target: "metric:flight_time flight_time flight_time_min flugzeit", format: fmtMin },
-  { key: "price_eur", label: "Preis", unit: "€", target: "metric:price price price_eur preis budget", format: (v) => fmtNum(v, 2) },
+  { key: "weight_g", label: "Weight", unit: "g", target: "metric:weight weight weight_g gewicht", format: (v) => fmtNum(v, v < 100 ? 1 : 0) },
+  { key: "thrust_to_weight", label: "Thrust/weight", unit: ": 1", target: "metric:thrust_to_weight thrust_to_weight schub tw", format: fmtRatio },
+  { key: "flight_time_min", label: "Flight time", unit: "min", target: "metric:flight_time flight_time flight_time_min flugzeit", format: fmtMin },
+  { key: "price_eur", label: "Price", unit: "€", target: "metric:price price price_eur preis budget", format: (v) => fmtNum(v, 2) },
 ];
 
 function limitText(key: MetricKey, value: number, direction: "max" | "min") {
@@ -80,11 +81,11 @@ function CardGrid({ cards, busy }: { cards: MetricCard[]; busy: boolean }) {
       {cards.map((c) => (
         <div key={c.key} data-target={`metric:${c.key} ${c.key}`} className="rounded-[20px] bg-page-2 px-3.5 pt-2.5 pb-3">
           <div className="flex items-center gap-1.5 text-[14px] font-semibold text-ink-2">
-            <span className={`h-2 w-2 rounded-full ${c.ok ? "bg-ok" : "bg-fail"}`} />
+            <span className={`h-2 w-2 rounded-full ${c.pending ? "bg-track" : c.ok ? "bg-ok" : "bg-fail"}`} />
             {c.label}
           </div>
-          <div className={`num mt-1 flex items-baseline gap-1 ${busy ? "text-agent-ink" : c.ok ? "text-ink" : "text-fail-ink"}`}>
-            <span className="text-[30px] leading-none font-extrabold tracking-[-0.02em]">{fmtNum(c.value, c.digits)}</span>
+          <div className={`num mt-1 flex items-baseline gap-1 ${c.pending ? "text-faint" : busy ? "text-agent-ink" : c.ok ? "text-ink" : "text-fail-ink"}`}>
+            <span className="text-[30px] leading-none font-extrabold tracking-[-0.02em]">{c.pending ? "–" : fmtNum(c.value, c.digits)}</span>
             <span className="text-[15px] font-bold text-muted">{c.unit}</span>
           </div>
           <div className="num mt-1 truncate text-[13px] font-semibold text-muted">{c.limit || "\u00a0"}</div>
@@ -109,8 +110,12 @@ export function BuildPanel() {
   return (
     <aside className="card scroll-soft flex min-h-0 flex-col overflow-y-auto px-5 pt-4 pb-5">
       <div className="mb-1.5 flex items-center gap-2" data-target="requirements anforderungen">
-        <h2 className="text-[18px] font-bold text-ink">Anforderungen</h2>
-        {product === "drone" ? <JamieMark /> : <span className="inline-flex h-6 items-center rounded-full bg-tile px-2.5 text-[12px] font-bold text-ink-2">Chat brief</span>}
+        <h2 className="text-[18px] font-bold text-ink">Requirements</h2>
+        {product === "drone" ? (
+          <JamieMark />
+        ) : product ? (
+          <span className="inline-flex h-6 items-center rounded-full bg-tile px-2.5 text-[12px] font-bold text-ink-2">Chat request</span>
+        ) : null}
         {requirements.length > 0 && (
           <span className="num ml-auto text-[14px] font-semibold text-muted">
             {met} / {requirements.length}
@@ -118,7 +123,7 @@ export function BuildPanel() {
         )}
       </div>
       {requirements.length === 0 ? (
-        <p className="py-2 text-[15px] leading-snug text-muted">Kommen aus eurem Meeting, sobald Bolzen es bei Jamie gelesen hat.</p>
+        <p className="py-2 text-[15px] leading-snug text-muted">Describe any product in the chat, or end a Jamie meeting. Mechanic turns it into checks here.</p>
       ) : (
         <ul className="-mx-2">
           {requirements.map((r) => (
@@ -128,7 +133,7 @@ export function BuildPanel() {
       )}
 
       <div className="mt-4 mb-2 flex items-baseline gap-2" data-target="metrics kennzahlen">
-        <h2 className="text-[18px] font-bold text-ink">Kennzahlen</h2>
+        <h2 className="text-[18px] font-bold text-ink">Numbers</h2>
         {version && (
           <span className={`text-[14px] font-semibold ${pinned ? "text-agent-ink" : "text-muted"}`}>
             v{version.n} · {version.meeting_title}
@@ -138,7 +143,7 @@ export function BuildPanel() {
       {product !== "drone" && cards ? (
         <CardGrid cards={cards} busy={simRunning} />
       ) : product !== "drone" ? (
-        <p className="py-2 text-[15px] leading-snug text-muted">Appear once Bolzen has chosen the parts.</p>
+        <p className="py-2 text-[15px] leading-snug text-muted">Appear once Mechanic has chosen the parts.</p>
       ) : (
       <div className="grid grid-cols-2 gap-2.5">
         {METRICS.map((m) => {
@@ -161,7 +166,7 @@ export function BuildPanel() {
               <div className="num mt-1 text-[13px] font-semibold text-muted">
                 {changed ? (
                   <>
-                    vorher <span className="text-ink-2">{m.format(prev!)}</span>
+                    before <span className="text-ink-2">{m.format(prev!)}</span>
                   </>
                 ) : requirements.length > 0 ? (
                   limitText(m.key, t.value, t.direction)
@@ -182,10 +187,10 @@ export function BuildPanel() {
         data-target="bom stueckliste nav:stueckliste"
         className="group mt-4 flex h-14 w-full shrink-0 items-center gap-3 rounded-full bg-ink pr-3 pl-5 text-left text-white transition hover:bg-[#333] disabled:bg-tile disabled:text-faint"
       >
-        <span className="text-[16px] font-bold">Stückliste</span>
+        <span className="text-[16px] font-bold">Bill of materials</span>
         {bom && (
           <span className="num text-[15px] font-semibold text-white/70">
-            {bom.items.length} Teile · {fmtEur(bom.total_eur)}
+            {bom.items.length} parts · {fmtEur(bom.total_eur)}
           </span>
         )}
         <ChevronRight className="ml-auto h-5 w-5 transition group-hover:translate-x-0.5" />

@@ -1,7 +1,7 @@
 {
   "id": "flugtest-2026-10-17",
   "kind": "archive",
-  "title": "Flugtest Prototyp",
+  "title": "Prototype flight test",
   "date": "2026-10-17",
   "time": "16:00",
   "recorded_with": "Jamie",
@@ -9,22 +9,30 @@
     {
       "speaker": "Ben",
       "time": "16:05",
-      "text": "Heute fliegen wir den Prototyp mit den 1102ern, 22000KV, und den Gemfan 1635.",
-      "about": ["betafpv-1102-22000kv", "gemfan-1635-3"],
+      "text": "Today we fly the prototype with the 1103s, 15000KV, and the Gemfan 2020 four-blades.",
+      "about": [
+        "generic-1103-15000kv",
+        "gemfan-2020-4"
+      ],
       "tone": "fact"
     },
     {
       "speaker": "Lea",
       "time": "16:12",
-      "text": "Schwebt sauber, und der AIO-Regler bleibt kühl.",
-      "about": ["betafpv-1102-22000kv", "betafpv-f4-1s-12a-aio-v3"],
+      "text": "It hovers cleanly, and the Matrix AIO stays cool.",
+      "about": [
+        "generic-1103-15000kv",
+        "betafpv-matrix-1s-5in1-v2"
+      ],
       "tone": "praise"
     },
     {
       "speaker": "Ben",
       "time": "16:20",
-      "text": "Die Gemfan 1635 passen gut auf die 1102er, die nehmen wir wieder.",
-      "about": ["gemfan-1635-3"],
+      "text": "The Gemfan 2020s fit the 1103s well. We will use them again.",
+      "about": [
+        "gemfan-2020-4"
+      ],
       "tone": "praise"
     }
   ]

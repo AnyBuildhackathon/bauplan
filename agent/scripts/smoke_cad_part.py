@@ -71,7 +71,7 @@ async def run(directory: Path, events: list[dict]) -> None:
 
     calls: list[str | None] = []
 
-    def stub(description: str, params: dict, previous: str | None, error: str | None) -> str:
+    def stub(description: str, params: dict, previous: str | None, error: str | None, context: str = "", run=None) -> str:
         calls.append(error)
         return BROKEN if previous is None else FIXED
 

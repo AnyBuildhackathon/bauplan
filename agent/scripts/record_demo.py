@@ -3,6 +3,8 @@
 Runs the kickoff build, marks the review live, runs the review build, and writes:
 - web/src/events/recording.json, the events in order, with file URLs pointing at /demo/run/
 - web/public/demo/run/, a copy of every CAD part and render the events name
+- web/public/models/hero-drone.glb, the kickoff's drone, which the 3D view shows before any build
+- web/public/models/hero-drone.png, its studio render, the library thumbnail of the micro drone
 
 Run it again whenever the story, the catalog or the physics change:
 
@@ -23,6 +25,7 @@ ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT.parent / "web"
 OUT_JSON = WEB / "src" / "events" / "recording.json"
 OUT_FILES = WEB / "public" / "demo" / "run"
+OUT_MODEL = WEB / "public" / "models" / "hero-drone.glb"
 KICKOFF = "kickoff-drohne-2026-10-24"
 REVIEW = "review-drohne-2026-10-24"
 
@@ -48,7 +51,7 @@ async def record() -> list[dict]:
 
     session.bus.publish = keep  # type: ignore[method-assign]
     await session.bootstrap()
-    await session.start_from_meeting(KICKOFF, "Kickoff Drohne")
+    await session.start_from_meeting(KICKOFF, "Drone kickoff")
     assert session.task is not None
     await session.task
     await session.meeting_started(REVIEW, "Review 1")
@@ -98,6 +101,13 @@ def main() -> None:
     if OUT_FILES.is_dir():
         shutil.rmtree(OUT_FILES)
     events = asyncio.run(record())
+    first = OUT_FILES / "frame-1.glb"
+    if first.is_file():
+        OUT_MODEL.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(first, OUT_MODEL)
+    render = OUT_FILES / "studio-v1.png"
+    if render.is_file():
+        shutil.copyfile(render, OUT_MODEL.with_suffix(".png"))
     # Bulky trajectories stay, but with fewer digits.
     OUT_JSON.write_text(json.dumps(events, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
     versions = [e for e in events if e["type"] == "version"]

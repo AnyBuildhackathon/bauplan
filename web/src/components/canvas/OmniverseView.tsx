@@ -92,7 +92,7 @@ export function OmniverseView() {
       {error && <p role="alert" className="mb-3 text-sm text-fail-ink">{error}</p>}
       {!result && <div className="flex min-h-48 flex-1 flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-line p-6 text-center">
         <Cloud className="h-9 w-9 text-agent" /><h3 className="font-semibold">From CAD to a GPU experiment</h3>
-        <p className="max-w-sm text-sm leading-relaxed text-muted">Ask Bolzen to test gusty wind, add a 10 g camera, or train a reference policy. A finished video and values appear here.</p>
+        <p className="max-w-sm text-sm leading-relaxed text-muted">Ask Mechanic to test gusty wind, add a 10 g camera, or train a reference policy. A finished video and values appear here.</p>
         <p className="text-xs text-muted">No pod connected? A clearly labelled recorded demo is available.</p>
       </div>}
       {result && <>

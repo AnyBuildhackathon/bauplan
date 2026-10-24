@@ -1,7 +1,7 @@
-# Bauplan for Mac
+# AnyBuild for Mac
 
 A Tauri 2 window around the same web dashboard as `web/`.
-The browser app (`cd web && npm run dev`, then http://localhost:5180) stays the primary demo path; this app is the same build in a native window.
+The browser app (`cd web && npm run dev`, then http://localhost:5180) stays the primary path; this app is the same build in a native window.
 
 ## Setup
 
@@ -33,10 +33,10 @@ npm run build
 This runs `npm run build:desktop` in `web/` (output in `web/dist-desktop`, with `VITE_API_BASE=http://localhost:8100` from `web/.env.desktop`) and bundles it into:
 
 ```
-desktop/src-tauri/target/release/bundle/macos/Bauplan.app
+desktop/src-tauri/target/release/bundle/macos/AnyBuild.app
 ```
 
-Open it with `open desktop/src-tauri/target/release/bundle/macos/Bauplan.app`.
+Open it with `open desktop/src-tauri/target/release/bundle/macos/AnyBuild.app`.
 
 ## How it reaches the backend
 

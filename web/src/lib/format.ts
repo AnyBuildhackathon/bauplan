@@ -1,5 +1,5 @@
 const de = (digits: number) =>
-  new Intl.NumberFormat("de-DE", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  new Intl.NumberFormat("en-GB", { minimumFractionDigits: digits, maximumFractionDigits: digits });
 
 export const fmtEur = (v: number) => `${de(2).format(v)} €`;
 export const fmtGram = (v: number) => `${de(v < 10 && v % 1 !== 0 ? 1 : 0).format(v)} g`;
@@ -9,7 +9,7 @@ export const fmtNum = (v: number, digits = 0) => de(digits).format(v);
 
 export function fmtClock(ms: number): string {
   const d = new Date(ms);
-  return d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 }
 
 export function fmtDuration(ms: number): string {

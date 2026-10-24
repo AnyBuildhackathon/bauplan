@@ -138,21 +138,21 @@ async def simulate_drone(ctx: Ctx, args: dict) -> dict:
     low_cm = de(outcome["gust_low_z_m"] * 100, 0)
     if outcome["result"] == "pass":
         summary = (
-            "Schub-Gewicht "
+            "Thrust-to-weight "
             + de(twr, 2)
-            + ". Sie steigt auf 50 cm und fängt die Böe bei "
+            + ". It climbs to 50 cm and catches the gust at "
             + low_cm
-            + " cm ab."
+            + " cm."
         )
     elif outcome["peak_z_m"] < 0.3:
-        summary = "Schub-Gewicht " + de(twr, 2) + ". Zu schwer, sie kommt nicht frei vom Boden."
+        summary = "Thrust-to-weight " + de(twr, 2) + ". Too heavy. It never leaves the ground."
     else:
         summary = (
-            "Schub-Gewicht "
+            "Thrust-to-weight "
             + de(twr, 2)
-            + ". Sie schwebt nur knapp, die Böe drückt sie bis auf "
+            + ". It barely hovers. The gust pushes it down to "
             + low_cm
-            + " cm runter. Keine Schubreserve."
+            + " cm. No thrust reserve."
         )
     event = {
         "type": "sim",
@@ -169,7 +169,7 @@ async def simulate_drone(ctx: Ctx, args: dict) -> dict:
         "gust_low_z_m": outcome["gust_low_z_m"],
     }
     await ctx.emit(event)
-    detail = "Lauf " + str(ctx.state.sim_run) + ": " + outcome["result"]
+    detail = "Run " + str(ctx.state.sim_run) + ": " + ("passed" if outcome["result"] == "pass" else "failed")
     return {
         "ok": True,
         "detail": detail,

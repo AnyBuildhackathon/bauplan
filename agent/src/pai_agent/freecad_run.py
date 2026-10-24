@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import math
 import os
 import socket
 import subprocess
@@ -32,7 +31,8 @@ class _TimeoutTransport(xmlrpc.client.Transport):
         connection.timeout = self._timeout
         return connection
 _KNOWN_CMD = Path("/Applications/FreeCAD.app/Contents/Resources/bin/freecadcmd")
-_DENSITY = 1.24 / 1000.0
+# The stages of frame_build.py, in order; the window shows each one as it lands.
+_STAGES = ("Frame plate", "Prop ducts", "Motors", "Propellers", "Flight controller", "Battery and strap", "Antenna")
 
 
 class FreeCADFailed(Exception):
@@ -65,7 +65,7 @@ def _which(name: str) -> str | None:
 def build_with_freecad(directory: Path, params: dict) -> float:
     binary = find_freecadcmd()
     if binary is None:
-        raise FreeCADFailed("freecadcmd fehlt")
+        raise FreeCADFailed("freecadcmd is missing")
     directory.mkdir(parents=True, exist_ok=True)
     params_path = directory / "cad_params.json"
     params_path.write_text(json.dumps(params), encoding="utf-8")
@@ -82,15 +82,15 @@ def build_with_freecad(directory: Path, params: dict) -> float:
     )
     result_path = directory / "freecad_result.json"
     if not result_path.is_file():
-        tail = (completed.stderr or completed.stdout or "kein Ergebnis").strip()[-400:]
+        tail = (completed.stderr or completed.stdout or "no result").strip()[-400:]
         raise FreeCADFailed(tail)
     result = json.loads(result_path.read_text(encoding="utf-8"))
     if not result.get("ok"):
-        raise FreeCADFailed(str(result.get("error") or "FreeCAD-Skript fehlgeschlagen"))
+        raise FreeCADFailed(str(result.get("error") or "FreeCAD script failed"))
     stl = directory / "frame.stl"
     step = directory / "frame.step"
     if not stl.is_file() or not step.is_file():
-        raise FreeCADFailed("FreeCAD hat STL oder STEP nicht geschrieben")
+        raise FreeCADFailed("FreeCAD did not write STL or STEP")
     if not (directory / "frame.glb").is_file():
         stl_to_glb(stl, directory / "frame.glb")
     return float(result["mass_g"])
@@ -134,97 +134,49 @@ _GUI_STEP_S = 0.35
 
 
 def build_in_gui(directory: Path, params: dict, version: int, progress=None) -> float:
-    """Builds the frame feature by feature in the open FreeCAD window, so the room watches it grow.
+    """Builds the drone stage by stage in the open FreeCAD window, so the room watches it grow.
 
-    Uses the freecad-mcp add-on's execute_code on 127.0.0.1:9875. Any error or timeout raises
-    FreeCADFailed, and the caller falls back to the headless build.
+    Every stage runs freecad/frame_build.py's own run_stage through the freecad-mcp add-on's
+    execute_code on 127.0.0.1:9875, so the window builds exactly what the headless path builds.
+    Any error or timeout raises FreeCADFailed, and the caller falls back to the headless build.
     """
 
     directory.mkdir(parents=True, exist_ok=True)
     result_path = directory / "freecad_result.json"
     result_path.unlink(missing_ok=True)
-    arm = float(params["arm_length_mm"])
-    thick = float(params["thickness_mm"])
-    bolt = float(params["motor_spacing_mm"]) / 2.0
-    doc = "Bauplan_v" + str(version)
-    head = "import FreeCAD as App\nimport FreeCADGui as Gui\nimport math\ndoc = App.getDocument(" + repr(doc) + ")\n"
+    doc = "AnyBuild_v" + str(version)
+    load = (
+        "import json\nimport runpy\nimport FreeCAD as App\nimport FreeCADGui as Gui\n"
+        + "builder = runpy.run_path(" + repr(str(_SCRIPT)) + ", run_name='pai_gui')\n"
+        + "params = json.loads(" + repr(json.dumps(params)) + ")\n"
+        + "doc = App.getDocument(" + repr(doc) + ")\n"
+    )
     view = "Gui.getDocument(doc.Name).ActiveView.fitAll()\n"
     steps: list[tuple[str, str]] = [
         (
-            "neues Dokument",
+            "New document",
             "import FreeCAD as App\nimport FreeCADGui as Gui\n"
             "for name in list(App.listDocuments()):\n"
-            "    if name.startswith('Bauplan'):\n"
+            "    if name.startswith(('Bauplan', 'AnyBuild')):\n"
             "        App.closeDocument(name)\n"
             "doc = App.newDocument(" + repr(doc) + ")\n"
             "App.setActiveDocument(doc.Name)\n"
             "Gui.ActiveDocument = Gui.getDocument(doc.Name)\n"
             "Gui.getDocument(doc.Name).ActiveView.viewIsometric()\n",
-        ),
-        (
-            "Nabe",
-            head
-            + "hub = doc.addObject('Part::Cylinder', 'Nabe')\n"
-            + f"hub.Radius = 20\nhub.Height = {thick}\n"
-            + "doc.recompute()\n"
-            + view,
-        ),
+        )
     ]
-    for index in range(4):
-        angle = index * 90
-        steps.append(
-            (
-                f"Arm {index + 1} von 4",
-                head
-                + f"a = math.radians({angle})\n"
-                + f"arm = doc.addObject('Part::Box', 'Arm{index + 1}')\n"
-                + f"arm.Length = {arm + 6}\narm.Width = 6\narm.Height = {thick}\n"
-                + f"arm.Placement = App.Placement(App.Vector(3 * math.sin(a), -3 * math.cos(a), 0), App.Rotation(App.Vector(0, 0, 1), {angle}))\n"
-                + f"pad = doc.addObject('Part::Cylinder', 'Motorauflage{index + 1}')\n"
-                + f"pad.Radius = 6\npad.Height = {thick}\n"
-                + f"pad.Placement.Base = App.Vector({arm} * math.cos(a), {arm} * math.sin(a), 0)\n"
-                + "doc.recompute()\n"
-                + view,
-            )
-        )
-    holes = [(0.0, 0.0, 2.2)] + [(13.0 * sx, 13.0 * sy, 1.1) for sx in (-1, 1) for sy in (-1, 1)]
-    for index in range(4):
-        rad = math.radians(index * 90)
-        cx, cy = arm * math.cos(rad), arm * math.sin(rad)
-        holes.append((cx, cy, 1.0))
-        for hole in range(3):
-            angle = math.radians(index * 90 + hole * 120)
-            holes.append((cx + bolt * math.cos(angle), cy + bolt * math.sin(angle), 0.8))
+    for index, label in enumerate(_STAGES):
+        steps.append((label, load + "builder['run_stage'](doc, params, " + str(index) + ")\n" + view))
     steps.append(
         (
-            "Bohrungen",
-            head
-            + "import Part\n"
-            + "parts = [doc.getObject(n) for n in ['Nabe'] + ['Arm%d' % i for i in range(1, 5)] + ['Motorauflage%d' % i for i in range(1, 5)]]\n"
-            + "base = doc.addObject('Part::MultiFuse', 'Grundform')\nbase.Shapes = parts\n"
-            + "cutters = [Part.makeCylinder(r, "
-            + str(thick + 2)
-            + ", App.Vector(x, y, -1)) for x, y, r in "
-            + repr(holes)
-            + "]\n"
-            + "tool = doc.addObject('Part::Feature', 'Bohrungen')\ntool.Shape = Part.makeCompound(cutters)\n"
-            + "frame = doc.addObject('Part::Cut', 'Rahmen')\nframe.Base = base\nframe.Tool = tool\n"
-            + "doc.recompute()\n"
-            + "for obj in parts + [base, tool]:\n    obj.ViewObject.Visibility = False\n"
-            + "frame.ViewObject.ShapeColor = (1.0, 0.54, 0.24)\n"
-            + view,
-        )
-    )
-    steps.append(
-        (
-            "Speichern und exportieren",
-            head
-            + "import json\nimport Mesh\nimport Part\n"
-            + "frame = doc.getObject('Rahmen')\n"
-            + f"doc.saveAs({str(directory / 'frame.FCStd')!r})\n"
-            + f"Part.export([frame], {str(directory / 'frame.step')!r})\n"
-            + f"Mesh.export([frame], {str(directory / 'frame.stl')!r})\n"
-            + f"open({str(result_path)!r}, 'w').write(json.dumps({{'ok': True, 'mass_g': round(frame.Shape.Volume * {_DENSITY}, 2)}}))\n"
+            "save and export",
+            load
+            + "mass = builder['export'](doc, params, "
+            + repr(str(directory))
+            + ")\n"
+            + "open("
+            + repr(str(result_path))
+            + ", 'w').write(json.dumps({'ok': True, 'mass_g': round(mass, 2)}))\n"
             + "Gui.getDocument(doc.Name).ActiveView.viewIsometric()\n"
             + view,
         )
@@ -238,23 +190,22 @@ def build_in_gui(directory: Path, params: dict, version: int, progress=None) -> 
             answer = proxy.execute_code(code, 12)
             if not isinstance(answer, dict) or not answer.get("success"):
                 message = answer.get("error") or answer.get("message") if isinstance(answer, dict) else str(answer)
-                raise FreeCADFailed("FreeCAD-Fenster: " + label + ": " + str(message)[:300])
+                raise FreeCADFailed("FreeCAD window: " + label + ": " + str(message)[:300])
             time.sleep(_GUI_STEP_S)
         try:
-            shot = proxy.get_active_screenshot("Isometric", 1280, 720, "Rahmen")
+            shot = proxy.get_active_screenshot("Isometric", 1280, 720, "Frame")
             if shot:
                 _store_image(directory / "view.png", shot)
         except Exception:
             pass
     except (OSError, xmlrpc.client.Error) as exc:
-        raise FreeCADFailed("FreeCAD-Fenster antwortet nicht: " + str(exc)) from exc
+        raise FreeCADFailed("FreeCAD window does not answer: " + str(exc)) from exc
     if not result_path.is_file():
-        raise FreeCADFailed("FreeCAD-Fenster hat kein Ergebnis geschrieben")
+        raise FreeCADFailed("FreeCAD window wrote no result")
     result = json.loads(result_path.read_text(encoding="utf-8"))
-    stl = directory / "frame.stl"
-    if not stl.is_file() or not (directory / "frame.step").is_file():
-        raise FreeCADFailed("FreeCAD-Fenster hat STL oder STEP nicht geschrieben")
-    stl_to_glb(stl, directory / "frame.glb")
+    for name in ("frame.stl", "frame.step", "frame.glb"):
+        if not (directory / name).is_file():
+            raise FreeCADFailed("FreeCAD window did not write " + name)
     return float(result["mass_g"])
 
 
@@ -267,7 +218,7 @@ def open_in_freecad(path: Path) -> None:
     if binary:
         subprocess.Popen([binary, str(path)])
         return
-    raise FreeCADFailed("FreeCAD ist nicht installiert")
+    raise FreeCADFailed("FreeCAD is not installed")
 
 
 def _rpc_host_port() -> tuple[str, int]:

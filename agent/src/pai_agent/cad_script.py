@@ -115,7 +115,37 @@ def _sandbox_profile(work: Path) -> str:
     )
 
 
-def run_script(source: str, params: dict, out_dir: Path, stem: str, material: str = "PLA", timeout_s: int = TIMEOUT_S) -> PartBuild:
+def check_geometry(result: dict, expected_mm: list[float] | None = None) -> None:
+    """Rejects geometry a live build must not continue with: wrong units, slivers, the wrong size."""
+
+    box = result["bbox_mm"]
+    size = [box[i + 3] - box[i] for i in range(3)]
+    if max(size) > 2000:
+        raise ScriptFailed(
+            "The part is " + " x ".join(f"{v:.0f}" for v in size) + " mm, over 2 m. Units are millimetres; check the numbers."
+        )
+    for row in result["parts"]:
+        part = [row["bbox_mm"][i + 3] - row["bbox_mm"][i] for i in range(3)]
+        if min(part) < 0.2:
+            raise ScriptFailed("parts[" + repr(row["name"]) + "] is only " + f"{min(part):.2f}" + " mm thick somewhere; make every wall at least 0.8 mm.")
+    if expected_mm:
+        largest, wanted = max(size), max(expected_mm)
+        if not 0.4 * wanted <= largest <= 2.5 * wanted:
+            raise ScriptFailed(
+                "The part is " + " x ".join(f"{v:.0f}" for v in size) + " mm, but the spec expects about "
+                + " x ".join(f"{v:.0f}" for v in expected_mm) + " mm. Build it at the specified size."
+            )
+
+
+def run_script(
+    source: str,
+    params: dict,
+    out_dir: Path,
+    stem: str,
+    material: str = "PLA",
+    timeout_s: int = TIMEOUT_S,
+    expected_mm: list[float] | None = None,
+) -> PartBuild:
     """Builds the script in a temp dir, then copies STL, STEP and GLB to out_dir/stem.*"""
 
     check_script(source)
@@ -151,6 +181,7 @@ def run_script(source: str, params: dict, out_dir: Path, stem: str, material: st
         result = json.loads(result_path.read_text(encoding="utf-8"))
         if not result.get("ok"):
             raise ScriptFailed(str(result.get("error")) + "\n" + str(result.get("traceback") or ""))
+        check_geometry(result, expected_mm)
 
         out_dir.mkdir(parents=True, exist_ok=True)
         mass = 0.0

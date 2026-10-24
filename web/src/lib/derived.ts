@@ -15,7 +15,7 @@ export interface MetricTarget {
 
 const num = (s: string) => Number(s.replace(",", "."));
 
-/** Reads limits like "unter 80 €" or "mindestens 2 : 1" from requirement texts, with sane defaults. */
+/** Reads limits like "under €120", "unter 80 €" or "mindestens 2 : 1" from requirement texts, with sane defaults. */
 export function metricTargets(requirements: RequirementEvent[]): Record<MetricKey, MetricTarget> {
   const targets: Record<MetricKey, MetricTarget> = {
     weight_g: { key: "weight_g", value: 250, direction: "max", requirementId: null },
@@ -26,8 +26,8 @@ export function metricTargets(requirements: RequirementEvent[]): Record<MetricKe
   for (const r of requirements) {
     const t = r.text;
     let m: RegExpMatchArray | null;
-    if ((m = t.match(/(\d+(?:[.,]\d+)?)\s*(?:€|eur)/i))) {
-      targets.price_eur = { ...targets.price_eur, value: num(m[1]), requirementId: r.id };
+    if ((m = t.match(/€\s*(\d+(?:[.,]\d+)?)|(\d+(?:[.,]\d+)?)\s*(?:€|eur)/i))) {
+      targets.price_eur = { ...targets.price_eur, value: num(m[1] ?? m[2]), requirementId: r.id };
     } else if ((m = t.match(/(\d+(?:[.,]\d+)?)\s*:\s*1/))) {
       targets.thrust_to_weight = { ...targets.thrust_to_weight, value: num(m[1]), requirementId: r.id };
     } else if ((m = t.match(/(\d+(?:[.,]\d+)?)\s*(?:min|minuten)/i))) {

@@ -243,7 +243,7 @@ export default function Block({
       <div className="relative">
         {showPlaceholder && (
           <span className="absolute top-0 left-0 pointer-events-none select-none text-faint">
-            {isOnly ? "Tippe '/' für Blöcke …" : 'Schreib etwas …'}
+            {isOnly ? "Type '/' for blocks …" : 'Write something …'}
           </span>
         )}
         <div

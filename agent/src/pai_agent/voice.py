@@ -22,7 +22,7 @@ log = logging.getLogger(__name__)
 RESON8_TOKEN_URL = "https://api.reson8.dev/v1/auth/token"
 RESON8_REALTIME_URL = "wss://api.reson8.dev/v1/speech-to-text/realtime"
 _ELEVEN_URL = "https://api.elevenlabs.io/v1/text-to-speech/{voice}?output_format=mp3_44100_128"
-# A stock ElevenLabs voice; eleven_multilingual_v2 speaks German with it.
+# A stock ElevenLabs voice; eleven_multilingual_v2 speaks English with it.
 _DEFAULT_VOICE = "JBFqnCBsd6RMkjVDRZzb"
 
 
@@ -39,7 +39,7 @@ def capabilities() -> dict:
         "stt": "reson8" if _key("RESON8_API_KEY") else "browser",
         "tts": "elevenlabs" if _key("ELEVENLABS_API_KEY") else "browser",
         "realtime_url": RESON8_REALTIME_URL,
-        "language": os.environ.get("RESON8_LANGUAGE", "").strip() or "de",
+        "language": os.environ.get("RESON8_LANGUAGE", "").strip() or "en",
     }
 
 
@@ -55,19 +55,19 @@ def _post(url: str, headers: dict, body: bytes | None, timeout: float) -> bytes:
 async def reson8_token() -> dict:
     key = _key("RESON8_API_KEY")
     if not key:
-        raise VoiceError("RESON8_API_KEY fehlt")
+        raise VoiceError("RESON8_API_KEY is missing")
     raw = await asyncio.to_thread(_post, RESON8_TOKEN_URL, {"Authorization": "ApiKey " + key}, None, 10)
     body = json.loads(raw)
     token = body.get("access_token")
     if not token:
-        raise VoiceError("Reson8 hat kein Token geschickt")
+        raise VoiceError("Reson8 did not send a token")
     return {"access_token": token, "expires_in": int(body.get("expires_in") or 600)}
 
 
 async def elevenlabs_speech(text: str) -> bytes:
     key = _key("ELEVENLABS_API_KEY")
     if not key:
-        raise VoiceError("ELEVENLABS_API_KEY fehlt")
+        raise VoiceError("ELEVENLABS_API_KEY is missing")
     voice = _key("ELEVENLABS_VOICE_ID") or _DEFAULT_VOICE
     payload = json.dumps({"text": text[:600], "model_id": _key("ELEVENLABS_MODEL") or "eleven_multilingual_v2"}).encode("utf-8")
     headers = {"xi-api-key": key, "Content-Type": "application/json", "Accept": "audio/mpeg"}

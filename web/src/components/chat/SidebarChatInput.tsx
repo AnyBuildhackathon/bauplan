@@ -42,7 +42,7 @@ export default function SidebarChatInput({
   onSubmit,
   onVoice,
   disabled = false,
-  placeholder = "Sag oder tipp, was sich ändern soll",
+  placeholder = "Say or type what to build or change",
   size = "md",
 }: SidebarChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -88,13 +88,13 @@ export default function SidebarChatInput({
       active = pending ? await pending : null;
       text = active ? await active.stop() : "";
     } catch (err) {
-      flash(`Mikrofon: ${err instanceof Error ? err.message : "Fehler"}`);
+      flash(`Microphone: ${err instanceof Error ? err.message : "error"}`);
     } finally {
       setListening(false);
       setHeard("");
     }
     if (text) onVoice?.(text);
-    else if (active) flash("Nichts verstanden. Halt die Taste und sprich.");
+    else if (active) flash("Didn't catch that. Hold the key and speak.");
   }, [setListening, onVoice, flash]);
 
   // A held key never comes up when the window loses focus; close the mic then too.
@@ -151,7 +151,7 @@ export default function SidebarChatInput({
           <div className="flex flex-1 items-center gap-3">
             <Waveform active bars={lg ? 11 : 7} />
             <span className={`line-clamp-2 font-semibold ${heard ? "text-ink" : "text-agent-ink"} ${lg ? "text-[20px]" : "text-[15px]"}`}>
-              {heard || (stt === "reson8" ? "Reson8 hört zu …" : "Ich höre zu …")}
+              {heard || (stt === "reson8" ? "Reson8 is listening…" : "Listening…")}
             </span>
           </div>
         ) : (
@@ -163,7 +163,7 @@ export default function SidebarChatInput({
             placeholder={placeholder}
             rows={1}
             name="prompt"
-            aria-label="Nachricht an Bolzen"
+            aria-label="Message to Mechanic"
             data-target="chat_input eingabe"
             className={`min-w-0 flex-1 resize-none bg-transparent leading-snug text-ink outline-none placeholder:text-faint ${
               lg ? "text-[20px]" : "text-[15px]"
@@ -175,7 +175,7 @@ export default function SidebarChatInput({
             type="button"
             onClick={onSubmit}
             className={`flex shrink-0 items-center justify-center rounded-full bg-ink text-white transition hover:bg-[#333] ${lg ? "h-12 w-12" : "h-10 w-10"}`}
-            title="Senden"
+            title="Send"
           >
             <ArrowUp className={lg ? "h-5 w-5" : "h-4.5 w-4.5"} strokeWidth={2.5} />
           </button>
@@ -192,14 +192,14 @@ export default function SidebarChatInput({
           className={`flex shrink-0 items-center justify-center rounded-full text-white transition select-none ${
             listening ? "scale-105 bg-agent shadow-[0_0_0_8px_rgb(255_138_61/0.18)]" : "bg-agent shadow-[0_8px_20px_-8px_rgb(255_138_61/0.8)] hover:brightness-105"
           } ${lg ? "h-14 w-14" : "h-10 w-10"}`}
-          title="Gedrückt halten zum Sprechen"
+          title="Hold to speak"
         >
           <Mic className={lg ? "h-6 w-6" : "h-4.5 w-4.5"} strokeWidth={2.4} />
         </button>
       </div>
       <div className={`mt-2 flex items-center justify-between px-2 text-[13px] ${hint ? "text-agent-ink" : "text-faint"}`}>
-        <span>{hint ?? (stt === "none" ? "Tippen und Enter" : "Leertaste halten = sprechen")}</span>
-        {!hint && <span>{stt === "reson8" ? "Reson8 · Deutsch" : stt === "browser" ? "Browser · Deutsch" : ""}</span>}
+        <span>{hint ?? (stt === "none" ? "Type and press Enter" : "Hold space to speak")}</span>
+        {!hint && <span>{stt === "reson8" ? "Reson8 · English" : stt === "browser" ? "Browser · English" : ""}</span>}
       </div>
     </div>
   );

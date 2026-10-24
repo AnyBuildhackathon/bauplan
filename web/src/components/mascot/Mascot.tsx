@@ -1,4 +1,4 @@
-// Bolzen, exported as SVG from the Paper file (artboards 0A, 0B, 0C). The mascot
+// Mechanic, exported as SVG from the Paper file (artboards 0A, 0B, 0C). The mascot
 // keeps its own colors; at head size only the antenna tip changes with the state.
 import type { MascotState } from "../../events/types";
 import hero from "../../assets/mascot/hero.svg";
@@ -20,11 +20,11 @@ const BUSTS: Record<MascotState, string> = {
 };
 
 export const MASCOT_LABEL: Record<MascotState, string> = {
-  ruhig: "ruhig",
-  denkt: "denkt",
-  erklaert: "erklärt",
-  freut_sich: "freut sich",
-  besorgt: "besorgt",
+  ruhig: "calm",
+  denkt: "thinking",
+  erklaert: "explaining",
+  freut_sich: "pleased",
+  besorgt: "worried",
 };
 
 /** Antenna tip colors from the Paper spec (0C): orange, green when happy, red when worried. */
@@ -65,7 +65,7 @@ export function MascotHead({
       src={headUrl(size, state)}
       width={size}
       height={size}
-      alt={`Bolzen ${MASCOT_LABEL[state]}`}
+      alt={`Mechanic ${MASCOT_LABEL[state]}`}
       className={`shrink-0 select-none ${className}`}
       draggable={false}
     />
@@ -78,7 +78,7 @@ export function MascotBust({ state, size, className = "" }: { state: MascotState
       src={BUSTS[state]}
       width={size}
       height={size}
-      alt={`Bolzen ${MASCOT_LABEL[state]}`}
+      alt={`Mechanic ${MASCOT_LABEL[state]}`}
       className={`shrink-0 select-none ${className}`}
       draggable={false}
     />
@@ -91,7 +91,7 @@ export function MascotHero({ height, className = "" }: { height: number; classNa
       src={hero}
       height={height}
       width={Math.round((height * 483) / 980)}
-      alt="Bolzen"
+      alt="Mechanic"
       className={`shrink-0 select-none ${className}`}
       draggable={false}
     />

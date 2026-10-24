@@ -54,7 +54,7 @@ The team divides responsibilities across the captain, the teammate, and the agen
     - General CAD generation where Claude writes FreeCAD Python scripts for arbitrary product geometries.
     - A second demonstration product validating generalizability beyond drones.
     - Code implementation for live Jamie MCP client and live Reson8 streaming STT (credentials entered on site by captain).
-    - English UI translation task (translating Bolzen spoken dialogue, agent chat messages, and web labels, setting default `RESON8_LANGUAGE=en`).
+    - English UI translation task (translating Mechanic spoken dialogue, agent chat messages, and web labels, setting default `RESON8_LANGUAGE=en`).
     - Project rebranding from Bauplan to AnyBuild across codebase and UI text.
     - NVIDIA Omniverse and Isaac Sim training on RunPod RTX 4090 for deep policy training feeding real firmware parameters, with fallback video playback.
     - Technical documentation, architecture maintenance, and demo video recording.
@@ -87,4 +87,4 @@ Submissions are evaluated on their performance as an autonomous agentic system:
 - Autonomous agency: The system must execute multi-step engineering loops without human micromanagement.
 - Real engineering tool use: The agent must operate genuine CAD software and physics engines rather than generating text hallucinated answers.
 - Sponsor integration depth: Deep native use of Jamie MCP meeting data, Reson8 streaming audio, and Anthropic Claude tool calling.
-- Stage presentation readiness: High-contrast projector readability, clear spoken dialogue with mascot Bolzen, and fast deterministic fallbacks.
+- Stage presentation readiness: High-contrast projector readability, clear spoken dialogue with mascot Mechanic, and fast deterministic fallbacks.
