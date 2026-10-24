@@ -15,6 +15,7 @@ import ContentPartsRenderer, { JamieGroupRenderer, ProgressLineRenderer, ToolGro
 import ChatMessage from "./SidebarChatMessage";
 import SidebarChatInput from "./SidebarChatInput";
 import { useSketchDrop } from "./SketchDrop";
+import { ConfirmDesign } from "./ConfirmDesign";
 
 const FRESH_MS = 2500;
 
@@ -320,6 +321,7 @@ export default function SidebarChat() {
                   </motion.div>
                 ))}
               </AnimatePresence>
+              <ConfirmDesign onShow={onRevealProgress} />
             </div>
           </div>
         )}

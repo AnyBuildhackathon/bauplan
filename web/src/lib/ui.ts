@@ -39,6 +39,12 @@ interface UiState {
   /** Simulation run picked in the Simulation tab; null follows the newest run. */
   selectedRun: number | null;
   bomOpen: boolean;
+  /** The drawer was opened by confirming the design: it leads with the price and the order by shop. */
+  bomPricing: boolean;
+  /** The finished build (its results card id) the person confirmed; a new version asks again. */
+  confirmedBuild: string | null;
+  confirmDesign: (build: string) => void;
+  openPricing: () => void;
   lessonStep: StepId | null;
   concepts: Record<string, ConceptStatus>;
   /** Push-to-talk is held down. */
@@ -183,6 +189,10 @@ export const useUi = create<UiState>((set) => ({
   compare: null,
   selectedRun: null,
   bomOpen: params().has("bom"),
+  bomPricing: false,
+  confirmedBuild: null,
+  confirmDesign: (confirmedBuild) => set({ confirmedBuild }),
+  openPricing: () => set({ bomOpen: true, bomPricing: true }),
   lessonStep: initialLesson(),
   concepts: {},
   listening: false,
@@ -230,7 +240,8 @@ export const useUi = create<UiState>((set) => ({
   setVersionsOpen: (versionsOpen) => set({ versionsOpen }),
   setCompare: (compare) => set(compare ? { compare, tab: "modell", look: "3d" } : { compare }),
   selectRun: (selectedRun) => set({ selectedRun }),
-  setBomOpen: (bomOpen) => set({ bomOpen }),
+  // Closing the pricing returns to the model it priced.
+  setBomOpen: (bomOpen) => set((s) => (bomOpen || !s.bomPricing ? { bomOpen } : { bomOpen, bomPricing: false, tab: "modell" })),
   openLesson: (lessonStep) =>
     set((s) => ({ lessonStep, concepts: s.concepts[lessonStep] ? s.concepts : { ...s.concepts, [lessonStep]: "gesehen" } })),
   closeLesson: () => set({ lessonStep: null }),
@@ -254,5 +265,5 @@ export const useUi = create<UiState>((set) => ({
     }
     set({ voiceOn });
   },
-  resetUi: () => set({ selectedVersion: null, versionsOpen: false, compare: null, selectedRun: null, lessonStep: null, concepts: {}, bomOpen: false, explode: 0, focus: null }),
+  resetUi: () => set({ selectedVersion: null, versionsOpen: false, compare: null, selectedRun: null, lessonStep: null, concepts: {}, bomOpen: false, bomPricing: false, confirmedBuild: null, explode: 0, focus: null }),
 }));

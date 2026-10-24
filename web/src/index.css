@@ -5,6 +5,11 @@
   to { opacity: 1; }
 }
 
+@keyframes drawer-in {
+  from { opacity: 0; transform: translateX(32px); }
+  to { opacity: 1; transform: none; }
+}
+
 /* AnyBuild look as tokens: an off-white, airy, almost borderless reading surface.
    Inter Tight carries the interface. Reading text (Mechanic's answers, the Jamie quotes)
    uses the system sans, as core.so's agent chat does, and Chivo Mono marks small labels,

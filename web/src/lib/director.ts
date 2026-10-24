@@ -33,7 +33,8 @@ export function useDirector() {
     const sync = () => {
       clearTimeout(timer);
       const ui = useUi.getState();
-      if (!pending || !ui.director || ui.view !== "werkbank") return;
+      // The open bill of materials holds the shot; closing it lets the director catch up.
+      if (!pending || !ui.director || ui.view !== "werkbank" || ui.bomOpen) return;
       const remaining = ui.directorPausedUntil - Date.now();
       if (remaining > 0) {
         timer = setTimeout(sync, remaining);
@@ -71,7 +72,7 @@ export function useDirector() {
       }
     });
     const unsubscribeUi = useUi.subscribe((state, previous) => {
-      if (state.director !== previous.director || state.directorPausedUntil !== previous.directorPausedUntil || state.view !== previous.view) sync();
+      if (state.director !== previous.director || state.directorPausedUntil !== previous.directorPausedUntil || state.view !== previous.view || state.bomOpen !== previous.bomOpen) sync();
     });
     return () => {
       clearTimeout(timer);
