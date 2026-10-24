@@ -1,39 +1,12 @@
 # Mechanic: Character Sheet
 
-The visual bible for **Mechanic**, AnyBuild's mascot. Personality and voice live in [character-style.md](character-style.md). This file covers how he looks: reference images, the fixed design that every image must match, and prompts ready to paste into an image generator.
+The visual bible for **Mechanic**, AnyBuild's mascot. Personality and voice live in [character-style.md](character-style.md). This file covers how he looks: the fixed design that every image must match, and prompts ready to paste into an image generator.
 
 **One-line pitch:** a genius garage engineer in his early 40s, with a sharp goatee, tinted HUD glasses and a grin that says he already solved it.
 
 ---
 
-## 1. Reference board
-
-Photos from Wikimedia Commons, credited in [§8](#8-image-credits). Use them for mood and detail, not to trace.
-
-### Face, glasses, goatee
-
-| | | |
-|:-:|:-:|:-:|
-| ![Glasses and goatee](docs/mascot/refs/01-face-glasses-goatee.jpg) | ![Goatee close-up](docs/mascot/refs/02-goatee-closeup.jpg) | ![Tinted glasses, blazer, chest glow](docs/mascot/refs/03-tinted-glasses-blazer.jpg) |
-| **Ref 01:** the face shape, the frames and the half-smile. Note how the goatee connects to the mustache and the cheeks stay clean. | **Ref 02:** goatee close-up. Anchor shape, short trim, a little grey, sharp edges. Messy textured hair. | **Ref 03:** closest to the target look. Amber aviator tint, sculpted goatee, open shirt, glowing chest core, swagger pose. |
-
-### Outfits and suit
-
-| | | |
-|:-:|:-:|:-:|
-| ![Keynote suit pose](docs/mascot/refs/04-keynote-suit-pose.jpg) | ![Black and gold tech suit](docs/mascot/refs/05-tech-suit-black-gold.jpg) | ![Garage-built armor](docs/mascot/refs/06-garage-built-armor.jpg) |
-| **Ref 04:** keynote energy. Grey suit, adjusting the glasses, posing for the crowd. | **Ref 05:** tech-suit direction. Matte black with metallic accents and glowing palms. We use **gunmetal + cyan**, not black + gold. | **Ref 06:** handmade armor with visible rivets and plates. This is the scrappy garage-built spirit. |
-
-### World and effects
-
-| | |
-|:-:|:-:|
-| ![Hologram wireframe](docs/mascot/refs/07-hologram-wireframe.jpg) | ![Garage workshop](docs/mascot/refs/08-garage-workshop.jpg) |
-| **Ref 07:** a blue wireframe hologram floating over a display. This is the look for the 1024-simulation effect. | **Ref 08:** a lived-in workshop full of tools, parts and clutter. This is Mechanic's home. |
-
----
-
-## 2. Fixed design (never changes)
+## 1. Fixed design (never changes)
 
 Paste this block at the top of every prompt so each image shows the same character.
 
@@ -77,7 +50,7 @@ SIGNATURE: glowing cyan circular core emblem on the chest; small grease smudge o
 
 ---
 
-## 3. The three looks
+## 2. The three looks
 
 ### Look A: Garage (main mascot, about 70% of the app)
 - Fitted charcoal crew-neck tech tee with the cyan core glowing through the fabric
@@ -100,7 +73,7 @@ SIGNATURE: glowing cyan circular core emblem on the chest; small grease smudge o
 
 ---
 
-## 4. Expressions and poses
+## 3. Expressions and poses
 
 | # | Expression | When it shows in the app | Notes |
 |---|---|---|---|
@@ -124,11 +97,11 @@ SIGNATURE: glowing cyan circular core emblem on the chest; small grease smudge o
 
 ---
 
-## 5. Prompts
+## 4. Prompts
 
-Each prompt is self-contained: the fixed design block from §2 is already included. Change only the part after **SCENE**.
+Each prompt is self-contained: the fixed design block from §1 is already included. Change only the part after **SCENE**.
 
-### 5.1 Master turnaround sheet (generate this first)
+### 4.1 Master turnaround sheet (generate this first)
 ```
 Professional character turnaround model sheet, stylized 3D animated-film style (Pixar / Arcane quality),
 "Mechanic" — charismatic male genius engineer, early 40s, lean athletic build, angular jaw, warm olive skin,
@@ -144,7 +117,7 @@ neutral soft studio lighting, clean light-grey background, thin construction gui
 at bottom (#1E2228, #00E5FF, #FFB347, #C0C6CC), labeled "MECHANIC — AnyBuild", high detail, 8k, sharp focus.
 ```
 
-### 5.2 Expression sheet
+### 4.2 Expression sheet
 ```
 Character expression sheet, 8 head-and-shoulders portraits in a 4x2 grid, same character in every panel:
 "Mechanic" — male genius engineer, early 40s, angular jaw, warm olive skin, sharply sculpted anchor goatee with
@@ -157,7 +130,7 @@ SCENE: expressions labeled — 1 confident half-smirk with raised eyebrow, 2 fin
 clean white background, model-sheet layout, high detail.
 ```
 
-### 5.3 Look A: Garage hero shot
+### 4.3 Look A: Garage hero shot
 ```
 Stylized 3D animated-film character render, "Mechanic" — charismatic male genius engineer, early 40s,
 lean athletic, angular jaw, warm olive skin, sharply sculpted anchor goatee with thin mustache, clean cheeks,
@@ -172,7 +145,7 @@ from holograms, volumetric haze, floating dust and a few orange sparks. Shallow 
 cinematic color grade, ultra detailed, 8k.
 ```
 
-### 5.4 Look B: Keynote reveal
+### 4.4 Look B: Keynote reveal
 ```
 Stylized 3D animated-film character render, "Mechanic" — charismatic male genius engineer, early 40s,
 sharply sculpted anchor goatee with thin mustache, clean cheeks, tousled dark brown hair with faded sides,
@@ -185,7 +158,7 @@ glowing cyan holographic wireframe of a quadcopter drone that is splitting into 
 cyan light reflecting on his face and lenses, low-angle camera, cinematic, premium tech launch mood, 8k.
 ```
 
-### 5.5 Look C: Tech suit hero
+### 4.5 Look C: Tech suit hero
 ```
 Stylized 3D animated-film character render, "Mechanic" — male genius engineer, early 40s, angular jaw,
 sharply sculpted anchor goatee with thin mustache, tousled dark brown hair with faded sides,
@@ -198,7 +171,7 @@ glowing, sparks and floating holographic blueprint fragments swirling around him
 strong cyan rim light and warm orange sunset fill, dramatic clouds, cinematic, ultra detailed, 8k.
 ```
 
-### 5.6 Glasses HUD close-up (the simulation-screen detail)
+### 4.6 Glasses HUD close-up (the simulation-screen detail)
 ```
 Extreme close-up of the eyes and glasses of "Mechanic" — male engineer early 40s, warm olive skin,
 dark brown eyes narrowed in focus, one eyebrow raised, thin gunmetal rectangular-aviator frames with
@@ -208,7 +181,7 @@ Reflections of a cyan hologram on the lens surface. Dark background, shallow dep
 macro photography look, stylized 3D animated-film style, ultra detailed.
 ```
 
-### 5.7 Pose sheet
+### 4.7 Pose sheet
 ```
 Character pose sheet, six full-body poses of the same character in a 3x2 grid, stylized 3D animated-film style:
 "Mechanic" — lean male genius engineer early 40s, sculpted anchor goatee with thin mustache, tousled dark
@@ -220,7 +193,7 @@ SCENE: 1 hands in pockets leaning with weight on one leg, 2 wrench resting on sh
 Consistent proportions, clean light-grey background, soft studio lighting, labeled poses.
 ```
 
-### 5.8 App avatar / icon
+### 4.8 App avatar / icon
 ```
 App mascot avatar icon, head and shoulders of "Mechanic" — male genius engineer early 40s, sculpted anchor goatee
 with thin mustache, tousled dark brown hair with faded sides, thin gunmetal amber-tinted glasses with cyan HUD glow,
@@ -229,7 +202,7 @@ SCENE: centered in a circle, bold simplified stylized 3D, strong silhouette read
 gunmetal #1E2228 background with cyan #00E5FF rim light, clean edges, no text, high contrast.
 ```
 
-### 5.9 Flat 2D vector version (for UI, stickers, loaders)
+### 4.9 Flat 2D vector version (for UI, stickers, loaders)
 ```
 Flat 2D vector mascot illustration, thick clean outlines, minimal cel shading, limited palette
 (#1E2228, #2E343C, #00E5FF, #FFB347, #C0C6CC, #C68E6A, #3B2A20):
@@ -247,24 +220,24 @@ deformed hands, asymmetrical eyes, blurry, low detail, watermark, text artifacts
 
 ---
 
-## 6. Generator settings
+## 5. Generator settings
 
 | Tool | Settings |
 |---|---|
-| **Midjourney v7** | Add `--ar 16:9 --style raw --s 250` for scenes, `--ar 21:9` for the turnaround. After 5.1 works, add `--cref <turnaround URL> --cw 100` to every other prompt to lock the face. Use `--cw 30` to change outfit but keep the face. |
+| **Midjourney v7** | Add `--ar 16:9 --style raw --s 250` for scenes, `--ar 21:9` for the turnaround. After 4.1 works, add `--cref <turnaround URL> --cw 100` to every other prompt to lock the face. Use `--cw 30` to change outfit but keep the face. |
 | **GPT-image / ChatGPT** | Paste the prompt, then upload the approved turnaround and say: "Same exact character as the attached sheet." |
 | **Flux / Stable Diffusion** | Use the negative prompt, 30–40 steps, CFG 4–6. For consistency use IP-Adapter FaceID or a character-turnaround LoRA, with the turnaround as the reference image. |
 | **Leonardo / Ideogram** | Use "Character Reference" with the turnaround at high strength. |
 
 **Workflow for a consistent character:**
-1. Generate **5.1 turnaround** until the face is right. That image becomes the source of truth.
-2. Feed it as a reference into **5.2 expressions** and **5.7 poses**.
-3. Then generate the three looks (**5.3–5.5**) with the same reference.
-4. Generate **5.8 avatar** and **5.9 vector** last, for the app UI.
+1. Generate **4.1 turnaround** until the face is right. That image becomes the source of truth.
+2. Feed it as a reference into **4.2 expressions** and **4.7 poses**.
+3. Then generate the three looks (**4.3–5.5**) with the same reference.
+4. Generate **4.8 avatar** and **4.9 vector** last, for the app UI.
 
 ---
 
-## 7. Animation states (for the app)
+## 6. Animation states (for the app)
 
 | State | Visual | Loop |
 |---|---|---|
@@ -279,19 +252,3 @@ deformed hands, asymmetrical eyes, blurry, low detail, watermark, text artifacts
 
 The app's `mascot` event currently has five states (`docs/events.md`). They map like this: `ruhig` → `idle`, `denkt` → `thinking` / `simulating`, `erklaert` → `talking`, `freut_sich` → `success` / `celebrate`, `besorgt` → `error` / `safety`.
 
----
-
-## 8. Image credits
-
-All reference images come from Wikimedia Commons, resized, and are used under their licenses for internal reference.
-
-| File | Author | License | Source |
-|---|---|---|---|
-| 01-face-glasses-goatee.jpg | Georges Biard | CC BY-SA 3.0 | [Commons](https://commons.wikimedia.org/wiki/File:Robert_Downey_Jr_avp_Iron_Man_3_Paris.jpg) |
-| 02-goatee-closeup.jpg | Gage Skidmore | CC BY-SA 2.0 | [Commons](https://commons.wikimedia.org/wiki/File:Robert_Downey_Jr_2014_Comic_Con_(cropped).jpg) |
-| 03-tinted-glasses-blazer.jpg | Miguel Discart | CC BY-SA 2.0 | [Commons](https://commons.wikimedia.org/wiki/File:Cosplay_of_Tony_Stark_from_Iron_Man_at_Made_in_Asia_2023.jpg) |
-| 04-keynote-suit-pose.jpg | Ricardo 清介 八木 | CC BY 2.0 | [Commons](https://commons.wikimedia.org/wiki/File:Comic_Con_Experience_-_2014_-_Cosplay_Tony_Stark_(1).jpg) |
-| 05-tech-suit-black-gold.jpg | William Tung | CC BY-SA 2.0 | [Commons](https://commons.wikimedia.org/wiki/File:WonderCon_2014_-_Iron_Man_Cosplay_(13955026033).jpg) |
-| 06-garage-built-armor.jpg | LostplanetKD73 | CC BY-SA 4.0 | [Commons](https://commons.wikimedia.org/wiki/File:Sdcc_2018_Cosplay_of_Steampunk_Iron_Man.jpg) |
-| 07-hologram-wireframe.jpg | Haggispizza | CC BY-SA 4.0 | [Commons](https://commons.wikimedia.org/wiki/File:Voxon_founder_Gavin_Smith_and_VX1_Display.jpg) |
-| 08-garage-workshop.jpg | PattayaPatrol | CC BY-SA 4.0 | [Commons](https://commons.wikimedia.org/wiki/File:DFC_3998_A_rugged_motorcycle_parked_in_front_of_a_small_well-used_workshop_filled_with_tools_and_spare_parts.jpg) |
