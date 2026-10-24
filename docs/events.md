@@ -764,7 +764,7 @@ Each built part joins the assembly at once.
 `part_pick` with `part_id` and `query` searches every catalog (`agent/data/catalogs/generic.json` with fans, motors, servos, pumps, controllers, sensors, lights, batteries and hardware, plus the gripper and drone catalogs); `select_id` binds a part, `estimate` `{name, mass_g, unit_price_eur, ...}` records an honest estimate.
 Live shop prices plug in through `pai_agent.pricing.register_provider`: a provider gets the picked part and returns `{unit_price_eur, shop, url}` or `None`, and the first answer is marked `live`.
 
-`reference_load` without `id` lists the library, with `id` loads one item onto the bench the way `POST /api/library/{id}/open` does, so a chat request such as "start from the phone stand" works too.
+`reference_load` without `id` lists the library. With `id` and no live key it loads that item onto the bench the way an offline `POST /api/library/{id}/open` does. With a live key it returns the reference's spec and parts (`request`) and does not replay the saved run; the orchestrator builds it with the live tools, the same as opening it from the library.
 A reference is a folder `agent/data/references/{id}/` with `reference.json` (`id`, `name`, `summary`, `spec`, `scripts` per printed part `{file, generated}`, `picks` per bought part `{select_id}` or `{estimate}` with an optional `reason`, and `checks` `[{tool, args}]`) and one FreeCAD script per printed part.
 After a reference is loaded, the first chat request to Claude carries the build (spec, parts, picks, checks and requirement results), so Claude changes it with `cad_update`, `part_pick` or a revised `product_spec`.
 

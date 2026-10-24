@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from pai_agent.context import Ctx
-from pai_agent.references import build_reference, list_references
+from pai_agent.env import claude_enabled
+from pai_agent.references import build_reference, list_references, reference_brief
 
 
 async def reference_load(ctx: Ctx, args: dict) -> dict:
@@ -11,6 +12,13 @@ async def reference_load(ctx: Ctx, args: dict) -> dict:
     if not ref_id:
         rows = list_references()
         return {"ok": True, "detail": str(len(rows)) + " reference build(s)", "references": rows}
+    # A live key must not replay the saved story. Hand the spec back so the orchestrator builds it.
+    if claude_enabled():
+        try:
+            visible, model = reference_brief(ref_id)
+        except ValueError as exc:
+            return {"ok": False, "error": str(exc), "detail": str(exc)[:160]}
+        return {"ok": True, "id": ref_id, "detail": visible, "request": model}
     try:
         result = await build_reference(ctx, ref_id)
     except ValueError as exc:

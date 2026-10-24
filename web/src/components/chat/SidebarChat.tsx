@@ -8,6 +8,8 @@ import { AnimatePresence, motion } from "motion/react";
 import { ArrowDown, CornerDownRight, GitFork, ImagePlus, Maximize2, Minimize2, RotateCcw, Volume2, VolumeX } from "lucide-react";
 import { currentStep, useSession } from "../../events/store";
 import { useSource } from "../../events/source";
+import { assetUrl } from "../../lib/api";
+import { keyFact, STARTER_PROMPTS, starterCards } from "./starterCards";
 import { useUi, type Display } from "../../lib/ui";
 import { MASCOT_LABEL, MascotFull } from "../mascot/Mascot";
 import type { ChatItem } from "../../events/store";
@@ -15,7 +17,6 @@ import ContentPartsRenderer, { JamieGroupRenderer, ProgressLineRenderer, ToolGro
 import ChatMessage from "./SidebarChatMessage";
 import SidebarChatInput from "./SidebarChatInput";
 import { useSketchDrop } from "./SketchDrop";
-import { EXAMPLES } from "./examples";
 import { ConfirmDesign } from "./ConfirmDesign";
 
 const FRESH_MS = 2500;
@@ -66,6 +67,11 @@ const FOLLOW_UPS: Record<string, string[]> = {
   default: ["Make it lighter", "Make it cheaper"],
 };
 
+function fillComposer(prompt: string, setInput: (value: string) => void) {
+  setInput(prompt);
+  requestAnimationFrame(() => document.querySelector<HTMLTextAreaElement>('[data-target~="chat_input"]')?.focus());
+}
+
 export default function SidebarChat() {
   const allChat = useSession((s) => s.chat);
   // A Jamie tool call and its Jamie action card describe the same thing; keep the action card.
@@ -114,6 +120,7 @@ export default function SidebarChat() {
   const stickToBottom = useRef(true);
   const step = currentStep(steps);
   const isEmpty = chat.length === 0;
+  const cards = useMemo(() => starterCards(references), [references]);
   const working = Object.values(steps).some((s) => s.status === "running");
 
   // Check scroll position
@@ -225,52 +232,65 @@ export default function SidebarChat() {
           </div>
         )}
         {isEmpty ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-3 px-8 text-center">
-            <MascotFull state={mascot.state} height={220} />
-            <p className="text-[17px] font-semibold text-ink-2">“So. What are we building?”</p>
-            {live && <p className="text-[15px] text-muted">Start from a reference build and change it, or describe any product from scratch.</p>}
-            {references.length > 0 && (
-              <div className="mt-1 w-full">
-                <p className="eyebrow mb-1.5">From a reference</p>
-                <div className="flex flex-wrap justify-center gap-2">
-                  {references.map((ref) => (
-                    <button
-                      key={ref.id}
-                      type="button"
-                      onClick={() => void startReference(ref.id)}
-                      title={ref.summary}
-                      data-target={`reference:${ref.id}`}
-                      className="h-9 rounded-full bg-accent-soft px-4 text-[14px] font-semibold text-accent transition hover:brightness-95"
-                    >
-                      {ref.name}
-                    </button>
-                  ))}
+          <div className="@container scroll-soft flex min-h-0 flex-1 flex-col overflow-y-auto">
+            <div className={`m-auto flex w-full flex-col gap-4 py-4 ${column}`}>
+              <div className="flex items-center gap-3 px-5">
+                <MascotFull state={mascot.state} height={104} />
+                <div className="min-w-0 text-left">
+                  <p className="text-[17px] font-semibold leading-snug text-ink">“So. What are we building?”</p>
+                  <p className="mt-0.5 text-[14px] leading-snug text-muted">Rebuild a reference, or describe something new.</p>
                 </div>
               </div>
-            )}
-            {live && <p className="eyebrow mt-2 -mb-1.5">From scratch</p>}
-            <div className={`mt-1 flex-wrap justify-center gap-2 ${live ? "flex" : "hidden"}`}>
-              {EXAMPLES.map((example) => (
-                <button
-                  key={example.label}
-                  type="button"
-                  onClick={() => void sendPrompt(example.prompt)}
-                  data-target={`example:${example.label}`}
-                  className="h-9 rounded-full bg-tile px-4 text-[14px] font-semibold text-ink-2 transition hover:bg-track"
-                >
-                  {example.label}
-                </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => void sendSampleSketch()}
-                data-target="example:sketch"
-                title="Build from a photo of a hand-drawn phone stand"
-                className="flex h-9 items-center gap-1.5 rounded-full bg-tile px-4 text-[14px] font-semibold text-ink-2 transition hover:bg-track"
-              >
-                <ImagePlus className="h-4 w-4" />
-                Phone stand sketch
-              </button>
+              {cards.length > 0 && (
+                <div className="grid grid-cols-1 gap-2 px-5 @min-[520px]:grid-cols-2">
+                  {cards.map((ref) => {
+                    const thumb = assetUrl(ref.thumbnail_url);
+                    return (
+                      <button
+                        key={ref.id}
+                        type="button"
+                        onClick={() => void startReference(ref.id)}
+                        title={ref.summary}
+                        data-target={`reference:${ref.id}`}
+                        className="flex min-w-0 items-center gap-2.5 rounded-[16px] bg-card p-1.5 pr-3 text-left shadow-[var(--shadow-card)] transition hover:bg-page-2"
+                      >
+                        <span className="h-14 w-[4.5rem] shrink-0 overflow-hidden rounded-[12px] bg-stage">
+                          {thumb ? <img src={thumb} alt="" className="h-full w-full object-cover" /> : null}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="line-clamp-2 text-[14px] font-semibold leading-snug text-ink">{ref.name}</span>
+                          <span className="num mt-0.5 block truncate text-[13px] font-medium text-ink-2">{keyFact(ref)}</span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {live && (
+                <div className="flex flex-col px-3">
+                  {STARTER_PROMPTS.map((prompt) => (
+                    <button
+                      key={prompt}
+                      type="button"
+                      onClick={() => fillComposer(prompt, setInput)}
+                      data-target={`prompt:${prompt}`}
+                      className="rounded-xl px-2 py-1.5 text-left text-[14px] leading-snug text-muted transition hover:bg-tile hover:text-ink"
+                    >
+                      {prompt}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => void sendSampleSketch()}
+                    data-target="example:sketch"
+                    title="Build from a photo of a hand-drawn phone stand"
+                    className="mt-0.5 flex items-center gap-1.5 self-start rounded-xl px-2 py-1.5 text-[13px] font-semibold text-ink-2 transition hover:bg-tile hover:text-ink"
+                  >
+                    <ImagePlus className="h-3.5 w-3.5" />
+                    Start from a sketch
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         ) : (
