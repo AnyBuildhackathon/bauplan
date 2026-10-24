@@ -95,10 +95,7 @@ function Bench() {
   // Before anything has started, the workbench is one start screen; the first chat line,
   // step or version (from any source) brings the normal bench.
   const started = useSession((s) => s.chat.length > 0 || s.versions.length > 0 || Object.values(s.steps).some((st) => st.status !== "pending"));
-  const chatLength = useSession((s) => s.chat.length);
-  const landing = useUi((s) => s.landing);
-  // The logo shows the start screen again; the next chat line (typed, spoken or a reference) leaves it.
-  const starting = view === "werkbank" && (!started || landing === chatLength);
+  const starting = view === "werkbank" && !started;
   // Leaving the start screen is a short hand-over: the box fades and settles in place while
   // the chat column and the canvas rise in. With reduced motion the bench simply appears.
   const [wasStarting, setWasStarting] = useState(starting);
