@@ -16,6 +16,8 @@ export interface Display {
   allMetrics: boolean;
   /** Learning mode: Mechanic explains every decision ("Why?" links, a glossary), and the logbook shows what was learned. */
   learning: boolean;
+  /** Mechanic's full figure in the canvas corner while he speaks or explains. */
+  mascot: boolean;
 }
 
 interface UiState {
@@ -92,7 +94,7 @@ const TABS: CanvasTab[] = ["modell", "cad", "simulation", "omniverse", "agents"]
 const params = () => new URLSearchParams(window.location.search);
 const VOICE_KEY = "bauplan.voice";
 const DISPLAY_KEY = "anybuild.display";
-const DISPLAY_DEFAULT: Display = { agents: false, tools: false, jamie: false, allMetrics: false, learning: false };
+const DISPLAY_DEFAULT: Display = { agents: false, tools: false, jamie: false, allMetrics: false, learning: false, mascot: true };
 
 function storedDisplay(): Display {
   // `?learning` turns learning mode on for this page, for a demo link.
