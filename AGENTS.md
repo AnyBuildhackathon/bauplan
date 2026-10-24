@@ -206,7 +206,7 @@ The event stream emits typed JSON objects:
 - `question`: Prompts the user with multiple-choice decisions during contradictions.
 - `tasks`: Transmits order task checklists associated with meetings.
 - `point`: Directs the 3D pointer indicator to specific model elements.
-- `training`: Streams reinforcement learning curves and status from Isaac Lab.
+- `training`: Streams reinforcement learning curves and status from Isaac Lab, or from the 1,024 browser MuJoCo simulations (`source: "browser"`).
 
 ## Environment Variables
 
@@ -260,7 +260,7 @@ Never commit `.env` files or secret keys to the repository.
 ## Planned Next Work
 
 - Generalize beyond drones: generalize CAD generation for arbitrary product classes, expand hardware component catalogs, and support flexible multi-physics simulation domains.
-- Integrate teammate modules: 1,024 parallel browser MuJoCo simulations, physics stress testing, step-by-step exploded build guide, and firmware download with wiring table.
+- Integrate teammate modules: physics stress testing, step-by-step exploded build guide, and firmware download with wiring table.
 - Translate user interface and agent dialogue to English: update UI labels, Bolzen spoken lines, agent chat messages, and configure default Reson8 language to English (`RESON8_LANGUAGE=en`).
 - Rename remaining user interface elements and repository paths from Bauplan to AnyBuild.
 - Connect NVIDIA Omniverse and Isaac Sim on RunPod RTX 4090 to load drone USD files, execute wind tests, run Isaac Lab training, and stream results to a dedicated tab.
