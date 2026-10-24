@@ -56,3 +56,20 @@ test("phone stand from scratch: the tap check fails, the fix makes it pass, a re
   await page.locator('[data-target~="look:render"]').first().dispatchEvent("click");
   await expect(page.getByText(/Studio|Recorded, Blender is offline/).first()).toBeVisible();
 });
+
+test("pause, resume and stop: the run holds between tool calls and Stop keeps the bench", async ({ page }) => {
+  await freshBench(page);
+  await ask(page, "Build me a racing drone");
+  const controls = page.locator('[data-target="run_controls"]');
+  await expect(controls).toContainText("Mechanic is working");
+  await page.locator('[data-target="run_pause"]').click();
+  await expect(controls).toContainText("Paused");
+  const held = await page.request.get("/api/health");
+  expect(((await held.json()) as { run: string }).run).toBe("paused");
+  await page.locator('[data-target="run_resume"]').click();
+  await expect(controls).toContainText("Mechanic is working");
+  await page.locator('[data-target="run_stop"]').click();
+  await expect(page.getByText("Stopped. Everything built so far stays on the bench.")).toBeVisible();
+  await expect(controls).toBeHidden();
+  await idle(page);
+});

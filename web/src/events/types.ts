@@ -374,6 +374,12 @@ export interface RemixEvent {
 export interface ResetEvent {
   type: "reset";
 }
+/** The build on the bench: `pausing` and `stopping` wait for the tool that runs now to finish. */
+export type RunStatus = "idle" | "running" | "pausing" | "paused" | "stopping";
+export interface RunEvent {
+  type: "run";
+  status: RunStatus;
+}
 /** Sent once per connection after the backlog: events before it are history, not news. */
 export interface ReplayedEvent {
   type: "replayed";
@@ -712,6 +718,7 @@ export type AgentEvent =
   | AgentRunEvent
   | ExplainEvent
   | OptimizeEvent
+  | RunEvent
   | ResetEvent
   | ReplayedEvent;
 
@@ -750,6 +757,7 @@ const EVENT_TYPES = new Set<AgentEvent["type"]>([
   "explain",
   "optimize",
   "reset",
+  "run",
   "replayed",
 ]);
 

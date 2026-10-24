@@ -24,7 +24,7 @@ It has no OpenAPI page; FastAPI's generated docs are turned off on purpose for t
 
 | Method | Path | Purpose | Limit | Spec |
 | --- | --- | --- | --- | --- |
-| `GET` | `/api/health` | Status: `mode` (`claude` or `mock`), `busy`, `access` (`open` or `required`). Always public. | | [Learning mode](events.md#learning-mode) |
+| `GET` | `/api/health` | Status: `mode` (`claude` or `mock`), `busy`, `run` (the [run](events.md#run) status), `access` (`open` or `required`). Always public. | | [Learning mode](events.md#learning-mode) |
 | `GET` | `/api/status` | Independent partner availability and NVIDIA SSH/GPU connection, including the last Isaac run. Requires the normal access session. | | [Partner status](events.md#partner-status-and-director-mode) |
 | `GET` | `/api/bench` | Saved live and mock benchmark results: `{ok, runs}`; missing runs are omitted. | | [Bench](events.md#http) |
 | `POST` | `/api/prompt` | Send a typed or spoken (`voice: true`) message; starts or continues a build, answers an open question, or operates the dashboard (`status: ui`). | build | [HTTP](events.md#http) |
@@ -33,6 +33,9 @@ It has no OpenAPI page; FastAPI's generated docs are turned off on purpose for t
 | `POST` | `/api/reset` | Clear the session, chat memory and event buffer; publishes `reset`. | | [HTTP](events.md#http) |
 | `GET` | `/api/events` | The Server-Sent Events stream, see [below](#server-sent-events). | | [HTTP](events.md#http) |
 | `POST` | `/api/answer` | Answer Mechanic's open `question` with `{id, answer_id}`; 409 when none is open. | | [HTTP](events.md#http) |
+| `POST` | `/api/run/pause` | Pause the build that runs now; it holds before its next tool call or model round, never inside one. 409 when nothing runs. | | [Pause and stop](events.md#pause-and-stop) |
+| `POST` | `/api/run/resume` | Carry on a paused build from where it holds. 409 when nothing is paused. | | [Pause and stop](events.md#pause-and-stop) |
+| `POST` | `/api/run/stop` | End the build at its next checkpoint and keep everything built so far; the next message continues from there. 409 when nothing runs. | | [Pause and stop](events.md#pause-and-stop) |
 | `POST` | `/api/control` | Press Run test (`run:test`) or Rebuild and recheck (`run:rebuild`). | build | [HTTP](events.md#http) |
 | `POST` | `/api/tasks/{task_id}` | Tick an order task as ordered; mirrored to Jamie (`update_tasks`). | | [HTTP](events.md#http) |
 
@@ -142,5 +145,6 @@ Each event has a `type`; every stream begins with `reset`, then the backlog, the
 | `draw` | A halo, arrow, circle or note on a scene part. | [draw](events.md#draw) |
 | `ui` | Mechanic operates a dashboard control in front of the audience. | [ui](events.md#ui) |
 | `explain` | One decision explained in learning mode. | [explain](events.md#explain) |
+| `run` | The build on the bench is `running`, `pausing`, `paused`, `stopping` or `idle`. | [run](events.md#run) |
 
 Scene target names, dashboard control names and the per-tool event details are in [events.md](events.md#scene-targets).

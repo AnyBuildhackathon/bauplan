@@ -16,6 +16,7 @@ import type { ChatItem } from "../../events/store";
 import ContentPartsRenderer, { JamieGroupRenderer, ProgressLineRenderer, ToolGroupRenderer } from "./ContentPartsRenderer";
 import ChatMessage from "./SidebarChatMessage";
 import SidebarChatInput from "./SidebarChatInput";
+import RunControls from "./RunControls";
 import { useSketchDrop } from "./SketchDrop";
 import { ConfirmDesign } from "./ConfirmDesign";
 
@@ -371,6 +372,7 @@ export default function SidebarChat() {
 
         {/* Input */}
         <div className={`shrink-0 px-5 pt-2 pb-4 ${column}`}>
+          <RunControls />
           <SidebarChatInput
             value={input}
             onChange={setInput}

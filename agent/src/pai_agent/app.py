@@ -112,6 +112,7 @@ async def health(request: Request) -> dict:
         "ok": True,
         "mode": "claude" if claude_enabled() else "mock",
         "busy": request.app.state.session._busy(),
+        "run": request.app.state.session.run.status,
         "access": "required" if access_code() else "open",
     }
 
@@ -170,6 +171,21 @@ async def reset(request: Request) -> dict:
     _require_json(request)
     await request.app.state.session.reset()
     return {"ok": True}
+
+
+@app.post("/api/run/{action}")
+async def run_control(action: str, request: Request) -> dict:
+    """Pause, resume or stop the build that runs now; each takes effect between tool calls."""
+
+    _require_json(request)
+    session = request.app.state.session
+    handlers = {"pause": session.pause, "resume": session.resume, "stop": session.stop}
+    if action not in handlers:
+        raise HTTPException(status_code=404, detail="action must be pause, resume or stop")
+    result = await handlers[action]()
+    if not result["ok"]:
+        raise HTTPException(status_code=409, detail=result["error"])
+    return result
 
 
 @app.get("/api/events")
