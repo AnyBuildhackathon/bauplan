@@ -358,7 +358,7 @@ def _result_line(product: str, result: dict) -> str:
     return line
 
 
-async def run_mock_training(ctx: Ctx) -> None:
+async def run_mock_training(ctx: Ctx, offer_stress: bool = True) -> None:
     from pai_agent.tools.registry import call_tool
 
     product = "gripper" if getattr(ctx.state, "product", "drone") == "gripper" else "drone"
@@ -375,3 +375,5 @@ async def run_mock_training(ctx: Ctx) -> None:
     await ctx.step("training", "done")
     await call_tool(ctx, "mascot_say", {"state": "freut_sich", "say": done})
     await ctx.chat("agent", _result_line(product, result))
+    if offer_stress and product == "drone" and getattr(ctx.state, "last_stress", None):
+        await ctx.chat("agent", "The last stress test flew the old gains. Say “stress test it again” to fly the trained ones.")
