@@ -261,6 +261,8 @@ class MujocoRollout:
             reason = ""
         # 1 is a perfect hover; at 0 or below the world is lost.
         margin = min(1 - drift / _DRIFT_LIMIT_M, (low_after_gust - _FLOOR_Z) / (_TARGET_Z - _FLOOR_Z))
+        if reason:
+            margin = min(margin, 0.0)
         return {
             "pass": not reason,
             "reason": reason,
@@ -322,8 +324,8 @@ def weakest_point(rows: list[dict]) -> tuple[str | None, str]:
         floor = min(r["gust_mps"] for r in lost)
         windy = [r for r in rows if r["gust_mps"] >= floor]
         sentence = (
-            f"Gusts are the weak point: {len(lost)} of the {len(windy)} worlds with gusts of {floor:.1f} m/s or more "
-            f"blew it more than {_DRIFT_LIMIT_M * 100:.0f} cm off its spot, so the position hold needs to be stiffer."
+            f"Gusts are the weak point: it lost {len(lost)} of the {len(windy)} worlds with gusts of {floor:.1f} m/s or more, "
+            f"so the position hold needs to be stiffer."
         )
     elif key == "motor":
         sentence = (
@@ -353,13 +355,6 @@ def trained_gains(state, override: dict | None) -> tuple[ControllerGains, str]:
     return ControllerGains(), "default"
 
 
-def _bounded_int(value, default: int, low: int, high: int) -> int:
-    try:
-        return max(low, min(high, int(value)))
-    except (TypeError, ValueError):
-        return default
-
-
 @dataclass
 class StressPlan:
     """What one product needs for a stress test: its worlds, how to run one, and how to read the results."""
@@ -374,7 +369,7 @@ class StressPlan:
     replay_keys: tuple[str, ...] = ()
 
 
-def _drone_plan(state, args: dict, total: int, seed: int, rollout: Rollout | None) -> StressPlan:
+def _drone_plan(state, args: dict, rollout: Rollout | None) -> StressPlan:
     try:
         metrics = compute(state)
     except PhysicsError as exc:
@@ -389,14 +384,14 @@ def _drone_plan(state, args: dict, total: int, seed: int, rollout: Rollout | Non
             "weight_g": metrics["weight_g"],
             "thrust_to_weight": metrics["thrust_to_weight"],
         },
-        worlds=sample_worlds(total, seed),
+        worlds=sample_worlds(),
         run=lambda world: runner.run(metrics["weight_g"], metrics["thrust_g"], gains, world),
         row=world_row,
         weakest=weakest_point,
     )
 
 
-def _gripper_plan(state, total: int, seed: int) -> StressPlan:
+def _gripper_plan(state) -> StressPlan:
     from pai_agent.tools.gripper import compute_grip
     from pai_agent.tools.stress_grip import grip_row, grip_weakest, run_grip_world, sample_grip_worlds
 
@@ -418,7 +413,7 @@ def _gripper_plan(state, total: int, seed: int) -> StressPlan:
             "force_n": metrics["grip_force_n"],
             "safety_factor": metrics["safety_factor"],
         },
-        worlds=sample_grip_worlds(total, seed),
+        worlds=sample_grip_worlds(WORLDS, SEED),
         run=lambda world: run_grip_world(payload, width, metrics["grip_force_n"], metrics["friction"], world),
         row=grip_row,
         weakest=grip_weakest,
@@ -427,35 +422,40 @@ def _gripper_plan(state, total: int, seed: int) -> StressPlan:
 
 
 async def stress_test(ctx: Ctx, args: dict, rollout: Rollout | None = None) -> dict:
-    total = _bounded_int(args.get("worlds"), WORLDS, 5, 200)
-    seed = _bounded_int(args.get("seed"), SEED, 0, 1_000_000)
     try:
         if getattr(ctx.state, "product", "drone") == "gripper":
-            plan = _gripper_plan(ctx.state, total, seed)
+            plan = _gripper_plan(ctx.state)
         else:
-            plan = _drone_plan(ctx.state, args, total, seed, rollout)
+            plan = _drone_plan(ctx.state, args, rollout)
     except ValueError as exc:
         return {"ok": False, "error": str(exc), "detail": str(exc)}
 
+    total = len(plan.worlds)
     run = getattr(ctx.state, "stress_run", 0) + 1
     ctx.state.stress_run = run
-    base = {"type": "stress", "run": run, "product": plan.product, "total": total, "seed": seed, **plan.base}
+    base = {"type": "stress", "run": run, "product": plan.product, "total": total, "seed": SEED, **plan.base}
     rows: list[dict] = []
     replays: dict[int, dict] = {}
     await ctx.emit({**base, "status": "running", "done": 0, "survived": 0, "worlds": [], "worst": None, "weakest": None, "explanation": ""})
     chunk = 5
-    for start in range(0, total, chunk):
-        batch = plan.worlds[start : start + chunk]
-        outcomes = await asyncio.to_thread(lambda b=batch: [plan.run(w) for w in b])
-        for world, outcome in zip(batch, outcomes):
-            rows.append(plan.row(world, outcome))
-            replays[world.i] = {"trajectory": outcome["trajectory"], **{k: outcome[k] for k in plan.replay_keys}}
+    try:
+        for start in range(0, total, chunk):
+            batch = plan.worlds[start : start + chunk]
+            outcomes = await asyncio.to_thread(lambda b=batch: [plan.run(w) for w in b])
+            for world, outcome in zip(batch, outcomes):
+                rows.append(plan.row(world, outcome))
+                replays[world.i] = {"trajectory": outcome["trajectory"], **{k: outcome[k] for k in plan.replay_keys}}
+            survived = sum(1 for r in rows if r["pass"])
+            await ctx.emit({**base, "status": "running", "done": len(rows), "survived": survived, "worlds": rows, "worst": None, "weakest": None, "explanation": ""})
+            await ctx.emit({"type": "tool", "name": "stress_test", "status": "running", "detail": f"World {len(rows)}/{total} · {survived} survived"})
+    except Exception as exc:
+        error = f"The stress test stopped after {len(rows)} of {total} worlds: {exc}"
         survived = sum(1 for r in rows if r["pass"])
-        await ctx.emit({**base, "status": "running", "done": len(rows), "survived": survived, "worlds": rows, "worst": None, "weakest": None, "explanation": ""})
-        await ctx.emit({"type": "tool", "name": "stress_test", "status": "running", "detail": f"World {len(rows)}/{total} · {survived} survived"})
+        await ctx.emit({**base, "status": "failed", "done": len(rows), "survived": survived, "worlds": rows, "worst": None, "weakest": None, "explanation": error})
+        return {"ok": False, "error": error, "detail": error}
 
     survived = sum(1 for r in rows if r["pass"])
-    worst_row = min(rows, key=lambda r: r["margin"])
+    worst_row = min(rows, key=lambda r: (r["pass"], r["margin"]))
     weakest, explanation = plan.weakest(rows)
     worst = {**worst_row, **replays[worst_row["i"]]}
     await ctx.emit({**base, "status": "done", "done": total, "survived": survived, "worlds": rows, "worst": worst, "weakest": weakest, "explanation": explanation})
@@ -473,7 +473,7 @@ async def stress_test(ctx: Ctx, args: dict, rollout: Rollout | None = None) -> d
     }
 
 
-STRESS_REQUEST = re.compile(r"\bstress|\brobust|\bstresstest|\bbelast", re.IGNORECASE)
+STRESS_REQUEST = re.compile(r"\b(stress|robust)", re.IGNORECASE)
 
 
 async def run_stress_mock(ctx: Ctx) -> None:

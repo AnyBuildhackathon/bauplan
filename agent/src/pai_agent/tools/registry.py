@@ -200,8 +200,6 @@ SCHEMAS = [
         "input_schema": {
             "type": "object",
             "properties": {
-                "worlds": {"type": "integer", "description": "Number of worlds, default 50."},
-                "seed": {"type": "integer"},
                 "gains": {"type": "object", "description": "Controller gains to test instead of the training result."},
             },
         },

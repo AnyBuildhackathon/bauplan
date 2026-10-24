@@ -109,6 +109,10 @@ def _assert_stress(events: list[dict]) -> None:
         raise SystemExit("Worst world has no replay.")
     if worst["margin"] != min(w["margin"] for w in final["worlds"]):
         raise SystemExit("Worst world is not the lowest margin.")
+    if any(w["margin"] > 0 for w in final["worlds"] if not w["pass"]):
+        raise SystemExit("A lost world has a positive margin.")
+    if final["survived"] < final["total"] and worst["pass"]:
+        raise SystemExit("Worlds were lost but the worst world survived.")
     if not final["explanation"]:
         raise SystemExit("Bolzen's sentence is missing.")
     if final["survived"] < final["total"] and final["weakest"] not in {"gust", "motor", "mass", "noise"}:

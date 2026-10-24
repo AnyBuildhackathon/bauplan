@@ -260,16 +260,16 @@ A `done` event after an `offline` tool means the fallback file was played, not t
 
 ### stress
 
-The stress test runs the current product in randomized MuJoCo worlds (`stress_test`, 50 worlds by default).
+The stress test runs the current product in 50 randomized MuJoCo worlds (`stress_test`).
 `product` is `drone` or `gripper`.
-`status` is `running` while worlds finish, then `done`.
+`status` is `running` while worlds finish, then `done`, or `failed` when a world raised an error; a `failed` event keeps the worlds finished so far, `worst` is `null`, and `explanation` names the error.
 `run` counts stress tests in the session; `total`, `done`, and `survived` count worlds, so the score reads `Survived {survived}/{total}`.
-`seed` makes the worlds reproducible; the same seed draws the same worlds.
+`seed` is the fixed seed the worlds are drawn from, so every stress test of the same build flies the same worlds.
 `weight_g` is the nominal build the worlds vary.
 `worlds` lists every finished world; every world has `{i, pass, reason, mass_pct, motor_pct, margin}`.
 `mass_pct` is −15…+15 (the drone, or the gripper's payload) and `motor_pct` −25…0 (motors, or the gripper servo).
 `margin` is 1 for a perfect run and 0 or less for a lost world; `reason` is an empty string when the world survived.
-`worst` is `null` while running; when `done` it is the world with the lowest margin plus its `trajectory` (`[[t, x, y, z], ...]`, the same shape as `sim`).
+`worst` is `null` while running; when `done` it is the lost world with the lowest margin (the survived one with the lowest margin when none was lost) plus its `trajectory` (`[[t, x, y, z], ...]`, the same shape as `sim`).
 `weakest` names the factor that separates lost worlds from survived ones, or is `null` when every world survived; `explanation` is Bolzen's one sentence about it.
 
 Drone: the controller holds 0.5 m over its start point for 6 s while a 1-cosine gust hits it.

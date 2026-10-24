@@ -100,8 +100,9 @@ export function StressCard({ run }: { run: number }) {
 
   const product = ev.product ?? "drone";
   const done = ev.status === "done";
+  const failed = ev.status === "failed";
   const lost = ev.done - ev.survived;
-  const tone = !done ? "text-agent-ink" : lost === 0 ? "text-ok-ink" : ev.survived >= ev.total * 0.9 ? "text-ink" : "text-fail-ink";
+  const tone = failed ? "text-fail-ink" : !done ? "text-agent-ink" : lost === 0 ? "text-ok-ink" : ev.survived >= ev.total * 0.9 ? "text-ink" : "text-fail-ink";
   const byIndex = new Map(ev.worlds.map((w) => [w.i, w]));
   const worst = ev.worst;
   const verb = product === "gripper" ? "Running" : "Flying";
@@ -115,9 +116,10 @@ export function StressCard({ run }: { run: number }) {
       </div>
 
       <div className={`num mt-1.5 text-[26px] leading-tight font-bold ${tone}`}>
-        {done ? `Survived ${ev.survived}/${ev.total}` : `${verb} world ${ev.done}/${ev.total}…`}
+        {done ? `Survived ${ev.survived}/${ev.total}` : failed ? `Stopped after ${ev.done}/${ev.total} worlds` : `${verb} world ${ev.done}/${ev.total}…`}
       </div>
-      {!done && <div className="num text-[13px] text-muted">{ev.survived} survived so far</div>}
+      {!done && !failed && <div className="num text-[13px] text-muted">{ev.survived} survived so far</div>}
+      {failed && <div className="text-[13px] text-fail-ink">{ev.explanation}</div>}
 
       <div className="mt-2 grid grid-cols-[repeat(25,minmax(0,1fr))] gap-[3px]" aria-label="One dot per world">
         {Array.from({ length: ev.total }, (_, k) => {
