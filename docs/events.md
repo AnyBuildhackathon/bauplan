@@ -120,7 +120,7 @@ Without the template, the requirements array is used, and only then sentences in
 
 `weight_g`, `thrust_to_weight`, `flight_time_min`, `price_eur`.
 Numbers are already rounded.
-`price_eur` is a sample total to verify, not a live checkout.
+`price_eur` is a total to verify, not a checkout: catalog samples, or live shop prices once `bom_build` found them.
 After `bom_build` finds live prices, a second `metrics` event carries the live total in `price_eur`; the other numbers repeat.
 
 For a product other than the drone the event carries `cards` instead of the drone numbers, and the panel shows those.
