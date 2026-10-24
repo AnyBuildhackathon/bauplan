@@ -335,7 +335,7 @@ export function ExplodeCamera({ maxDistance }: { maxDistance?: number }) {
   const controls = useThree((s) => s.controls) as unknown as { target: THREE.Vector3; update: () => void; autoRotate: boolean; maxDistance: number } | null;
   const zoom = useRef(1);
   const focus = useUi((s) => s.focus);
-  const move = useRef<{ target: THREE.Vector3; dist: number; until: number; rotating: boolean } | null>(null);
+  const move = useRef<{ target: THREE.Vector3; dist: number; until: number } | null>(null);
   const home = useRef<THREE.Vector3 | null>(null);
 
   useLayoutEffect(() => {
@@ -348,8 +348,7 @@ export function ExplodeCamera({ maxDistance }: { maxDistance?: number }) {
     if (!piece) return;
     home.current ??= controls.target.clone();
     const target = piece.center.getWorldPosition(new THREE.Vector3());
-    const rotating = move.current?.rotating ?? controls.autoRotate;
-    move.current = { target, dist: Math.max(piece.radius * 5, camera.position.distanceTo(controls.target) * 0.55), until: performance.now() + 9000, rotating };
+    move.current = { target, dist: Math.max(piece.radius * 5, camera.position.distanceTo(controls.target) * 0.55), until: performance.now() + 9000 };
   }, [focus, controls, camera]);
 
   useFrame(() => {
@@ -367,9 +366,8 @@ export function ExplodeCamera({ maxDistance }: { maxDistance?: number }) {
       const len = offset.length();
       offset.setLength(len + (m.dist * want - len) * 0.08);
     } else if (m) {
-      // The focus ends: back to the turntable around the model.
+      // The focus ends: back to the whole model, standing still.
       move.current = null;
-      controls.autoRotate = m.rotating;
       if (home.current) controls.target.copy(home.current);
       home.current = null;
     }

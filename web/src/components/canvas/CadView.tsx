@@ -20,6 +20,7 @@ import { normaliseName } from "../../lib/targets";
 import { AnchorScope, useAnchor } from "./anchors";
 import { GridStage, usePrefersReducedMotion } from "./GridStage";
 import { ExplodeCamera, ExplodeLayer, type PieceSpec } from "./explode";
+import { IntroTurn } from "./IntroTurn";
 
 export const CAD_SOURCE_LABEL = { freecad: "FreeCAD", cadquery: "CadQuery" } as const;
 
@@ -123,7 +124,7 @@ function Part({ url, zUp, onSize, edged, still, explodable = false }: { url: str
   useLayoutEffect(() => {
     const vfov = THREE.MathUtils.degToRad(camera.fov);
     const hfov = 2 * Math.atan(Math.tan(vfov / 2) * (size.width / Math.max(1, size.height)));
-    // The part auto-rotates, so the whole bounding sphere has to stay in view.
+    // The part can turn around itself, so the whole bounding sphere has to stay in view.
     const dist = radius / Math.sin(Math.min(vfov, hfov) / 2);
     const dir = new THREE.Vector3(0.75, 0.62, 0.95).normalize();
     camera.position.copy(center).addScaledVector(dir, dist);
@@ -183,7 +184,8 @@ export function CadScene({ url, zUp = false, stage = false, explodable = false }
         <Suspense fallback={null}>
           <Part url={url} zUp={zUp} onSize={stage ? setSize : undefined} edged={!stage} still={still} explodable={explodable} />
         </Suspense>
-        <OrbitControls makeDefault enablePan={false} autoRotate={!still} autoRotateSpeed={0.5} maxPolarAngle={stage ? Math.PI / 2.08 : Math.PI} />
+        <OrbitControls makeDefault enablePan={false} maxPolarAngle={stage ? Math.PI / 2.08 : Math.PI} />
+        <IntroTurn disabled={still} />
         {explodable && <ExplodeCamera />}
       </AnchorScope>
     </Canvas>
