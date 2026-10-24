@@ -5,6 +5,7 @@ import SidebarChat from "./components/chat/SidebarChat";
 import { TopBar } from "./components/TopBar";
 import { useBrowserTraining } from "./components/training/useBrowserTraining";
 import { useBrowserStress } from "./components/stress/useBrowserStress";
+import { useAutoExplain } from "./components/learn/Explain";
 import { ResizeHandle, usePaneWidth, useWindowWidth } from "./components/ui/ResizeHandle";
 import { DrawLayer } from "./components/overlay/DrawLayer";
 import { PointerLayer } from "./components/overlay/PointerLayer";
@@ -69,6 +70,7 @@ export default function App() {
   useBolzenVoice();
   useBrowserTraining();
   useBrowserStress();
+  useAutoExplain();
   const vw = useWindowWidth();
   const chatPane = usePaneWidth("anybuild.chatWidth", CHAT.initial);
   const panelPane = usePaneWidth("anybuild.panelWidth", PANEL.initial);

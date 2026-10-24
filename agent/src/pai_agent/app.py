@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response, StreamingResponse
 from pydantic import BaseModel
 
+from pai_agent import explain
 from pai_agent.env import claude_enabled, load_env
 from pai_agent.paths import FALLBACK_DIR, REPO_ROOT, SESSIONS_DIR
 from pai_agent.session import Session
@@ -39,6 +40,13 @@ class AnswerIn(BaseModel):
 
 class TaskIn(BaseModel):
     done: bool
+
+
+class ExplainIn(BaseModel):
+    kind: str
+    id: str
+    # Asked for by a live event rather than a click, so the client shows it as a chat card.
+    chat: bool = False
 
 
 class SpeakIn(BaseModel):
@@ -361,6 +369,19 @@ async def library_save(body: LibraryIn, request: Request) -> dict:
     if result.get("ok") is False:
         raise HTTPException(status_code=409 if result.get("busy") else 400, detail=str(result["error"]))
     return result
+
+
+@app.post("/api/explain")
+async def explain_decision(body: ExplainIn, request: Request) -> dict:
+    _require_json(request)
+    session: Session = request.app.state.session
+    try:
+        payload = await explain.explain(session.state, list(session.bus.events), body.kind, body.id)
+    except explain.NotFound as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    event = {k: v for k, v in payload.items() if k != "ok"}
+    await session.bus.publish({"type": "explain", **event, "chat": body.chat})
+    return payload
 
 
 @app.get("/api/versions")

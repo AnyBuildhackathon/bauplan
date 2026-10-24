@@ -14,7 +14,7 @@ export interface Display {
   tools: boolean;
   jamie: boolean;
   allMetrics: boolean;
-  /** Learning mode: the concepts Mechanic explains, and what was learned in the logbook. */
+  /** Learning mode: Mechanic explains every decision ("Why?" links, a glossary), and the logbook shows what was learned. */
   learning: boolean;
 }
 
@@ -75,11 +75,13 @@ const DISPLAY_KEY = "anybuild.display";
 const DISPLAY_DEFAULT: Display = { agents: false, tools: false, jamie: false, allMetrics: false, learning: false };
 
 function storedDisplay(): Display {
+  // `?learning` turns learning mode on for this page, for a demo link.
+  const url: Partial<Display> = params().has("learning") ? { learning: true } : {};
   try {
     const raw = localStorage.getItem(DISPLAY_KEY);
-    return raw ? { ...DISPLAY_DEFAULT, ...(JSON.parse(raw) as Partial<Display>) } : DISPLAY_DEFAULT;
+    return { ...DISPLAY_DEFAULT, ...(raw ? (JSON.parse(raw) as Partial<Display>) : {}), ...url };
   } catch {
-    return DISPLAY_DEFAULT;
+    return { ...DISPLAY_DEFAULT, ...url };
   }
 }
 

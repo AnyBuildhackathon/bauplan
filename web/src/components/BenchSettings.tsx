@@ -15,7 +15,7 @@ const DISPLAY: { key: keyof Display; label: string; hint: string }[] = [
   { key: "tools", label: "Show tool details", hint: "FreeCAD, Blender, MuJoCo cards" },
   { key: "jamie", label: "Show Jamie activity", hint: "Tags, notes and tasks written to Jamie" },
   { key: "allMetrics", label: "Show all metrics", hint: "Thrust to weight and the rest" },
-  { key: "learning", label: "Learning mode", hint: "What you learned, in the logbook" },
+  { key: "learning", label: "Learning mode", hint: "Mechanic explains each decision with the physics; the logbook shows what you learned" },
 ];
 
 const SPEECH: Record<"reson8" | "browser" | "none", string> = {
