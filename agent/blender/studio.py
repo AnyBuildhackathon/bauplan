@@ -1,9 +1,11 @@
 """Headless studio render of the whole drone.
 
 Blender runs this with `blender -b -P studio.py -- frame.stl out.png [assembly.json]`.
-The frame is the real STL from CAD. Motors, propellers, the flight controller and the
-battery are placed from assembly.json (arm length, plate thickness, battery size in mm),
-so a new battery in v2 shows up in the picture. Scene units are metres.
+When assembly.json names a `glb`, that is the hero drone FreeCAD built (freecad/frame_build.py):
+every part at its real size, so a new battery in v2 shows up in the picture. Its frame gets a
+clear-coated carbon weave here. Without it, the frame is the STL from CAD and motors,
+propellers, the flight controller and the battery are placed from assembly.json (arm length,
+plate thickness, battery size in mm). Scene units are metres.
 """
 
 import json
@@ -29,6 +31,16 @@ def main() -> None:
     scene.unit_settings.scale_length = 1.0
 
     mats = _materials()
+    if spec.get("glb"):
+        radius, center = _hero(spec["glb"])
+        _studio(mats, view=_HERO_VIEW)
+        _hero_lights(radius)
+        _camera(radius, center.z, view=_HERO_VIEW, distance_k=7.0, elevation=0.46)
+        _render_settings(scene, png_path)
+        _cycles(scene)
+        scene.view_settings.exposure = -0.35
+        bpy.ops.render.render(write_still=True)
+        return
     if spec.get("mode") == "part":
         radius, height = _part(spec["parts"], mats["frame"])
         _studio(mats)
@@ -102,6 +114,133 @@ def _materials() -> dict:
         "strap": _principled("Gurt", _srgb("#141518"), roughness=0.8),
         "floor": _principled("Boden", _srgb("#ECEBF1"), roughness=0.62),
     }
+
+
+# --- the hero drone from FreeCAD -------------------------------------------------------
+
+# Where the camera stands, seen from above: front right, nose towards +Y.
+_HERO_VIEW = (0.72, 0.62)
+
+
+def _hero(path: str):
+    """Imports the FreeCAD GLB, gives the frame its carbon weave, sets it on the floor."""
+
+    bpy.ops.import_scene.gltf(filepath=path)
+    objects = [o for o in bpy.context.scene.objects if o.type == "MESH"]
+    carbon = _carbon()
+    for obj in objects:
+        for slot in obj.material_slots:
+            name = slot.material.name if slot.material else ""
+            if name.split(".")[0].endswith(" carbon"):
+                slot.material = carbon
+            elif name.split(".")[0].endswith(" prop"):
+                _tint_prop(slot.material)
+    bpy.context.view_layer.update()
+    corners = [o.matrix_world @ Vector(c) for o in objects for c in o.bound_box]
+    low = Vector((min(c.x for c in corners), min(c.y for c in corners), min(c.z for c in corners)))
+    high = Vector((max(c.x for c in corners), max(c.y for c in corners), max(c.z for c in corners)))
+    roots = [o for o in bpy.context.scene.objects if o.parent is None and o.type in {"EMPTY", "MESH"}]
+    for root in roots:
+        root.location.z -= low.z
+    center = Vector(((low.x + high.x) / 2, (low.y + high.y) / 2, (high.z - low.z) / 2))
+    radius = max(high.x - low.x, high.y - low.y) / 2
+    return radius, center
+
+
+def _carbon():
+    """Twill-woven carbon under a clear coat: a fine checker on the object, two near-blacks."""
+
+    mat = bpy.data.materials.new("Carbon")
+    mat.use_nodes = True
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    bsdf = nodes.get("Principled BSDF")
+    coords = nodes.new("ShaderNodeTexCoord")
+    mapping = nodes.new("ShaderNodeMapping")
+    mapping.inputs["Rotation"].default_value = (0.0, 0.0, math.radians(45))
+    mapping.inputs["Scale"].default_value = (2400.0, 2400.0, 2400.0)
+    checker = nodes.new("ShaderNodeTexChecker")
+    checker.inputs["Color1"].default_value = (1.0, 1.0, 1.0, 1.0)
+    checker.inputs["Color2"].default_value = (0.0, 0.0, 0.0, 1.0)
+    checker.inputs["Scale"].default_value = 1.0
+    links.new(coords.outputs["Object"], mapping.inputs["Vector"])
+    links.new(mapping.outputs["Vector"], checker.inputs["Vector"])
+    # The weave shows in the highlights, not in the colour: tows alternate in roughness.
+    rough = nodes.new("ShaderNodeMapRange")
+    rough.inputs["To Min"].default_value = 0.34
+    rough.inputs["To Max"].default_value = 0.46
+    links.new(checker.outputs["Fac"], rough.inputs["Value"])
+    links.new(rough.outputs["Result"], bsdf.inputs["Roughness"])
+    tint = nodes.new("ShaderNodeMix")
+    tint.data_type = "RGBA"
+    tint.inputs["Factor"].default_value = 1.0
+    tint.inputs[6].default_value = (*_srgb("#0c0d0f"), 1.0)
+    tint.inputs[7].default_value = (*_srgb("#16171a"), 1.0)
+    links.new(checker.outputs["Fac"], tint.inputs["Factor"])
+    links.new(tint.outputs[2], bsdf.inputs["Base Color"])
+    bump = nodes.new("ShaderNodeBump")
+    bump.inputs["Strength"].default_value = 0.05
+    links.new(checker.outputs["Fac"], bump.inputs["Height"])
+    links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
+    bsdf.inputs["Metallic"].default_value = 0.1
+    for key, value in (("Coat Weight", 0.6), ("Coat Roughness", 0.1)):
+        if key in bsdf.inputs:
+            bsdf.inputs[key].default_value = value
+    return mat
+
+
+def _tint_prop(mat) -> None:
+    """Props read as tinted polycarbonate: smooth, glossy, see-through."""
+
+    if mat is None or not mat.use_nodes:
+        return
+    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    if bsdf is None:
+        return
+    for key, value in (("Roughness", 0.06), ("IOR", 1.58), ("Transmission Weight", 0.0)):
+        if key in bsdf.inputs:
+            bsdf.inputs[key].default_value = value
+    if "Alpha" in bsdf.inputs:
+        bsdf.inputs["Alpha"].default_value = 0.4
+    # Blended sorting smears overlapping blades in EEVEE; dithering keeps them crisp.
+    if hasattr(mat, "surface_render_method"):
+        mat.surface_render_method = "DITHERED"
+
+
+def _cycles(scene) -> None:
+    """Path-traced like a product photo: Metal GPU when there is one, denoised."""
+
+    scene.render.engine = "CYCLES"
+    cycles = scene.cycles
+    cycles.samples = 96
+    cycles.use_denoising = True
+    cycles.max_bounces = 8
+    cycles.transparent_max_bounces = 16
+    try:
+        prefs = bpy.context.preferences.addons["cycles"].preferences
+        for backend in ("METAL", "OPTIX", "CUDA", "HIP", "ONEAPI"):
+            try:
+                prefs.compute_device_type = backend
+            except TypeError:
+                continue
+            prefs.get_devices()
+            if any(d.type == backend for d in prefs.devices):
+                for d in prefs.devices:
+                    d.use = True
+                cycles.device = "GPU"
+                break
+    except (KeyError, AttributeError):
+        pass
+
+
+def _hero_lights(radius: float) -> None:
+    """Big soft key, cool fill, two hard-ish rims that draw the duct rims and the carbon edge."""
+
+    s = radius / 0.06
+    _area("Key", (0.32 * s, 0.05 * s, 0.42 * s), 9.0 * s * s, 0.32 * s, color=(1.0, 0.97, 0.93), target=(0, 0, 0.012 * s))
+    _area("Fill", (0.1 * s, 0.42 * s, 0.16 * s), 2.2 * s * s, 0.45 * s, color=(0.9, 0.94, 1.0), target=(0, 0, 0.012 * s))
+    _area("Rim", (-0.34 * s, -0.22 * s, 0.24 * s), 7.0 * s * s, 0.16 * s, target=(0, 0, 0.012 * s))
+    _area("Rim2", (0.12 * s, -0.4 * s, 0.18 * s), 4.0 * s * s, 0.14 * s, color=(1.0, 0.86, 0.74), target=(0, 0, 0.012 * s))
+    _area("Top", (0.0, 0.0, 0.62 * s), 2.4 * s * s, 0.6 * s, target=(0, 0, 0))
 
 
 # --- parts -------------------------------------------------------------------------
@@ -218,7 +357,7 @@ def _battery(mats, top: float, size) -> None:
 # --- studio ------------------------------------------------------------------------
 
 
-def _studio(mats) -> None:
+def _studio(mats, view=None) -> None:
     """A seamless cyclorama: a floor that curves up into a back wall, so there is no horizon."""
 
     import bmesh
@@ -239,8 +378,13 @@ def _studio(mats) -> None:
     bm.free()
     obj = bpy.data.objects.new("Hohlkehle", mesh)
     bpy.context.collection.objects.link(obj)
-    # Turn the wall to face the camera, which looks from the front right.
-    obj.rotation_euler[2] = math.atan2(0.68, -0.62) - math.pi / 2
+    if view is None:
+        # Turn the wall to face the camera, which looks from the front right.
+        obj.rotation_euler[2] = math.atan2(0.68, -0.62) - math.pi / 2
+    else:
+        # The wall stands behind the drone, seen from the camera.
+        length = math.hypot(*view)
+        obj.rotation_euler[2] = math.atan2(view[0] / length, -view[1] / length)
     obj.data.materials.append(mats["floor"])
     for poly in obj.data.polygons:
         poly.use_smooth = True
@@ -271,15 +415,16 @@ def _lights() -> None:
     _area("Top", (0.0, 0.0, 0.6), 1.5, 0.7)
 
 
-def _camera(radius: float, target_z: float = 0.011) -> None:
+def _camera(radius: float, target_z: float = 0.011, view=None, distance_k: float = 6.9, elevation: float = 0.58) -> None:
     data = bpy.data.cameras.new("Kamera")
     data.lens = 85
     data.dof.use_dof = True
     data.dof.aperture_fstop = 22
     obj = bpy.data.objects.new("Kamera", data)
     bpy.context.collection.objects.link(obj)
-    distance = radius * 6.9
-    obj.location = (distance * 0.55, -distance * 0.6, distance * 0.58)
+    distance = radius * distance_k
+    vx, vy = view if view is not None else (0.55, -0.6)
+    obj.location = (distance * vx, distance * vy, distance * elevation)
     target = Vector((0, 0, target_z))
     obj.rotation_euler = (target - obj.location).to_track_quat("-Z", "Y").to_euler()
     data.dof.focus_distance = (target - obj.location).length

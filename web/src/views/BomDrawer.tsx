@@ -2,7 +2,7 @@
 // link, a "Warum?" with the Jamie quote behind it, warnings from earlier meetings,
 // and the order tasks per person that live in Jamie (ticking "bestellt" ticks them there).
 import { useEffect, useState } from "react";
-import { AlertTriangle, ArrowUpRight, Battery, Box, Cable, CircuitBoard, Cog, Download, Fan, X } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, Battery, Box, Cable, Camera, CircuitBoard, Cog, Download, Fan, Shield, Wrench, X } from "lucide-react";
 import { useSession } from "../events/store";
 import { useSource } from "../events/source";
 import type { BomItem, PartEvent, TaskItem } from "../events/types";
@@ -16,6 +16,9 @@ import { useUi } from "../lib/ui";
 
 function iconFor(name: string) {
   const n = name.toLowerCase();
+  if (/canopy|holder|halter/.test(n)) return Shield;
+  if (/bolt|screw|schraube/.test(n)) return Wrench;
+  if (/camera|kamera|caddx/.test(n)) return Camera;
   if (/akku|batter|lipo|li-?ion|lava|funfly/.test(n)) return Battery;
   if (/motor|kv\b|\d{4,5}kv/.test(n)) return Cog;
   if (/propeller|prop|gemfan/.test(n)) return Fan;

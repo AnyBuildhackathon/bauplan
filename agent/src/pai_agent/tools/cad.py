@@ -1,6 +1,7 @@
 """Parametric whoop frame. arm_length is center to motor shaft, motor_spacing is the bolt-circle diameter.
 
-FreeCAD runs first when freecadcmd is on the machine. CadQuery is the fallback.
+FreeCAD runs first when freecadcmd is on the machine: it builds the whole hero drone around the
+frame (freecad/frame_build.py) from the parts chosen so far. CadQuery is the frame-only fallback.
 """
 
 from __future__ import annotations
@@ -12,17 +13,17 @@ import subprocess
 import threading
 from pathlib import Path
 
-from pai_agent.context import Ctx, de
+from pai_agent.context import Ctx
 from pai_agent.freecad_run import FreeCADFailed, build_in_gui, build_with_freecad, ensure_gui
 from pai_agent.mesh_export import stl_to_glb
 from pai_agent.paths import REPO_ROOT
 
 log = logging.getLogger(__name__)
 
-_PLA_G_PER_MM3 = 1.24 / 1000.0
+_CARBON_G_PER_MM3 = 1.55 / 1000.0
 _PROP_GAP_MM = 4.0
 DEFAULT_PARAMS = {
-    "arm_length_mm": 36.0,
+    "arm_length_mm": 42.5,
     "thickness_mm": 2.0,
     "motor_spacing_mm": 6.6,
 }
@@ -31,17 +32,85 @@ _LIMITS = {
     "thickness_mm": (1.2, 6.0, "mm"),
     "motor_spacing_mm": (4.0, 16.0, "mm"),
 }
-_TREE = [
-    {
+_FRAME_TREE = {
+    "id": "frame",
+    "label": "Frame",
+    "children": [
+        {"id": "hub", "label": "Hub", "children": []},
+        {"id": "arms", "label": "Arms", "children": []},
+        {"id": "pads", "label": "Motor pads", "children": []},
+    ],
+}
+# The pack's label colour in the model, so a battery swap shows at a glance.
+_BATTERY_LABELS = {"tattu-rline-1s-550": "#e8c21a", "betafpv-lava-1s-680": "#8fd14f", "tattu-funfly-4s-1300": "#d61f3c"}
+_BATTERY_LABEL = "#1f9fd6"
+
+
+def _assembly(state) -> dict:
+    """The chosen parts at catalog size, for the parts FreeCAD places around the frame."""
+
+    out: dict = {}
+    propeller = state.selected.get("propeller") or {}
+    if propeller.get("diameter_mm"):
+        out["prop_mm"] = float(propeller["diameter_mm"])
+    if propeller.get("pitch_in"):
+        out["prop_pitch_in"] = float(propeller["pitch_in"])
+    if propeller.get("blades"):
+        out["prop_blades"] = int(propeller["blades"])
+    motor = state.selected.get("motor") or {}
+    if motor.get("height_mm"):
+        out["motor_height_mm"] = float(motor["height_mm"])
+    if motor.get("kv"):
+        out["motor_kv"] = float(motor["kv"])
+    if motor.get("size"):
+        out["motor_size"] = str(motor["size"])
+    if motor.get("diameter_mm"):
+        out["motor_diameter_mm"] = float(motor["diameter_mm"])
+    if motor.get("shaft_mm"):
+        out["shaft_mm"] = float(motor["shaft_mm"])
+    camera = state.selected.get("camera") or {}
+    if camera.get("size_mm"):
+        out["camera_mm"] = float(camera["size_mm"])
+    battery = state.selected.get("battery") or {}
+    if all(battery.get(key) for key in ("length_mm", "width_mm", "height_mm")):
+        out["battery_mm"] = [float(battery[key]) for key in ("length_mm", "width_mm", "height_mm")]
+        out["battery_label"] = _BATTERY_LABELS.get(str(battery.get("id")), _BATTERY_LABEL)
+    return out
+
+
+def _tree(state, assembly: bool) -> list[dict]:
+    if not assembly:
+        return [_FRAME_TREE]
+    names = {category: part.get("name") for category, part in state.selected.items()}
+
+    def leaf(node_id: str, label: str, category: str | None = None) -> dict:
+        name = names.get(category) if category else None
+        return {"id": node_id, "label": label + (" · " + name if name else ""), "children": []}
+
+    frame = {
         "id": "frame",
-        "label": "Frame",
+        "label": "Printed parts",
         "children": [
-            {"id": "hub", "label": "Hub", "children": []},
-            {"id": "arms", "label": "Arms", "children": []},
-            {"id": "pads", "label": "Motor pads", "children": []},
+            {"id": "plate", "label": "X-frame", "children": []},
+            {"id": "canopy", "label": "Canopy with antenna tube", "children": []},
+            {"id": "holder", "label": "Battery holder", "children": []},
         ],
     }
-]
+    return [
+        {
+            "id": "drone",
+            "label": "Drone",
+            "children": [
+                frame,
+                leaf("motors", "Motors ×4", "motor"),
+                leaf("propellers", "Propellers ×4", "propeller"),
+                leaf("flight_controller", "Flight controller stack", "flight_controller"),
+                leaf("camera", "FPV camera"),
+                leaf("battery", "Battery and strap", "battery"),
+                leaf("antenna", "Receiver antenna"),
+            ],
+        }
+    ]
 
 
 def _fail(message: str) -> dict:
@@ -124,7 +193,7 @@ def export_frame(frame, path: Path) -> float:
     path.parent.mkdir(parents=True, exist_ok=True)
     exporters.export(frame, str(path))
     volume_mm3 = float(frame.val().Volume())
-    return volume_mm3 * _PLA_G_PER_MM3
+    return volume_mm3 * _CARBON_G_PER_MM3
 
 
 def apply_param_body(current: dict, body: dict) -> dict:
@@ -184,15 +253,15 @@ async def cad_frame(ctx: Ctx, args: dict) -> dict:
         if clearance < _PROP_GAP_MM:
             needed = (float(propeller["diameter_mm"]) + _PROP_GAP_MM) / math.sqrt(2)
             return _fail(
-                "At "
-                + de(arm_length, 0)
-                + " mm of arm the motors are "
-                + de(arm_length * math.sqrt(2), 1)
-                + " mm apart, and the "
-                + de(float(propeller["diameter_mm"]), 0)
-                + " mm propellers touch. At least "
-                + de(math.ceil(needed), 0)
-                + " mm of arm."
+                "At a "
+                + f"{arm_length:.0f}"
+                + " mm arm the motors stand "
+                + f"{arm_length * math.sqrt(2):.1f}"
+                + " mm apart and the "
+                + f"{float(propeller['diameter_mm']):.0f}"
+                + " mm props touch. The arm needs at least "
+                + f"{math.ceil(needed):.0f}"
+                + " mm."
             )
 
     params = {
@@ -202,8 +271,9 @@ async def cad_frame(ctx: Ctx, args: dict) -> dict:
         "prop_clearance_mm": round(clearance, 1) if clearance is not None else None,
     }
     directory = Path(ctx.state.directory)
-    for stale in ("frame.stl", "frame.step", "frame.glb", "view.png"):
+    for stale in ("frame.stl", "frame.step", "frame.glb", "drone.step", "view.png"):
         (directory / stale).unlink(missing_ok=True)
+    build_params = {**params, **_assembly(ctx.state)}
     source = "freecad"
     viewed = False
     loop = asyncio.get_running_loop()
@@ -221,7 +291,7 @@ async def cad_frame(ctx: Ctx, args: dict) -> dict:
     mass_g: float | None = None
     if await asyncio.to_thread(ensure_gui):
         try:
-            mass_g = await asyncio.to_thread(build_in_gui, directory, params, len(ctx.state.versions) + 1, progress)
+            mass_g = await asyncio.to_thread(build_in_gui, directory, build_params, len(ctx.state.versions) + 1, progress)
             viewed = True
         except asyncio.CancelledError:
             stop.set()
@@ -231,7 +301,7 @@ async def cad_frame(ctx: Ctx, args: dict) -> dict:
             await ctx.emit({"type": "tool", "name": "cad_frame", "status": "running", "detail": "FreeCAD window stalled, continuing in the background"})
     if mass_g is None:
         try:
-            mass_g = await asyncio.to_thread(build_with_freecad, directory, params)
+            mass_g = await asyncio.to_thread(build_with_freecad, directory, build_params)
         except (FreeCADFailed, OSError, TimeoutError, ValueError, subprocess.TimeoutExpired) as exc:
             log.info("FreeCAD fällt auf CadQuery zurück: %s", exc)
             source = "cadquery"
@@ -259,7 +329,7 @@ async def cad_frame(ctx: Ctx, args: dict) -> dict:
         {
             "type": "cad",
             "source": source,
-            "tree": _TREE,
+            "tree": _tree(ctx.state, source == "freecad"),
             "params": _param_payload(params),
             "glb_url": _file_url(session_id, "frame.glb", build),
             "stl_url": _file_url(session_id, "frame.stl", build),
@@ -268,7 +338,7 @@ async def cad_frame(ctx: Ctx, args: dict) -> dict:
         }
     )
     where = "FreeCAD window" if viewed else ("FreeCAD headless" if source == "freecad" else "CadQuery")
-    detail = where + ", " + de(mass_g, 1) + " g PLA, STL and STEP"
+    detail = where + ", " + f"{mass_g:.1f}" + " g carbon, STL and STEP"
     return {
         "ok": True,
         "detail": detail,

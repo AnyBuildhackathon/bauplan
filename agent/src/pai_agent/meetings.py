@@ -42,7 +42,7 @@ _NEGATIVE = re.compile(
 _LAST_WEEK = re.compile(r"letzte[nr]? woche|vorige[nr]? woche|vor einer woche|last week", re.IGNORECASE)
 
 _CATEGORY_WORDS = {
-    "motor": re.compile(r"\bmotor(?:en|s)?\b|\b1102\b|\bkv\b", re.IGNORECASE),
+    "motor": re.compile(r"\bmotor(?:en|s)?\b|\b110[2-4]\b|\bkv\b", re.IGNORECASE),
     "battery": re.compile(r"\bakku\b|\bbatterie\b|\bzelle\b|\bbatter(?:y|ies)\b|\bpack\b", re.IGNORECASE),
     "propeller": re.compile(r"\bpropeller\b|\bprops?\b|\bluftschraube", re.IGNORECASE),
     "frame": re.compile(r"\brahmen\b|\bframe\b", re.IGNORECASE),
@@ -184,7 +184,7 @@ def requirements_from(meeting: dict) -> tuple[list[dict], str]:
 
 
 def _plain_text(rid: str) -> str:
-    return {"hover": "Must lift off and hover steadily", "printable": "Print the frame ourselves, as an STL"}[rid]
+    return {"hover": "Must lift off and hover steadily", "printable": "Frame as STL and STEP"}[rid]
 
 
 def _sentence_requirements(text: str) -> list[tuple[str, float | None]]:

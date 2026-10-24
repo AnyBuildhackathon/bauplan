@@ -30,7 +30,12 @@ def find_blender() -> str | None:
 
 
 def _assembly(state) -> dict:
-    """What studio.py places around the frame STL: arm, plate, battery and propeller sizes in mm."""
+    """The hero drone GLB from FreeCAD, or what studio.py places around a bare frame STL: arm, plate,
+    battery and propeller sizes in mm."""
+
+    glb = Path(state.directory) / "frame.glb"
+    if is_drone_glb(glb):
+        return {"glb": str(glb)}
 
     battery = state.selected.get("battery") or {}
     propeller = state.selected.get("propeller") or {}
@@ -42,6 +47,21 @@ def _assembly(state) -> dict:
     if "length_mm" in battery:
         spec["battery_mm"] = [float(battery[k]) for k in ("length_mm", "width_mm", "height_mm")]
     return spec
+
+
+def is_drone_glb(path: Path) -> bool:
+    """True for the assembly frame_build.py writes, False for a frame-only GLB from CadQuery."""
+
+    try:
+        with path.open("rb") as handle:
+            header = handle.read(20)
+            if len(header) < 20 or header[:4] != b"glTF":
+                return False
+            length = int.from_bytes(header[12:16], "little")
+            gltf = json.loads(handle.read(length))
+    except (OSError, ValueError):
+        return False
+    return any(node.get("name") == "motor_front_left" for node in gltf.get("nodes", []))
 
 
 def _part_spec(state) -> dict:

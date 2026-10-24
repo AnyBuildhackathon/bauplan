@@ -45,7 +45,8 @@ const AGENT = new THREE.Color("#ff8a3d");
 /** A generated body names its color `pai:#rrggbb`, or `pai:#rrggbbaa` when it is see-through (a load). */
 export function partColor(name: string): { color: string; opacity: number } {
   if (!name.startsWith("pai:")) return { color: "#c9ccd3", opacity: 1 };
-  const hex = name.slice(4);
+  // The drone's materials add their look after a space: `pai:#c9ccd3 carbon`.
+  const hex = name.slice(4).split(" ")[0];
   return hex.length === 9 ? { color: hex.slice(0, 7), opacity: parseInt(hex.slice(7), 16) / 255 } : { color: hex, opacity: 1 };
 }
 

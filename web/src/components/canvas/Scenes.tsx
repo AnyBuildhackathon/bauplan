@@ -2,13 +2,13 @@
 // (Simulation and Video tabs). Lighting is built locally, nothing loads from the web.
 import { ContactShadows, Environment, Grid, Lightformer, Line, OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useLayoutEffect, useMemo, useRef } from "react";
+import { Suspense, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useSession } from "../../events/store";
 import type { Run } from "../../events/store";
 import { useAssembly, useHighlight } from "../../lib/hooks";
 import { AnchorScope } from "./anchors";
-import { DroneModel } from "./DroneModel";
+import { HeroDrone, useDroneUrl } from "./HeroDrone";
 import { sampleAt, simClock } from "./simClock";
 
 function useSpin() {
@@ -19,6 +19,7 @@ function useSpin() {
 
 export function ModelScene({ look }: { look: "modell" | "render" }) {
   const build = useAssembly();
+  const url = useDroneUrl();
   const highlight = useHighlight();
   const spin = useSpin();
   const render = look === "render";
@@ -44,16 +45,18 @@ export function ModelScene({ look }: { look: "modell" | "render" }) {
           shadow-camera-top={0.15}
           shadow-camera-bottom={-0.15}
         />
-        {render && (
-          <Environment resolution={256}>
-            <Lightformer form="rect" intensity={3} position={[0, 2, 0]} rotation={[Math.PI / 2, 0, 0]} scale={[3, 3, 1]} />
-            <Lightformer form="rect" intensity={1.6} color="#ffd9bf" position={[-2.5, 0.6, 0.5]} rotation={[0, Math.PI / 2, 0]} scale={[2, 1.4, 1]} />
-            <Lightformer form="rect" intensity={1.2} color="#cfe0ff" position={[2.5, 0.4, -0.5]} rotation={[0, -Math.PI / 2, 0]} scale={[2, 1.4, 1]} />
-            <Lightformer form="ring" intensity={2} position={[0, 0.8, 2.4]} scale={1.2} />
-          </Environment>
-        )}
-        <group position={[0, 0.003, 0]}>
-          <DroneModel {...build} highlight={highlight} spin={spin} />
+        {/* Metal and clear-coat parts need something to reflect, in both looks. */}
+        <Environment resolution={256} environmentIntensity={render ? 1 : 0.75}>
+          <Lightformer form="rect" intensity={3} position={[0, 2, 0]} rotation={[Math.PI / 2, 0, 0]} scale={[3, 3, 1]} />
+          <Lightformer form="rect" intensity={1.6} color="#ffd9bf" position={[-2.5, 0.6, 0.5]} rotation={[0, Math.PI / 2, 0]} scale={[2, 1.4, 1]} />
+          <Lightformer form="rect" intensity={1.2} color="#cfe0ff" position={[2.5, 0.4, -0.5]} rotation={[0, -Math.PI / 2, 0]} scale={[2, 1.4, 1]} />
+          <Lightformer form="ring" intensity={2} position={[0, 0.8, 2.4]} scale={1.2} />
+        </Environment>
+        {/* The pack hangs under the frame; lift the drone so it stands on it. */}
+        <group position={[0, build.battery[2] + 0.0028, 0]}>
+          <Suspense fallback={null}>
+            <HeroDrone url={url} battery={build.battery} highlight={highlight} spin={spin} />
+          </Suspense>
         </group>
         <ContactShadows position={[0, 0, 0]} opacity={render ? 0.55 : 0.35} scale={0.35} blur={2.4} far={0.12} resolution={512} />
         <OrbitControls
@@ -80,6 +83,7 @@ const TARGET_Z = 0.5;
 function FlyingDrone({ run, color }: { run: Run; color: string }) {
   // Each replay shows the battery that run actually flew with.
   const build = useAssembly(run.seq);
+  const url = useDroneUrl();
   const highlight = useHighlight();
   const ref = useRef<THREE.Group>(null);
   useFrame(() => {
@@ -96,7 +100,9 @@ function FlyingDrone({ run, color }: { run: Run; color: string }) {
   return (
     <group ref={ref}>
       <group scale={DRONE_SCALE}>
-        <DroneModel {...build} highlight={highlight} spin={spin} />
+        <Suspense fallback={null}>
+          <HeroDrone url={url} battery={build.battery} highlight={highlight} spin={spin} />
+        </Suspense>
       </group>
       <pointLight color={color} intensity={0.4} distance={0.8} position={[0, -0.05, 0]} />
     </group>
