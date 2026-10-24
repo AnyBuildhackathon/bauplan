@@ -49,6 +49,10 @@ class ExplainIn(BaseModel):
     chat: bool = False
 
 
+class ControlIn(BaseModel):
+    control: str
+
+
 class SpeakIn(BaseModel):
     text: str
     # The sentence spoken just before, so one reply keeps a continuous intonation.
@@ -333,7 +337,6 @@ class LibraryIn(BaseModel):
     id: str | None = None
     name: str | None = None
     summary: str = ""
-    kind: str = "project"
 
 
 @app.get("/api/library")
@@ -366,12 +369,7 @@ async def library_thumbnail(item_id: str) -> FileResponse:
 @app.post("/api/library")
 async def library_save(body: LibraryIn, request: Request) -> dict:
     _require_json(request)
-    if body.kind not in {"project", "reference"}:
-        raise HTTPException(status_code=400, detail="kind must be project or reference")
-    # Promoting a build into the repository's registry is for whoever curates the library.
-    if body.kind == "reference" and os.environ.get("PAI_ADMIN") != "1":
-        raise HTTPException(status_code=403, detail="saving a reference build needs PAI_ADMIN=1")
-    result = request.app.state.session.save_reference(body.id, body.name, body.summary, body.kind)
+    result = request.app.state.session.save_reference(body.id, body.name, body.summary)
     if result.get("ok") is False:
         raise HTTPException(status_code=409 if result.get("busy") else 400, detail=str(result["error"]))
     return result
@@ -457,6 +455,11 @@ async def settings_post(request: Request) -> dict:
         return {"ok": True, **settings.update(body)}
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/control")
+async def control(body: ControlIn, request: Request) -> dict:
+    return await request.app.state.session.press(body.control)
 
 
 @app.post("/api/cad/open")

@@ -11,6 +11,7 @@ import { DrawLayer } from "./components/overlay/DrawLayer";
 import { PointerLayer } from "./components/overlay/PointerLayer";
 import { useSource } from "./events/source";
 import { useBolzenVoice } from "./lib/bolzenVoice";
+import { usePilotRunner } from "./lib/pilot";
 import { useUi } from "./lib/ui";
 import { BomDrawer } from "./views/BomDrawer";
 import { VersionDrawer } from "./views/VersionDrawer";
@@ -87,6 +88,7 @@ export default function App() {
     onChange: panelPane.set,
     onReset: panelPane.reset,
   };
+  usePilotRunner();
   return (
     <div className="flex h-full min-h-0">
       <IconRail />

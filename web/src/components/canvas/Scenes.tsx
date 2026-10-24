@@ -9,6 +9,7 @@ import type { Run } from "../../events/store";
 import { useAssembly, useHighlight } from "../../lib/hooks";
 import { AnchorScope } from "./anchors";
 import { GridStage, stageObstacles, usePrefersReducedMotion } from "./GridStage";
+import { ExplodeCamera } from "./explode";
 import { HeroDrone, useDroneUrl } from "./HeroDrone";
 import { sampleAt, simClock } from "./simClock";
 
@@ -78,9 +79,10 @@ export function ModelScene({ look }: { look: "modell" | "render" }) {
         {/* The pack hangs under the frame; lift the drone so it stands on it. */}
         <group position={[0, build.battery[2] + 0.0028, 0]}>
           <Suspense fallback={null}>
-            <HeroDrone url={url} battery={build.battery} highlight={highlight} spin={spin} />
+            <HeroDrone url={url} battery={build.battery} highlight={highlight} spin={spin} explodable={!render} />
           </Suspense>
         </group>
+        {!render && <ExplodeCamera maxDistance={0.45} />}
         <GridStage size={DRONE_SIZE} lights={false} shadowArea={0.35} shadowReach={0.12} shadowOpacity={render ? 0.6 : 0.5} />
         <OrbitControls
           makeDefault

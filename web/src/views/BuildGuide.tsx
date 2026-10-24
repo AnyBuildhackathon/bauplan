@@ -32,6 +32,7 @@ export function BuildGuideButton() {
     <button
       type="button"
       onClick={() => show(true)}
+      data-control="panel:guide"
       className="inline-flex h-11 items-center gap-2 rounded-full bg-ink px-5 text-[15px] font-bold text-white hover:bg-[#333]"
     >
       <ListChecks className="h-4.5 w-4.5" /> Build guide
@@ -95,7 +96,7 @@ export function BuildGuide() {
               v{guide.version} · {steps.length} steps · about {fmtMinutes(guide.total_minutes)}
             </p>
           </div>
-          <button type="button" onClick={() => show(false)} className="ml-auto rounded-full p-2.5 text-muted hover:bg-card" aria-label="Close">
+          <button type="button" onClick={() => show(false)} data-control="panel:guide:close" className="ml-auto rounded-full p-2.5 text-muted hover:bg-card" aria-label="Close">
             <X className="h-5 w-5" />
           </button>
         </div>

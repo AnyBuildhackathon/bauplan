@@ -9,6 +9,7 @@ import re
 import uuid
 from pathlib import Path
 
+from pai_agent.app_control import describe, match_commands
 from pai_agent.bus import EventBus
 from pai_agent.context import Ctx
 from pai_agent.env import claude_enabled
@@ -56,6 +57,9 @@ class Session:
 
     async def start(self, text: str) -> dict:
         mode = "claude" if claude_enabled() else "mock"
+        commands = match_commands(text, self.state)
+        if commands:
+            return await self._control(text, commands, mode)
         if self._busy():
             question = self.question
             if question is not None and await self._answer_from_text(text):
@@ -69,6 +73,65 @@ class Session:
         ctx.label = text.strip()[:80]
         self.task = asyncio.create_task(self._run(run_prompt(ctx, text, self.messages), ctx))
         return {"ok": True, "mode": mode, "status": "started"}
+
+    async def _control(self, text: str, commands: list[dict], mode: str) -> dict:
+        """A pure dashboard command: Mechanic operates the app at once, also while a build runs."""
+
+        from pai_agent.tools.registry import call_tool
+        from pai_agent.tools.ui import ui_event
+
+        await self.bus.publish({"type": "chat", "role": "user", "text": text})
+        if any(c["control"] == "run:rebuild" for c in commands):
+            review = next(
+                (m for m in sorted(self.state.meetings.values(), key=lambda m: (m["date"], m["time"])) if m["kind"] == "review" and m["status"] != "done"),
+                None,
+            )
+            if review is not None and self.state.versions and not self._busy():
+                # "Rebuild" with a review on the timeline ends that review, as its End button does.
+                await self.bus.publish(ui_event("run:review", {"say": "Ending the review, rebuilding."}))
+                self.voice.reply(text, self.state, "ui", detail="ending the review and building the next version")
+                result = await self.start_from_meeting(review["id"], review["title"])
+                return {**result, "status": "ui"}
+        runs = [c for c in commands if c["control"].startswith("run:")]
+        if runs and self._busy():
+            self.voice.reply(text, self.state, "already_running")
+            if not claude_enabled():
+                await self.bus.publish({"type": "chat", "role": "agent", "text": "I am still building. Ask again once this run is done."})
+            return {"ok": True, "mode": mode, "status": "already_running"}
+        ctx = self._ctx(auto_steps=False)
+        self.voice.reply(text, self.state, "ui", detail=describe(commands))
+
+        async def work() -> None:
+            for args in commands:
+                result = await call_tool(ctx, "ui_control", args)
+                if result.get("ok") is False:
+                    await ctx.chat("agent", str(result.get("error")))
+                elif not claude_enabled() and not args["control"].startswith("run:"):
+                    await ctx.chat("agent", ui_event(args["control"], args)["say"])
+
+        if runs:
+            # A test or a rebuild is a run: the bench is busy until it finishes.
+            self.task = asyncio.create_task(self._run(work(), ctx))
+        else:
+            await work()
+        return {"ok": True, "mode": mode, "status": "ui", "controls": [c["control"] for c in commands]}
+
+    async def press(self, control: str) -> dict:
+        """Someone pressed Run test or Rebuild: the same run Mechanic starts with ui_control, without the pointer."""
+
+        from pai_agent.tools.ui import _check, run_rebuild, run_test
+
+        if control not in {"run:test", "run:rebuild"}:
+            return {"ok": False, "error": "control must be run:test or run:rebuild."}
+        if self._busy():
+            return {"ok": False, "error": "Mechanic is building. Try again in a moment.", "busy": True}
+        ctx = self._ctx(auto_steps=False)
+        invalid = _check(ctx, control, {})
+        if invalid:
+            return invalid
+        work = run_test(ctx) if control == "run:test" else run_rebuild(ctx)
+        self.task = asyncio.create_task(self._run(work, ctx))
+        return {"ok": True, "status": "started"}
 
     async def start_reference(self, ref_id: str) -> dict:
         """Starts from a reference build on a fresh bench; the chat then changes it."""
@@ -121,13 +184,13 @@ class Session:
         self.task = asyncio.create_task(self._run(run_sketch(ctx, name, note, self.messages), ctx))
         return {"ok": True, "mode": mode, "status": "started", "sketch": name, "url": event["url"]}
 
-    def save_reference(self, ref_id: str | None, name: str | None, summary: str, kind: str = "project") -> dict:
+    def save_reference(self, ref_id: str | None, name: str | None, summary: str) -> dict:
         from pai_agent.references import save_reference
 
         if self._busy():
             return {"ok": False, "error": "Mechanic is building. Save when the build is done.", "busy": True}
         try:
-            return {"ok": True, "item": save_reference(self.state, ref_id, name, summary, kind)}
+            return {"ok": True, "item": save_reference(self.state, ref_id, name, summary)}
         except ValueError as exc:
             return {"ok": False, "error": str(exc)}
 

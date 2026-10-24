@@ -311,6 +311,7 @@ export function CompareView({ pair }: { pair: [number, number] }) {
         <button
           type="button"
           onClick={() => setCompare(null)}
+          data-control="panel:compare:close"
           className="ml-auto flex items-center gap-1.5 rounded-full bg-card py-1.5 pr-3 pl-2.5 text-[14px] font-semibold text-ink-2 shadow-[var(--shadow-pill)] hover:bg-page-2"
         >
           <X className="h-4 w-4" /> Close compare

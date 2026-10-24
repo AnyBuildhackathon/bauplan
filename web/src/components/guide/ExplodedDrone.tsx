@@ -7,6 +7,7 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { useMemo, useRef, type ReactNode } from "react";
 import * as THREE from "three";
 import type { Assembly } from "../../lib/hooks";
+import { pillTexture } from "../canvas/explode";
 
 export type PartState = "current" | "done" | "later";
 
@@ -82,27 +83,8 @@ function Floating({ to, children }: { to: [number, number, number]; children: Re
 function Label({ name, state, position }: { name: string; state: PartState; position: [number, number, number] }) {
   const text = LABELS[name] ?? name;
   const texture = useMemo(() => {
-    const scale = 3;
-    const c = document.createElement("canvas");
-    const ctx = c.getContext("2d")!;
-    const font = `700 ${13 * scale}px "Inter Tight", sans-serif`;
-    ctx.font = font;
-    const w = Math.ceil(ctx.measureText(text).width + 22 * scale);
-    const h = 26 * scale;
-    c.width = w;
-    c.height = h;
-    ctx.font = font;
-    ctx.fillStyle = "#ff8a3d";
-    ctx.beginPath();
-    ctx.roundRect(0, 0, w, h, h / 2);
-    ctx.fill();
-    ctx.fillStyle = "#ffffff";
-    ctx.textBaseline = "middle";
-    ctx.fillText(text, 11 * scale, h / 2 + scale);
-    const t = new THREE.CanvasTexture(c);
-    t.colorSpace = THREE.SRGBColorSpace;
-    t.anisotropy = 4;
-    return { t, aspect: w / h };
+    const { texture: t, aspect } = pillTexture(text, { bg: "#ff8a3d", fg: "#ffffff" });
+    return { t, aspect };
   }, [text]);
   if (state !== "current") return null;
   return (

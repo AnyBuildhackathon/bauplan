@@ -442,34 +442,6 @@
       "aliases": ["steel rod", "shaft", "axle", "ballast"]
     },
     {
-      "id": "usb-c-breakout-sol-333011",
-      "name": "Soldered USB-C socket breakout, THT pins",
-      "category": "power",
-      "mass_g": 2.0,
-      "size_mm": [22, 22, 4],
-      "voltage_v": 5.0,
-      "unit_price_eur": 1.85,
-      "shop": "Berrybase",
-      "url": "https://www.berrybase.de/en/soldered-usb-c-buchse-breakout-board-tht-pins",
-      "note": "Soldered SOL-333011: USB-C female socket with VBUS, GND, CC1, CC2, D+ and D- on 2.54 mm pins, 22 x 22 mm with two mounting holes. 1.85 EUR, in stock at Berrybase on 2026-10-24.",
-      "aliases": ["usb-c socket", "usb c breakout", "usb-c input", "usb c port"]
-    },
-    {
-      "id": "esp32-nodemcu-bb",
-      "name": "ESP32 NodeMCU development board (Berrybase NMCU-ESP32)",
-      "category": "controller",
-      "mass_g": 9.0,
-      "size_mm": [51, 25, 12],
-      "voltage_v": 5.0,
-      "power_w": 0.4,
-      "sleep_power_w": 0.0005,
-      "unit_price_eur": 6.8,
-      "shop": "Berrybase",
-      "url": "https://www.berrybase.de/en/esp32-nodemcu-development-board",
-      "note": "ESP-WROOM-32, 38 pins, CP2102 USB, Wi-Fi and Bluetooth, headers soldered. 6.80 EUR, in stock at Berrybase on 2026-10-24.",
-      "aliases": ["esp32", "nodemcu esp32", "microcontroller", "wifi board"]
-    },
-    {
       "id": "rpi5-4gb",
       "name": "Raspberry Pi 5 4 GB",
       "category": "controller",

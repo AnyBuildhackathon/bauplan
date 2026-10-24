@@ -47,6 +47,20 @@ interface UiState {
   /** Who listens to the microphone: Reson8, the browser, or nobody. */
   stt: "reson8" | "browser" | "none";
   display: Display;
+  /** Explode amount of the Model tab, 0 assembled to 1 every part pulled apart. */
+  explode: number;
+  /** The part the 3D camera turns to; `at` restarts the move for the same part. */
+  focus: { part: string; at: number } | null;
+  settingsOpen: boolean;
+  /** The library item shown in the inspector; null picks the first. */
+  libraryPick: string | null;
+  /** HeyClicky: Mechanic's pointer flies to the controls he operates. Remembered per browser. */
+  clicky: boolean;
+  setExplode: (explode: number) => void;
+  setFocus: (part: string | null) => void;
+  setSettingsOpen: (open: boolean) => void;
+  setLibraryPick: (id: string | null) => void;
+  setClicky: (on: boolean) => void;
   setDisplay: (patch: Partial<Display>) => void;
   setView: (view: View) => void;
   setTab: (tab: CanvasTab) => void;
@@ -86,6 +100,15 @@ function storedDisplay(): Display {
 }
 
 const MIC_KEY = "anybuild.mic";
+const CLICKY_KEY = "anybuild.clicky";
+
+function storedClicky(): boolean {
+  try {
+    return localStorage.getItem(CLICKY_KEY) !== "off";
+  } catch {
+    return true;
+  }
+}
 
 function storedMicMode(): MicMode {
   try {
@@ -135,6 +158,23 @@ export const useUi = create<UiState>((set) => ({
   userTalking: false,
   voiceOn: storedVoice(),
   display: storedDisplay(),
+  explode: 0,
+  focus: null,
+  settingsOpen: false,
+  libraryPick: null,
+  clicky: storedClicky(),
+  setExplode: (explode) => set({ explode: Math.max(0, Math.min(1, explode)) }),
+  setFocus: (part) => set({ focus: part ? { part, at: Date.now() } : null }),
+  setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
+  setLibraryPick: (libraryPick) => set({ libraryPick }),
+  setClicky: (clicky) => {
+    try {
+      localStorage.setItem(CLICKY_KEY, clicky ? "on" : "off");
+    } catch {
+      // Private windows may refuse storage; the choice lasts for this page.
+    }
+    set({ clicky });
+  },
   setDisplay: (patch) =>
     set((s) => {
       const display = { ...s.display, ...patch };
@@ -177,5 +217,5 @@ export const useUi = create<UiState>((set) => ({
     }
     set({ voiceOn });
   },
-  resetUi: () => set({ selectedVersion: null, versionsOpen: false, compare: null, selectedRun: null, lessonStep: null, concepts: {}, bomOpen: false }),
+  resetUi: () => set({ selectedVersion: null, versionsOpen: false, compare: null, selectedRun: null, lessonStep: null, concepts: {}, bomOpen: false, explode: 0, focus: null }),
 }));

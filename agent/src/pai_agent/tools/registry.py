@@ -8,7 +8,7 @@ import time
 from pai_agent.context import Ctx
 from pai_agent.timeouts import limit, timed_out
 from pai_agent.requirements import refresh_requirements
-from pai_agent.scene import DRAW_KINDS, MASCOT_STATES, PART_CATEGORIES, TARGETS
+from pai_agent.scene import CONTROLS, DRAW_KINDS, MASCOT_STATES, PART_CATEGORIES, TARGETS
 from pai_agent.freecad_run import find_freecadcmd
 from pai_agent.tools.blender import blender_render, find_blender, recorded_still
 from pai_agent.tools.bom import bom_build
@@ -41,7 +41,7 @@ from pai_agent.tools.parts import parts_search
 from pai_agent.tools.physics import physics_calc
 from pai_agent.tools.simulate import simulate_drone
 from pai_agent.tools.stress import stress_test
-from pai_agent.tools.ui import mascot_say, ui_draw, ui_point_at
+from pai_agent.tools.ui import mascot_say, ui_control, ui_draw, ui_point_at
 
 TOOLS = {
     "jamie_templates": jamie_templates,
@@ -91,6 +91,7 @@ TOOLS = {
     "ui_point_at": ui_point_at,
     "ui_draw": ui_draw,
     "mascot_say": mascot_say,
+    "ui_control": ui_control,
     "train_in_browser": train_in_browser,
 }
 
@@ -718,6 +719,28 @@ SCHEMAS = [
         },
     },
     {
+        "name": "ui_control",
+        "description": (
+            "Operates the dashboard in front of the audience: the pointer flies to the real control, a short bubble says what happens, then it acts. "
+            "Use it whenever someone asks to see or open something (show me the CAD, open the library, pull it apart, compare v1 and v2, open the bill of materials) "
+            "and to show what you are talking about. control is one of: "
+            + "; ".join(control + " (" + text + ")" for control, text in CONTROLS.items())
+            + "; library:{id} opens one library item. say is the bubble, at most eight words. run:test and run:rebuild wait for the run and return its result."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "control": {"type": "string"},
+                "open": {"type": "boolean", "description": "Panels: true opens, false closes. Default true."},
+                "value": {"description": "explode: 0 to 100. setting:*: true or false."},
+                "part": {"type": "string", "description": "focus: the part name or id."},
+                "versions": {"type": "array", "items": {"type": "integer"}, "description": "panel:compare: the two version numbers."},
+                "say": {"type": "string"},
+            },
+            "required": ["control"],
+        },
+    },
+    {
         "name": "train_in_browser",
         "description": "Trains the current product's controller in 1,024 MuJoCo simulations in the open dashboard (64 candidates x 16 generations, evolution strategy). For the drone: altitude PID and position and attitude PD gains that stay level and hold position for 10 s with a payload and a side gust. For the gripper: squeeze force, ramp, settle and lift time that hold the part through the lift and shake with the least force. Waits for the run and returns the best gains and score.",
         "input_schema": {"type": "object", "properties": {}},
@@ -734,6 +757,8 @@ def _running_detail(name: str, args: dict) -> str:
         return (str(args.get("kind", "")) + " " + str(args.get("target", ""))).strip()
     if name == "mascot_say":
         return str(args.get("state", ""))
+    if name == "ui_control":
+        return str(args.get("control", ""))
     if name == "jamie_search":
         return str(args.get("query", ""))
     if name in {"cad_part", "cad_update", "part_pick"}:

@@ -64,6 +64,8 @@ interface SourceState {
   setCadParams: (params: Record<string, number>) => Promise<boolean>;
   /** Opens the current part in the FreeCAD app on this Mac. */
   openInFreecad: () => Promise<void>;
+  /** Run test or Rebuild, pressed by a person (POST /api/control). */
+  pressControl: (control: "run:test" | "run:rebuild") => Promise<void>;
   resetSession: () => Promise<void>;
   /** Ticks or unticks "bestellt" on an order task; the backend mirrors it to Jamie. */
   toggleTask: (id: string, done: boolean) => Promise<void>;
@@ -455,6 +457,20 @@ export const useSource = create<SourceState>((set, get) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
       } catch (err) {
         set({ notice: `FreeCAD could not be opened (${err instanceof Error ? err.message : "error"}).` });
+      }
+    },
+
+    pressControl: async (control) => {
+      if (get().mode === "demo") {
+        set({ notice: "Tests and rebuilds run only in live mode." });
+        return;
+      }
+      try {
+        const res = await fetch(apiUrl("/api/control"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ control }) });
+        const body = (await res.json()) as { ok?: boolean; error?: string };
+        if (!res.ok || body.ok === false) throw new Error(body.error ?? `HTTP ${res.status}`);
+      } catch (err) {
+        set({ notice: err instanceof Error ? err.message : "The run could not start." });
       }
     },
 

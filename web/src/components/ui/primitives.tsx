@@ -119,7 +119,7 @@ export function Segmented<T extends string>({
   size = "md",
   className = "",
 }: {
-  options: { value: T; label: ReactNode; target?: string; badge?: ReactNode }[];
+  options: { value: T; label: ReactNode; target?: string; control?: string; badge?: ReactNode }[];
   value: T;
   onChange: (v: T) => void;
   size?: "sm" | "md";
@@ -137,6 +137,7 @@ export function Segmented<T extends string>({
             role="tab"
             aria-selected={active}
             data-target={o.target}
+            data-control={o.control}
             onClick={() => onChange(o.value)}
             className={`relative inline-flex items-center gap-1.5 rounded-full font-semibold whitespace-nowrap transition ${h} ${
               active ? "bg-card text-ink shadow-[var(--shadow-pill)]" : "text-muted hover:text-ink-2"

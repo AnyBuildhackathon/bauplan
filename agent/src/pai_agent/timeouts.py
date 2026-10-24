@@ -47,6 +47,8 @@ BUDGET_S = {
     "bom_build": 120.0,
     "part_pick": 90.0,
     "delegate": 240.0,
+    # Pressing Rebuild runs FreeCAD and the test inside the call; the other controls return at once.
+    "ui_control": 400.0,
     "ui_point_at": 10.0,
     "ui_draw": 10.0,
     "mascot_say": 10.0,

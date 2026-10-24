@@ -169,6 +169,7 @@ export default function SidebarChat() {
         </div>
         <button
           onClick={() => setVoiceOn(!voiceOn)}
+          data-control="setting:voice"
           className={`rounded-full p-2 transition-colors hover:bg-tile ${voiceOn ? "text-accent" : "text-faint hover:text-ink-2"}`}
           title={voiceOn ? "Mechanic is speaking" : "Mechanic is muted"}
           aria-label={voiceOn ? "Mute Mechanic" : "Let Mechanic speak"}

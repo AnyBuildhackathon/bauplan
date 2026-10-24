@@ -217,3 +217,18 @@
     scrollbar-color: var(--color-track) transparent;
   }
 }
+
+/* Mechanic presses a control (PointerLayer): one ring spreads from the arrow tip. */
+.pilot-press .pilot-ring {
+  animation: pilot-ring 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes pilot-ring {
+  from {
+    opacity: 0.9;
+    transform: scale(0.35);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
