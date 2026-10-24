@@ -34,8 +34,8 @@ from pai_agent.tools.jamie import init_timeline
 WEB_DIR = REPO_ROOT / "web" / "public" / "community"
 # Renders the web app already ships; the other seeds copy theirs next to feed.json.
 WEB_RENDERS = {
-    "micro-drone": "/models/hero-drone.png",
-    "robot-gripper": "/models/robot-gripper.png",
+    "micro-drone": "/models/hero-drone-thumb.jpg",
+    "robot-gripper": "/models/robot-gripper-thumb.jpg",
 }
 
 SEEDS = [
