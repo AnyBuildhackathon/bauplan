@@ -208,7 +208,7 @@ export function SimScene({
               <torusGeometry args={[0.22, 0.004, 8, 64]} />
               <meshBasicMaterial color="#1f1f1f" transparent opacity={0.35} />
             </mesh>
-            <LabelSprite text="Ziel 50 cm" position={[-0.22, 0.07, 0]} />
+            <LabelSprite text="Target 50 cm" position={[-0.22, 0.07, 0]} />
           </group>
         )}
         <Line points={path} color={color} lineWidth={3} transparent opacity={0.9} />

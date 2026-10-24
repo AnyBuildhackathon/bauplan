@@ -1,327 +1,202 @@
-"""Isaac Lab and Isaac Sim over SSH. Offline runs serve agent/runs/fallback."""
+"""Bounded, isolated Isaac jobs over SSH, with explicit recorded provenance."""
 
 from __future__ import annotations
 
 import asyncio
 import json
+import math
 import os
 import re
 import subprocess
+import uuid
 from pathlib import Path
 
 from pai_agent.context import Ctx
-from pai_agent.env import pace_seconds
-from pai_agent.paths import FALLBACK_DIR, FALLBACK_TRAINING
+from pai_agent.paths import FALLBACK_DIR, REPO_ROOT
+from pai_agent.tools.usd import export_product
 
-_REWARD = re.compile(
-    r"(?:Mean reward|mean_reward|Episode_Reward/mean)[^\d\-]*(-?\d+(?:\.\d+)?)",
-    re.IGNORECASE,
-)
-_ITERATION = re.compile(r"(?:Iteration|iteration)\s*[:= ]\s*(\d+)")
+TASK = "Isaac-Quadcopter-Direct-v0"
+_RUNNER = REPO_ROOT / "runpod/isaac_job.py"
 
 
-def _configured() -> bool:
-    return bool(os.environ.get("RUNPOD_SSH_HOST", "").strip())
+def ssh_setting(name: str, default: str = "") -> str:
+    """Provider-neutral settings, with the original RunPod variables as aliases."""
+    return (os.environ.get("ISAAC_SSH_" + name) or os.environ.get("RUNPOD_SSH_" + name) or default).strip()
 
 
-def _ssh_base() -> list[str]:
-    host = os.environ["RUNPOD_SSH_HOST"].strip()
-    port = os.environ.get("RUNPOD_SSH_PORT", "").strip() or "22"
-    user = os.environ.get("RUNPOD_SSH_USER", "").strip() or "root"
-    key = os.environ.get("RUNPOD_SSH_KEY", "").strip()
-    command = [
-        "ssh",
-        "-o",
-        "BatchMode=yes",
-        "-o",
-        "StrictHostKeyChecking=accept-new",
-        "-o",
-        "ConnectTimeout=8",
-        "-p",
-        port,
-    ]
-    if key:
-        command.extend(["-i", key])
-    command.append(user + "@" + host)
-    return command
+def _number(value, low: float, high: float, name: str) -> float:
+    number = float(value)
+    if not math.isfinite(number) or not low <= number <= high:
+        raise ValueError(f"{name} must be between {low:g} and {high:g}.")
+    return number
 
 
-def _scp_base() -> list[str]:
-    port = os.environ.get("RUNPOD_SSH_PORT", "").strip() or "22"
-    key = os.environ.get("RUNPOD_SSH_KEY", "").strip()
-    command = ["scp", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-P", port]
-    if key:
-        command.extend(["-i", key])
-    return command
+def _parameters(mode: str, args: dict) -> dict:
+    if mode == "train":
+        return {"task": TASK, "iterations": int(_number(args.get("iterations", 100), 1, 1000, "iterations")),
+                "num_envs": int(_number(args.get("num_envs", 64), 1, 256, "num_envs"))}
+    scenario = args.get("scenario", "wind")
+    if scenario not in {"wind", "payload", "hover"}:
+        raise ValueError("scenario must be wind, payload or hover.")
+    return {"scenario": scenario,
+            "wind_m_s": _number(args.get("wind_m_s", 6 if scenario == "wind" else 0), 0, 20, "wind_m_s"),
+            "payload_g": _number(args.get("payload_g", 10 if scenario == "payload" else 0), 0, 500, "payload_g"),
+            "duration_s": _number(args.get("duration_s", 8), 2, 20, "duration_s")}
 
 
-def _remote(path: str) -> str:
-    user = os.environ.get("RUNPOD_SSH_USER", "").strip() or "root"
-    host = os.environ["RUNPOD_SSH_HOST"].strip()
-    return user + "@" + host + ":" + path
+def _connection() -> tuple[list[str], list[str], str]:
+    host = ssh_setting("HOST")
+    user = ssh_setting("USER", "root")
+    port = ssh_setting("PORT", "22")
+    if not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9.-]*", host) or not re.fullmatch(r"[a-zA-Z_][a-zA-Z0-9_-]*", user):
+        raise ValueError("Invalid GPU SSH host or user.")
+    _number(port, 1, 65535, "SSH port")
+    if not port.isdigit():
+        raise ValueError("SSH port must be an integer.")
+    key = str(Path(ssh_setting("KEY", "~/.ssh/id_ed25519")).expanduser())
+    options = ["-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new", "-o", "ConnectTimeout=8",
+               "-o", "ServerAliveInterval=10", "-o", "ServerAliveCountMax=2", "-i", key]
+    target = user + "@" + host
+    return ["ssh", *options, "-p", port, target], ["scp", *options, "-P", port], target
 
 
-def _run(command: list[str], script: str, timeout: float) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        command,
-        input=script,
-        text=True,
-        capture_output=True,
-        timeout=timeout,
-        check=False,
+async def _command(command: list[str], timeout: float, script: str | None = None) -> None:
+    process = await asyncio.create_subprocess_exec(
+        *command, stdin=asyncio.subprocess.PIPE if script is not None else asyncio.subprocess.DEVNULL,
+        stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL,
     )
-
-
-def _load_fallback() -> dict | None:
-    if not FALLBACK_TRAINING.is_file():
-        return None
-    payload = json.loads(FALLBACK_TRAINING.read_text(encoding="utf-8"))
-    video_name = str(payload.get("video") or "")
-    video_path = FALLBACK_DIR / video_name if video_name else None
-    video_url = None
-    if video_path is not None and video_path.is_file():
-        video_url = "/files/fallback/hover.mp4"
-    return {
-        "curve": payload.get("curve") or [],
-        "video_url": video_url,
-        "task": payload.get("task") or "Isaac-Quadcopter-Direct-v0",
-    }
-
-
-async def _emit_curve(ctx: Ctx, status: str, curve: list, video_url: str | None, final: bool) -> None:
-    step = curve[-1][0] if curve else 0
-    reward = curve[-1][1] if curve else 0
-    await ctx.emit(
-        {
-            "type": "training",
-            "status": status,
-            "step": step,
-            "reward": reward,
-            "curve": curve if final else curve,
-            "video_url": video_url if final else None,
-        }
-    )
-
-
-async def _serve_fallback(ctx: Ctx, detail: str) -> dict:
-    fallback = _load_fallback()
-    if fallback is None:
-        await ctx.emit(
-            {
-                "type": "training",
-                "status": "offline",
-                "step": 0,
-                "reward": 0,
-                "curve": [],
-                "video_url": None,
-            }
-        )
-        return {
-            "ok": True,
-            "status": "offline",
-            "served": False,
-            "detail": detail + " Kein Fallback unter agent/runs/fallback.",
-        }
-    curve = fallback["curve"]
-    paced = curve if len(curve) <= 6 else curve[:: max(1, len(curve) // 6)]
-    if curve and paced[-1] != curve[-1]:
-        paced = [*paced, curve[-1]]
-    for index, _point in enumerate(paced):
-        last = index == len(paced) - 1
-        prefix = curve if last else [item for item in curve if item[0] <= paced[index][0]]
-        await _emit_curve(
-            ctx,
-            "done" if last else "running",
-            prefix,
-            fallback["video_url"],
-            last,
-        )
-        delay = pace_seconds()
-        if delay:
-            await asyncio.sleep(delay)
-    final_reward = curve[-1][1] if curve else 0
-    return {
-        "ok": True,
-        "status": "offline",
-        "served": True,
-        "detail": detail,
-        "training_status": "done",
-        "final_reward": final_reward,
-        "video_url": fallback["video_url"],
-        "task": fallback["task"],
-    }
-
-
-def _parse_curve(log_text: str) -> list[list[float]]:
-    iterations = [int(match) for match in _ITERATION.findall(log_text)]
-    rewards = [float(match) for match in _REWARD.findall(log_text)]
-    curve = []
-    for index, reward in enumerate(rewards):
-        step = iterations[index] if index < len(iterations) else index * 10
-        curve.append([step, round(reward, 4)])
-    return curve
-
-
-def _start_script(job_id: str) -> str:
-    return f"""
-set -eu
-RUN="$HOME/pai-runs/{job_id}"
-mkdir -p "$RUN"
-cd "$HOME/IsaacLab"
-export OMNI_KIT_ACCEPT_EULA=YES
-nohup uv run --extra isaacsim isaaclab train \\
-  --rl_library rsl_rl \\
-  --task Isaac-Quadcopter-Direct-v0 \\
-  --headless \\
-  --video \\
-  --video_length 200 \\
-  > "$RUN/train.log" 2>&1 < /dev/null &
-echo $! > "$RUN/pid"
-echo "$RUN"
-"""
-
-
-def _status_script(job_id: str) -> str:
-    return f"""
-set -eu
-RUN="$HOME/pai-runs/{job_id}"
-if [ ! -f "$RUN/pid" ]; then
-  echo PAI_STATUS missing
-  exit 0
-fi
-pid=$(cat "$RUN/pid")
-if kill -0 "$pid" 2>/dev/null; then
-  echo PAI_STATUS running
-else
-  echo PAI_STATUS exited
-fi
-echo PAI_LOG_BEGIN
-tail -n 80 "$RUN/train.log" 2>/dev/null || true
-echo PAI_LOG_END
-echo PAI_VIDEO_BEGIN
-find "$HOME/IsaacLab/logs" "$RUN" -name '*.mp4' -type f 2>/dev/null | head -n 5
-echo PAI_VIDEO_END
-"""
-
-
-async def isaac_lab_train(ctx: Ctx, args: dict) -> dict:
-    del args
-    if not _configured():
-        return await _serve_fallback(
-            ctx,
-            "RunPod ist nicht konfiguriert. Fallback-Lauf wird abgespielt.",
-        )
-    job_id = os.urandom(6).hex()
     try:
-        completed = _run(_ssh_base() + ["bash", "-s"], _start_script(job_id), timeout=25)
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        return await _serve_fallback(ctx, "SSH zum Pod ist fehlgeschlagen (" + str(exc) + ").")
-    if completed.returncode != 0:
-        tail = (completed.stderr or completed.stdout or "").strip()[-400:]
-        return await _serve_fallback(ctx, "Der Pod hat den Job nicht gestartet. " + tail)
+        await asyncio.wait_for(process.communicate(script.encode() if script is not None else None), timeout)
+        if process.returncode:
+            raise RuntimeError(f"{Path(command[0]).name} failed (exit {process.returncode}). Check pod setup and job logs.")
+    except BaseException:
+        if process.returncode is None:
+            process.kill()
+        await process.wait()
+        raise
+
+
+async def _fallback(ctx: Ctx, mode: str, requested: dict, reason: str) -> dict:
+    fixture = json.loads((FALLBACK_DIR / "omniverse.json").read_text(encoding="utf-8"))[mode]
+    result = {**fixture, "type": "omniverse", "mode": mode, "status": "recorded", "source": "recorded",
+              "requested": requested, "detail": reason + " Recorded illustrative demo; no new GPU measurement.",
+              "video_url": "/files/fallback/omniverse.mp4", "json_url": "/files/fallback/omniverse.json"}
+    ctx.state.omniverse_result = result
+    await ctx.emit(result)
+    return {"ok": True, **result}
+
+
+def _validate_result(result: dict, mode: str, directory: Path) -> None:
+    if not isinstance(result, dict) or result.get("mode") != mode or result.get("source") != "live" or result.get("status") != "done":
+        raise ValueError("The pod returned an invalid job result.")
+    if not isinstance(result.get("metrics"), dict) or not result["metrics"]:
+        raise ValueError("The pod returned no measured values.")
+    required = {"final_reward", "iterations", "parallel_envs"} if mode == "train" else {"hover_rmse_m", "max_tilt_deg", "max_drift_m"}
+    if not required.issubset(result["metrics"]) or (mode == "test" and not isinstance(result.get("passed"), bool)):
+        raise ValueError("The pod returned an incomplete result.")
+    if mode == "train" and not result.get("curve"):
+        raise ValueError("The pod returned no learning curve.")
+    curve = result.get("curve", [])
+    if not isinstance(curve, list) or any(
+        not isinstance(point, list) or len(point) != 2
+        or any(not isinstance(value, (int, float)) or not math.isfinite(value) for value in point)
+        for point in curve
+    ):
+        raise ValueError("The pod returned an invalid learning curve.")
+    for value in result["metrics"].values():
+        if not isinstance(value, (int, float)) or not math.isfinite(value):
+            raise ValueError("The pod returned invalid measured values.")
+    video = directory / "result.mp4"
+    if not video.is_file() or video.stat().st_size < 32:
+        raise ValueError("The pod returned no valid MP4 recording.")
+    with video.open("rb") as handle:
+        if b"ftyp" not in handle.read(32):
+            raise ValueError("The pod returned no valid MP4 recording.")
+
+
+async def _job(ctx: Ctx, mode: str, args: dict) -> dict:
+    if ctx.state.product != "drone" or (ctx.state.stl_path and Path(ctx.state.stl_path).name.startswith("part-")):
+        message = "Omniverse hover tests and Crazyflie training support the drone only. Use simulate_grip for the gripper lift-and-shake test."
+        return {"ok": False, "error": message, "detail": message}
+    try:
+        params = _parameters(mode, args)
+    except (ValueError, TypeError, OverflowError) as exc:
+        return {"ok": False, "error": str(exc), "detail": str(exc)}
+    if not ssh_setting("HOST"):
+        return await _fallback(ctx, mode, params, "Waiting for pod: GPU SSH is not configured.")
+    job_id = uuid.uuid4().hex[:12]
+    directory = ctx.state.directory / ("isaac-" + job_id)
+    directory.mkdir(parents=True)
+    remote = "/tmp/anybuild-" + job_id
     ctx.state.isaac_job_id = job_id
-    await ctx.emit(
-        {
-            "type": "training",
-            "status": "queued",
-            "step": 0,
-            "reward": 0,
-            "curve": [],
-            "video_url": None,
-        }
-    )
-    detail = "Job " + job_id + " auf dem Pod gestartet"
-    return {
-        "ok": True,
-        "status": "ok",
-        "served": False,
-        "detail": detail,
-        "job_id": job_id,
-        "training_status": "queued",
-    }
+    running = {"type": "omniverse", "mode": mode, "status": "running", "source": "live", "requested": params,
+               "stage": "export", "detail": "Exporting the current product to USD with per-part masses.",
+               "metrics": {}, "curve": [], "video_url": None, "json_url": None}
+    ctx.state.omniverse_result = running
+    await ctx.emit(running)
+
+    async def progress(stage: str, detail: str) -> None:
+        event = {**running, "stage": stage, "detail": detail}
+        ctx.state.omniverse_result = event
+        await ctx.emit(event)
+
+    try:
+        ssh, scp, target = _connection()
+        spec = await asyncio.to_thread(export_product, ctx.state, directory)
+        request = {"mode": mode, "parameters": params, "product": spec}
+        (directory / "request.json").write_text(json.dumps(request), encoding="utf-8")
+        seconds = int(_number(os.environ.get("ISAAC_TIMEOUT_S", 900 if mode == "train" else 300), 30, 1800, "ISAAC_TIMEOUT_S"))
+        await progress("upload", "Uploading the USD product to the GPU host over SSH.")
+        await _command([*ssh, "bash", "-s"], 15, f"set -eu\nmkdir -p {remote}\n")
+        inputs = [str(directory / name) for name in ("request.json", "product.usda", "assembly.usdc", "assembly.json")]
+        await _command([*scp, *inputs, str(_RUNNER), target + ":" + remote + "/"], 60)
+        await progress("execute", f"Running headless {'reference training' if mode == 'train' else 'product physics'} on the GPU. Deadline: {seconds} seconds.")
+        # timeout also bounds the remote process if SSH disconnects or the local task is cancelled.
+        script = f'''set -eu
+export OMNI_KIT_ACCEPT_EULA=YES
+export ACCEPT_EULA=Y
+cd {remote}
+test -x "$HOME/.venvs/anybuild-isaac/bin/python" || {{ echo "Run runpod/setup.sh first" >&2; exit 2; }}
+timeout --signal=TERM --kill-after=15s {seconds}s "$HOME/.venvs/anybuild-isaac/bin/python" isaac_job.py > job.log 2>&1
+'''
+        await _command([*ssh, "bash", "-s"], seconds + 30, script)
+        await progress("download", "Downloading the completed MP4 and measured result JSON.")
+        await _command([*scp, target + ":" + remote + "/result.json", target + ":" + remote + "/result.mp4", str(directory) + "/"], 60)
+        result = json.loads((directory / "result.json").read_text(encoding="utf-8"))
+        _validate_result(result, mode, directory)
+        # Serve flat, session-scoped artifact paths using the existing file endpoint.
+        for suffix in ("json", "mp4"):
+            (directory / ("result." + suffix)).replace(ctx.state.directory / (job_id + "." + suffix))
+        result.update({"type": "omniverse", "requested": params, "job_id": job_id,
+                       "video_url": f"/files/{ctx.state.session_id}/{job_id}.mp4",
+                       "json_url": f"/files/{ctx.state.session_id}/{job_id}.json"})
+        ctx.state.omniverse_result = result
+        if mode == "train":
+            ctx.state.training_video = str(ctx.state.directory / (job_id + ".mp4"))
+        await ctx.emit(result)
+        return {"ok": True, **result}
+    except (TimeoutError, OSError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
+        reason = "GPU job timed out." if isinstance(exc, TimeoutError) else str(exc)
+        return await _fallback(ctx, mode, params, reason + " Job " + job_id + ".")
+
+
+async def isaac_test(ctx: Ctx, args: dict) -> dict:
+    return await _job(ctx, "test", args)
+
+
+async def isaac_train(ctx: Ctx, args: dict) -> dict:
+    return await _job(ctx, "train", args)
+
+
+# Existing clients retain their tool names, but now receive completed artifacts.
+isaac_lab_train = isaac_train
+isaac_sim_render = isaac_test
 
 
 async def isaac_lab_status(ctx: Ctx, args: dict) -> dict:
-    job_id = str(args.get("job_id") or ctx.state.isaac_job_id or "").strip()
-    if not _configured():
-        return await _serve_fallback(ctx, "RunPod ist nicht konfiguriert.")
-    if not re.fullmatch(r"[a-f0-9]+", job_id):
-        message = "Keine gültige job_id."
-        return {"ok": False, "error": message, "detail": message}
-    try:
-        completed = _run(_ssh_base() + ["bash", "-s"], _status_script(job_id), timeout=25)
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        return {"ok": False, "status": "error", "error": str(exc), "detail": str(exc)}
-    text = completed.stdout or ""
-    if "PAI_STATUS missing" in text:
-        message = "Job " + job_id + " liegt nicht auf dem Pod."
-        return {"ok": False, "error": message, "detail": message}
-    running = "PAI_STATUS running" in text
-    log = _between(text, "PAI_LOG_BEGIN", "PAI_LOG_END")
-    curve = _parse_curve(log)
-    videos = [
-        line.strip()
-        for line in _between(text, "PAI_VIDEO_BEGIN", "PAI_VIDEO_END").splitlines()
-        if line.strip().endswith(".mp4")
-    ]
-    video_url = None
-    if videos and not running:
-        local_video = _copy_video(videos[0], ctx.state.directory, job_id)
-        if local_video is not None:
-            ctx.state.training_video = str(local_video)
-            video_url = "/files/" + ctx.state.session_id + "/" + local_video.name
-    status = "running" if running else "done"
-    step = curve[-1][0] if curve else 0
-    reward = curve[-1][1] if curve else 0
-    await ctx.emit(
-        {
-            "type": "training",
-            "status": status,
-            "step": step,
-            "reward": reward,
-            "curve": curve,
-            "video_url": video_url,
-        }
-    )
-    detail = "Job " + job_id + " " + status
-    return {
-        "ok": True,
-        "status": "ok",
-        "detail": detail,
-        "job_id": job_id,
-        "training_status": status,
-        "final_reward": reward,
-        "video_url": video_url,
-    }
-
-
-async def isaac_sim_render(ctx: Ctx, args: dict) -> dict:
-    del ctx, args
-    if not _configured():
-        return {
-            "ok": True,
-            "status": "offline",
-            "detail": "Isaac Sim ist offline. RUNPOD_SSH_HOST fehlt, und auf dem Mac liegt keine RTX.",
-        }
-    return {
-        "ok": True,
-        "status": "offline",
-        "detail": "Der Pod ist gesetzt, der Render-Kanal schreibt das Video über isaac_lab_train --video.",
-    }
-
-
-def _between(text: str, start: str, end: str) -> str:
-    if start not in text or end not in text:
-        return ""
-    return text.split(start, 1)[1].split(end, 1)[0]
-
-
-def _copy_video(remote_path: str, directory: Path, job_id: str) -> Path | None:
-    if not re.fullmatch(r"[A-Za-z0-9_./+-]+", remote_path):
-        return None
-    local = directory / (job_id + ".mp4")
-    command = _scp_base() + [_remote(remote_path), str(local)]
-    completed = subprocess.run(command, capture_output=True, text=True, timeout=60, check=False)
-    if completed.returncode != 0 or not local.is_file():
-        return None
-    return local
+    del args
+    result = ctx.state.omniverse_result
+    if result is None:
+        return {"ok": True, "status": "offline", "detail": "No Omniverse job has run in this session."}
+    await ctx.emit(result)
+    return {"ok": True, **result}

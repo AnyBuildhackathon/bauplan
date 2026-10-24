@@ -7,6 +7,7 @@ import { parseEvent, type QuestionEvent } from "./types";
 import { apiUrl } from "../lib/api";
 import { useUi } from "../lib/ui";
 import { loadVoiceCapabilities } from "../lib/voice";
+import { recordedOmniverse } from "./omniverse";
 
 export type SourceMode = "live" | "demo";
 export type LiveStatus = "idle" | "connecting" | "open" | "error";
@@ -232,6 +233,19 @@ export const useSource = create<SourceState>((set, get) => {
       if (!trimmed) return;
       const { mode, demo } = get();
       if (mode === "demo") {
+        const omniverse = await recordedOmniverse(trimmed);
+        if (omniverse) {
+          const session = useSession.getState();
+          session.addLocalUserMessage(trimmed);
+          if (session.product !== "drone" || session.cad?.script_url) {
+            session.apply({ type: "chat", role: "agent", text: "Omniverse hover tests and Crazyflie training support the drone only. Use the Simulation tab for the gripper lift-and-shake test." });
+            return;
+          }
+          session.apply(omniverse);
+          session.apply({ type: "chat", role: "agent", text: "Here is the recorded Omniverse demo. Its values and learning curve are illustrative; this request has not been simulated." });
+          useUi.getState().setTab("omniverse");
+          return;
+        }
         const open = Object.values(useSession.getState().questions).find((q) => q.status === "open");
         const answer = open ? matchAnswer(trimmed, open) : null;
         if (open && answer) {

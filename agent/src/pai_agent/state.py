@@ -22,6 +22,7 @@ class BuildState:
     bom: dict | None = None
     isaac_job_id: str | None = None
     training_video: str | None = None
+    omniverse_result: dict | None = None
     started: bool = False
     finished: bool = False
     # Jamie: the meetings on the timeline, the versions built from them, and the order tasks.

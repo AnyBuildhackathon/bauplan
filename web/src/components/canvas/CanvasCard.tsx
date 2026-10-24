@@ -1,7 +1,7 @@
 // The big canvas in the middle: Modell (live 3D or the Blender render), CAD and
 // Simulation, with Bolzen's spoken line at the bottom.
 import { useEffect, useState } from "react";
-import { Box, Camera, DraftingCompass, Rocket } from "lucide-react";
+import { Box, Camera, Cloud, DraftingCompass, Rocket } from "lucide-react";
 import { useSession } from "../../events/store";
 import { useUi, type CanvasTab, type ModelLook } from "../../lib/ui";
 import { MascotHead } from "../mascot/Mascot";
@@ -11,11 +11,13 @@ import { CadScene, CadView } from "./CadView";
 import { RenderGallery } from "./RenderGallery";
 import { ModelScene } from "./Scenes";
 import { SimView } from "./SimView";
+import { OmniverseView } from "./OmniverseView";
 
 const TABS: { value: CanvasTab; label: string; icon: typeof Box }[] = [
-  { value: "modell", label: "Modell", icon: Box },
+  { value: "modell", label: "Model", icon: Box },
   { value: "cad", label: "CAD", icon: DraftingCompass },
   { value: "simulation", label: "Simulation", icon: Rocket },
+  { value: "omniverse", label: "Omniverse", icon: Cloud },
 ];
 
 /** Bolzen's current line, as a caption at the bottom of the canvas. */
@@ -68,16 +70,26 @@ export function CanvasCard() {
   const cad = useSession((s) => s.cad);
   const renders = useSession((s) => s.renders.length);
   const product = useSession((s) => s.product);
-  const badges: Partial<Record<CanvasTab, boolean>> = { cad: !!cad, simulation: runs > 0 };
+  const omniverse = useSession((s) => s.omniverse);
+  const supportsOmniverse = product === "drone" && !cad?.script_url;
+  useEffect(() => {
+    if (supportsOmniverse && omniverse) setTab("omniverse");
+  }, [omniverse, supportsOmniverse, setTab]);
+  useEffect(() => {
+    if (!supportsOmniverse && tab === "omniverse") setTab("simulation");
+  }, [supportsOmniverse, tab, setTab]);
+  const tabs = TABS.filter((t) => t.value !== "omniverse" || supportsOmniverse);
+  const badges: Partial<Record<CanvasTab, boolean>> = { cad: !!cad, simulation: runs > 0, omniverse: !!omniverse };
   const showRender = tab === "modell" && look === "render";
 
   return (
     <div className="card flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="flex shrink-0 items-center gap-3 px-4 pt-3.5 pb-3">
+      <div className="flex shrink-0 flex-wrap items-center gap-3 px-4 pt-3.5 pb-3">
         <Segmented
+          className="max-w-full flex-wrap"
           value={tab}
           onChange={setTab}
-          options={TABS.map((t) => ({
+          options={tabs.map((t) => ({
             value: t.value,
             target: `tab:${t.value}`,
             label: (
@@ -123,7 +135,8 @@ export function CanvasCard() {
         {tab === "modell" && (showRender ? <RenderGallery /> : product === "drone" ? <ModelScene look="modell" /> : <PartModel />)}
         {tab === "cad" && <CadView />}
         {tab === "simulation" && <SimView />}
-        {tab !== "cad" && <SpokenLine lifted={(tab === "simulation" && runs > 0) || (showRender && renders > 1)} />}
+        {tab === "omniverse" && supportsOmniverse && <OmniverseView />}
+        {tab !== "cad" && tab !== "omniverse" && <SpokenLine lifted={(tab === "simulation" && runs > 0) || (showRender && renders > 1)} />}
       </div>
     </div>
   );

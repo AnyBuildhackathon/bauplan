@@ -127,6 +127,24 @@ export interface TrainingEvent {
   video_url: string | null;
 }
 
+export interface OmniverseEvent {
+  type: "omniverse";
+  mode: "test" | "train";
+  status: "running" | "done" | "recorded";
+  source: "live" | "recorded";
+  stage?: "export" | "upload" | "execute" | "download";
+  engine?: string;
+  detail: string;
+  requested: Record<string, string | number>;
+  parameters?: Record<string, string | number>;
+  metrics: Record<string, number>;
+  curve: [number, number][];
+  video_url: string | null;
+  json_url: string | null;
+  passed?: boolean;
+  product_tested?: boolean;
+}
+
 export interface CadNode {
   id: string;
   label: string;
@@ -281,6 +299,7 @@ export type AgentEvent =
   | JamieEvent
   | PointEvent
   | TrainingEvent
+  | OmniverseEvent
   | CadEvent
   | RenderEvent
   | MeetingEvent
@@ -305,6 +324,7 @@ const EVENT_TYPES = new Set<AgentEvent["type"]>([
   "jamie",
   "point",
   "training",
+  "omniverse",
   "cad",
   "render",
   "meeting",

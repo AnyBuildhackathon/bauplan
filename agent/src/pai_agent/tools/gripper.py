@@ -56,6 +56,10 @@ async def product_brief(ctx: Ctx, args: dict) -> dict:
     if product not in PRODUCTS:
         return _fail("product must be one of: " + ", ".join(PRODUCTS) + ".")
     state = ctx.state
+    if state.product != product:
+        state.omniverse_result = None
+        state.isaac_job_id = None
+        state.training_video = None
     state.product = product
     await ctx.emit({"type": "product", "id": product, "label": PRODUCTS[product]})
     if product == "drone":

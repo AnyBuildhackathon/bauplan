@@ -22,6 +22,7 @@ import {
   type StepStatus,
   type ToolStatus,
   type TrainingEvent,
+  type OmniverseEvent,
 } from "./types";
 
 export const STEP_LABELS: Record<StepId, string> = {
@@ -123,6 +124,7 @@ export interface SessionState {
   bom: BomEvent | null;
   jamie: JamieEntry[];
   training: (TrainingEvent & { at: number }) | null;
+  omniverse: OmniverseEvent | null;
   /** Latest CAD part, and how many `cad` events arrived (a new one answers a parameter change). */
   cad: (CadEvent & { at: number; n: number }) | null;
   renders: (RenderEvent & { id: string; at: number })[];
@@ -182,6 +184,9 @@ const TOOL_ALIASES: Record<string, string> = {
   simulate_drone: "MuJoCo",
   blender_render: "Blender",
   isaac_sim_render: "Isaac Sim",
+  isaac_test: "Isaac Sim",
+  isaac_train: "Isaac Lab",
+  product_usd: "Blender",
   isaac_lab_train: "Isaac Lab",
   isaac_lab_status: "Isaac Lab",
   parts_search: "Teile",
@@ -241,6 +246,7 @@ function emptyState() {
     bom: null as BomEvent | null,
     jamie: [] as JamieEntry[],
     training: null as SessionState["training"],
+    omniverse: null as OmniverseEvent | null,
     cad: null as SessionState["cad"],
     renders: [] as SessionState["renders"],
     meetings: [] as MeetingEvent[],
@@ -417,6 +423,7 @@ export const useSession = create<SessionState>((set, get) => ({
           product: ev.id,
           requirements: [],
           metrics: null,
+          omniverse: null,
           runs: [],
           draws: [],
           bom: null,
@@ -437,6 +444,8 @@ export const useSession = create<SessionState>((set, get) => ({
         }
         return set({ log, training: { ...ev, at }, chat });
       }
+      case "omniverse":
+        return set({ log, omniverse: ev });
     }
   },
 

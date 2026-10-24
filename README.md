@@ -159,13 +159,12 @@ Shell variables override values in `.env`.
 | `RUNPOD_SSH_USER` | SSH username for RunPod pod, defaulting to `root`. |
 | `RUNPOD_SSH_KEY` | File path to private SSH key for RunPod access. |
 
-## RunPod GPU Cloud
+## Omniverse GPU experiments
 
-NVIDIA Isaac Sim and Isaac Lab execute on an RTX 4090 cloud pod rather than the local machine.
-Setup instructions and verification steps are documented in `runpod/setup.sh`.
-The script requires `RUN_ON_POD=1` and does not run locally.
-Without a remote host configured, `isaac_lab_train` replays training curves from `agent/runs/fallback/training.json`.
-A recorded run replaces this file and, when present, `agent/runs/fallback/hover.mp4`.
+For drones, the **Omniverse** tab runs wind, payload and hover experiments in NVIDIA Isaac Sim and reference Crazyflie training in Isaac Lab over SSH.
+Blender exports the current CAD assembly as USD with per-part masses.
+Without a working GPU pod, the app plays a clearly labelled recorded demo with synthetic fixture values.
+See [Omniverse setup, tools, limitations and verification](docs/omniverse.md) for the full contract, including local ports 8113 and 5193.
 
 ## Smoke Test
 
