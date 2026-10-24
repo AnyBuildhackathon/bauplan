@@ -284,7 +284,7 @@ export default function SidebarChat() {
         {showScrollButton && !isEmpty && (
           <button
             onClick={() => scrollToBottom()}
-            className="absolute bottom-[112px] left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-card text-muted shadow-[var(--shadow-pill)] transition-colors hover:text-ink"
+            className="absolute bottom-[150px] left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-card text-muted shadow-[var(--shadow-pill)] transition-colors hover:text-ink"
             aria-label="Scroll to bottom"
           >
             <ArrowDown className="h-4 w-4" />
