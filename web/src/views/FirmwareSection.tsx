@@ -4,7 +4,7 @@ import { Cpu, Download } from "lucide-react";
 import { useSession } from "../events/store";
 import type { FirmwareEvent } from "../events/types";
 
-/** Downloads the file from the event itself, so it also works in the static demo without a backend. */
+/** Downloads the file from the event itself, so it does not need a second request. */
 function download(fw: FirmwareEvent) {
   const blob = new Blob([fw.content], { type: "text/plain;charset=utf-8" });
   const url = URL.createObjectURL(blob);

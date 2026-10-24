@@ -57,10 +57,3 @@ test("phone stand from scratch: the tap check fails, the fix makes it pass, a re
   await page.locator('[data-target~="look:render"]').first().dispatchEvent("click");
   await expect(page.getByText(/Studio|Recorded, Blender is offline/).first()).toBeVisible();
 });
-
-test("?demo plays the recording to the end at speed 4", async ({ page }) => {
-  test.setTimeout(120_000);
-  await page.goto("/?demo&mute&autoplay&speed=4");
-  await expect(timeline(page)).toContainText("v2", { timeout: 110_000 });
-  await expect(bomButton(page)).toContainText("€");
-});
