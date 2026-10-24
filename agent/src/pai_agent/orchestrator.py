@@ -12,6 +12,7 @@ from pai_agent import settings
 from pai_agent.env import claude_enabled
 from pai_agent.mock_categories import NAMES as CATEGORY_NAMES, RUNS as CATEGORY_RUNS, wants_category
 from pai_agent.mock_gripper import run_gripper_mock, wants_gripper
+from pai_agent.mock_lamp import run_lamp_mock, wants_lamp
 from pai_agent.mock_product import run_product_mock, wants_product
 from pai_agent.mock_story import run_mock, run_mock_followup, run_review
 from pai_agent.scene import STEPS
@@ -66,6 +67,8 @@ A reference build is a known product with its real parts (reference_load lists a
 use cad_update for dimensions, part_pick to swap a bought part, or product_spec with the revised spec for new parts or requirements
 (parts whose definition did not change keep their build); then rerun the checks, blender_render, bom_build and print_prep.
 Keep runs short: at most four printed parts unless the product really needs more.
+Every product, the drone and the gripper too: call safety_check right before bom_build (pass the user's request and any power details in context, add your own findings).
+Then say the top finding honestly in one sentence, as a hint and not legal advice, and apply its fix first when it changes the design (for example mains voltage inside a printed part).
 When the user uploaded a sketch, call sketch_to_spec first, say in one sentence what you read and what you guessed, then product_spec with that spec.
 
 The drone (a drone, or a Jamie meeting that ended). Jamie is the team's memory: every drone decision hangs on a sentence from a meeting.
@@ -142,6 +145,9 @@ async def run_prompt(ctx: Ctx, text: str, messages: list[dict], voice: bool = Fa
     if not claude_enabled():
         if wants_gripper(text) and not (ctx.state.product == "gripper" and ctx.state.finished):
             await run_gripper_mock(ctx, text)
+            return
+        if wants_lamp(text) and not (ctx.state.product == "generic" and (ctx.state.spec or {}).get("name") == "Desk lamp"):
+            await run_lamp_mock(ctx, text)
             return
         category = wants_category(text)
         if category and not (ctx.state.product == "generic" and ctx.state.finished and (ctx.state.spec or {}).get("name") == CATEGORY_NAMES[category]):

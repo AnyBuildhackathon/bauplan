@@ -51,6 +51,17 @@ async def _say(ctx: Ctx, state: str, say: str, chat: str | None = None) -> None:
     await ctx.chat("agent", chat or say)
 
 
+async def _safety(ctx: Ctx, context: str = "") -> dict:
+    """safety_check before the parts are ordered; Mechanic names the top finding as a hint."""
+
+    result = await _need(ctx, "safety_check", {"context": context} if context else {})
+    top = result.get("top")
+    if top:
+        mood = "besorgt" if top["severity"] == "danger" else "erklaert"
+        await _say(ctx, mood, top["title"] + ".", "Safety check before ordering: " + top["title"] + ". " + top["fix"] + " A hint, not legal advice; the card names the rule.")
+    return result
+
+
 def _numbers(metrics: dict) -> str:
     return (
         en(metrics["weight_g"], 1)
@@ -144,6 +155,7 @@ async def _build(ctx: Ctx, meeting_id: str, label: str) -> dict:
 
     await _beat()
     await ctx.step("stueckliste", "running")
+    await _safety(ctx)
     await _need(ctx, "bom_build", {})
     await call_tool(ctx, "print_prep", {"orientation": "as_modeled"})
     await _need(ctx, "build_guide", {"steps": mock_steps(ctx)})
