@@ -89,10 +89,10 @@ export default function SlashCommandMenu({ position, onSelect, onClose }: SlashC
         style={{ top: adjustedTop, left: position.left }}
       >
         <div className="px-3 py-2 text-xs font-medium text-faint uppercase tracking-wider">
-          Blöcke
+          Blocks
         </div>
         {filtered.length === 0 ? (
-          <div className="px-3 py-3 text-sm text-faint">Keine Treffer</div>
+          <div className="px-3 py-3 text-sm text-faint">No matches</div>
         ) : (
           filtered.map((option, i) => (
             <button

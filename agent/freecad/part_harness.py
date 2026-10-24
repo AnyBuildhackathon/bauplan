@@ -41,6 +41,20 @@ def _bbox(shape):
     return [round(v, 3) for v in (box.XMin, box.YMin, box.ZMin, box.XMax, box.YMax, box.ZMax)]
 
 
+def _center(shape):
+    """Volume centroid over the solids, the centre of mass for one uniform material."""
+
+    total = 0.0
+    sums = [0.0, 0.0, 0.0]
+    for solid in shape.Solids:
+        volume = float(solid.Volume)
+        point = solid.CenterOfMass
+        total += volume
+        for axis, value in enumerate((point.x, point.y, point.z)):
+            sums[axis] += value * volume
+    return [round(value / total, 3) for value in sums] if total > 0 else None
+
+
 def main():
     import builtins
     import math
@@ -83,6 +97,12 @@ def main():
             raise ValueError("parts[" + repr(name) + "] is not a FreeCAD shape.")
         if not shape.Solids:
             raise ValueError("parts[" + repr(name) + "] has no solid. Extrude faces or use makeBox/makeCylinder.")
+        if not shape.isValid():
+            # Booleans sometimes leave tiny gaps; a repaired copy is usually a clean solid again.
+            fixed = shape.copy()
+            fixed.fix(1e-7, 1e-7, 1e-7)
+            if fixed.isValid() and fixed.Solids:
+                shape = fixed
         volume = float(shape.Volume)
         if volume <= 0:
             raise ValueError("parts[" + repr(name) + "] has zero volume.")
@@ -98,6 +118,7 @@ def main():
                 "bbox_mm": _bbox(shape),
                 "valid": bool(shape.isValid()),
                 "solids": len(shape.Solids),
+                "com_mm": _center(shape),
                 "reference": name in reference,
                 "color": colors.get(name),
                 "material": materials.get(name),

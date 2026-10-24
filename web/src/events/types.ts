@@ -39,6 +39,8 @@ export interface RequirementEvent {
   meeting_title?: string;
   /** The earlier wording when a later meeting changed this requirement. */
   changed_from?: string | null;
+  /** The number the check found against the limit, e.g. "0.81 N, min. 0.75 N" (any product). */
+  detail?: string | null;
 }
 /** One key number as the backend wants it shown (products other than the drone send these). */
 export interface MetricCard {
@@ -50,6 +52,8 @@ export interface MetricCard {
   /** The limit line under the number, e.g. "min. 2 ×". */
   limit: string;
   ok: boolean;
+  /** The check behind this card has not run yet. */
+  pending?: boolean;
 }
 export interface MetricsEvent {
   type: "metrics";
@@ -68,19 +72,40 @@ export interface SimEvent {
   result: "pass" | "fail";
   summary: string;
   trajectory: TrajectorySample[];
-  /** "grip": a gripper lifts and shakes an object; trajectory z is the object's rise, `hand` the hand's. */
-  kind?: "hover" | "grip";
+  /** "grip": a gripper lifts and shakes an object; trajectory z is the object's rise, `hand` the hand's.
+   * "rigid": any assembly as one body in a push or drop test; `poses` drive its model. */
+  kind?: "hover" | "grip" | "rigid";
   hand?: [number, number][];
   object_width_mm?: number;
   payload_g?: number;
-  force_n?: number;
+  force_n?: number | null;
   slip_mm?: number;
+  /** rigid: push or drop. */
+  mode?: "push" | "drop";
+  /** rigid: [t, x, y, z, qw, qx, qy, qz] of the body frame, metres, z up. */
+  poses?: number[][];
+  /** rigid: [t, tilt in degrees]. */
+  tilt?: [number, number][];
+  /** rigid: the assembly model; the body frame is its frame shifted down by floor_mm. */
+  glb_url?: string;
+  floor_mm?: number;
+  bbox_mm?: number[];
+  /** rigid push: where it is pushed in the body frame (mm), the direction in plan view, and when. */
+  push_point_mm?: number[] | null;
+  push_dir?: number[] | null;
+  push_window_s?: number[] | null;
+  limit_deg?: number | null;
 }
 /** Which product this session builds. */
 export interface ProductEvent {
   type: "product";
-  id: "drone" | "gripper";
+  /** "drone", "gripper", or the slug of a product spec such as "phone-stand". */
+  id: string;
   label: string;
+  /** "generic" for a product built from a spec. */
+  kind?: "generic";
+  /** A spec's requirement ids; a revised spec drops the rows it no longer has. */
+  requirements?: string[];
 }
 export interface DrawEvent {
   type: "draw";
@@ -95,12 +120,28 @@ export interface BomItem {
   weight_g: number;
   shop: string;
   url: string;
+  /**
+   * Where the price comes from: "live" when a web search found a shop price, "catalog" (drone and gripper)
+   * or "sample" (spec products) for the catalog sample, "estimated" for an estimate. Older recordings omit it.
+   */
+  price_source?: "live" | "catalog" | "sample" | "estimated";
+  /** Shop price per piece in its own currency (live lines only). */
+  price?: number;
+  currency?: string;
+  availability?: "in_stock" | "out_of_stock" | "unknown";
+  pack_qty?: number;
+  catalog_price_eur?: number;
+  checked_at?: string;
+  /** The spec part this line belongs to (any product). */
+  category?: string;
 }
 export interface BomEvent {
   type: "bom";
   items: BomItem[];
   total_eur: number;
   stl_path: string;
+  /** "searching" while live prices load, then "live" or "catalog". */
+  prices?: "searching" | "live" | "catalog";
 }
 export interface MascotEvent {
   type: "mascot";
@@ -125,6 +166,57 @@ export interface TrainingEvent {
   reward: number;
   curve: [number, number][];
   video_url: string | null;
+  gains?: FirmwareGains;
+}
+/** One randomized world of a stress test. Drone and gripper worlds share the first fields. */
+export interface StressWorld {
+  i: number;
+  pass: boolean;
+  /** Drone: crashed, drifted, sagged. Gripper: dropped, slipped. "" when it survived. */
+  reason: string;
+  mass_pct: number;
+  /** Motor (drone) or servo (gripper) strength against the datasheet. */
+  motor_pct: number;
+  /** 1 is a perfect run, 0 or less a lost world. */
+  margin: number;
+  // Drone worlds.
+  gust_mps?: number;
+  downdraft_pct?: number;
+  /** Where the gust blows to, 0 is +x. */
+  gust_dir_deg?: number;
+  gust_start_s?: number;
+  gust_len_s?: number;
+  noise_cm?: number;
+  drift_m?: number;
+  low_z_m?: number;
+  // Gripper worlds.
+  friction_pct?: number;
+  shake_x?: number;
+  noise_pct?: number;
+  slip_mm?: number;
+}
+export interface StressEvent {
+  type: "stress";
+  run: number;
+  product: "drone" | "gripper";
+  status: "running" | "done" | "failed";
+  total: number;
+  done: number;
+  survived: number;
+  seed: number;
+  /** trained or default controller gains for the drone; design for the gripper. */
+  policy: "trained" | "default" | "design";
+  gains: Record<string, number>;
+  weight_g: number;
+  thrust_to_weight?: number;
+  payload_g?: number;
+  object_width_mm?: number;
+  force_n?: number;
+  safety_factor?: number;
+  worlds: StressWorld[];
+  worst: (StressWorld & { trajectory: TrajectorySample[]; hand?: [number, number][] }) | null;
+  weakest: string | null;
+  explanation: string;
 }
 
 export interface OmniverseEvent {
@@ -155,6 +247,8 @@ export interface CadParam {
   min: number;
   max: number;
   unit: string;
+  /** Display name; an assembly names the part, e.g. "Base plate · depth". */
+  label?: string;
 }
 /** A CAD part as FreeCAD or CadQuery built it. File URLs are served by the backend under /files/. */
 export interface CadEvent {
@@ -177,6 +271,8 @@ export interface CadEvent {
     /** true when Claude wrote the script, false for a library template. */
     generated: boolean;
   };
+  /** true for a whole assembled product: `part` then sums its printed parts. */
+  assembly?: boolean;
 }
 /** One Blender render. */
 export interface RenderEvent {
@@ -238,7 +334,7 @@ export interface VersionEvent {
   parts: Record<string, string>;
   diff: VersionDiff[];
   summary: string;
-  /** The note Bauplan wrote back to the meeting in Jamie. */
+  /** The note AnyBuild wrote back to the meeting in Jamie. */
   note?: string;
 }
 export interface PartWarning extends Quote {
@@ -278,12 +374,87 @@ export interface TaskItem {
   done: boolean;
   part_category: string;
 }
+/** One agent on the bench: the orchestrator, or a sub-agent it delegated a bounded job to. */
+export interface AgentRunEvent {
+  type: "agent";
+  id: string;
+  role: "orchestrator" | "cad" | "parts" | "checks" | "pricing";
+  label: string;
+  model: string;
+  model_label: string;
+  effort: string;
+  task: string;
+  status: "running" | "done" | "error";
+  /** Model calls so far. */
+  rounds: number;
+  input_tokens: number;
+  output_tokens: number;
+  cache_read_tokens: number;
+  cost_usd: number;
+  /** What it is doing now, or its report when done. */
+  summary: string;
+}
 export interface TasksEvent {
   type: "tasks";
   meeting_id: string;
   items: TaskItem[];
   /** true when the tasks live in Jamie, false for the local outbox. */
   live: boolean;
+}
+
+export interface BuildGuideStep {
+  n: number;
+  title: string;
+  instructions: string;
+  /** Scene part names to highlight, from the "Scene targets" list in docs/events.md. */
+  parts: string[];
+  tools: string[];
+  minutes: number;
+  /** Bill-of-materials names of those parts. */
+  items: string[];
+}
+export interface BuildGuideEvent {
+  type: "build_guide";
+  version: number;
+  steps: BuildGuideStep[];
+  total_minutes: number;
+}
+export interface WiringRow {
+  component: string;
+  connects_to: string;
+  pin: string;
+  wire: string;
+  note: string;
+}
+export type FirmwareGains = Record<"roll" | "pitch" | "yaw", { p: number; i: number; d: number; f: number }>;
+/** Firmware for the built product: a Betaflight CLI file or an Arduino sketch, plus the wiring table. */
+export interface FirmwareEvent {
+  type: "firmware";
+  kind: "betaflight" | "arduino";
+  product: string;
+  filename: string;
+  url: string;
+  /** The whole file, so the download also works in the static demo. */
+  content: string;
+  gains: FirmwareGains | null;
+  gains_source: "training" | "defaults" | "none";
+  explanation: string;
+  wiring: WiringRow[];
+}
+
+/**
+ * Mechanic's spoken line, streamed live: `delta` pieces while the fast model writes it,
+ * then `done` with the whole `text`. `kind` is `reply` (an answer to the person) or
+ * `update` (a build milestone). Never replayed on reconnect.
+ */
+export interface SayEvent {
+  type: "say";
+  id: string;
+  kind: "reply" | "update";
+  delta?: string;
+  text?: string;
+  done: boolean;
+  cancelled?: boolean;
 }
 
 export type AgentEvent =
@@ -300,6 +471,7 @@ export type AgentEvent =
   | PointEvent
   | TrainingEvent
   | OmniverseEvent
+  | StressEvent
   | CadEvent
   | RenderEvent
   | MeetingEvent
@@ -308,6 +480,10 @@ export type AgentEvent =
   | QuestionEvent
   | TasksEvent
   | ProductEvent
+  | BuildGuideEvent
+  | FirmwareEvent
+  | AgentRunEvent
+  | SayEvent
   | ResetEvent
   | ReplayedEvent;
 
@@ -325,6 +501,7 @@ const EVENT_TYPES = new Set<AgentEvent["type"]>([
   "point",
   "training",
   "omniverse",
+  "stress",
   "cad",
   "render",
   "meeting",
@@ -333,6 +510,10 @@ const EVENT_TYPES = new Set<AgentEvent["type"]>([
   "question",
   "tasks",
   "product",
+  "build_guide",
+  "firmware",
+  "agent",
+  "say",
   "reset",
   "replayed",
 ]);

@@ -33,25 +33,73 @@ Sample bodies are `agent/data/webhooks/meeting-ended.json` (kickoff) and `agent/
 
 `POST /api/answer` with `{"id": "...", "answer_id": "..."}` answers the open `question`.
 It is HTTP 409 when no such question is open.
-A `POST /api/prompt` while a question is open answers it when the text names an option's number ("fifteen", "15", "fünfzehn") or agrees ("yes", "agreed", "ja", "passt"), and returns `status: answered`.
+A `POST /api/prompt` while a question is open answers it when the text names an option's number ("fifteen", "15", "fünfzehn") or agrees ("yes", "ok", "agreed", "ja", "passt"), and returns `status: answered`.
 
 `POST /api/tasks/{id}` with `{"done": true}` ticks an order task as ordered and mirrors it to Jamie (`update_tasks`), then emits `tasks`.
 
 `POST /api/cad/params` recomputes the current frame and emits a new `cad` event.
 The body is either `{"name": "arm_length_mm", "value": 30}` or a flat object `{"arm_length_mm": 30, "thickness_mm": 2, "motor_spacing_mm": 6.6}`.
 Missing names keep the last value, or the defaults 36 mm, 2 mm, and 6.6 mm.
-A value outside the limits is HTTP 400 and does not emit `cad`; while Bolzen is building it is HTTP 409.
+A value outside the limits is HTTP 400 and does not emit `cad`; while Mechanic is building it is HTTP 409.
 
 When the newest CAD build is a generated part (`cad_part`), the same call reruns that part's script with the new value, no model call needed, and any name from its `params` works within its slider limits.
+For a product built from a spec, the slider names are `{part_id}.{param}` (such as `base.depth_mm`): that part is rebuilt from its script, the product is reassembled and every check that ran before runs again.
 For the gripper, `grip_calc` then runs again, so a longer finger shows up as a lower finger force.
 
 `POST /api/cad/open` opens the current part in the FreeCAD app.
 The response is `{"ok": true, "path": "frame.FCStd"}` when the app launches, or `{"ok": false, "detail": "..."}` when there is no part or no FreeCAD app.
 It prefers `frame.FCStd`, then STEP, then STL.
 
-`GET /api/voice` returns `{"stt": "reson8"|"browser", "tts": "elevenlabs"|"browser", "realtime_url": "...", "language": "de"}`.
+`GET /api/voice` returns `{"stt": "reson8"|"browser", "tts": "elevenlabs"|"browser", "realtime_url": "...", "turns_url": "...", "language": "en", "phrases": [...], "custom_model_id": null, "tts_sample_rate": 24000, "narrator": true}`.
+`turns_url` is Reson8's Turns endpoint for hands-free listening, `realtime_url` its Realtime endpoint for push-to-talk.
+`phrases` bias Reson8 toward our vocabulary (the `phrases` query parameter); a `custom_model_id` from `RESON8_CUSTOM_MODEL_ID` replaces them.
+`narrator` is `true` when `ANTHROPIC_API_KEY` is set: the backend then writes Mechanic's spoken lines as `say` events and the client does not read `mascot` lines aloud.
 `POST /api/voice/token` returns `{"access_token": "...", "expires_in": 600}`, a short-lived Reson8 token for the browser's WebSocket (subprotocols `["bearer", token]`), or HTTP 503 without `RESON8_API_KEY`.
-`POST /api/voice/speak` with `{"text": "..."}` returns `audio/mpeg` from ElevenLabs, or HTTP 503 without `ELEVENLABS_API_KEY`.
+`POST /api/voice/speak` with `{"text": "...", "previous_text": "..."}` streams ElevenLabs speech for one phrase as raw 16-bit little-endian mono PCM (`audio/pcm`, sample rate in `X-Sample-Rate`, 24000), or HTTP 503 without `ELEVENLABS_API_KEY`.
+`previous_text` is the phrase spoken just before, so one reply keeps a continuous intonation.
+`POST /api/voice/warm` opens the backend's Claude and ElevenLabs connections ahead of a reply; the client calls it when a spoken turn starts, and repeated calls within 20 seconds do nothing.
+
+### Library
+
+The library holds the reference builds and the projects users saved, for a library view to browse and rebuild.
+
+`GET /api/library` answers `{"ok": true, "items": [item, ...]}` in this order: the code references (the micro FPV drone first, the robot gripper second), the reference builds of the registry, then saved projects, newest first.
+Each item is:
+
+```json
+{
+  "id": "phone-stand",
+  "name": "Desk phone stand",
+  "summary": "Two PETG parts and four rubber feet; holds a 200 g phone at 65 degrees and takes a tap on the screen.",
+  "kind": "reference",
+  "source": "registry",
+  "product": "generic",
+  "printed": 2,
+  "bought": 1,
+  "requirements": 6,
+  "thumbnail_url": "/api/library/phone-stand/thumbnail",
+  "saved_at": "2026-10-24T13:02:11"
+}
+```
+
+`kind` is `reference` (a known product) or `project` (saved from a session).
+`source` is `code` (built by its own flow: the drone from the drone catalog, the gripper from the gripper flow, so their parts are never copied), `registry` (`agent/data/references/{id}/`, in the repository) or `saved` (`agent/runs/library/{id}/`, local).
+`product` is `drone`, `gripper` or `generic`.
+`requirements` is the number of requirements, or `null` for a code reference, whose requirements come from its own flow.
+`thumbnail_url` is a studio render (PNG) or `null`; `saved_at` is local time or `null`.
+
+`POST /api/library/{id}/open` (HTTP 404 for an unknown id) starts a fresh bench from that item: a code reference runs its own flow, any other item rebuilds the spec, the printed parts from their stored scripts, the bought parts, the assembly, every stored check, the render and the bill of materials, through the same tools and events as any build; then Mechanic asks what to change.
+The response is like `POST /api/prompt`, with `reference`: `{"ok": true, "mode": "claude", "status": "started", "reference": "phone-stand"}`, or `status: already_running`.
+
+`GET /api/library/{id}/thumbnail` returns the PNG, HTTP 404 without one.
+
+`POST /api/library` with `{"id": "...", "name": "...", "summary": "..."}` (all optional) saves the current product build as a project with its latest render as thumbnail and answers `{"ok": true, "item": {...}}`; HTTP 400 when there is no finished product build or the id is taken by a reference, 409 while Mechanic is building.
+
+### Settings
+
+`GET /api/settings` answers `{"ok": true, "orchestrator_model": "claude-opus-5-5", "orchestrator_effort": "high", "subagent_model": "claude-sonnet-5-5", "subagent_effort": "medium", "delegation": true, "models": [{id, label}], "efforts": ["low", "medium", "high", "xhigh", "max"]}`.
+`POST /api/settings` with any of those five fields changes them for the next request and answers the same shape; HTTP 400 for an unknown effort or a model id that does not start with `claude-`.
+The defaults come from `PAI_ORCHESTRATOR_MODEL` (else `ANTHROPIC_MODEL`), `PAI_ORCHESTRATOR_EFFORT`, `PAI_SUBAGENT_MODEL`, `PAI_SUBAGENT_EFFORT` and `PAI_DELEGATION`.
 
 `POST /api/training/{job_id}/claim` with `{"client": "..."}` lets one dashboard tab take a queued browser training job; it returns the job's `spec`, `population`, and `generations`.
 It is HTTP 409 when another client already holds the job, and 404 for a job of an earlier session.
@@ -59,6 +107,7 @@ It is HTTP 409 when another client already holds the job, and 404 for a job of a
 `GET /api/training/browser` returns `{"ok": true, "job": {...}}` with the latest browser job of the session in the `training` event shape without `type`, or `job: null`.
 
 `GET /api/health` returns `{"ok": true, "mode": "mock"|"claude"}`.
+The dashboard calls it on start: when the backend answers it opens in live mode with an empty bench, and only without a backend (or with `?demo`) does it play the recording, with a notice saying so.
 
 `GET /files/{bucket}/{name}` serves one file.
 `bucket` is the session id, or `fallback` for recorded clips.
@@ -81,6 +130,15 @@ Unknown extra fields should be ignored.
 No fields.
 The first event of every stream and of every server reset: drop all session state.
 
+### say
+
+Mechanic's spoken line, live only: it is never kept in the backlog, so a reconnect does not replay it.
+`id` names the line, `kind` is `reply` (the fast answer to a prompt) or `update` (a build milestone).
+While the line is written, events carry `delta` (the next piece of text) and `done: false`.
+The last event has `done: true` and the whole `text`; `cancelled: true` means a newer prompt replaced the reply mid-way.
+A reply is also published as a normal agent `chat` event once it is done; updates are only spoken.
+Updates follow `sim`, `cad`, `version` and failed `step` events of a running build, never slider changes, and wait until the reply is finished.
+
 ### replayed
 
 No fields, and only on this connection: everything before it was backlog from earlier, everything after it is live.
@@ -91,7 +149,7 @@ Apply the backlog without animations.
 `id` is `meeting`, `teile`, `cad`, `render`, `simulation`, `training`, or `stueckliste`.
 The mock story does not use `training`; a "train it" prompt does.
 `status` is `pending`, `running`, `done`, or `failed`.
-`label` is `Meeting`, `Parts`, `CAD`, `Render`, `Simulation`, `Training`, or `BOM` (or `Teile` and `Stückliste` in legacy data).
+`label` is `Meeting`, `Parts`, `CAD`, `Render`, `Simulation`, `Training`, or `BOM`.
 
 A step can be `done` while a tool on that step is `offline`.
 In the mock story, render is done after Blender and Isaac Sim have both been asked.
@@ -107,11 +165,11 @@ The tool pill still shows `offline`.
 
 `name` is the tool name from the list below.
 `status` is `connected`, `running`, `ok`, `error`, or `offline`.
-`detail` is a short description line.
+`detail` is a short English line.
 
 ### requirement
 
-`id` is `budget`, `flight_time`, `weight`, `hover`, or `printable`.
+For the drone, `id` is `budget`, `flight_time`, `weight`, `hover`, or `printable`.
 `budget`, `flight_time`, and `weight` come from the Jamie template `Hardware-Anforderungen` when that template is on the meeting.
 `hover` and `printable` stay extra lines from the transcript.
 Without the template, the requirements array is used, and only then sentences in the transcript.
@@ -120,29 +178,33 @@ Without the template, the requirements array is used, and only then sentences in
 `changed_from` is the earlier text when a later meeting changed it, else `null`.
 `met` is `true`, `false`, or `null`.
 `null` means the build does not know yet.
+For a product built from a spec, `id` is the spec requirement id, the quote is the user's request, and `detail` is the number its check found against the limit, such as `0.81 N, min. 0.75 N`; `detail` is absent or `null` before the check ran.
 
 ### metrics
 
 `weight_g`, `thrust_to_weight`, `flight_time_min`, `price_eur`.
 Numbers are already rounded.
-`price_eur` is a sample total to verify, not a live checkout.
+`price_eur` is a total to verify, not a checkout: catalog samples, or live shop prices once `bom_build` found them.
+After `bom_build` finds live prices, a second `metrics` event carries the live total in `price_eur`; the other numbers repeat.
 
 For a product other than the drone the event carries `cards` instead of the drone numbers, and the panel shows those.
-Each card is `{key, label, value, unit, digits, limit, ok}`: `limit` is the line under the number (such as `min. 2 ×`), `ok` says whether it meets its requirement.
+Each card is `{key, label, value, unit, digits, limit, ok, pending}`: `limit` is the line under the number (such as `min. 2 ×`), `ok` says whether it meets its requirement, and `pending: true` means its check has not run yet.
+A product built from a spec sends `weight_g` and `price_eur` (product mass without external loads, and cost) and four cards: Mass, Cost, and the next two requirements with a number (tip-over, deflection, torque safety, runtime, push test tilt, drop load or size).
 The gripper sends `weight_g`, `price_eur`, `grip_force_n`, `safety_factor`, and the cards Grip safety, Finger force, Weight and Price.
 
 ### product
 
-`id` is `drone` or `gripper`, `label` is the display name.
-Sent by `product_brief`.
+`id` is `drone`, `gripper`, or the slug of a product spec such as `phone-stand`; `label` is the display name.
+`kind` is `generic` for a product built from a spec.
+Sent by `product_brief` and `product_spec`; a revised spec that keeps the name or any part id keeps the same `id` (only the `label` changes), and its `requirements` lists the requirement ids it still has, so the client drops the others.
 When the product changes, the client drops the other product's requirements, numbers, parts, runs, CAD, renders and bill of materials.
-Without this event the session is the drone.
+Without this event a fresh bench has no product; the first drone event (drone metrics, a drone part, a hover run, the frame CAD, a version) makes it the drone.
 
 ### sim
 
 `run` is `1` for the heavy pack and `2` after the swap in the mock story.
 `result` is `pass` or `fail`.
-`summary` is one summary sentence.
+`summary` is one English sentence.
 `trajectory` is `[[t, x, y, z], ...]` in seconds and meters.
 The test climbs to 0.5 m; from 1.6 s to 1.9 s a downdraft of 35 % of the weight pushes on it.
 It passes when the drone never drops below 0.2 m after the gust and holds 0.35 m or more over the last half second.
@@ -152,11 +214,23 @@ Then `trajectory` z is how far the object has risen, `hand` is `[[t, z], ...]` f
 The pads squeeze with the finger force, the hand lifts 15 cm from 0.4 s to 1.4 s, holds, and shakes ±1.5 cm at 2.5 Hz from 2.0 s to 2.8 s.
 It passes when the object never lags the hand by more than 10 mm.
 
+`kind` is `rigid` for the MuJoCo test of a whole assembled product (`simulate_assembly`).
+The assembly is one rigid body: the convex hull of all its bodies collides with the floor, its mass and centre of mass come from the CAD masses, the picked parts and the external loads.
+`mode` is `push` or `drop`.
+`poses` is `[[t, x, y, z, qw, qx, qy, qz], ...]` every 0.02 s for the body frame (metres, z up), `tilt` is `[[t, degrees], ...]`, and `trajectory` holds the same positions as `[t, x, y, z]`.
+`glb_url` is the assembly model; the body frame is the assembly frame shifted down by `floor_mm`, so the model is drawn at `z - floor_mm`.
+`bbox_mm` and `size_mm` describe the assembly.
+A push carries `force_n`, `push_point_mm` (body frame, mm), `push_dir` (plan view unit vector), `push_window_s` (`[0.5, 0.8]`) and `limit_deg`; it passes when the final tilt stays within `limit_deg`.
+A drop falls from `drop_height_mm` with a 5° tilt and reports the peak load in g in `summary`.
+
 ### cad
 
 `source` is `freecad` or `cadquery`.
 `tree` is `[{id, label, children}]`.
-The mock frame is `Rahmen` with `Nabe`, `Arme`, and `Motorauflagen`.
+A FreeCAD drone build has the tree `Drone` with `Printed parts` (`X-frame`, `Canopy with antenna tube`, `Battery holder`), then the motors, propellers, flight controller stack, FPV camera, battery and strap, and receiver antenna, each labelled with the chosen part's name.
+Its GLB is the whole drone, Y-up in metres with the nose at -Z, one node per part target below plus `canopy`, `camera`, `battery_strap`, and `antenna`; each propeller node is a child of its motor and spins about its own origin, and the `battery` node's extras carry `size_mm`.
+Its materials are named `pai:#rrggbb {look}`, the CAD-tab colour then the look (`carbon`, `prop`, `bell`, ...).
+A CadQuery fallback has the tree `Frame` with `Hub`, `Arms`, and `Motor pads` and a frame-only GLB.
 `params` maps each name to `{value, min, max, unit}`:
 `arm_length_mm` 20-80 mm, `thickness_mm` 1.2-6 mm, `motor_spacing_mm` 4-16 mm.
 `glb_url`, `stl_url`, and `step_url` are `/files/{session}/{file}` paths.
@@ -168,12 +242,18 @@ A part from `cad_part` adds `script_url` (`/files/{session}/part-{name}.py`, the
 Its tree is the part with one child per body, `(bought)` marking reference parts such as the servo.
 Its GLB has one node per body; a material named `pai:#rrggbb` carries that body's color.
 Generated parts are Z-up, like FreeCAD.
+A `pai:#rrggbbaa` material is see-through with that alpha, used for external loads such as the phone a stand holds.
+
+A whole product built from a spec sends `assembly: true`.
+Its tree is the product with one node per assembly and one per part (`(bought)` and `(load)` mark bought parts and loads, each label ends in its mass and material or its catalog name).
+Its `params` are every printed part's sliders as `{part_id}.{param}`, each with a `label` such as `Base plate · depth`.
+`glb_url` and `stl_url` are `assembly.glb` (all bodies, bought parts and loads as blocks) and `assembly.stl` (printed bodies), `step_url` is `null` (each part has its own STEP), `script_url` is `assembly-scripts.py` with every part's script, and `part` sums the printed parts.
 
 ### render
 
 `source` is `blender`.
 `png_url` is `/files/{session}/studio-v{n}.png` after a headless render, one file per version, or `/files/fallback/render.png` when Blender is missing.
-`label` is a short caption.
+`label` is a short English caption.
 The tool pill stays `offline` when the recorded still is served.
 
 ### draw
@@ -184,10 +264,20 @@ The tool pill stays `offline` when the recorded still is served.
 
 ### bom
 
-`items` is a list of `{name, qty, unit_price_eur, weight_g, shop, url}`.
+`items` is a list of `{name, qty, unit_price_eur, weight_g, shop, url}`, for a product built from a spec also `price_source` (`sample` for a catalog price, `estimated`, or `live` from a price provider) and `category` (the spec part id).
+Printed parts are priced at filament cost, and their `url` is the part's STL.
 `weight_g` is the mass of one piece, not the line.
 `url` may be an empty string for the printed frame.
-`total_eur` is the sample sum of `unit_price_eur * qty`.
+`total_eur` is the sum of `unit_price_eur * qty`.
+`prices` is `catalog`, `searching`, or `live`.
+With `ANTHROPIC_API_KEY` set, `bom_build` first sends the catalog list with `prices: "searching"`, then a second `bom` with the live lines; the second replaces the first.
+Without the key every line stays on the catalog and `prices` is `catalog`.
+`prices` is `live` when at least one line has a live price, else `catalog`.
+Each item also has `price_source` (`live`, or `catalog` for the drone and gripper; a spec product keeps `sample` or `estimated` when no live price is found), `currency`, and `availability` (`in_stock`, `out_of_stock`, or `unknown`).
+A `live` item's `unit_price_eur`, `shop`, and `url` come from a web search (Claude with the server-side web search tool, EU shops first); it adds `price` and `currency` as the shop shows them, `pack_qty` when the shop sells a multipack, `catalog_price_eur`, and `checked_at` (ISO time).
+A line falls back to the catalog when the search fails, finds nothing, or returns a price more than four times off the catalog sample; printed parts (shop `printed`, or a `url` that is not an http link) are never searched.
+Live results are cached in memory for 15 minutes (failed searches for one minute), so a rebuild only searches the changed parts, and later `metrics` keep using the cached live prices in `price_eur`.
+Older recordings have no `prices` or `price_source`; read them as `catalog`.
 `stl_path` is the STL path relative to the repository root, or an empty string before CAD.
 
 ### mascot
@@ -199,7 +289,7 @@ The tool pill stays `offline` when the recorded still is served.
 
 `action` is `meeting_ended`, `upsert_template`, `requirements`, `search`, `get_meeting`, `create_tasks`, `update_tasks`, `create_tag`, `add_tag_to_meetings`, or `note`.
 `status` is `ok` or `error`.
-`detail` is a short description line; it ends in `· local outbox` (or `· lokale Outbox`) when no live call was made.
+`detail` is a short English line; it ends in `· local outbox` when no live call was made. A leftover German phrase is shown in English by the dashboard.
 With `JAMIE_MCP_TOKEN` set, writes go to `https://mcp.meetjamie.ai/mcp` and are also logged to the session's `jamie_outbox.json`.
 Without the token, or when a live call fails, they only land in that outbox.
 A live call times out after 5 seconds; after a failure the server is skipped for 60 seconds, so a dead network costs one timeout, not one per call.
@@ -212,7 +302,7 @@ One meeting on the Jamie timeline.
 `kind` is `kickoff`, `review`, or `archive`; archive meetings hold earlier warnings and are not timeline stations.
 `status` is `done`, `live`, or `next`.
 `version` is the drone version built from this meeting, or `null`.
-`tags` are the Jamie tags AnyBuild put on it, such as `drone` and `drone-v1`.
+`tags` are the Jamie tags AnyBuild put on it, such as `drohne` and `drohne-v1`.
 `replaces` is set when a live Jamie meeting took over a planned station; drop the station with that id.
 The whole timeline is published at startup and after reset.
 
@@ -223,7 +313,7 @@ A finished build, attached to the meeting it came from.
 `parts` maps each category to the part name.
 `diff` lists what changed against the previous version: `{key, label, before, after, unit}`.
 Number rows have a `unit`; part rows have `key` `part:{category}`, names in `before` and `after`, and an empty `unit`.
-`summary` is one line such as `49.3 g · 15.6 min · 72.36 €`.
+`summary` is one line such as `48.4 g · 10.4 min · 115.12 €`.
 
 ### part
 
@@ -236,17 +326,33 @@ A part was chosen.
 
 ### question
 
-Bolzen asks before building, for example when two meetings disagree.
+Mechanic asks before building, for example when two meetings disagree.
 `id`, `text`, `options` (`[{id, label}]`), `default_id`, and `timeout_s`.
 `status` is `open`, then `answered` with `answer_id`.
 Without an answer the default applies after `timeout_s` (`PAI_ASK_TIMEOUT_S`, default 20).
+
+### agent
+
+The orchestrator and the sub-agents it delegates to, one card per agent, sent again whenever it reports.
+`id` is stable for one agent run, `role` is `orchestrator`, `cad` (writes one part's FreeCAD script), `parts`, `checks` or `pricing`, `label` its name ("Orchestrator", "CAD agent", "Parts agent", "Analysis agent", "Pricing agent").
+`model` and `model_label` (`claude-sonnet-5-5`, "Sonnet 5.5"), `effort`, `task` (the job in one line), `status` (`running`, `done` or `error`), `rounds` (model calls so far), `input_tokens`, `output_tokens`, `cache_read_tokens`, `cost_usd` (from the published per-token prices) and `summary` (what it does now, or its report when done).
+The mock path sends none.
 
 ### tasks
 
 The order tasks, one per part, published whole after every change.
 `meeting_id` is the meeting they hang on, `live` is `true` only when every task was created in Jamie, not in the outbox.
-Each item is `{id, title, assignee, due, done, part_category}`; `due` reads like `27.10.`.
+Each item is `{id, title, assignee, due, done, part_category}`; `due` reads like `27 Oct`.
 A rebuild keeps the tasks of unchanged parts with their `done` state and closes the tasks of replaced parts.
+
+### build_guide
+
+The step-by-step build guide for the current bill of materials, published whole after `bom_build`.
+`version` is the version the guide belongs to, `total_minutes` the sum of the steps.
+`steps` is a list of `{n, title, instructions, parts, tools, minutes, items}`, numbered from 1.
+`parts` are scene part names from the list below; the web explodes the model and highlights them for that step.
+`items` are the bill-of-materials names of those parts, plus the parts of categories without a scene part of their own (camera, canopy, hardware) that the step names, filled in by the backend.
+Together the steps cover every scene part.
 
 ### point
 
@@ -262,6 +368,48 @@ It does not guess from a screenshot.
 `curve` is `[[step, reward], ...]`.
 `video_url` is a backend path such as `/files/fallback/hover.mp4`, or `null` when there is no clip.
 A `done` event after an `offline` tool means the fallback file was played, not that a pod finished a job.
+`gains` is optional: the training task may emit the trained controller gains as `{roll, pitch, yaw}`, each `{p, i, d, f}` in Betaflight units.
+
+### firmware
+
+The firmware and wiring for the built product, from the `firmware` tool after `bom_build`.
+`kind` is `betaflight` (a drone with a flight controller) or `arduino` (a servo product).
+`product` is the product name, such as `drone`.
+`filename` is the file name, such as `anybuild-drone-v1-betaflight.txt` or `anybuild_gripper_v1.ino`; `url` is its `/files/{session}/{filename}` path.
+`content` is the whole file, so a client can offer the download without the backend.
+The file is a fixed template filled from the chosen parts; only `explanation`, one or two sentences, may come from Claude.
+`gains` is `{roll, pitch, yaw}`, each `{p, i, d, f}` in Betaflight units, or `null` for an Arduino sketch.
+`gains_source` says where they came from: `training`, `defaults`, or `none`.
+`training` means the optional `gains` field of the last `training` event that carries one; missing terms keep the defaults.
+`wiring` is a list of `{component, connects_to, pin, wire, note}`, one row per connection of a chosen part.
+
+### stress
+
+The stress test runs the current product in 50 randomized MuJoCo worlds (`stress_test`).
+`product` is `drone` or `gripper`.
+`status` is `running` while worlds finish, then `done`, or `failed` when a world raised an error; a `failed` event keeps the worlds finished so far, `worst` is `null`, and `explanation` names the error.
+`run` counts stress tests in the session; `total`, `done`, and `survived` count worlds, so the score reads `Survived {survived}/{total}`.
+`seed` is the fixed seed the worlds are drawn from, so every stress test of the same build flies the same worlds.
+`weight_g` is the nominal build the worlds vary.
+`worlds` lists every finished world; every world has `{i, pass, reason, mass_pct, motor_pct, margin}`.
+`mass_pct` is −15…+15 (the drone, or the gripper's payload) and `motor_pct` −25…0 (motors, or the gripper servo).
+`margin` is 1 for a perfect run and 0 or less for a lost world; `reason` is an empty string when the world survived.
+`worst` is `null` while running; when `done` it is the lost world with the lowest margin (the survived one with the lowest margin when none was lost) plus its `trajectory` (`[[t, x, y, z], ...]`, the same shape as `sim`).
+`weakest` names the factor that separates lost worlds from survived ones, or is `null` when every world survived; `explanation` is Bolzen's one sentence about it.
+
+Drone: the controller holds 0.5 m over its start point for 6 s while a 1-cosine gust hits it.
+`policy` is `trained` when the training module left gains (`set_trained_gains` in `tools/stress.py`) or the tool got `gains`, else `default`.
+`gains` are the controller gains that flew: `kp_z`, `kd_z`, `kp_xy`, `kd_xy`, `kp_att`, `kd_att`; `thrust_to_weight` is the nominal one.
+Drone worlds add `gust_mps` (peak 0…6 m/s), `downdraft_pct` (the share of it blowing down), `gust_dir_deg` (where it blows to, 0 is +x), `gust_start_s` and `gust_len_s` (when it blows), `noise_cm` (sensor noise), `drift_m` (farthest from its spot) and `low_z_m` (lowest height after the gust).
+`reason` is `crashed`, `drifted` (more than 0.35 m off its spot), or `sagged` (below 0.35 m in the last half second).
+`weakest` is `gust`, `motor`, `mass`, or `noise`.
+
+Gripper: the grip test from `sim` (lift 15 cm, hold, shake at 2.5 Hz), 3.2 s.
+`policy` is `design` and `gains` is empty; the event also carries `payload_g`, `object_width_mm`, `force_n` (per finger), and `safety_factor` of the nominal build.
+Gripper worlds add `friction_pct` (pad friction −40…+10), `shake_x` (shake amplitude 1–2× the nominal 1.5 cm), `noise_pct` (slow servo jitter on the squeeze force, 0…15) and `slip_mm`.
+`reason` is `slipped` (the object lagged the hand by more than 10 mm) or `dropped`.
+`worst` also has `hand` (`[[t, z], ...]`, as in `sim`).
+`weakest` is `friction`, `motor`, `mass`, `shake`, or `noise`.
 
 A browser run (`train_in_browser`) adds `source: "browser"` and these fields to the same shape:
 `job_id`; `product` (`drone` or `gripper`, from the session's product); `spec`, what the browser builds the MJCF from, with `product`, `label`, `nominal` (`true` when nothing was built yet), and `parts: [{category, name, qty, mass_g}]`;
@@ -308,7 +456,42 @@ UI:
 
 ## Tools
 
-`jamie_templates`, `jamie_requirements`, `jamie_search`, `jamie_meeting`, `requirements_accept`, `ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `cad_frame`, `cad_part`, `product_brief`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `blender_render`, `bom_build`, `jamie_create_tasks`, `version_commit`, `ui_point_at`, `ui_draw`, `mascot_say`, `train_in_browser`.
+`jamie_templates`, `jamie_requirements`, `jamie_search`, `jamie_meeting`, `requirements_accept`, `ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `stress_test`, `cad_frame`, `cad_part`, `product_brief`, `product_spec`, `reference_load`, `delegate`, `part_pick`, `assemble`, `cad_update`, `check_totals`, `check_tip_over`, `check_deflection`, `check_torque`, `check_runtime`, `simulate_assembly`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `blender_render`, `bom_build`, `build_guide`, `firmware`, `jamie_create_tasks`, `version_commit`, `ui_point_at`, `ui_draw`, `mascot_say`, `train_in_browser`.
+
+### Any product
+
+`delegate` (orchestrator only, with delegation on) hands a bounded job to a sub-agent: `agent` is `parts` (with `part_pick`), `checks` (with `assemble`, the checks and `simulate_assembly`) or `pricing` (with `bom_build` and `part_pick`), and `task` says what to do.
+The sub-agent runs its own short loop on the sub-agent model and returns `report`, `tool_calls`, `tokens` and `cost_usd`.
+With delegation on, the orchestrator itself does not get `part_pick`, the checks or `simulate_assembly`; several `cad_part` calls in one turn run side by side, each script written by its own CAD agent.
+
+`product_spec` starts a build for any product that is not the drone or the gripper.
+The spec has `name`, `function`, `quote` (the request), optional `assemblies`, `requirements` and `parts`; `agent/src/pai_agent/spec.py` validates it and answers every problem at once, so Claude fixes the spec and calls again.
+Coordinates are millimetres, Z up, the product stands on Z = 0 centred on X = Y = 0, and -Y is the front.
+A part has `id`, `name`, `kind` (`printed`, `bought` or `external`), `qty` and optional `assembly`, `size_mm`, `position_mm` and `rotation_deg` (degrees about X, then Y, then Z).
+`position_mm` is the centre of the part's bounding box in the assembly for every kind; a printed part with it is moved there and rotated about its own centre, one without it stays where its script built it.
+A printed part needs `material`, a `description` of its shape and where it sits, `size_mm` (the envelope its build is checked against) and `params` (mm, they become sliders).
+A bought part has `category` and `query` for the catalog; with `size_mm` and `position_mm` (its centre) it shows as a block and counts for the centre of mass.
+An external part is a load that is not ordered, such as the phone on a stand: `mass_g`, `position_mm` and `size_mm`.
+A requirement has `text`, `check` and a limit: `mass` (max g, product without loads), `cost` (max eur), `size` (max mm, largest side), `tip_over` (min deg, or min N pushed at the top), `deflection` (max mm, optional `part_id`), `torque` (min x), `runtime` (min with `unit` `min`, `h` or `days`), `stability` (max deg after the push), `drop` (max g) or `printable` (no limit).
+At most six printed parts and sixteen parts.
+A spec that keeps the name or a part id revises the product on the bench: a printed part with the same description and material keeps its script and is rebuilt from it when its params changed, a part that is still bought keeps its pick, and the result lists `kept`, `rebuilt_with_new_params`, `to_build` and `to_pick`.
+
+`cad_part` takes `part_id` for a spec part: the spec gives name, description, material and params, and the script writer also sees the product, the frame and the other parts.
+The build is checked against the part's envelope (its largest side between 0.4x and 2.5x), against walls under 0.2 mm and against anything over 2 m; a failure goes back to Claude like a FreeCAD error.
+After three failed scripts a plain block of the envelope stands in, marked `fallback: true` and failing `printable`, so a live build never ends without geometry.
+Each built part joins the assembly at once.
+
+`part_pick` with `part_id` and `query` searches every catalog (`agent/data/catalogs/generic.json` with fans, motors, servos, pumps, controllers, sensors, lights, batteries and hardware, plus the gripper and drone catalogs); `select_id` binds a part, `estimate` `{name, mass_g, unit_price_eur, ...}` records an honest estimate.
+Live shop prices plug in through `pai_agent.pricing.register_provider`: a provider gets the picked part and returns `{unit_price_eur, shop, url}` or `None`, and the first answer is marked `live`.
+
+`reference_load` without `id` lists the library, with `id` loads one item onto the bench the way `POST /api/library/{id}/open` does, so a chat request such as "start from the phone stand" works too.
+A reference is a folder `agent/data/references/{id}/` with `reference.json` (`id`, `name`, `summary`, `spec`, `scripts` per printed part `{file, generated}`, `picks` per bought part `{select_id}` or `{estimate}` with an optional `reason`, and `checks` `[{tool, args}]`) and one FreeCAD script per printed part.
+After a reference is loaded, the first chat request to Claude carries the build (spec, parts, picks, checks and requirement results), so Claude changes it with `cad_update`, `part_pick` or a revised `product_spec`.
+
+`assemble` merges the printed parts, the bought blocks and the loads, with optional `placements` `{part_id: {position_mm, rotation_deg}}`, and returns mass, cost, size, bounding box, centre of mass, the footprint polygon and warnings (a part that floats, a part without position).
+
+The checks judge every requirement of their kind and store their arguments, so `cad_update` (new `params` for a built part) and a `part_pick` swap rerun them all:
+`check_totals` (mass, cost, size), `check_tip_over` (tip angle about the weakest footprint edge, atan of the distance from the centre of mass to that edge over its height, and the push at `push_height_mm` that tips it), `check_deflection` (`part_id`, `span_mm`, `width_mm`, `thickness_mm`, `load_n`, `support` cantilever or simple; Euler-Bernoulli with 85 % of the modulus and 60 % of the strength for printed plastic, stress safety 2x), `check_torque` (`actuator_part_id` and `required_torque_nm`, or `lever_mm` with `force_n` or `load_mass_g`; usable torque is 70 % of stall for a servo, 80 % for a stepper, 50 % for a DC motor), `check_runtime` (`battery_part_id` and `loads` `[{part_id or name, power_w, duty}]`, 80 % of the battery energy), and `simulate_assembly` (the MuJoCo push or drop above).
 
 `cad_part` builds any part from `name`, `description`, `params` (mm, they become the CAD sliders), `material` (`PLA`, `PETG`, `ABS`, `ASA`, `NYLON`, `TPU`, `ALUMINIUM`, `STEEL`), and optionally `script` or `template` (`gripper`).
 Without a script Claude writes FreeCAD Python for the description; when FreeCAD reports an error, the script and the error go back to Claude for a fix, up to three attempts.
@@ -326,29 +509,38 @@ Without `ANTHROPIC_API_KEY` only templates and passed scripts build.
 In mock mode a prompt containing "train" runs it after a short Bolzen line, and the `training` step goes `running`, then `done` or `failed`.
 
 `cad_frame` arguments are `arm_length_mm` (center to motor shaft), `thickness_mm`, and `motor_spacing_mm` (bolt-circle diameter of the motor screws).
-The 1102 mount is 6.6 mm.
+The 1103 mount is 6.6 mm.
 With a propeller chosen, an arm whose neighbouring motors stand closer than the propeller diameter plus 4 mm is an error that names the minimum arm.
 The open FreeCAD window builds first when its RPC answers; on an error or a step over 12 seconds, `freecadcmd` builds headless.
 CadQuery writes the same STL, STEP, and GLB when FreeCAD is missing or the script fails.
-`blender_render` runs `blender -b -P` on the current STL.
+`blender_render` runs `blender -b -P` on the current drone GLB, or on the frame STL after a CadQuery fallback.
 `jamie_requirements` reads the `Hardware-Anforderungen` fields first.
+`build_guide` is drone only, comes after `bom_build`, and takes `steps` as in the `build_guide` event, without `items`; a step number out of order, an unknown part, or a scene part no step installs is an error that names it.
+A step may add `bom_parts`, categories from the bill of materials that have no scene part (`camera`, `canopy`, `hardware`); they show up in `items`.
 
 ## Mock story
 
 Without a key, the kickoff (webhook or first prompt) plays v1 through those tools.
-The agent reads the kickoff, finds the 22000KV from last week's flight test and Lea's warning about the FunFly 4S.
-It tries the FunFly anyway: the MuJoCo gust pushes it to the floor, the swap to the Lava 1S 550 passes.
-A 28 mm arm lets the 40 mm propellers touch, so the frame becomes 36 mm.
-v1 is 36.7 g, 11.7 min, 68.95 €.
-The review "Review 1" asks for 15 minutes and says last week's motor was too loud.
-Bolzen asks which flight time counts, resolves "last week's motor" to the 22000KV from the flight test, swaps to the quieter 18000KV and a 1S 1100 mAh pack.
-v2 is 49.3 g, 15.6 min, 72.36 €, and the difference goes back to the review as a note.
+The story arrives at the reference micro build from Mediocre Nerd's "Build a Micro FPV Drone for $59" video: Twiglet 2" carbon frame, 1103 15000KV motors, Gemfan 2020 four-blade props, Caddx Ant camera, BetaFPV Matrix 1S 5in1 V2 AIO, canopy with battery holder, M1.4 bolts and a 1S pack (`agent/data/parts.json`, prices are samples).
+The agent reads the kickoff (under 120 €, at least 8 minutes, under 50 g, hover, frame as STL and STEP), finds the 1103 15000KV from last week's flight test and Lea's warning about the FunFly 4S.
+It tries the FunFly anyway: the MuJoCo gust pushes it to the floor, the swap to the Tattu R-Line 1S 550 passes.
+A 34 mm arm lets the 51 mm propellers touch, so the frame becomes the Twiglet's 42.5 mm.
+v1 is 47.2 g, 8.5 min, 113.64 €.
+Each build writes a `build_guide` from the same step template with the parts it chose: frame, motors, flight controller, wiring, camera and canopy, battery, motor test, propellers.
+The review "Review 1" asks for 10 minutes.
+Mechanic asks which flight time counts and swaps to the BetaFPV LAVA II 1S 680, the other pack from the video.
+v2 is 48.4 g, 10.4 min, 115.12 €, and the difference goes back to the review as a note.
 A later prompt in the same session does not rebuild.
+A prompt with the word "stress" ("stress test it") runs `stress_test` on the current build instead; without a build Mechanic asks for the kickoff first.
+Once a build has finished, "robust" asks for it too ("how robust is it?"); a prompt that ends a review still runs the review first.
 Reset starts the story over.
 A prompt that asks for a gripper (`gripper`, `claw`, `end effector`) plays the gripper story instead.
-Bolzen turns the request into checks, tries the 2.49 € SG90 first: 1.1 N per finger is a safety of 0.9×, and in MuJoCo the can slides out when the arm lifts.
+Mechanic turns the request into checks, tries the 2.49 € SG90 first: 1.1 N per finger is a safety of 0.9×, and in MuJoCo the can slides out when the arm lifts.
 The swap to the MG996R gives 6.0 N per finger and passes with 0.4 mm slip.
 FreeCAD builds the gripper headless from the library template with the servo pocket sized for the MG996R (58 g PLA), Blender renders it, and the bill of materials comes to 18.65 € and 128 g.
+The drone and gripper stories call `firmware` right after `bom_build`: the drone gets a Betaflight CLI file, the gripper an Arduino sketch.
+A prompt that asks for a phone stand (`phone`, `tablet` with `stand`, `holder`, `dock` or `mount`) plays the generic story: Mechanic writes the spec, FreeCAD builds the base plate and the back rest from the phone stand reference build (`agent/data/references/phone-stand/`), the rubber feet come from the catalog, and the assembly with the 200 g phone tips at 0.35 N, under the 0.75 N tap it must take; the MuJoCo push knocks it over.
+Mechanic deepens the base from 60 to 110 mm with `cad_update`, every check runs again and passes (0.81 N, the push only rocks it), then Blender renders it and the bill of materials comes to 3.32 € and 116 g.
 The dashboard's `?demo` replays exactly the drone run from `web/src/events/recording.json`, written by `agent/scripts/record_demo.py`.
 
 ## Omniverse results

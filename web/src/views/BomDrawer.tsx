@@ -2,19 +2,25 @@
 // link, a "Warum?" with the Jamie quote behind it, warnings from earlier meetings,
 // and the order tasks per person that live in Jamie (ticking "bestellt" ticks them there).
 import { useEffect, useState } from "react";
-import { AlertTriangle, ArrowUpRight, Battery, Box, Cable, CircuitBoard, Cog, Download, Fan, X } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, Battery, Box, Cable, Camera, CircuitBoard, Cog, Download, Fan, Shield, Wrench, X } from "lucide-react";
 import { useSession } from "../events/store";
 import { useSource } from "../events/source";
-import type { BomItem, PartEvent, TaskItem } from "../events/types";
+import type { BomEvent, BomItem, PartEvent, TaskItem } from "../events/types";
 import { JamieMark, QuoteBubble } from "../components/panels/Panels";
+import { enText } from "../lib/copy";
+import { FirmwareSection } from "./FirmwareSection";
 import { meets } from "../lib/derived";
 import { assetUrl } from "../lib/api";
-import { fmtEur, fmtGram } from "../lib/format";
+import { fmtEur, fmtGram, fmtNum } from "../lib/format";
 import { useTargets } from "../lib/hooks";
 import { useUi } from "../lib/ui";
+import { BuildGuideButton } from "./BuildGuide";
 
 function iconFor(name: string) {
   const n = name.toLowerCase();
+  if (/canopy|holder|halter/.test(n)) return Shield;
+  if (/bolt|screw|schraube/.test(n)) return Wrench;
+  if (/camera|kamera|caddx/.test(n)) return Camera;
   if (/akku|batter|lipo|li-?ion|lava|funfly/.test(n)) return Battery;
   if (/motor|kv\b|\d{4,5}kv/.test(n)) return Cog;
   if (/propeller|prop|gemfan/.test(n)) return Fan;
@@ -23,10 +29,27 @@ function iconFor(name: string) {
   return Cable;
 }
 
+const AVAILABILITY = { in_stock: "in stock", out_of_stock: "out of stock", unknown: "" } as const;
+
+/** "live" when the price came from a shop page found by web search, else the catalog sample. */
+function PriceSource({ item, searching }: { item: BomItem; searching: boolean }) {
+  if (item.shop === "printed") return null;
+  const live = item.price_source === "live";
+  const estimated = item.price_source === "estimated";
+  const label = live ? "live" : estimated ? "estimated" : searching ? "searching" : "catalog";
+  const title = live && item.checked_at ? `Checked ${new Date(item.checked_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}` : undefined;
+  const tone = live ? "bg-ok-soft text-ok-ink" : estimated ? "bg-agent-soft text-agent-ink" : "bg-tile text-muted";
+  return (
+    <span title={title} className={`shrink-0 rounded-full px-2.5 py-1 text-[12px] font-bold ${tone}`}>
+      {label}
+    </span>
+  );
+}
+
 /** Absolute URLs stay, backend paths go to the backend, a bare repo path is served under /files/. */
 const href = (u: string) => (/^(https?:)?\/\//.test(u) || u.startsWith("/") ? assetUrl(u) ?? u : assetUrl(`/files/${u}`) ?? u);
 
-function PartRow({ item, part }: { item: BomItem; part: PartEvent | undefined }) {
+function PartRow({ item, part, searching }: { item: BomItem; part: PartEvent | undefined; searching: boolean }) {
   const [why, setWhy] = useState(false);
   const Icon = iconFor(item.name);
   const warnings = part?.warnings ?? [];
@@ -47,8 +70,11 @@ function PartRow({ item, part }: { item: BomItem; part: PartEvent | undefined })
             ) : (
               item.shop
             )}
+            {item.price_source === "live" && item.currency && item.currency !== "EUR" && item.price ? ` · ${fmtNum(item.price, 2)} ${item.currency}` : ""}
+            {item.price_source === "live" && item.availability && AVAILABILITY[item.availability] ? ` · ${AVAILABILITY[item.availability]}` : ""}
           </div>
         </div>
+        <PriceSource item={item} searching={searching} />
         <span className="num shrink-0 text-[19px] font-extrabold">{fmtEur(item.qty * item.unit_price_eur)}</span>
         {part && (part.why || part.reason) && (
           <button
@@ -56,7 +82,7 @@ function PartRow({ item, part }: { item: BomItem; part: PartEvent | undefined })
             onClick={() => setWhy(!why)}
             className={`h-9 shrink-0 rounded-full px-3.5 text-[14px] font-bold transition ${why ? "bg-jamie text-white" : "bg-lavender text-jamie hover:brightness-95"}`}
           >
-            Warum?
+            Why?
           </button>
         )}
       </div>
@@ -70,7 +96,7 @@ function PartRow({ item, part }: { item: BomItem; part: PartEvent | undefined })
         <div key={i} className="mt-2.5 ml-14 flex gap-2.5 rounded-2xl bg-agent-soft px-3.5 py-2.5">
           <AlertTriangle className="mt-0.5 h-4.5 w-4.5 shrink-0 text-agent-ink" />
           <div>
-            <p className="text-[15px] leading-snug text-ink">„{w.text}“</p>
+            <p className="text-[15px] leading-snug text-ink">“{w.text}”</p>
             <p className="mt-0.5 text-[13px] font-semibold text-agent-ink">
               {[w.speaker, w.time, w.meeting_title].filter(Boolean).join(" · ")}
               {w.note ? ` · ${w.note}` : ""}
@@ -92,20 +118,26 @@ function TaskRow({ task }: { task: TaskItem }) {
           checked={task.done}
           onChange={(e) => void toggleTask(task.id, e.target.checked)}
           className="h-6 w-6 shrink-0 cursor-pointer accent-[#0b9677]"
-          aria-label={`${task.title} bestellt`}
+          aria-label={`${enText(task.title)} ordered`}
         />
         <span className="min-w-0 flex-1">
-          <span className={`block truncate text-[16px] font-semibold ${task.done ? "text-muted line-through" : "text-ink"}`}>{task.title}</span>
+          <span className={`block truncate text-[16px] font-semibold ${task.done ? "text-muted line-through" : "text-ink"}`}>{enText(task.title)}</span>
           <span className="num block text-[13px] font-semibold text-muted">
-            {task.assignee} · bis {task.due}
+            {task.assignee} · by {task.due}
           </span>
         </span>
         <span className={`shrink-0 rounded-full px-2.5 py-1 text-[12px] font-bold ${task.done ? "bg-ok-soft text-ok-ink" : "bg-tile text-muted"}`}>
-          {task.done ? "bestellt" : "offen"}
+          {task.done ? "ordered" : "open"}
         </span>
       </label>
     </li>
   );
+}
+
+function priceNote(prices: BomEvent["prices"], live: number, total: number): string {
+  if (prices === "searching") return "Searching shops for live prices…";
+  if (live > 0) return `Live prices from the web for ${live} of ${total} lines, catalog samples for the rest. Check before ordering.`;
+  return "Catalog prices are samples to verify, estimated prices are marked; this is not a live checkout.";
 }
 
 export function BomDrawer() {
@@ -115,6 +147,7 @@ export function BomDrawer() {
   const parts = useSession((s) => s.parts);
   const tasks = useSession((s) => s.tasks);
   const cadStl = useSession((s) => s.cad?.stl_url ?? null);
+  const product = useSession((s) => s.product);
   const targets = useTargets();
 
   useEffect(() => {
@@ -128,8 +161,10 @@ export function BomDrawer() {
   const weight = bom.items.reduce((s, i) => s + i.qty * i.weight_g, 0);
   const priceOk = meets(targets.price_eur, bom.total_eur);
   const byName = new Map(Object.values(parts).map((p) => [p.name, p]));
+  const drone = product === "drone";
   const stlHref = cadStl ? assetUrl(cadStl) ?? cadStl : href(bom.stl_path);
   const ordered = tasks?.items.filter((t) => t.done).length ?? 0;
+  const liveCount = bom.items.filter((i) => i.price_source === "live").length;
 
   return (
     <div className="fixed inset-0 z-[70] flex justify-end bg-ink/25 backdrop-blur-[2px]" onPointerDown={() => setOpen(false)}>
@@ -137,41 +172,48 @@ export function BomDrawer() {
         className="flex h-full w-[min(760px,100vw)] animate-rise flex-col bg-page shadow-[var(--shadow-float)]"
         onPointerDown={(e) => e.stopPropagation()}
         role="dialog"
-        aria-label="Stückliste"
+        aria-label="Bill of materials"
       >
         <div className="flex shrink-0 items-center gap-4 px-6 pt-5 pb-4">
           <div>
-            <h1 className="text-[30px] leading-none font-extrabold tracking-[-0.03em]">Stückliste</h1>
+            <h1 className="text-[30px] leading-none font-extrabold tracking-[-0.03em]">Bill of materials</h1>
             <p className="num mt-1.5 text-[16px] font-semibold text-muted">
-              <span className={priceOk ? "text-ok-ink" : "text-fail-ink"}>{fmtEur(bom.total_eur)}</span> von max. {fmtEur(targets.price_eur.value)} ·{" "}
+              <span className={priceOk ? "text-ok-ink" : "text-fail-ink"}>{fmtEur(bom.total_eur)}</span> of max {fmtEur(targets.price_eur.value)} ·{" "}
               {fmtGram(weight)}
             </p>
           </div>
           <a
             href={stlHref}
-            download="frame.stl"
+            download={drone ? "frame.stl" : `${product}.stl`}
             className="ml-auto inline-flex h-11 items-center gap-2 rounded-full bg-agent px-5 text-[15px] font-bold text-white shadow-[0_8px_20px_-8px_rgb(255_138_61/0.7)] hover:brightness-105"
           >
-            <Download className="h-4.5 w-4.5" /> Rahmen-STL
+            <Download className="h-4.5 w-4.5" /> {drone ? "Frame STL" : "Model STL"}
           </a>
-          <button type="button" onClick={() => setOpen(false)} className="rounded-full p-2.5 text-muted hover:bg-card" aria-label="Schließen">
+          <BuildGuideButton />
+          <button type="button" onClick={() => setOpen(false)} className="rounded-full p-2.5 text-muted hover:bg-card" aria-label="Close">
             <X className="h-5 w-5" />
           </button>
         </div>
         <div className="scroll-soft min-h-0 flex-1 space-y-5 overflow-y-auto px-6 pb-6">
           <ul className="space-y-2">
             {bom.items.map((item) => (
-              <PartRow key={item.name} item={item} part={byName.get(item.name)} />
+              <PartRow
+                key={item.name}
+                item={item}
+                part={(item.category ? parts[item.category] : undefined) ?? byName.get(item.name)}
+                searching={bom.prices === "searching"}
+              />
             ))}
           </ul>
-          <p className="text-[13px] text-faint">Preise sind Stichproben zum Prüfen, kein Live-Checkout.</p>
+          <p className="text-[13px] text-faint">{priceNote(bom.prices, liveCount, bom.items.length)}</p>
+          <FirmwareSection />
           {tasks && tasks.items.length > 0 && (
             <section className="card px-4 pt-4 pb-3" data-target="tasks bestellen">
               <div className="mb-1 flex items-center gap-2 px-2">
-                <h2 className="text-[18px] font-bold">Bestellen</h2>
+                <h2 className="text-[18px] font-bold">Order</h2>
                 <JamieMark />
                 <span className="num ml-auto text-[14px] font-semibold text-muted">
-                  {ordered} / {tasks.items.length} · {tasks.live ? "in Jamie" : "lokale Outbox"}
+                  {ordered} / {tasks.items.length} · {tasks.live ? "in Jamie" : "local outbox"}
                 </span>
               </div>
               <ul>

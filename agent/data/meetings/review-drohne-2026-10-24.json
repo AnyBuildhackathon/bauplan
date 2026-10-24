@@ -9,17 +9,25 @@
     "name": "Drohnen-Review",
     "fields": {
       "flight_time": {
-        "text": "Mindestens 15 Minuten Flugzeit",
-        "min": 15,
+        "text": "At least 10 minutes of flight time",
+        "min": 10,
         "unit": "min",
         "speaker": "Ben",
         "time": "20:06",
-        "source_quote": "15 Minuten Flugzeit, sonst filmen wir nur Ausschnitte."
+        "source_quote": "Ten minutes of flight time, or we only film clips."
       }
     }
   },
   "utterances": [
-    { "speaker": "Ben", "time": "20:06", "text": "15 Minuten Flugzeit, sonst filmen wir nur Ausschnitte." },
-    { "speaker": "Lea", "time": "20:07", "text": "Und der Motor von letzter Woche war zu laut, den hört man durch die ganze Halle." }
+    {
+      "speaker": "Ben",
+      "time": "20:06",
+      "text": "Ten minutes of flight time, or we only film clips."
+    },
+    {
+      "speaker": "Lea",
+      "time": "20:07",
+      "text": "Everything else stays as in the video; it flies really well."
+    }
   ]
 }

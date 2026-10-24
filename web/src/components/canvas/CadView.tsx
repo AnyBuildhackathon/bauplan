@@ -18,11 +18,11 @@ import { AnchorScope, useAnchor } from "./anchors";
 export const CAD_SOURCE_LABEL = { freecad: "FreeCAD", cadquery: "CadQuery" } as const;
 
 const PARAM_LABELS: Record<string, string> = {
-  arm_length_mm: "Armlänge",
-  thickness_mm: "Armstärke",
-  motor_spacing_mm: "Motor-Lochkreis",
-  diagonal_mm: "Diagonale",
-  plate_width_mm: "Plattenbreite",
+  arm_length_mm: "Arm length",
+  thickness_mm: "Arm thickness",
+  motor_spacing_mm: "Bolt circle",
+  diagonal_mm: "Diagonal",
+  plate_width_mm: "Plate width",
 };
 const paramLabel = (key: string) =>
   PARAM_LABELS[key] ?? key.replace(/_(mm|deg|g)$/, "").replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
@@ -41,6 +41,14 @@ class LoadBoundary extends Component<{ children: ReactNode; fallback: ReactNode;
 }
 
 const AGENT = new THREE.Color("#ff8a3d");
+
+/** A generated body names its color `pai:#rrggbb`, or `pai:#rrggbbaa` when it is see-through (a load). */
+export function partColor(name: string): { color: string; opacity: number } {
+  if (!name.startsWith("pai:")) return { color: "#c9ccd3", opacity: 1 };
+  // The drone's materials add their look after a space: `pai:#c9ccd3 carbon`.
+  const hex = name.slice(4).split(" ")[0];
+  return hex.length === 9 ? { color: hex.slice(0, 7), opacity: parseInt(hex.slice(7), 16) / 255 } : { color: hex, opacity: 1 };
+}
 
 function Part({ url, zUp }: { url: string; zUp: boolean }) {
   const gltf = useLoader(GLTFLoader, url);
@@ -64,9 +72,17 @@ function Part({ url, zUp }: { url: string; zUp: boolean }) {
     root.traverse((o) => {
       if (o instanceof THREE.Mesh) {
         // A generated part names its colors `pai:#rrggbb`; everything else gets the calm CAD grey.
-        const named = (o.material as THREE.Material | undefined)?.name ?? "";
-        const color = named.startsWith("pai:") ? named.slice(4) : "#c9ccd3";
-        o.material = new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0.08, emissive: AGENT, emissiveIntensity: 0 });
+        const { color, opacity } = partColor((o.material as THREE.Material | undefined)?.name ?? "");
+        o.material = new THREE.MeshStandardMaterial({
+          color,
+          roughness: 0.55,
+          metalness: 0.08,
+          emissive: AGENT,
+          emissiveIntensity: 0,
+          transparent: opacity < 1,
+          opacity,
+          depthWrite: opacity >= 1,
+        });
         o.castShadow = true;
         const e = new THREE.LineSegments(new THREE.EdgesGeometry(o.geometry, 30), new THREE.LineBasicMaterial({ color: "#2b2d33", transparent: true, opacity: 0.55 }));
         e.matrixAutoUpdate = false;
@@ -175,7 +191,7 @@ function ParamSlider({
   return (
     <label className="block" data-target={`param:${name} ${name}`}>
       <div className="flex items-baseline justify-between">
-        <span className="text-[14px] font-semibold text-ink-2">{paramLabel(name)}</span>
+        <span className="truncate text-[14px] font-semibold text-ink-2">{param.label ?? paramLabel(name)}</span>
         <span className={`num text-[15px] font-bold ${pending ? "text-agent-ink" : changed ? "text-ink" : "text-ink"}`}>
           {changed && <span className="mr-1 text-[13px] font-semibold text-faint">{fmtNum(param.value, step < 1 ? 1 : 0)} →</span>}
           {fmtNum(value, step < 1 ? 1 : 0)} {param.unit}
@@ -192,7 +208,7 @@ function ParamSlider({
         onKeyUp={(e) => ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(e.key) && onCommit()}
         className={`bevel-range mt-1.5 w-full ${pending ? "is-pending" : ""}`}
         style={{ "--p": `${pct}%` } as React.CSSProperties}
-        aria-label={paramLabel(name)}
+        aria-label={param.label ?? paramLabel(name)}
       />
       <div className="num flex justify-between text-[11px] font-semibold text-faint">
         <span>{fmtNum(param.min)}</span>
@@ -233,13 +249,16 @@ function ScriptPanel({ url, onClose }: { url: string; onClose: () => void }) {
   );
 }
 
-function PartFacts({ part }: { part: NonNullable<CadEvent["part"]> }) {
+function PartFacts({ part, assembly }: { part: NonNullable<CadEvent["part"]>; assembly: boolean }) {
   const b = part.bbox_mm;
   const size = b.length === 6 ? [0, 1, 2].map((i) => fmtNum(b[i + 3] - b[i], 0)).join(" × ") : "";
+  const runs = `${part.attempts} FreeCAD run${part.attempts === 1 ? "" : "s"}`;
+  const fixed = `by Claude, fixed after ${part.attempts - 1} error${part.attempts > 2 ? "s" : ""}`;
+  const script = !part.generated ? "library template" : assembly ? `by Claude, ${runs}` : part.attempts > 1 ? fixed : "by Claude";
   const rows: [string, string][] = [
-    ["Printed mass", `${fmtNum(part.mass_g, 1)} g ${part.material}`],
+    [assembly ? "Printed parts" : "Printed mass", `${fmtNum(part.mass_g, 1)} g ${part.material}`],
     ["Size", `${size} mm`],
-    ["Script", part.generated ? (part.attempts > 1 ? `by Claude, fixed after ${part.attempts - 1} error${part.attempts > 2 ? "s" : ""}` : "by Claude") : "library template"],
+    [assembly ? "Scripts" : "Script", script],
   ];
   return (
     <section className="mt-4">
@@ -276,8 +295,8 @@ export function CadView() {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 px-8 text-center">
         <Layers className="h-8 w-8 text-faint" />
-        <p className="text-[18px] font-semibold text-ink-2">{cadStep === "running" ? "Das CAD-Teil entsteht gerade …" : "Noch kein CAD-Teil"}</p>
-        <p className="max-w-sm text-[15px] text-muted">CadQuery oder FreeCAD baut den Rahmen im Schritt CAD. Danach kannst du hier die Maße mit Reglern ändern.</p>
+        <p className="text-[18px] font-semibold text-ink-2">{cadStep === "running" ? "FreeCAD is building the part …" : "No CAD part yet"}</p>
+        <p className="max-w-sm text-[15px] text-muted">FreeCAD builds every printed part in the CAD step. Then the sliders here change its dimensions and the checks run again.</p>
       </div>
     );
   }
@@ -307,17 +326,17 @@ export function CadView() {
         {glb ? (
           <LoadBoundary
             resetKey={glb}
-            fallback={<div className="flex h-full items-center justify-center px-6 text-center text-[15px] text-muted">Das 3D-Modell ließ sich nicht laden ({glb}).</div>}
+            fallback={<div className="flex h-full items-center justify-center px-6 text-center text-[15px] text-muted">The 3D model failed to load ({glb}).</div>}
           >
             <CadScene url={glb} zUp={!!cad.part} />
           </LoadBoundary>
         ) : (
-          <div className="flex h-full items-center justify-center text-[15px] text-muted">Kein 3D-Modell im CAD-Ereignis.</div>
+          <div className="flex h-full items-center justify-center text-[15px] text-muted">No 3D model in the CAD event.</div>
         )}
         <span className="pointer-events-none absolute top-3 left-3 inline-flex h-8 items-center gap-2 rounded-full bg-white/90 px-3.5 text-[13px] font-bold text-ink-2 shadow-[var(--shadow-pill)]">
           <span className={`h-2 w-2 rounded-full ${cad.source === "freecad" ? "bg-[#d23f31]" : "bg-sky"}`} />
           {source}
-          {pending && <span className="font-semibold text-agent-ink">· rechnet …</span>}
+          {pending && <span className="font-semibold text-agent-ink">· computing …</span>}
         </span>
         {script && (
           <button
@@ -334,7 +353,7 @@ export function CadView() {
 
       <div className="scroll-soft min-h-0 overflow-y-auto border-l border-line bg-card/70 px-4 py-3.5">
         <section>
-          <h3 className="eyebrow mb-1">Feature-Baum</h3>
+          <h3 className="eyebrow mb-1">Feature tree</h3>
           <ul className="-mx-1">
             {cad.tree.map((n) => (
               <TreeNode key={n.id} node={n} depth={0} />
@@ -342,11 +361,11 @@ export function CadView() {
           </ul>
         </section>
 
-        {cad.part && <PartFacts part={cad.part} />}
+        {cad.part && <PartFacts part={cad.part} assembly={!!cad.assembly} />}
 
         {Object.keys(cad.params).length > 0 && (
           <section className="mt-4 space-y-3">
-            <h3 className="eyebrow">Parameter</h3>
+            <h3 className="eyebrow">Parameters</h3>
             {Object.entries(cad.params).map(([name, p]) => (
               <ParamSlider
                 key={name}
@@ -364,13 +383,13 @@ export function CadView() {
         <section className="mt-4">
           {(view || !cad.part) && (
             <>
-          <h3 className="eyebrow mb-1.5">FreeCAD-Ansicht</h3>
+          <h3 className="eyebrow mb-1.5">FreeCAD view</h3>
           <div className="overflow-hidden rounded-2xl bg-tile ring-1 ring-line">
             {view ? (
-              <img src={view} alt="Ansicht aus FreeCAD" className="block aspect-[4/3] w-full object-cover" />
+              <img src={view} alt="View from FreeCAD" className="block aspect-[4/3] w-full object-cover" />
             ) : (
               <div className="flex aspect-[4/3] items-center justify-center px-4 text-center text-[13px] text-muted">
-                Erscheint, sobald das Teil in FreeCAD offen ist.
+                Appears once the part is open in FreeCAD.
               </div>
             )}
           </div>
@@ -382,7 +401,7 @@ export function CadView() {
             data-target="freecad_open in_freecad_oeffnen"
             className="mt-2.5 flex h-10 w-full items-center justify-center gap-2 rounded-full bg-ink text-[14px] font-semibold text-white shadow-[var(--shadow-pill)] hover:bg-[#333]"
           >
-            <ExternalLink className="h-4 w-4" /> In FreeCAD öffnen
+            <ExternalLink className="h-4 w-4" /> Open in FreeCAD
           </button>
           {(stl || step) && (
             <div className="mt-2 flex gap-2">

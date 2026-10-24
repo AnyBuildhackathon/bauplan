@@ -1,11 +1,14 @@
 // Adapted from core-oss (github.com/10xapp/core-oss, Apache-2.0),
 // core-web/src/components/SidebarChat/SidebarChatInput.tsx. Modified: Bevel pill
-// styling, a push-to-talk mic button (hold the button or the space bar) in place
-// of attachments and mentions; speech goes to Reson8 or the browser (lib/voice.ts).
+// styling, a mic button in place of attachments and mentions: hands-free by default
+// (click to start a conversation; Reson8 hears when a turn ends and when the person
+// interrupts Mechanic), push-to-talk as the fallback (hold the button or the space
+// bar); speech goes to Reson8 or the browser (lib/voice.ts).
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowUp, Mic } from "lucide-react";
 import { useUi } from "../../lib/ui";
-import { startListening as listen, type Listener } from "../../lib/voice";
+import { hold, isEcho, isSpeaking, markTurnEnd, release, stopSpeaking, unlockAudio, warmUp } from "../../lib/speech";
+import { startHandsFree, startListening as listen, type HandsFree, type Listener } from "../../lib/voice";
 
 interface SidebarChatInputProps {
   value: string;
@@ -24,7 +27,7 @@ export function Waveform({ active, bars = 7, className = "" }: { active: boolean
       {Array.from({ length: bars }, (_, i) => (
         <span
           key={i}
-          className="w-[3px] rounded-full bg-agent transition-[height]"
+          className="w-[3px] rounded-full bg-accent transition-[height]"
           style={{
             height: active ? undefined : 4,
             animation: active ? `wave 0.9s ${i * 0.09}s ease-in-out infinite` : undefined,
@@ -42,12 +45,17 @@ export default function SidebarChatInput({
   onSubmit,
   onVoice,
   disabled = false,
-  placeholder = "Sag oder tipp, was sich ändern soll",
+  placeholder = "Describe what you want to build",
   size = "md",
 }: SidebarChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const listening = useUi((s) => s.listening);
   const setListening = useUi((s) => s.setListening);
+  const micMode = useUi((s) => s.micMode);
+  const handsFree = useUi((s) => s.handsFree);
+  const setHandsFree = useUi((s) => s.setHandsFree);
+  const userTalking = useUi((s) => s.userTalking);
+  const setUserTalking = useUi((s) => s.setUserTalking);
   const [hint, setHint] = useState<string | null>(null);
   const lg = size === "lg";
 
@@ -71,6 +79,69 @@ export default function SidebarChatInput({
     setTimeout(() => setHint(null), 3600);
   }, []);
 
+  // --- hands-free -----------------------------------------------------------
+  const conversation = useRef<HandsFree | null>(null);
+  const starting = useRef(false);
+  const onVoiceRef = useRef(onVoice);
+  onVoiceRef.current = onVoice;
+  // Whether Mechanic was talking when this turn began; only then can the turn be his own echo.
+  const overMechanic = useRef(false);
+
+  const stopHandsFree = useCallback(() => {
+    conversation.current?.stop();
+    conversation.current = null;
+    setHandsFree(false);
+    setHeard("");
+  }, [setHandsFree]);
+
+  const startConversation = useCallback(async () => {
+    if (conversation.current || starting.current) return;
+    starting.current = true;
+    setHint(null);
+    unlockAudio();
+    setHandsFree(true);
+    const active = await startHandsFree({
+      onTurnStart: () => {
+        // Barge-in: Mechanic pauses mid-word the moment the person starts talking.
+        overMechanic.current = isSpeaking();
+        hold();
+        warmUp();
+        setUserTalking(true);
+        setHeard("");
+      },
+      onPartial: (text) => {
+        setHeard(text);
+        if (text && !(overMechanic.current && isEcho(text))) stopSpeaking();
+      },
+      onTurnEnd: (text) => {
+        setUserTalking(false);
+        setHeard("");
+        if (!text || (overMechanic.current && isEcho(text))) {
+          // Noise, or Mechanic hearing himself: he carries on.
+          release();
+          return;
+        }
+        stopSpeaking();
+        markTurnEnd();
+        onVoiceRef.current?.(text);
+      },
+      onError: flash,
+    });
+    starting.current = false;
+    if (!active || !useUi.getState().handsFree) {
+      active?.stop();
+      setHandsFree(false);
+      return;
+    }
+    conversation.current = active;
+  }, [setHandsFree, setUserTalking, flash]);
+
+  useEffect(() => () => conversation.current?.stop(), []);
+  useEffect(() => {
+    if (micMode === "ptt") stopHandsFree();
+  }, [micMode, stopHandsFree]);
+
+  // --- push-to-talk -----------------------------------------------------------
   const startListening = useCallback(() => {
     if (useUi.getState().listening) return;
     setHint(null);
@@ -88,13 +159,13 @@ export default function SidebarChatInput({
       active = pending ? await pending : null;
       text = active ? await active.stop() : "";
     } catch (err) {
-      flash(`Mikrofon: ${err instanceof Error ? err.message : "Fehler"}`);
+      flash(`Microphone: ${err instanceof Error ? err.message : "error"}`);
     } finally {
       setListening(false);
       setHeard("");
     }
     if (text) onVoice?.(text);
-    else if (active) flash("Nichts verstanden. Halt die Taste und sprich.");
+    else if (active) flash("Didn't catch that. Hold the key and speak.");
   }, [setListening, onVoice, flash]);
 
   // A held key never comes up when the window loses focus; close the mic then too.
@@ -115,6 +186,7 @@ export default function SidebarChatInput({
     const isTyping = (t: EventTarget | null) =>
       t instanceof HTMLElement && (t.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName));
     const down = (e: KeyboardEvent) => {
+      if (useUi.getState().micMode !== "ptt") return;
       if (e.code === "Space" && !e.repeat && !isTyping(e.target)) {
         e.preventDefault();
         startListening();
@@ -139,19 +211,29 @@ export default function SidebarChatInput({
   };
 
   const canSubmit = value.trim().length > 0 && !disabled;
+  const hearing = listening || (handsFree && userTalking);
+  const micHot = listening || handsFree;
+  const status =
+    stt === "none"
+      ? "Type and press Enter"
+      : micMode === "ptt"
+        ? "Hold space to speak"
+        : handsFree
+          ? "Hands-free · just talk"
+          : "Click the mic to talk hands-free";
 
   return (
     <div>
       <div
-        className={`flex items-center gap-2 rounded-[26px] bg-card shadow-[var(--shadow-pill)] ring-1 transition ${
-          listening ? "ring-agent/60" : "ring-line"
-        } ${lg ? "min-h-[72px] py-3 pr-3 pl-6" : "min-h-[60px] py-2.5 pr-2.5 pl-4.5"}`}
+        className={`flex items-end gap-2 rounded-[24px] bg-card shadow-[var(--shadow-pill)] ring-1 transition ${
+          micHot ? "ring-accent/50" : "ring-[#e2e2dd]"
+        } ${lg ? "min-h-[80px] py-3 pr-3 pl-6" : "min-h-[96px] pt-4 pr-3 pb-3 pl-5"}`}
       >
-        {listening ? (
-          <div className="flex flex-1 items-center gap-3">
+        {hearing ? (
+          <div className="flex flex-1 items-center gap-3 self-center">
             <Waveform active bars={lg ? 11 : 7} />
-            <span className={`line-clamp-2 font-semibold ${heard ? "text-ink" : "text-agent-ink"} ${lg ? "text-[20px]" : "text-[15px]"}`}>
-              {heard || (stt === "reson8" ? "Reson8 hört zu …" : "Ich höre zu …")}
+            <span className={`line-clamp-2 font-semibold ${heard ? "text-ink" : "text-accent"} ${lg ? "text-[20px]" : "text-[15px]"}`}>
+              {heard || (stt === "reson8" ? "Reson8 is listening…" : "Listening…")}
             </span>
           </div>
         ) : (
@@ -160,22 +242,22 @@ export default function SidebarChatInput({
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={placeholder}
+            placeholder={handsFree ? "Listening. Just talk, or type" : placeholder}
             rows={1}
             name="prompt"
-            aria-label="Nachricht an Bolzen"
+            aria-label="Message to Mechanic"
             data-target="chat_input eingabe"
-            className={`min-w-0 flex-1 resize-none bg-transparent leading-snug text-ink outline-none placeholder:text-faint ${
-              lg ? "text-[20px]" : "text-[15px]"
+            className={`min-w-0 flex-1 resize-none self-start bg-transparent leading-snug text-ink outline-none placeholder:text-muted ${
+              lg ? "text-[20px]" : "text-[17px]"
             }`}
           />
         )}
-        {canSubmit && !listening && (
+        {canSubmit && !hearing && (
           <button
             type="button"
             onClick={onSubmit}
-            className={`flex shrink-0 items-center justify-center rounded-full bg-ink text-white transition hover:bg-[#333] ${lg ? "h-12 w-12" : "h-10 w-10"}`}
-            title="Senden"
+            className={`flex shrink-0 items-center justify-center rounded-full bg-accent text-white transition hover:brightness-110 ${lg ? "h-12 w-12" : "h-10 w-10"}`}
+            title="Send"
           >
             <ArrowUp className={lg ? "h-5 w-5" : "h-4.5 w-4.5"} strokeWidth={2.5} />
           </button>
@@ -184,22 +266,29 @@ export default function SidebarChatInput({
           type="button"
           data-target="mic reson8_mic"
           onPointerDown={(e) => {
+            if (micMode !== "ptt") return;
             e.preventDefault();
             startListening();
           }}
-          onPointerUp={() => void stopListening()}
-          onPointerLeave={() => void stopListening()}
-          className={`flex shrink-0 items-center justify-center rounded-full text-white transition select-none ${
-            listening ? "scale-105 bg-agent shadow-[0_0_0_8px_rgb(255_138_61/0.18)]" : "bg-agent shadow-[0_8px_20px_-8px_rgb(255_138_61/0.8)] hover:brightness-105"
+          onPointerUp={() => micMode === "ptt" && void stopListening()}
+          onPointerLeave={() => micMode === "ptt" && void stopListening()}
+          onClick={() => {
+            if (micMode !== "handsfree") return;
+            if (handsFree) stopHandsFree();
+            else void startConversation();
+          }}
+          className={`flex shrink-0 items-center justify-center rounded-full transition select-none ${
+            micHot ? "scale-105 bg-accent text-white shadow-[0_0_0_8px_rgb(31_111_120/0.16)]" : "bg-tile text-ink-2 hover:bg-track hover:text-ink"
           } ${lg ? "h-14 w-14" : "h-10 w-10"}`}
-          title="Gedrückt halten zum Sprechen"
+          title={micMode === "ptt" ? "Hold to speak" : handsFree ? "Stop listening" : "Talk hands-free"}
+          aria-pressed={micMode === "handsfree" ? handsFree : undefined}
         >
-          <Mic className={lg ? "h-6 w-6" : "h-4.5 w-4.5"} strokeWidth={2.4} />
+          <Mic className={lg ? "h-6 w-6" : "h-4.5 w-4.5"} strokeWidth={2} />
         </button>
       </div>
-      <div className={`mt-2 flex items-center justify-between px-2 text-[13px] ${hint ? "text-agent-ink" : "text-faint"}`}>
-        <span>{hint ?? (stt === "none" ? "Tippen und Enter" : "Leertaste halten = sprechen")}</span>
-        {!hint && <span>{stt === "reson8" ? "Reson8 · Deutsch" : stt === "browser" ? "Browser · Deutsch" : ""}</span>}
+      <div className={`mt-2 flex items-center justify-between px-2 text-[13px] ${hint ? "text-agent-ink" : "text-muted"}`}>
+        <span>{hint ?? status}</span>
+        {!hint && <span>{stt === "reson8" ? "Reson8 · English" : stt === "browser" ? "Browser · English" : ""}</span>}
       </div>
     </div>
   );

@@ -30,14 +30,16 @@ export interface Assembly {
   propDiameter: number;
 }
 
-const LAVA_550: [number, number, number] = [68, 15.5, 6.7];
+/** The kickoff's pack, the Tattu R-Line 1S 550 of the reference build. */
+const RLINE_550: [number, number, number] = [59, 18, 8];
 
 /**
  * What the 3D model draws, in metres: the frame from the CAD parameters and the
  * battery that was chosen. With `atSeq` it is the build as it stood at that event
- * (a simulation run), else the version picked on the timeline, else the current one.
+ * (a simulation run), with "latest" the newest build, else the version picked on
+ * the timeline, else the current one.
  */
-export function useAssembly(atSeq?: number): Assembly {
+export function useAssembly(atSeq?: number | "latest"): Assembly {
   const cad = useSession((s) => s.cad);
   const parts = useSession((s) => s.parts);
   const byName = useSession((s) => s.partsByName);
@@ -46,21 +48,21 @@ export function useAssembly(atSeq?: number): Assembly {
   const versionsList = useSession((s) => s.versions);
   return useMemo(() => {
     let battery = parts.battery;
-    if (atSeq !== undefined) {
+    if (typeof atSeq === "number") {
       for (const { seq, ev } of log) {
         if (seq > atSeq) break;
         if (ev.type === "part" && ev.category === "battery" && !ev.considered) battery = ev;
       }
-    } else if (selected !== null) {
+    } else if (atSeq === undefined && selected !== null) {
       const name = versionsList.find((v) => v.n === selected)?.parts.battery;
       if (name && byName[name]) battery = byName[name];
     }
-    const size = battery?.size_mm ?? LAVA_550;
+    const size = battery?.size_mm ?? RLINE_550;
     return {
-      arm: (cad?.params.arm_length_mm?.value ?? 36) / 1000,
+      arm: (cad?.params.arm_length_mm?.value ?? 42.5) / 1000,
       thickness: (cad?.params.thickness_mm?.value ?? 2) / 1000,
       battery: [size[0] / 1000, size[1] / 1000, size[2] / 1000],
-      propDiameter: (parts.propeller?.diameter_mm ?? 40) / 1000,
+      propDiameter: (parts.propeller?.diameter_mm ?? 51) / 1000,
     };
   }, [cad, parts, byName, log, selected, versionsList, atSeq]);
 }

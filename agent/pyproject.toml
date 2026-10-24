@@ -10,6 +10,7 @@ dependencies = [
   "mujoco>=3.2",
   "cadquery>=2.5",
   "pydantic>=2",
+  "httpx2>=2.16",
 ]
 
 [project.scripts]

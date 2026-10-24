@@ -3,9 +3,12 @@ import { archiveChat } from "../lib/archive";
 import {
   STEP_IDS,
   type AgentEvent,
+  type AgentRunEvent,
   type BomEvent,
+  type BuildGuideEvent,
   type CadEvent,
   type DrawEvent,
+  type FirmwareEvent,
   type RenderEvent,
   type MascotState,
   type MeetingEvent,
@@ -20,6 +23,7 @@ import {
   type SimEvent,
   type StepId,
   type StepStatus,
+  type StressEvent,
   type ToolStatus,
   type TrainingEvent,
   type OmniverseEvent,
@@ -27,12 +31,12 @@ import {
 
 export const STEP_LABELS: Record<StepId, string> = {
   meeting: "Meeting",
-  teile: "Teile",
+  teile: "Parts",
   cad: "CAD",
   render: "Render",
   simulation: "Simulation",
   training: "Training",
-  stueckliste: "Stückliste",
+  stueckliste: "BOM",
 };
 
 /** The fixed tool roster shown in the status card; unknown tool names are appended. */
@@ -81,7 +85,9 @@ export type ChatItem =
   | { kind: "training"; id: string; seq: number; at: number; status: TrainingEvent["status"]; detail: string }
   | { kind: "warning"; id: string; seq: number; at: number; part: string; warning: PartWarning }
   | { kind: "question"; id: string; seq: number; at: number; questionId: string }
-  | { kind: "version"; id: string; seq: number; at: number; n: number };
+  | { kind: "version"; id: string; seq: number; at: number; n: number }
+  | { kind: "agent"; id: string; seq: number; at: number; agentId: string }
+  | { kind: "stress"; id: string; seq: number; at: number; run: number };
 
 export interface Run extends SimEvent {
   seq: number;
@@ -139,8 +145,16 @@ export interface SessionState {
   partsByName: Record<string, PartEvent>;
   questions: Record<string, QuestionEvent>;
   tasks: TasksEvent | null;
-  /** The product this session builds; the drone until a `product` event says otherwise. */
+  /** The orchestrator and its sub-agents by id, as they last reported. */
+  agents: Record<string, AgentRunEvent & { at: number }>;
+  /** The product this session builds: empty on a fresh bench, set by a `product` event or by the first drone event. */
   product: ProductEvent["id"];
+  firmware: FirmwareEvent | null;
+  productLabel: string;
+  /** Stress tests by run number, latest event of each. */
+  stress: Record<number, StressEvent & { seq: number; at: number }>;
+  /** Step-by-step build guide for the latest bill of materials. */
+  buildGuide: BuildGuideEvent | null;
   /** Reduces one contract event. `instant` marks events replayed in bulk (seek), so nothing animates for them. */
   apply: (ev: AgentEvent, opts?: { instant?: boolean }) => void;
   addLocalUserMessage: (text: string) => void;
@@ -183,7 +197,18 @@ const TOOL_ALIASES: Record<string, string> = {
   catalog_search: "Teile",
   grip_calc: "Physik",
   product_brief: "Brief",
+  product_spec: "Spec",
+  part_pick: "Parts",
+  assemble: "Assembly",
+  cad_update: "FreeCAD",
+  check_totals: "Analysis",
+  check_tip_over: "Analysis",
+  check_deflection: "Analysis",
+  check_torque: "Analysis",
+  check_runtime: "Analysis",
+  simulate_assembly: "MuJoCo",
   simulate_drone: "MuJoCo",
+  stress_test: "MuJoCo",
   blender_render: "Blender",
   isaac_sim_render: "Isaac Sim",
   isaac_test: "Isaac Sim",
@@ -191,11 +216,13 @@ const TOOL_ALIASES: Record<string, string> = {
   product_usd: "Blender",
   isaac_lab_train: "Isaac Lab",
   isaac_lab_status: "Isaac Lab",
-  parts_search: "Teile",
-  physics_calc: "Physik",
-  bom_build: "Stückliste",
+  parts_search: "Parts",
+  physics_calc: "Physics",
+  bom_build: "BOM",
+  build_guide: "Build guide",
+  firmware: "Firmware",
   version_commit: "Version",
-  ask_user: "Rückfrage",
+  ask_user: "Question",
 };
 
 /**
@@ -218,6 +245,8 @@ const SILENT_TOOLS = new Set([
   "physics_calc",
   "grip_calc",
   "product_brief",
+  "delegate",
+  "stress_test",
 ]);
 
 /** Tool names from the backend may differ in case or spacing ("isaac_lab", "Isaac Lab"). */
@@ -258,11 +287,26 @@ function emptyState() {
     partsByName: {} as Record<string, PartEvent>,
     questions: {} as Record<string, QuestionEvent>,
     tasks: null as TasksEvent | null,
-    product: "drone" as ProductEvent["id"],
+    firmware: null as FirmwareEvent | null,
+    agents: {} as SessionState["agents"],
+    product: "" as ProductEvent["id"],
+    productLabel: "Any product",
+    stress: {} as SessionState["stress"],
+    buildGuide: null as BuildGuideEvent | null,
   };
 }
 
 const meetingOrder = (m: MeetingEvent) => `${m.date}T${m.time}`;
+
+const DRONE_PARTS = new Set(["motor", "propeller", "battery", "flight_controller", "frame"]);
+
+function isDroneEvent(ev: AgentEvent): boolean {
+  if (ev.type === "metrics") return !ev.cards;
+  if (ev.type === "part") return DRONE_PARTS.has(ev.category);
+  if (ev.type === "sim") return !ev.kind || ev.kind === "hover";
+  if (ev.type === "cad") return !ev.part;
+  return ev.type === "version";
+}
 
 /** Finds the newest still-running chat card of a tool or Jamie action so its result updates it in place. */
 function findOpenCard(chat: ChatItem[], kind: "tool" | "jamie", key: string): number {
@@ -280,9 +324,12 @@ export const useSession = create<SessionState>((set, get) => ({
   apply: (ev, opts) => {
     // The server starts every stream, and every reset, with this marker; a reconnect replays from it.
     if (ev.type === "reset") return set(emptyState());
-    if (ev.type === "replayed") return;
+    // Spoken lines go straight to the speaker (lib/speech.ts); they are not session state.
+    if (ev.type === "replayed" || ev.type === "say") return;
     const at = opts?.instant ? Date.now() - INSTANT_AGE_MS : Date.now();
     const seq = ++seqCounter;
+    // The drone flow (Jamie kickoff, recordings) sends no product event; its own events name it.
+    if (get().product === "" && isDroneEvent(ev)) set({ product: "drone", productLabel: "Drone" });
     const s = get();
     const log = [...s.log, { seq, at, ev }];
 
@@ -366,10 +413,11 @@ export const useSession = create<SessionState>((set, get) => ({
       case "mascot":
         return set({ log, mascot: { state: ev.state, say: ev.say, at } });
       case "bom": {
-        const chat: ChatItem[] = [
-          ...s.chat,
-          { kind: "bom", id: nextId("bom"), seq, at, count: ev.items.length, total: ev.total_eur },
-        ];
+        const card = { kind: "bom" as const, id: nextId("bom"), seq, at, count: ev.items.length, total: ev.total_eur };
+        // Live prices replace the catalog list they were searched for, so the card updates instead of repeating.
+        let open = s.bom?.prices === "searching" ? s.chat.length - 1 : -1;
+        while (open >= 0 && s.chat[open].kind !== "bom") open--;
+        const chat: ChatItem[] = open >= 0 ? s.chat.map((c, i) => (i === open ? { ...card, id: c.id } : c)) : [...s.chat, card];
         return set({ log, bom: ev, chat });
       }
       case "jamie": {
@@ -418,24 +466,48 @@ export const useSession = create<SessionState>((set, get) => ({
       }
       case "tasks":
         return set({ log, tasks: ev });
+      case "agent": {
+        // One card per agent, updated in place as it reports tokens, cost and its result.
+        const known = !!s.agents[ev.id];
+        const agents = { ...s.agents, [ev.id]: { ...ev, at: known ? s.agents[ev.id].at : at } };
+        const chat: ChatItem[] = known ? s.chat : [...s.chat, { kind: "agent", id: nextId("agent"), seq, at, agentId: ev.id }];
+        return set({ log, agents, chat });
+      }
       case "product": {
-        if (ev.id === s.product) return set({ log });
+        if (ev.id === s.product) {
+          const keep = ev.requirements;
+          const requirements = keep ? s.requirements.filter((r) => keep.includes(r.id)) : s.requirements;
+          return set({ log, productLabel: ev.label || s.productLabel, requirements });
+        }
         // A new product starts its own build: drop the other product's numbers, parts and runs.
         return set({
           log,
           product: ev.id,
+          productLabel: ev.label,
           requirements: [],
           metrics: null,
           omniverse: null,
           runs: [],
           draws: [],
           bom: null,
+          buildGuide: null,
           cad: null,
           renders: [],
           parts: {},
           versions: [],
+          firmware: null,
         });
       }
+      case "stress": {
+        const stress = { ...s.stress, [ev.run]: { ...ev, seq, at } };
+        const known = s.chat.some((c) => c.kind === "stress" && c.run === ev.run);
+        const chat: ChatItem[] = known ? s.chat : [...s.chat, { kind: "stress", id: nextId("stress"), seq, at, run: ev.run }];
+        return set({ log, stress, chat });
+      }
+      case "build_guide":
+        return set({ log, buildGuide: ev });
+      case "firmware":
+        return set({ log, firmware: ev });
       case "training": {
         // Browser training is narrated by its tool card and Bolzen, not the Isaac Lab card.
         if ((ev as { source?: string }).source === "browser") return set({ log, browserTraining: { ...ev, at } });
@@ -464,7 +536,7 @@ export const useSession = create<SessionState>((set, get) => ({
   reset: () => {
     const { chat, runs } = get();
     const last = runs.at(-1);
-    archiveChat(chat, last ? `Lauf ${last.run} ${last.result === "pass" ? "besteht" : "sackt ab"}` : "ohne Lauf");
+    archiveChat(chat, last ? `Run ${last.run} ${last.result === "pass" ? "passes" : "drops"}` : "no run");
     set(emptyState());
   },
 }));
@@ -472,22 +544,22 @@ export const useSession = create<SessionState>((set, get) => ({
 function trainingDetail(ev: TrainingEvent): string {
   switch (ev.status) {
     case "queued":
-      return "wartet auf die GPU";
+      return "waiting for the GPU";
     case "running":
-      return `${formatSteps(ev.step)} Schritte`;
+      return `${formatSteps(ev.step)} steps`;
     case "done":
-      return `fertig nach ${formatSteps(ev.step)} Schritten`;
+      return `done after ${formatSteps(ev.step)} steps`;
     case "failed":
-      return "abgebrochen";
+      return "stopped";
     case "offline":
-      return "RunPod nicht erreichbar";
+      return "RunPod unreachable";
   }
 }
 
 export function formatSteps(step: number): string {
-  if (step >= 1_000_000) return `${(step / 1_000_000).toLocaleString("de-DE", { maximumFractionDigits: 1 })} Mio.`;
-  if (step >= 1000) return `${Math.round(step / 1000).toLocaleString("de-DE")} Tsd.`;
-  return step.toLocaleString("de-DE");
+  if (step >= 1_000_000) return `${(step / 1_000_000).toLocaleString("en-GB", { maximumFractionDigits: 1 })}M`;
+  if (step >= 1000) return `${Math.round(step / 1000).toLocaleString("en-GB")}k`;
+  return step.toLocaleString("en-GB");
 }
 
 /** The step the agent is on right now: the running one, else the last one that finished or failed. */

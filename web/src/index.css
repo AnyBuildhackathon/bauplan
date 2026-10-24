@@ -1,43 +1,49 @@
 @import "tailwindcss";
 
-/* Bevel look as tokens. Colors carry meaning: agent (orange) = what the agent is
-   doing right now, ok (teal-green) = passed or met, fail (red) = failed.
+/* AnyBuild look as tokens: an off-white, airy, almost borderless reading surface.
+   Mechanic's answers and the Jamie quotes use the serif; everything else stays plain.
+   Colors carry meaning: agent (orange) = what the agent is doing right now, ok (green)
+   = passed or met, fail (red) = failed, accent (teal) = send and source citations.
    The *-ink variants are darker text shades that stay readable on a projector. */
 @theme {
   --font-sans: "Inter Tight", "Inter Tight Fallback", -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  --font-serif: "Newsreader", "Iowan Old Style", Georgia, serif;
   --font-hand: "Caveat", "Bradley Hand", cursive;
 
-  --color-page: #f2f2f6;
-  --color-page-2: #f7f7fb;
+  --color-page: #fafaf8;
+  --color-page-2: #f3f3f0;
   --color-card: #ffffff;
-  --color-ink: #1f1f1f;
-  --color-ink-2: #45454b;
-  --color-muted: #6f6f76;
-  --color-faint: #a3a3aa;
-  --color-line: #e8e7eb;
-  --color-tile: #f2f2f5;
-  --color-track: #e4e3e6;
+  --color-ink: #1a1a18;
+  --color-ink-2: #3a3a36;
+  --color-muted: #66665f;
+  --color-faint: #9a9a93;
+  --color-line: #ecece8;
+  --color-tile: #f0f0ec;
+  --color-track: #e4e4df;
+  --color-stage: #e8e8e6;
 
+  --color-accent: #1f6f78;
+  --color-accent-soft: #e3eff0;
   --color-agent: #ff8a3d;
-  --color-agent-ink: #d9620f;
+  --color-agent-ink: #c4570c;
   --color-agent-soft: #fff1e6;
-  --color-ok: #2ed3ae;
-  --color-ok-ink: #0b9677;
-  --color-ok-soft: #e2f8f1;
-  --color-fail: #ff5a5f;
-  --color-fail-ink: #dc3439;
-  --color-fail-soft: #ffebec;
-  --color-link: #1f7bff;
-  --color-lavender: #e8e2ff;
+  --color-ok: #2fa86f;
+  --color-ok-ink: #22744c;
+  --color-ok-soft: #e3f0e8;
+  --color-fail: #e5484d;
+  --color-fail-ink: #c62f34;
+  --color-fail-soft: #fdecec;
+  --color-link: #1f6f78;
+  --color-lavender: #ebe6fb;
   --color-sky: #6fa8ff;
-  --color-jamie: #7f5af0;
+  --color-jamie: #6b4fd8;
 
-  --radius-card: 28px;
-  --radius-tile: 20px;
+  --radius-card: 20px;
+  --radius-tile: 14px;
 
-  --shadow-card: 0 1px 2px rgb(20 20 40 / 0.04), 0 12px 32px -14px rgb(30 30 70 / 0.14);
-  --shadow-float: 0 2px 6px rgb(20 20 40 / 0.06), 0 18px 40px -12px rgb(30 30 70 / 0.22);
-  --shadow-pill: 0 1px 2px rgb(20 20 40 / 0.06), 0 4px 12px -4px rgb(30 30 70 / 0.12);
+  --shadow-card: 0 0 0 1px var(--color-line);
+  --shadow-float: 0 2px 6px rgb(26 26 24 / 0.06), 0 18px 40px -12px rgb(26 26 24 / 0.2);
+  --shadow-pill: 0 1px 2px rgb(26 26 24 / 0.06), 0 4px 12px -6px rgb(26 26 24 / 0.12);
 
   --animate-pulse-soft: pulse-soft 1.4s ease-in-out infinite;
   --animate-rise: rise 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;

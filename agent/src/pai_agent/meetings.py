@@ -12,36 +12,47 @@ from datetime import date, timedelta
 
 _NUMBER_WORDS = {
     "fünf": 5,
+    "five": 5,
     "acht": 8,
+    "eight": 8,
     "zehn": 10,
+    "ten": 10,
     "elf": 11,
+    "eleven": 11,
     "zwölf": 12,
+    "twelve": 12,
     "fünfzehn": 15,
+    "fifteen": 15,
     "zwanzig": 20,
+    "twenty": 20,
     "dreißig": 30,
+    "thirty": 30,
     "fünfzig": 50,
+    "fifty": 50,
     "achtzig": 80,
+    "eighty": 80,
     "hundert": 100,
+    "hundred": 100,
 }
 _NUMBER = r"(\d+(?:[.,]\d+)?|" + "|".join(_NUMBER_WORDS) + r")"
 _NEGATIVE = re.compile(
-    r"zu laut|laut|pfeift|nicht|kaputt|heiß|warm|bricht|hebt nicht|zu schwer|wackelt|vibriert",
+    r"zu laut|laut|pfeift|nicht|kaputt|heiß|warm|bricht|hebt nicht|zu schwer|wackelt|vibriert|too loud|loud|whistl|broken|hot|too heavy|wobbl|vibrat|won't lift|will not lift",
     re.IGNORECASE,
 )
-_LAST_WEEK = re.compile(r"letzte[nr]? woche|vorige[nr]? woche|vor einer woche", re.IGNORECASE)
+_LAST_WEEK = re.compile(r"letzte[nr]? woche|vorige[nr]? woche|vor einer woche|last week", re.IGNORECASE)
 
 _CATEGORY_WORDS = {
-    "motor": re.compile(r"\bmotor(?:en)?\b|\b1102\b|\bkv\b", re.IGNORECASE),
-    "battery": re.compile(r"\bakku\b|\bbatterie\b|\bzelle\b", re.IGNORECASE),
+    "motor": re.compile(r"\bmotor(?:en|s)?\b|\b110[2-4]\b|\bkv\b", re.IGNORECASE),
+    "battery": re.compile(r"\bakku\b|\bbatterie\b|\bzelle\b|\bbatter(?:y|ies)\b|\bpack\b", re.IGNORECASE),
     "propeller": re.compile(r"\bpropeller\b|\bprops?\b|\bluftschraube", re.IGNORECASE),
-    "frame": re.compile(r"\brahmen\b", re.IGNORECASE),
-    "flight_controller": re.compile(r"\bregler\b|\bflugcontroller\b|\baio\b", re.IGNORECASE),
+    "frame": re.compile(r"\brahmen\b|\bframe\b", re.IGNORECASE),
+    "flight_controller": re.compile(r"\bregler\b|\bflugcontroller\b|\baio\b|\bcontroller\b", re.IGNORECASE),
 }
 
 REQUIREMENT_TEXT = {
-    "budget": "Gesamtpreis unter {n} €",
-    "flight_time": "Mindestens {n} Minuten Flugzeit",
-    "weight": "Gesamtmasse unter {n} g",
+    "budget": "Total price under €{n}",
+    "flight_time": "At least {n} minutes of flight time",
+    "weight": "Total mass under {n} g",
 }
 LIMIT_KEY = {"budget": "max", "flight_time": "min", "weight": "max"}
 REQUIREMENT_ORDER = ("budget", "flight_time", "weight", "hover", "printable")
@@ -55,7 +66,7 @@ def number(raw: str) -> float:
 
 
 def fmt_number(value: float) -> str:
-    return str(int(value)) if float(value).is_integer() else str(value).replace(".", ",")
+    return str(int(value)) if float(value).is_integer() else str(value)
 
 
 def normalize(raw: dict) -> dict:
@@ -65,7 +76,7 @@ def normalize(raw: dict) -> dict:
             continue
         utterances.append(
             {
-                "speaker": str(item.get("speaker") or "Jemand"),
+                "speaker": str(item.get("speaker") or "Someone"),
                 "time": str(item.get("time") or ""),
                 "text": str(item["text"]).strip(),
                 "about": list(item.get("about") or []),
@@ -173,7 +184,7 @@ def requirements_from(meeting: dict) -> tuple[list[dict], str]:
 
 
 def _plain_text(rid: str) -> str:
-    return {"hover": "Muss stabil abheben und schweben", "printable": "Rahmen selbst drucken, als STL"}[rid]
+    return {"hover": "Must lift off and hover steadily", "printable": "Frame as STL and STEP"}[rid]
 
 
 def _sentence_requirements(text: str) -> list[tuple[str, float | None]]:
@@ -182,15 +193,15 @@ def _sentence_requirements(text: str) -> list[tuple[str, float | None]]:
     match = re.search(_NUMBER + r"\s*(?:euro|€)", lowered)
     if match:
         found.append(("budget", number(match.group(1))))
-    match = re.search(_NUMBER + r"\s*minuten", lowered)
-    if match and ("flug" in lowered or "flieg" in lowered or "luft" in lowered):
+    match = re.search(_NUMBER + r"\s*(?:minuten|minutes)", lowered)
+    if match and re.search(r"flug|flieg|luft|flight|fly|air", lowered):
         found.append(("flight_time", number(match.group(1))))
-    match = re.search(_NUMBER + r"\s*(?:gramm|g\b)", lowered)
-    if match and re.search(r"unter|maximal|höchstens|leichter", lowered):
+    match = re.search(_NUMBER + r"\s*(?:gramm|grams|g\b)", lowered)
+    if match and re.search(r"unter|maximal|höchstens|leichter|under|at most|no more than|lighter", lowered):
         found.append(("weight", number(match.group(1))))
-    if re.search(r"abheb|schweb", lowered):
+    if re.search(r"abheb|schweb|lift off|hover", lowered):
         found.append(("hover", None))
-    if re.search(r"\bstl\b|selber drucken|selbst drucken|drucken wir", lowered):
+    if re.search(r"\bstl\b|selber drucken|selbst drucken|drucken wir|print (?:it |the frame )?ourselves", lowered):
         found.append(("printable", None))
     return found
 
@@ -209,7 +220,7 @@ def complaints_from(meeting: dict) -> list[dict]:
                     {
                         "category": category,
                         "last_week": bool(_LAST_WEEK.search(text)),
-                        "loud": bool(re.search(r"laut|pfeift", text, re.IGNORECASE)),
+                        "loud": bool(re.search(r"laut|pfeift|loud|whistl", text, re.IGNORECASE)),
                         "quote": _quote(meeting, utterance),
                     }
                 )
@@ -266,4 +277,4 @@ def short_date(day: str) -> str:
         parsed = date.fromisoformat(day)
     except ValueError:
         return day
-    return f"{parsed.day}.{parsed.month}."
+    return f"{parsed.day} {parsed.strftime('%b')}"

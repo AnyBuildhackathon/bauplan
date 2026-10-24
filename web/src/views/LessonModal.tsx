@@ -46,21 +46,21 @@ function ThrustDiagram() {
       {/* bars */}
       <g transform="translate(210 40)">
         <text x="0" y="-8" fontSize="14" fontWeight="600" fill="#6f6f76">
-          Schub
+          Thrust
         </text>
         <rect x="0" y="0" width={bar(thrustN)} height="20" rx="10" fill="#2ed3ae" />
         <text x={bar(thrustN) + 10} y="15" fontSize="15" fontWeight="700" fill="#1f1f1f" className="num">
           {fmtRatio(thrustN)} N
         </text>
         <text x="0" y="50" fontSize="14" fontWeight="600" fill="#6f6f76">
-          Gewicht
+          Weight
         </text>
         <rect x="0" y="58" width={bar(weightN)} height="20" rx="10" fill="#ff5a5f" />
         <text x={bar(weightN) + 10} y="73" fontSize="15" fontWeight="700" fill="#1f1f1f" className="num">
           {fmtRatio(weightN)} N
         </text>
         <text x="0" y="104" fontSize="24" fill={ok ? "#0b9677" : "#d9620f"} style={HAND}>
-          {ok ? `${fmtRatio(tw)} : 1, genug Reserve` : `nur ${fmtRatio(tw)} : 1`}
+          {ok ? `${fmtRatio(tw)} : 1, enough reserve` : `only ${fmtRatio(tw)} : 1`}
         </text>
       </g>
     </svg>
@@ -73,10 +73,10 @@ function RequirementsDiagram() {
       <g transform="translate(20 34)">
         <rect width="190" height="62" rx="18" fill="#e8e2ff" />
         <text x="16" y="27" fontSize="15" fontWeight="600" fill="#1f1f1f">
-          „Bleib unter 250
+          “Stay under 250
         </text>
         <text x="16" y="47" fontSize="15" fontWeight="600" fill="#1f1f1f">
-          Gramm …“
+          grams …”
         </text>
       </g>
       <path d="M222 65 H272 M262 57 L272 65 L262 73" stroke="#ff8a3d" strokeWidth="3" fill="none" strokeLinecap="round" />
@@ -92,7 +92,7 @@ function RequirementsDiagram() {
         <path d="M-10 1 l7 7 l13 -15" stroke="white" strokeWidth="4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
       </g>
       <text x="300" y="128" textAnchor="middle" fontSize="22" fill="#d9620f" style={HAND}>
-        Satz → Zahl → Test
+        Sentence → number → test
       </text>
     </svg>
   );
@@ -117,13 +117,13 @@ function FrameDiagram() {
       </g>
       <path d="M220 32 L210 22 M220 32 L196 40" stroke="#ff8a3d" strokeWidth="2.5" fill="none" strokeLinecap="round" />
       <text x="232" y="38" fontSize="22" fill="#d9620f" style={HAND}>
-        Armlänge = 90 mm
+        Arm length = 90 mm
       </text>
       <text x="232" y="80" fontSize="22" fill="#d9620f" style={HAND}>
-        Stärke = 4 mm
+        Thickness = 4 mm
       </text>
       <text x="232" y="122" fontSize="22" fill="#d9620f" style={HAND}>
-        Abstand = 127 mm
+        Spacing = 127 mm
       </text>
       <text x="420" y="80" fontSize="15" fontWeight="600" fill="#6f6f76">
         → frame.py → STL
@@ -143,17 +143,17 @@ function RenderDiagram() {
   );
   return (
     <svg viewBox="0 0 560 150" className="h-full w-full">
-      {box(10, "Modell", "#f2f2f5")}
+      {box(10, "Model", "#f2f2f5")}
       <text x="132" y="80" fontSize="22" fill="#6f6f76" fontWeight="700">
         +
       </text>
-      {box(150, "Licht", "#fff1e6")}
+      {box(150, "Light", "#fff1e6")}
       <text x="272" y="80" fontSize="22" fill="#6f6f76" fontWeight="700">
         +
       </text>
       {box(290, "Material", "#e8e2ff")}
       <path d="M410 73 H440 M432 65 L440 73 L432 81" stroke="#ff8a3d" strokeWidth="3" fill="none" strokeLinecap="round" />
-      {box(448, "Bild", "#e2f8f1")}
+      {box(448, "Image", "#e2f8f1")}
     </svg>
   );
 }
@@ -203,7 +203,7 @@ function BudgetDiagram() {
           Budget {fmtEur(budget)}
         </text>
         <text x="0" y="74" fontSize="22" fill="#d9620f" style={HAND}>
-          Akku = größter Hebel bei Preis und Gewicht
+          Battery = the biggest lever on price and weight
         </text>
       </g>
     </svg>
@@ -247,15 +247,15 @@ export function LessonModal() {
         className="relative w-[680px] max-w-[94vw] animate-rise overflow-hidden rounded-[32px] bg-card shadow-[var(--shadow-float)]"
         onMouseDown={(e) => e.stopPropagation()}
         role="dialog"
-        aria-label={`Erklär mir das: ${lesson.concept}`}
+        aria-label={`Explain this: ${lesson.concept}`}
       >
         <div className="px-8 pt-7">
           <div className="flex items-center gap-2">
-            <span className="text-[13px] font-extrabold tracking-[0.08em] text-agent-ink">ERKLÄR MIR DAS</span>
+            <span className="text-[13px] font-extrabold tracking-[0.08em] text-agent-ink">EXPLAIN THIS</span>
             <span className="rounded-full bg-tile px-2.5 py-0.5 text-[13px] font-semibold text-ink-2">
-              Schritt {n} · {STEP_LABELS[step]}
+              Step {n} · {STEP_LABELS[step]}
             </span>
-            <button onClick={close} className="ml-auto rounded-full p-2 text-muted hover:bg-tile hover:text-ink" aria-label="Schließen">
+            <button onClick={close} className="ml-auto rounded-full p-2 text-muted hover:bg-tile hover:text-ink" aria-label="Close">
               <X className="h-5 w-5" />
             </button>
           </div>
@@ -277,7 +277,7 @@ export function LessonModal() {
         </div>
 
         <div className="mt-5 border-t border-line px-8 pt-5 pb-7">
-          <div className="eyebrow">Kurzer Check</div>
+          <div className="eyebrow">Quick check</div>
           <p className="mt-1 text-[19px] leading-snug font-bold">{lesson.question}</p>
           <div className="mt-3 grid grid-cols-3 gap-2.5">
             {lesson.options.map((o, i) => {

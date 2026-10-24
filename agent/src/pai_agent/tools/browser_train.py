@@ -159,6 +159,10 @@ def _event(job: dict, status: str) -> dict:
 
 
 async def train_in_browser(ctx: Ctx, args: dict) -> dict:
+    product = getattr(ctx.state, "product", "drone")
+    if product not in {"drone", "gripper"}:
+        message = "Browser training covers the drone and the gripper, not a " + str(product) + " product yet."
+        return {"ok": False, "error": message, "detail": message}
     population = int(args.get("population") or POPULATION)
     generations = int(args.get("generations") or GENERATIONS)
     population = max(8, min(256, population))

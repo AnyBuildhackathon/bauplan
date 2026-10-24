@@ -8,6 +8,7 @@ import remarkGfm from "remark-gfm";
 import type { Components } from "react-markdown";
 import { Check, Copy } from "lucide-react";
 import type { MascotState } from "../../events/types";
+import { enText } from "../../lib/copy";
 import { MascotHead } from "../mascot/Mascot";
 
 interface ChatMessageProps {
@@ -24,14 +25,14 @@ const markdown: Components = {
     return <p className="mb-2 last:mb-0">{children}</p>;
   },
   strong({ children }) {
-    return <strong className="font-bold text-ink">{children}</strong>;
+    return <strong className="font-semibold text-ink">{children}</strong>;
   },
   ul({ children }) {
     return <ul className="mb-2 list-disc space-y-1 pl-5 last:mb-0">{children}</ul>;
   },
   a({ href, children }) {
     return (
-      <a href={href} target="_blank" rel="noopener noreferrer" className="font-semibold text-link hover:underline">
+      <a href={href} target="_blank" rel="noopener noreferrer" className="text-link underline decoration-accent/40 underline-offset-2 hover:decoration-accent">
         {children}
       </a>
     );
@@ -68,9 +69,9 @@ function useWordReveal(text: string, animate: boolean, onProgress?: () => void):
 function UserMessage({ content }: { content: string }) {
   const isShort = content.length <= 48 && !content.includes("\n");
   return (
-    <div className="flex flex-col items-end py-1.5 pl-10">
+    <div className="flex flex-col items-end py-2 pl-10">
       <div className={`bg-tile px-4 py-2.5 ${isShort ? "rounded-full" : "rounded-[20px] rounded-br-md"}`}>
-        <p className="text-[15px] leading-snug whitespace-pre-wrap text-ink">{content}</p>
+        <p className="text-[16px] leading-snug whitespace-pre-wrap text-ink">{content}</p>
       </div>
     </div>
   );
@@ -91,21 +92,21 @@ function AssistantMessage({ content, animate, mascot, onRevealProgress }: Omit<C
   };
 
   return (
-    <div className="group flex items-start gap-2.5 py-1.5">
-      <MascotHead size={24} state={mascot} className="mt-0.5 self-start" />
+    <div className="group relative flex items-start gap-3 py-2">
+      <MascotHead size={24} state={mascot} className="mt-1 self-start" />
       <div className="min-w-0 flex-1">
-        <div className="text-[15px] leading-[1.5] text-ink-2">
+        <div className="font-serif text-[18px] leading-[1.55] text-ink">
           <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdown}>
             {shown}
           </ReactMarkdown>
-          {streaming && <span className="ml-0.5 inline-block h-3.5 w-1.5 translate-y-0.5 animate-pulse rounded-sm bg-agent" />}
+          {streaming && <span className="ml-0.5 inline-block h-3.5 w-1.5 translate-y-0.5 animate-pulse rounded-sm bg-accent" />}
         </div>
         {!streaming && (
-          <div className="mt-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+          <div className="absolute -right-2 -bottom-3 opacity-0 transition-opacity group-hover:opacity-100">
             <button
               onClick={handleCopyMessage}
-              className="rounded-md p-1 text-faint transition-colors hover:bg-tile hover:text-ink-2"
-              title="Kopieren"
+              className="rounded-md bg-page p-1 text-faint transition-colors hover:bg-tile hover:text-ink-2"
+              title="Copy"
             >
               {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
             </button>
@@ -116,9 +117,10 @@ function AssistantMessage({ content, animate, mascot, onRevealProgress }: Omit<C
   );
 }
 
-function SidebarChatMessage({ role, ...rest }: ChatMessageProps) {
-  if (role === "user") return <UserMessage content={rest.content} />;
-  return <AssistantMessage {...rest} />;
+function SidebarChatMessage({ role, content, ...rest }: ChatMessageProps) {
+  const text = enText(content);
+  if (role === "user") return <UserMessage content={text} />;
+  return <AssistantMessage content={text} {...rest} />;
 }
 
 export default memo(SidebarChatMessage);

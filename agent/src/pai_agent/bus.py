@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 
 
 class EventBus:
@@ -11,13 +11,20 @@ class EventBus:
         self.events: list[dict] = []
         self._subscribers: list[asyncio.Queue] = []
         self._lock = asyncio.Lock()
+        # Sees every published event, for the voice that speaks at build milestones.
+        self.observer: Callable[[dict], None] | None = None
 
-    async def publish(self, event: dict) -> None:
+    async def publish(self, event: dict, keep: bool = True) -> None:
+        """`keep=False` is for live-only events (spoken text as it streams): a reconnect does not replay them."""
+
         async with self._lock:
-            self.events.append(event)
+            if keep:
+                self.events.append(event)
             queues = list(self._subscribers)
         for queue in queues:
             queue.put_nowait(event)
+        if self.observer is not None:
+            self.observer(event)
 
     async def subscribe(self) -> asyncio.Queue:
         queue: asyncio.Queue = asyncio.Queue()

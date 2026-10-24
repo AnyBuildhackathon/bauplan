@@ -1,0 +1,195 @@
+{
+  "id": "phone-stand",
+  "name": "Desk phone stand",
+  "summary": "Two PETG parts and four rubber feet; holds a 200 g phone at 65 degrees and takes a tap on the screen.",
+  "spec": {
+    "name": "Phone stand",
+    "function": "Holds a smartphone at 65 degrees on a desk for video calls, with a slot for the charging cable.",
+    "quote": "Design a phone stand for my desk that holds my phone at 65 degrees for video calls.",
+    "assemblies": [
+      {
+        "id": "stand",
+        "name": "Stand"
+      }
+    ],
+    "parts": [
+      {
+        "id": "base",
+        "name": "Base plate",
+        "kind": "printed",
+        "qty": 1,
+        "assembly": "stand",
+        "description": "Flat plate 80 mm wide from y = -25 backwards, 5 mm thick, with a 12 mm front lip the phone stands behind and a cable slot through the lip.",
+        "size_mm": [
+          146.67,
+          110.0,
+          31.17
+        ],
+        "position_mm": null,
+        "rotation_deg": null,
+        "material": "PETG",
+        "params": {
+          "width_mm": 80.0,
+          "depth_mm": 110.0,
+          "thickness_mm": 5.0,
+          "lip_height_mm": 12.0
+        }
+      },
+      {
+        "id": "back-rest",
+        "name": "Back rest",
+        "kind": "printed",
+        "qty": 1,
+        "assembly": "stand",
+        "description": "Plate 70 mm wide and 95 mm long leaning back at 65 degrees on the base top at y = -10, braced by two triangular gussets.",
+        "size_mm": [
+          70.0,
+          45.0,
+          88.0
+        ],
+        "position_mm": null,
+        "rotation_deg": null,
+        "material": "PETG",
+        "params": {
+          "width_mm": 70.0,
+          "support_length_mm": 95.0,
+          "thickness_mm": 5.0,
+          "angle_deg": 65.0
+        }
+      },
+      {
+        "id": "feet",
+        "name": "Rubber feet",
+        "kind": "bought",
+        "qty": 4,
+        "assembly": null,
+        "description": "",
+        "size_mm": null,
+        "position_mm": null,
+        "rotation_deg": null,
+        "mass_g": null,
+        "category": "hardware",
+        "query": "rubber feet"
+      },
+      {
+        "id": "phone",
+        "name": "Smartphone",
+        "kind": "external",
+        "qty": 1,
+        "assembly": null,
+        "description": "",
+        "size_mm": [
+          75.0,
+          9.0,
+          160.0
+        ],
+        "position_mm": [
+          0.0,
+          19.7,
+          79.4
+        ],
+        "rotation_deg": [
+          -25.0,
+          0.0,
+          0.0
+        ],
+        "mass_g": 200.0,
+        "category": "",
+        "query": "Smartphone"
+      }
+    ],
+    "requirements": [
+      {
+        "id": "mass",
+        "text": "Weighs under 150 g",
+        "check": "mass",
+        "quote": "",
+        "max": 150.0,
+        "unit": "g"
+      },
+      {
+        "id": "cost",
+        "text": "Parts under 6 €",
+        "check": "cost",
+        "quote": "",
+        "max": 6.0,
+        "unit": "eur"
+      },
+      {
+        "id": "tap",
+        "text": "A 0.75 N tap on the phone top does not tip it",
+        "check": "tip_over",
+        "quote": "",
+        "min": 0.75,
+        "unit": "n"
+      },
+      {
+        "id": "push",
+        "text": "Settles upright after the MuJoCo push",
+        "check": "stability",
+        "quote": "",
+        "max": 5.0,
+        "unit": "deg"
+      },
+      {
+        "id": "stiff",
+        "text": "Back rest bends under 1 mm at 5 N",
+        "check": "deflection",
+        "quote": "",
+        "max": 1.0,
+        "unit": "mm",
+        "part_id": "back-rest"
+      },
+      {
+        "id": "printable",
+        "text": "Printable parts with STL and STEP",
+        "check": "printable",
+        "quote": ""
+      }
+    ]
+  },
+  "scripts": {
+    "base": {
+      "file": "base.py",
+      "generated": false
+    },
+    "back-rest": {
+      "file": "back-rest.py",
+      "generated": false
+    }
+  },
+  "picks": {
+    "feet": {
+      "select_id": "rubber-feet-10mm",
+      "reason": "Four non-slip feet keep it from sliding on the desk."
+    }
+  },
+  "checks": [
+    {
+      "tool": "check_totals",
+      "args": {}
+    },
+    {
+      "tool": "check_tip_over",
+      "args": {}
+    },
+    {
+      "tool": "simulate_assembly",
+      "args": {
+        "mode": "push",
+        "force_n": 0.75
+      }
+    },
+    {
+      "tool": "check_deflection",
+      "args": {
+        "part_id": "back-rest",
+        "span_mm": 40,
+        "width_mm": 70,
+        "thickness_mm": 5,
+        "load_n": 5,
+        "support": "cantilever"
+      }
+    }
+  ]
+}
