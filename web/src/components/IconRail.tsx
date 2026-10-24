@@ -2,6 +2,7 @@
 // stage flow lives on the Workbench; Library, Community, Training and Logbook stay one click away.
 import { BookOpen, Box, Dumbbell, LayoutGrid, Plus, Users } from "lucide-react";
 import { useSource } from "../events/source";
+import { useSession } from "../events/store";
 import { useUi, type View } from "../lib/ui";
 import { Logo } from "./TopBar";
 
@@ -49,12 +50,13 @@ function RailButton({
 export function IconRail() {
   const view = useUi((s) => s.view);
   const setView = useUi((s) => s.setView);
+  const showLanding = useUi((s) => s.showLanding);
   const resetUi = useUi((s) => s.resetUi);
   const resetSession = useSource((s) => s.resetSession);
   return (
     <nav className="flex h-full w-16 shrink-0 flex-col items-center justify-between bg-page-2 py-4" aria-label="AnyBuild">
       <div className="flex flex-col items-center gap-1.5">
-        <button type="button" onClick={() => setView("werkbank")} title="AnyBuild" aria-label="AnyBuild" data-target="logo" className="mb-4">
+        <button type="button" onClick={() => showLanding(useSession.getState().chat.length)} title="Start screen" aria-label="AnyBuild start screen" data-target="logo" className="mb-4">
           <Logo size={52} />
         </button>
         <RailButton
