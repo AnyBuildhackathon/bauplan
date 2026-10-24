@@ -1,6 +1,6 @@
 // Adapted from core-oss (github.com/10xapp/core-oss, Apache-2.0),
 // core-web/src/components/SidebarChat/SidebarChatInput.tsx. Modified: Bevel pill
-// styling, a mic button in place of attachments and mentions: hands-free by default
+// styling, a mic button and a sketch photo (SketchDrop.tsx) in place of attachments and mentions: hands-free by default
 // (click to start a conversation; Reson8 hears when a turn ends and when the person
 // interrupts Mechanic), push-to-talk as the fallback (hold the button or the space
 // bar); speech goes to Reson8 or the browser (lib/voice.ts).
@@ -9,6 +9,7 @@ import { ArrowUp, Mic } from "lucide-react";
 import { useUi } from "../../lib/ui";
 import { hold, isEcho, isSpeaking, markTurnEnd, release, stopSpeaking, unlockAudio, warmUp } from "../../lib/speech";
 import { startHandsFree, startListening as listen, type HandsFree, type Listener } from "../../lib/voice";
+import { pickImage, SketchButton, SketchChip } from "./SketchDrop";
 
 interface SidebarChatInputProps {
   value: string;
@@ -16,6 +17,11 @@ interface SidebarChatInputProps {
   onSubmit: () => void;
   /** A finished spoken sentence, sent as it is. */
   onVoice?: (text: string) => void;
+  /** The attached sketch photo, set by the button, a paste or a drop on the chat column. */
+  sketch?: File | null;
+  onSketchChange?: (file: File | null) => void;
+  /** Sends the sketch with the typed text as its note. */
+  onSendSketch?: (file: File, note: string) => void;
   disabled?: boolean;
   placeholder?: string;
   size?: "md" | "lg";
@@ -44,6 +50,9 @@ export default function SidebarChatInput({
   onChange,
   onSubmit,
   onVoice,
+  sketch = null,
+  onSketchChange,
+  onSendSketch,
   disabled = false,
   placeholder = "Describe what you want to build",
   size = "md",
@@ -203,14 +212,25 @@ export default function SidebarChatInput({
     };
   }, [startListening, stopListening]);
 
+  const sketches = !!onSketchChange && !!onSendSketch;
+  const submit = () => {
+    if (sketch && onSendSketch) {
+      onSendSketch(sketch, value);
+      onSketchChange?.(null);
+      onChange("");
+      return;
+    }
+    onSubmit();
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      if (canSubmit) onSubmit();
+      if (canSubmit) submit();
     }
   };
 
-  const canSubmit = value.trim().length > 0 && !disabled;
+  const canSubmit = (value.trim().length > 0 || !!sketch) && !disabled;
   const hearing = listening || (handsFree && userTalking);
   const micHot = listening || handsFree;
   const status =
@@ -224,6 +244,7 @@ export default function SidebarChatInput({
 
   return (
     <div>
+      {sketch && onSketchChange && <SketchChip file={sketch} onRemove={() => onSketchChange(null)} />}
       <div
         className={`flex items-end gap-2 rounded-[24px] bg-card shadow-[var(--shadow-pill)] ring-1 transition ${
           micHot ? "ring-accent/50" : "ring-[#e2e2dd]"
@@ -242,7 +263,15 @@ export default function SidebarChatInput({
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={handsFree ? "Listening. Just talk, or type" : placeholder}
+            onPaste={(e) => {
+              if (!sketches) return;
+              const picked = pickImage(e.clipboardData.files);
+              if (!picked) return;
+              e.preventDefault();
+              if (picked.file) onSketchChange?.(picked.file);
+              else if (picked.error) flash(picked.error);
+            }}
+            placeholder={sketch ? "What should I know about it? (optional)" : handsFree ? "Listening. Just talk, or type" : placeholder}
             rows={1}
             name="prompt"
             aria-label="Message to Mechanic"
@@ -255,13 +284,14 @@ export default function SidebarChatInput({
         {canSubmit && !hearing && (
           <button
             type="button"
-            onClick={onSubmit}
+            onClick={submit}
             className={`flex shrink-0 items-center justify-center rounded-full bg-accent text-white transition hover:brightness-110 ${lg ? "h-12 w-12" : "h-10 w-10"}`}
             title="Send"
           >
             <ArrowUp className={lg ? "h-5 w-5" : "h-4.5 w-4.5"} strokeWidth={2.5} />
           </button>
         )}
+        {sketches && !hearing && <SketchButton onPick={(file) => onSketchChange?.(file)} onError={flash} large={lg} />}
         <button
           type="button"
           data-target="mic reson8_mic"

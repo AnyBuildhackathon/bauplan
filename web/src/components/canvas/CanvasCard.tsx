@@ -11,6 +11,7 @@ import { CadScene, CadView } from "./CadView";
 import { RenderGallery } from "./RenderGallery";
 import { ModelScene } from "./Scenes";
 import { SimView } from "./SimView";
+import { SketchInset } from "./SketchInset";
 import { OmniverseView } from "./OmniverseView";
 import { BrowserTraining } from "../training/BrowserTraining";
 import { useBrowserTrainingEvent, useSimPane } from "../training/useBrowserTraining";
@@ -160,6 +161,7 @@ export function CanvasCard() {
           />
         )}
         {tab === "modell" && (showRender ? <RenderGallery /> : product === "drone" ? <ModelScene look="modell" /> : <PartModel />)}
+        {tab === "modell" && <SketchInset />}
         {tab === "cad" && <CadView />}
         {tab === "simulation" && (showTraining ? <BrowserTraining /> : <SimView />)}
         {tab === "omniverse" && supportsOmniverse && <OmniverseView />}
