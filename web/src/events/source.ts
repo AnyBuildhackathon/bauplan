@@ -56,6 +56,10 @@ interface SourceState {
   seekToMarker: (marker: string) => void;
   skipToEnd: () => void;
   sendPrompt: (text: string) => Promise<void>;
+  /** Starts a new product from a photo of a hand sketch, with what the user typed next to it. */
+  sendSketch: (image: Blob, note?: string) => Promise<void>;
+  /** Sends the sample phone stand sketch the backend ships with. */
+  sendSampleSketch: () => Promise<void>;
   /** Changes CAD parameters; the backend recomputes and answers with a new `cad` event. */
   setCadParams: (params: Record<string, number>) => Promise<boolean>;
   /** Opens the current part in the FreeCAD app on this Mac. */
@@ -334,6 +338,42 @@ export const useSource = create<SourceState>((set, get) => {
       }
     },
 
+    sendSketch: async (image, note = "") => {
+      if (get().mode === "demo") {
+        set({ notice: "Sketches build in the live session. Switch to Live." });
+        return;
+      }
+      try {
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result));
+          reader.onerror = () => reject(reader.error ?? new Error("unreadable file"));
+          reader.readAsDataURL(image);
+        });
+        const res = await fetch(apiUrl("/api/sketch"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image_base64: dataUrl, media_type: image.type, note: note.trim() }),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => null);
+          throw new Error(body?.detail ?? `HTTP ${res.status}`);
+        }
+      } catch (err) {
+        set({ notice: `The sketch did not go through (${err instanceof Error ? err.message : "error"}).` });
+      }
+    },
+
+    sendSampleSketch: async () => {
+      try {
+        const res = await fetch(apiUrl("/api/sketch/sample"));
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        await get().sendSketch(await res.blob());
+      } catch (err) {
+        set({ notice: `The sample sketch did not load (${err instanceof Error ? err.message : "error"}).` });
+      }
+    },
+
     startReference: async (id) => {
       if (get().mode === "demo") return;
       try {
@@ -495,6 +535,20 @@ export function initSource() {
       if (useSource.getState().live === "open" || useSource.getState().demo.started) return;
       useSource.getState().setMode("demo");
       useSource.setState({ notice: "No backend running: this is the recorded demo, not a live build." });
+    });
+  }
+
+  // A share link (?project=<id>) rebuilds that library entry once, then drops the parameter so a reload does not rebuild again.
+  const project = params.get("project");
+  if (project && !params.has("demo")) {
+    void probeBackend().then(async (backend) => {
+      if (!backend) return;
+      params.delete("project");
+      const rest = params.toString();
+      window.history.replaceState(null, "", `${window.location.pathname}${rest ? `?${rest}` : ""}${window.location.hash}`);
+      const known = await loadReferences();
+      if (!known.some((r) => r.id === project)) return useSource.setState({ notice: "That project is not in the library." });
+      void useSource.getState().startReference(project);
     });
   }
 

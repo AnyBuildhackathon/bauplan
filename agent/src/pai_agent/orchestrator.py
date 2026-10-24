@@ -57,6 +57,7 @@ A reference build is a known product with its real parts (reference_load lists a
 use cad_update for dimensions, part_pick to swap a bought part, or product_spec with the revised spec for new parts or requirements
 (parts whose definition did not change keep their build); then rerun the checks, blender_render and bom_build.
 Keep runs short: at most four printed parts unless the product really needs more.
+When the user uploaded a sketch, call sketch_to_spec first, say in one sentence what you read and what you guessed, then product_spec with that spec.
 
 The drone (a drone, or a Jamie meeting that ended). Jamie is the team's memory: every drone decision hangs on a sentence from a meeting.
 New build from the kickoff:
@@ -207,6 +208,18 @@ async def run_meeting(ctx: Ctx, meta: dict, messages: list[dict]) -> None:
         else:
             await run_mock(ctx, meta["id"])
         return
+    await _run_claude(ctx, text, messages)
+
+
+async def run_sketch(ctx: Ctx, name: str, note: str, messages: list[dict]) -> None:
+    """The photo of a hand sketch starts a product: sketch_to_spec reads it, product_spec and the any-product flow build it."""
+
+    await _first(ctx)
+    await ctx.chat("user", "Build this from my sketch" + (": " + note if note else "."))
+    if not claude_enabled():
+        await run_product_mock(ctx, note, sketch=True)
+        return
+    text = "The user uploaded a sketch (" + name + ")" + (": " + note if note else "") + ". Read it with sketch_to_spec, then build it with product_spec and the normal flow."
     await _run_claude(ctx, text, messages)
 
 

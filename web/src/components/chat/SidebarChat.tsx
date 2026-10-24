@@ -5,7 +5,7 @@
 // speaker toggle for Bolzen's voice, Bevel styling. The scroll handling is kept from core-oss.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowDown, CornerDownRight, RotateCcw, Volume2, VolumeX } from "lucide-react";
+import { ArrowDown, CornerDownRight, ImagePlus, RotateCcw, Volume2, VolumeX } from "lucide-react";
 import { currentStep, useSession } from "../../events/store";
 import { useSource } from "../../events/source";
 import { useUi, type Display } from "../../lib/ui";
@@ -14,6 +14,7 @@ import type { ChatItem } from "../../events/store";
 import ContentPartsRenderer, { JamieGroupRenderer, ProgressLineRenderer, ToolGroupRenderer } from "./ContentPartsRenderer";
 import ChatMessage from "./SidebarChatMessage";
 import SidebarChatInput from "./SidebarChatInput";
+import { useSketchDrop } from "./SketchDrop";
 
 const FRESH_MS = 2500;
 
@@ -88,6 +89,8 @@ export default function SidebarChat() {
   const product = useSession((s) => s.product);
   const steps = useSession((s) => s.steps);
   const sendPrompt = useSource((s) => s.sendPrompt);
+  const sendSketch = useSource((s) => s.sendSketch);
+  const sendSampleSketch = useSource((s) => s.sendSampleSketch);
   const startReference = useSource((s) => s.startReference);
   const allReferences = useSource((s) => s.references);
   const live = useSource((s) => s.mode === "live");
@@ -98,6 +101,8 @@ export default function SidebarChat() {
   const setVoiceOn = useUi((s) => s.setVoiceOn);
 
   const [input, setInput] = useState("");
+  const [sketch, setSketch] = useState<File | null>(null);
+  const drop = useSketchDrop(live, setSketch, (text) => useSource.setState({ notice: text }));
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const stickToBottom = useRef(true);
@@ -147,7 +152,8 @@ export default function SidebarChat() {
     mascot.state === "freut_sich" ? "text-ok-ink" : mascot.state === "besorgt" ? "text-fail-ink" : "text-agent-ink";
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-page" data-target="chat">
+    <div className="relative flex h-full min-h-0 flex-col overflow-hidden bg-page" data-target="chat" {...drop.handlers}>
+      {drop.overlay}
       {/* Header */}
       <div className="mx-5 flex h-[56px] shrink-0 items-center gap-3 border-b border-line">
         <div data-target="mascot bolzen" className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-tile">
@@ -234,6 +240,16 @@ export default function SidebarChat() {
                   {example.label}
                 </button>
               ))}
+              <button
+                type="button"
+                onClick={() => void sendSampleSketch()}
+                data-target="example:sketch"
+                title="Build from a photo of a hand-drawn phone stand"
+                className="flex h-9 items-center gap-1.5 rounded-full bg-tile px-4 text-[14px] font-semibold text-ink-2 transition hover:bg-track"
+              >
+                <ImagePlus className="h-4 w-4" />
+                Phone stand sketch
+              </button>
             </div>
           </div>
         ) : (
@@ -317,6 +333,12 @@ export default function SidebarChat() {
             value={input}
             onChange={setInput}
             onSubmit={send}
+            sketch={sketch}
+            onSketchChange={live ? setSketch : undefined}
+            onSendSketch={(image, note) => {
+              stickToBottom.current = true;
+              void sendSketch(image, note);
+            }}
             onVoice={(text) => {
               stickToBottom.current = true;
               void sendPrompt(text);

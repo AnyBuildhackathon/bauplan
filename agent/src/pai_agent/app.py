@@ -24,6 +24,13 @@ class PromptIn(BaseModel):
     text: str
 
 
+class SketchIn(BaseModel):
+    # Plain base64 or a data URL (data:image/png;base64,...); the image type is read from the bytes.
+    image_base64: str
+    media_type: str = ""
+    note: str = ""
+
+
 class AnswerIn(BaseModel):
     id: str
     answer_id: str
@@ -72,6 +79,27 @@ async def prompt(body: PromptIn, request: Request) -> dict:
     if not text:
         raise HTTPException(status_code=400, detail="text is required")
     return await request.app.state.session.start(text)
+
+
+@app.post("/api/sketch")
+async def sketch(body: SketchIn, request: Request) -> dict:
+    from pai_agent.tools.sketch import decode_image
+
+    _require_json(request)
+    try:
+        result = await request.app.state.session.start_sketch(decode_image(body.image_base64), body.note.strip()[:500])
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if result.get("busy"):
+        raise HTTPException(status_code=409, detail="Mechanic is building. Send the sketch when the build is done.")
+    return result
+
+
+@app.get("/api/sketch/sample")
+async def sketch_sample() -> FileResponse:
+    from pai_agent.tools.sketch import SAMPLE
+
+    return FileResponse(SAMPLE, media_type="image/png", filename=SAMPLE.name)
 
 
 @app.post("/api/reset")
@@ -223,6 +251,9 @@ def _media(name: str) -> str:
         ".stp": "model/step",
         ".glb": "model/gltf-binary",
         ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".webp": "image/webp",
+        ".gif": "image/gif",
         ".mp4": "video/mp4",
         ".json": "application/json",
         ".zip": "application/zip",
@@ -340,6 +371,38 @@ async def versions_restore(n: int, request: Request) -> dict:
     if result.get("ok") is False:
         raise HTTPException(status_code=409 if result.get("busy") else 404, detail=str(result["error"]))
     return result
+
+
+def _bom_state(request: Request):
+    state = request.app.state.session.state
+    if not state.bom:
+        raise HTTPException(status_code=404, detail="No bill of materials yet")
+    return state
+
+
+@app.get("/api/export/bom.csv")
+async def export_csv(request: Request) -> Response:
+    from pai_agent.export import bom_csv, product_name
+
+    state = _bom_state(request)
+    name = "anybuild-" + re.sub(r"[^a-z0-9]+", "-", product_name(state).lower()).strip("-") + "-bom.csv"
+    return Response(bom_csv(state.bom), media_type="text/csv; charset=utf-8", headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+
+@app.get("/api/export/bundle.zip")
+async def export_bundle(request: Request) -> FileResponse:
+    from pai_agent.export import bundle
+
+    session = request.app.state.session
+    path = bundle(_bom_state(request), session.bus.events)
+    return FileResponse(path, media_type="application/zip", filename=path.name)
+
+
+@app.get("/api/export/order")
+async def export_order(request: Request) -> dict:
+    from pai_agent.export import order
+
+    return {"ok": True, **order(_bom_state(request))}
 
 
 @app.get("/api/settings")
