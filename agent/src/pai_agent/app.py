@@ -357,6 +357,38 @@ async def library_save(body: LibraryIn, request: Request) -> dict:
     return result
 
 
+def _bom_state(request: Request):
+    state = request.app.state.session.state
+    if not state.bom:
+        raise HTTPException(status_code=404, detail="No bill of materials yet")
+    return state
+
+
+@app.get("/api/export/bom.csv")
+async def export_csv(request: Request) -> Response:
+    from pai_agent.export import bom_csv, product_name
+
+    state = _bom_state(request)
+    name = "anybuild-" + re.sub(r"[^a-z0-9]+", "-", product_name(state).lower()).strip("-") + "-bom.csv"
+    return Response(bom_csv(state.bom), media_type="text/csv; charset=utf-8", headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+
+@app.get("/api/export/bundle.zip")
+async def export_bundle(request: Request) -> FileResponse:
+    from pai_agent.export import bundle
+
+    session = request.app.state.session
+    path = bundle(_bom_state(request), session.bus.events)
+    return FileResponse(path, media_type="application/zip", filename=path.name)
+
+
+@app.get("/api/export/order")
+async def export_order(request: Request) -> dict:
+    from pai_agent.export import order
+
+    return {"ok": True, **order(_bom_state(request))}
+
+
 @app.get("/api/settings")
 async def settings_get() -> dict:
     from pai_agent import settings

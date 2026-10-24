@@ -518,6 +518,20 @@ export function initSource() {
     });
   }
 
+  // A share link (?project=<id>) rebuilds that library entry once, then drops the parameter so a reload does not rebuild again.
+  const project = params.get("project");
+  if (project && !params.has("demo")) {
+    void probeBackend().then(async (backend) => {
+      if (!backend) return;
+      params.delete("project");
+      const rest = params.toString();
+      window.history.replaceState(null, "", `${window.location.pathname}${rest ? `?${rest}` : ""}${window.location.hash}`);
+      const known = await loadReferences();
+      if (!known.some((r) => r.id === project)) return useSource.setState({ notice: "That project is not in the library." });
+      void useSource.getState().startReference(project);
+    });
+  }
+
   if (useSource.getState().mode === "demo") {
     const seek = params.get("seek");
     if (params.has("end")) useSource.getState().skipToEnd();
