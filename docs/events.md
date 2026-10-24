@@ -339,6 +339,7 @@ A prompt that asks for a gripper (`gripper`, `claw`, `end effector`) plays the g
 Mechanic turns the request into checks, tries the 2.49 € SG90 first: 1.1 N per finger is a safety of 0.9×, and in MuJoCo the can slides out when the arm lifts.
 The swap to the MG996R gives 6.0 N per finger and passes with 0.4 mm slip.
 FreeCAD builds the gripper headless from the library template with the servo pocket sized for the MG996R (58 g PLA), Blender renders it, and the bill of materials comes to 18.65 € and 128 g.
+Both stories call `firmware` right after `bom_build`: the drone gets a Betaflight CLI file, the gripper an Arduino sketch.
 The dashboard's `?demo` replays exactly the drone run from `web/src/events/recording.json`, written by `agent/scripts/record_demo.py`.
 
 ## Omniverse results
