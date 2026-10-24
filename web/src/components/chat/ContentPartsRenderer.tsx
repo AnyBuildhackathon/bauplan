@@ -187,36 +187,38 @@ function QuestionPartRenderer({ item }: { item: Extract<ChatItem, { kind: "quest
   if (!q) return null;
   const left = Math.max(0, Math.ceil(q.timeout_s - (now - item.at) / 1000));
   const picked = q.options.find((o) => o.id === q.answer_id);
+  const fallback = q.options.find((o) => o.id === q.default_id);
+  // The backend puts each quoted sentence on its own line and the question last.
+  const lines = q.text.split("\n");
+  const ask = lines.pop() ?? "";
   return (
-    <div className={`rounded-2xl px-3 py-3 ${open ? "bg-lavender ring-2 ring-jamie/40" : "bg-lavender/50"}`} data-target="question rueckfrage">
-      <div className="flex items-center gap-2 text-[14px] font-bold text-jamie">
-        <MessageCircleQuestion className="h-4.5 w-4.5" /> Question before building
+    <div
+      className={`rounded-2xl px-3.5 py-3 ${open ? "bg-card shadow-[var(--shadow-pill)] ring-1 ring-line" : "bg-page-2"}`}
+      data-target="question rueckfrage"
+    >
+      <div className="flex items-center gap-1.5 text-[12px] font-semibold text-muted">
+        <MessageCircleQuestion className="h-3.5 w-3.5 text-jamie" /> Question before building
       </div>
-      {(() => {
-        // The backend puts each quoted sentence on its own line and the question last.
-        const lines = q.text.split("\n");
-        const ask = lines.pop() ?? "";
-        return (
-          <>
-            {lines.map((line, i) => (
-              <p key={i} className="mt-1 text-[14px] leading-snug text-ink-2">
-                {line}
-              </p>
-            ))}
-            <p className="mt-1.5 text-[17px] leading-snug font-bold text-ink">{ask}</p>
-          </>
-        );
-      })()}
+      {lines.length > 0 && (
+        <div className="mt-2 space-y-1 border-l-2 border-line pl-2.5">
+          {lines.map((line, i) => (
+            <p key={i} className="text-[13px] leading-snug text-muted">
+              {line}
+            </p>
+          ))}
+        </div>
+      )}
+      <p className="mt-2 text-[15px] leading-snug font-semibold text-ink">{ask}</p>
       {open ? (
         <>
-          <div className="mt-2.5 flex flex-wrap gap-2">
+          <div className="mt-2.5 flex flex-wrap gap-1.5">
             {q.options.map((o) => (
               <button
                 key={o.id}
                 type="button"
                 onClick={() => void answer(q.id, o.id)}
-                className={`h-10 rounded-full px-4 text-[15px] font-bold transition ${
-                  o.id === q.default_id ? "bg-jamie text-white hover:brightness-110" : "bg-card text-ink-2 ring-1 ring-line hover:bg-page-2"
+                className={`h-8 rounded-[10px] px-3 text-[13px] transition hover:bg-page-2 ${
+                  o.id === q.default_id ? "bg-card font-semibold text-ink ring-1 ring-ink/25" : "bg-card font-medium text-ink-2 ring-1 ring-line"
                 }`}
               >
                 {o.label}
@@ -224,13 +226,23 @@ function QuestionPartRenderer({ item }: { item: Extract<ChatItem, { kind: "quest
             ))}
           </div>
           {q.timeout_s > 0 && (
-            <p className="num mt-2 font-label text-[12px] font-semibold text-muted">
-              Answer by voice or click · otherwise “{q.options.find((o) => o.id === q.default_id)?.label}” in {left} s
-            </p>
+            <div className="mt-3">
+              <div className="h-0.5 overflow-hidden rounded-full bg-track">
+                <div
+                  className="h-full rounded-full bg-ink/30 transition-[width] duration-500 ease-linear"
+                  style={{ width: `${(left / q.timeout_s) * 100}%` }}
+                />
+              </div>
+              <p className="num mt-1.5 text-[12px] text-muted">
+                Answer by voice or click. Otherwise {fallback?.label} in {left} s.
+              </p>
+            </div>
           )}
         </>
       ) : (
-        <p className="mt-1.5 text-[14px] font-semibold text-ok-ink">✓ {picked?.label ?? "answered"}</p>
+        <p className="mt-2 flex items-center gap-1.5 text-[13px] font-semibold text-ok-ink">
+          <CircleCheck className="h-3.5 w-3.5" strokeWidth={2.4} /> {picked?.label ?? "Answered"}
+        </p>
       )}
     </div>
   );
