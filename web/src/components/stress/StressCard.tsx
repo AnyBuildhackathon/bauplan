@@ -75,8 +75,20 @@ function GripReplay({ run }: { run: Run }) {
   );
 }
 
+/** The latest finished drone stress run with default gains before `run`, for the before/after line. */
+function useDefaultBefore(run: number): StressEvent | null {
+  return useSession((s) => {
+    let found: StressEvent | null = null;
+    for (const [k, e] of Object.entries(s.stress)) {
+      if (Number(k) < run && e.product !== "gripper" && e.policy === "default" && e.status === "done" && (!found || e.run > found.run)) found = e;
+    }
+    return found;
+  });
+}
+
 export function StressCard({ run }: { run: number }) {
   const ev = useSession((s) => s.stress[run]);
+  const before = useDefaultBefore(run);
   const latest = useSession((s) => Math.max(0, ...Object.keys(s.stress).map(Number)));
   const replay = useMemo<Run | null>(() => {
     if (!ev?.worst || ev.worst.trajectory.length < 2) return null;
@@ -106,6 +118,13 @@ export function StressCard({ run }: { run: number }) {
   const byIndex = new Map(ev.worlds.map((w) => [w.i, w]));
   const worst = ev.worst;
   const verb = product === "gripper" ? "Running" : "Flying";
+  const compare = done && ev.policy === "trained" && before ? before : null;
+  const gain = compare ? ev.survived - compare.survived : 0;
+  const gainLine = compare
+    ? gain > 0
+      ? ` Training won ${gain} more world${gain === 1 ? "" : "s"}: ${compare.survived}/${compare.total} with default gains, ${ev.survived}/${ev.total} trained.`
+      : ` Default gains survived ${compare.survived}/${compare.total}, trained ${ev.survived}/${ev.total}.`
+    : "";
 
   return (
     <div className="rounded-2xl bg-tile p-3" data-target="stress">
@@ -119,6 +138,13 @@ export function StressCard({ run }: { run: number }) {
         {done ? `Survived ${ev.survived}/${ev.total}` : failed ? `Stopped after ${ev.done}/${ev.total} worlds` : `${verb} world ${ev.done}/${ev.total}…`}
       </div>
       {!done && !failed && <div className="num text-[13px] text-muted">{ev.survived} survived so far</div>}
+      {compare && (
+        <div className="num text-[14px] font-semibold text-ink-2" data-target="stress:compare">
+          default {compare.survived}/{compare.total} <span className="text-muted">→</span>{" "}
+          <span className={gain > 0 ? "text-ok-ink" : "text-ink"}>trained {ev.survived}/{ev.total}</span>
+        </div>
+      )}
+      {done && product === "gripper" && <div className="text-[12px] text-muted">The trained grasp has no stress gains: the gripper is tested as designed.</div>}
       {failed && <div className="text-[13px] text-fail-ink">{ev.explanation}</div>}
 
       <div className="mt-2 grid grid-cols-[repeat(25,minmax(0,1fr))] gap-[3px]" aria-label="One dot per world">
@@ -160,7 +186,7 @@ export function StressCard({ run }: { run: number }) {
       {done && ev.explanation && (
         <div className="mt-2.5 flex items-start gap-2 rounded-xl bg-white/80 px-2.5 py-2">
           <MascotHead size={24} state={lost === 0 ? "freut_sich" : "erklaert"} className="shrink-0" />
-          <p className="text-[14px] leading-snug font-semibold text-ink">“{ev.explanation}”</p>
+          <p className="text-[14px] leading-snug font-semibold text-ink">“{ev.explanation}{gainLine}”</p>
         </div>
       )}
     </div>
