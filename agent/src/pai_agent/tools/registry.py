@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import asyncio
+import time
+
 from pai_agent.context import Ctx
+from pai_agent.timeouts import limit, timed_out
 from pai_agent.requirements import refresh_requirements
 from pai_agent.scene import DRAW_KINDS, MASCOT_STATES, PART_CATEGORIES, TARGETS
 from pai_agent.freecad_run import find_freecadcmd
-from pai_agent.tools.blender import blender_render, find_blender
+from pai_agent.tools.blender import blender_render, find_blender, recorded_still
 from pai_agent.tools.bom import bom_build
 from pai_agent.tools.browser_train import train_in_browser
 from pai_agent.tools.build_guide import SCHEMA as BUILD_GUIDE_SCHEMA, build_guide
@@ -704,8 +708,17 @@ async def call_tool(ctx: Ctx, name: str, args: dict | None) -> dict:
         {"type": "tool", "name": name, "status": "running", "detail": _running_detail(name, payload)}
     )
     await _advance(ctx, name, {}, started=True)
+    seconds = limit(name)
+    started = time.perf_counter()
     try:
-        result = await function(ctx, payload)
+        result = await asyncio.wait_for(function(ctx, payload), seconds)
+    except TimeoutError:
+        # A stuck tool ends here with a message the room can read, not a frozen run.
+        message = timed_out(name, seconds or 0)
+        result = {"ok": False, "error": message, "detail": message, "timed_out": True}
+        await ctx.chat("agent", message)
+        if name == "blender_render":
+            result = {**await recorded_still(ctx, message), "timed_out": True}
     except Exception as exc:
         result = {"ok": False, "error": str(exc)}
     status = "error"
@@ -714,7 +727,12 @@ async def call_tool(ctx: Ctx, name: str, args: dict | None) -> dict:
         if status not in {"connected", "running", "ok", "error", "offline"}:
             status = "ok"
     detail = str(result.get("detail") or result.get("error") or "")
-    await ctx.emit({"type": "tool", "name": name, "status": status, "detail": detail})
+    final = {"type": "tool", "name": name, "status": status, "detail": detail, "ms": round((time.perf_counter() - started) * 1000)}
+    if result.get("timed_out"):
+        final["timed_out"] = True
+    if result.get("cached"):
+        final["cached"] = True
+    await ctx.emit(final)
     await _advance(ctx, name, result, started=False)
     if result.get("ok") is not False:
         await refresh_requirements(ctx)

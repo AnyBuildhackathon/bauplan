@@ -16,7 +16,7 @@ from pathlib import Path
 
 from pai_agent import settings
 from pai_agent.agents import CAD_ROLE, AgentRun
-from pai_agent.cad_script import DENSITY_G_CM3, ScriptFailed, ScriptRejected, run_script
+from pai_agent.cad_script import DENSITY_G_CM3, ScriptFailed, ScriptRejected, freecad_unavailable, run_block, run_script, run_script_cached
 from pai_agent.context import Ctx
 from pai_agent.env import claude_enabled
 from pai_agent.paths import AGENT_ROOT, REPO_ROOT
@@ -182,6 +182,15 @@ def _product_context(state, part: dict) -> str:
     return "\n".join(lines) + "\n\n"
 
 
+def _template_envelope(template: str | None, params: dict) -> list[float] | None:
+    """The outer size of a library template from its parameters, for the CadQuery stand-in."""
+
+    if template != "gripper":
+        return None
+    finger = params.get("finger_thickness_mm", 6.0) + params.get("pad_thickness_mm", 3.0)
+    return [params.get("jaw_opening_mm", 76.0) + 2 * finger + 16.0, 30.0, params.get("finger_length_mm", 70.0) + 45.0]
+
+
 def _block_script(size: list[float], center: list[float] | None) -> str:
     """The last resort after failed attempts: a plain block of the part's envelope, so the build goes on."""
 
@@ -241,6 +250,8 @@ async def cad_part(ctx: Ctx, args: dict) -> dict:
     build = None
     error = None
     fallback = False
+    cached = False
+    block_source = None
     agent = None
     for attempt in range(1, MAX_ATTEMPTS + 1):
         if script is None or attempt > 1:
@@ -260,8 +271,8 @@ async def cad_part(ctx: Ctx, args: dict) -> dict:
         await _progress(ctx, "freecadcmd builds " + name + (" (attempt " + str(attempt) + ")" if attempt > 1 else ""))
         try:
             async with _BUILD:
-                build = await asyncio.to_thread(run_script, script, params, directory, stem, material, expected_mm=expected)
-            attempts.append({"attempt": attempt, "ok": True})
+                build, cached = await asyncio.to_thread(run_script_cached, script, params, directory, stem, material, expected_mm=expected)
+            attempts.append({"attempt": attempt, "ok": True, **({"cached": True} if cached else {})})
             break
         except (ScriptRejected, ScriptFailed, ValueError) as exc:
             error = str(exc)
@@ -281,6 +292,16 @@ async def cad_part(ctx: Ctx, args: dict) -> dict:
             attempts.append({"attempt": len(attempts) + 1, "ok": True, "fallback": True})
         except (ScriptRejected, ScriptFailed, ValueError):
             script = failed_script
+    envelope = spec_part["size_mm"] if spec_part is not None else _template_envelope(template, params)
+    if build is None and envelope and freecad_unavailable(error):
+        # FreeCAD is missing or stuck: CadQuery stands in with the envelope, so the run never stops at CAD.
+        try:
+            build = await asyncio.to_thread(run_block, envelope, spec_part.get("position_mm") if spec_part else None, directory, stem, material)
+            fallback = True
+            block_source = "cadquery"
+            attempts.append({"attempt": len(attempts) + 1, "ok": True, "fallback": True, "source": "cadquery"})
+        except Exception as exc:
+            log.warning("CadQuery block failed: %s", exc)
     if build is None:
         return {
             **_fail("The part script failed " + str(len(attempts)) + " time(s). Last error: " + str(error)),
@@ -327,7 +348,7 @@ async def cad_part(ctx: Ctx, args: dict) -> dict:
     await ctx.emit(
         {
             "type": "cad",
-            "source": "freecad",
+            "source": block_source or "freecad",
             "tree": _tree(name, build.parts),
             "params": sliders,
             "glb_url": url(build.glb),
@@ -354,8 +375,12 @@ async def cad_part(ctx: Ctx, args: dict) -> dict:
     size = build.bbox_mm
     dims = " x ".join(f"{size[i + 3] - size[i]:.0f}" for i in range(3))
     detail = "FreeCAD headless, " + f"{build.mass_g:.1f}" + " g " + material + ", " + dims + " mm"
-    if fallback:
+    if block_source == "cadquery":
+        detail = "FreeCAD unavailable (" + str(error or "").splitlines()[0][:80] + "): CadQuery block for " + name
+    elif fallback:
         detail = "Simplified block for " + name + " after " + str(len(attempts) - 1) + " failed script(s)"
+    elif cached:
+        detail += ", reused the identical FreeCAD build"
     elif len(attempts) > 1:
         detail += ", fixed after " + str(len(attempts) - 1) + " failed attempt(s)"
     extra = {}
@@ -365,11 +390,15 @@ async def cad_part(ctx: Ctx, args: dict) -> dict:
             "last_error": str(error)[:400],
             "note": "The script failed every attempt, so a plain block of the envelope stands in. Call cad_part again with a simpler description or your own script.",
         }
+        if block_source == "cadquery":
+            extra["note"] = "FreeCAD is not available on this machine or did not answer, so CadQuery built a plain block of the envelope. Its mass is the solid block's."
+    if cached:
+        extra["cached"] = True
     return {
         **extra,
         "ok": True,
         "detail": detail,
-        "source": "freecad",
+        "source": block_source or "freecad",
         "name": name,
         "mass_g": build.mass_g,
         "volume_mm3": build.volume_mm3,

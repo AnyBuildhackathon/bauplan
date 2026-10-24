@@ -96,13 +96,27 @@ class AgentRun:
         return settings.cost_usd(self.model, self.usage)
 
 
+_CLIENT = None
+
+
+def _client():
+    """One client for the whole server: rounds reuse its warm connection instead of a new TLS handshake each."""
+
+    global _CLIENT
+    if _CLIENT is None:
+        import anthropic
+
+        from pai_agent.timeouts import model_timeout
+
+        # The SDK's own limit matches the round's, so a stuck request does not linger in its thread.
+        _CLIENT = anthropic.Anthropic(timeout=model_timeout(), max_retries=1)
+    return _CLIENT
+
+
 def create_message(model: str, effort: str, **kwargs):
     """One Messages call with adaptive thinking and the chosen effort."""
 
-    import anthropic
-
-    client = anthropic.Anthropic()
-    return client.messages.create(model=model, thinking={"type": "adaptive"}, output_config={"effort": effort}, **kwargs)
+    return _client().messages.create(model=model, thinking={"type": "adaptive"}, output_config={"effort": effort}, **kwargs)
 
 
 def _dump(block: object) -> dict:
