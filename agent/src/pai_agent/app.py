@@ -288,6 +288,7 @@ class LibraryIn(BaseModel):
     id: str | None = None
     name: str | None = None
     summary: str = ""
+    kind: str = "project"
 
 
 @app.get("/api/library")
@@ -320,7 +321,12 @@ async def library_thumbnail(item_id: str) -> FileResponse:
 @app.post("/api/library")
 async def library_save(body: LibraryIn, request: Request) -> dict:
     _require_json(request)
-    result = request.app.state.session.save_reference(body.id, body.name, body.summary)
+    if body.kind not in {"project", "reference"}:
+        raise HTTPException(status_code=400, detail="kind must be project or reference")
+    # Promoting a build into the repository's registry is for whoever curates the library.
+    if body.kind == "reference" and os.environ.get("PAI_ADMIN") != "1":
+        raise HTTPException(status_code=403, detail="saving a reference build needs PAI_ADMIN=1")
+    result = request.app.state.session.save_reference(body.id, body.name, body.summary, body.kind)
     if result.get("ok") is False:
         raise HTTPException(status_code=409 if result.get("busy") else 400, detail=str(result["error"]))
     return result
