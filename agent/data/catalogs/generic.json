@@ -712,6 +712,76 @@
       "url": "https://www.berrybase.de/en/hc-sr505-mini-pir-sensor-infrared-motion-detector",
       "note": "Mini PIR with a 10 mm lens, about 3 m range, 4.5 to 20 V, under 60 uA quiet; output goes high on motion. 23 x 10 mm board. 2.40 EUR, 47 in stock at Berrybase on 2026-10-24 (the HC-SR501 is sold out).",
       "aliases": ["pir", "motion sensor", "hc-sr505", "pir sensor"]
+    },
+    {
+      "id": "servo-sg90-eckstein",
+      "name": "SG90 micro servo 9 g (Eckstein MO01005)",
+      "category": "servo",
+      "mass_g": 9.0,
+      "size_mm": [22.5, 12.2, 27.0],
+      "voltage_v": 4.8,
+      "power_w": 1.0,
+      "stall_torque_nm": 0.18,
+      "unit_price_eur": 2.95,
+      "shop": "Eckstein",
+      "url": "https://eckstein-shop.de/SG90MiniServoMicroGear9gFC3BCrRCCarBoatAirplaneHelicopterTrex450CE",
+      "note": "1.8 kg cm stall at 4.8 V, nylon gears, 4.8 to 6 V. 2.95 EUR, in stock at Eckstein on 2026-10-24.",
+      "aliases": ["sg90", "micro servo", "9g servo", "otto servo"]
+    },
+    {
+      "id": "nano-ft-anano-bb",
+      "name": "Arduino Nano compatible board, ATmega328P and FT232RL (Berrybase FT-ANANO)",
+      "category": "controller",
+      "mass_g": 7.0,
+      "size_mm": [45, 18, 8],
+      "voltage_v": 5.0,
+      "power_w": 0.1,
+      "unit_price_eur": 11.5,
+      "shop": "Berrybase",
+      "url": "https://www.berrybase.de/en/arduino-nano-compatible-microcontroller-12-digital-i-o-8-analogue-i-o-6-pwm-pins-5-12v",
+      "note": "ATmega328P at 16 MHz, FT232RL USB, 5 to 12 V on VIN, 6 PWM pins. 11.50 EUR, in stock at Berrybase on 2026-10-24.",
+      "aliases": ["arduino nano", "nano", "atmega328"]
+    },
+    {
+      "id": "hc-sr04-sol-333001",
+      "name": "Soldered HC-SR04 ultrasonic sensor, 2 to 400 cm (Berrybase SOL-333001)",
+      "category": "sensor",
+      "mass_g": 9.0,
+      "size_mm": [45, 20, 15],
+      "voltage_v": 5.0,
+      "power_w": 0.075,
+      "unit_price_eur": 5.7,
+      "shop": "Berrybase",
+      "url": "https://www.berrybase.de/en/soldered-hc-sr04-ultraschallsensor-abstandsmessung-2-400-cm-attiny404-easyc-qwiic",
+      "note": "HC-SR04 with Trig and Echo pins plus an easyC/Qwiic port, 5 V, 15 mA. 5.70 EUR, in stock at Berrybase on 2026-10-24.",
+      "aliases": ["hc-sr04", "ultrasonic sensor", "distance sensor"]
+    },
+    {
+      "id": "battery-holder-4xaa-bb-11448",
+      "name": "Battery holder for 4 x AA with snap connection (Berrybase 11448)",
+      "category": "hardware",
+      "mass_g": 12.0,
+      "size_mm": [62, 58, 15],
+      "unit_price_eur": 0.5,
+      "shop": "Berrybase",
+      "url": "https://www.berrybase.de/en/battery-holder-for-4x-mignon-aa-with-push-button-connection",
+      "note": "4 x AA in series (6 V alkaline, 4.8 V NiMH), 9 V style snap terminals. 0.50 EUR, in stock at Berrybase on 2026-10-24.",
+      "aliases": ["4xaa holder", "aa battery holder", "battery box"]
+    },
+    {
+      "id": "varta-aa-4pack-bb",
+      "name": "Varta High Energy alkaline AA batteries, pack of 4 (Berrybase)",
+      "category": "battery",
+      "mass_g": 92.0,
+      "size_mm": [58, 57, 14.5],
+      "voltage_v": 6.0,
+      "capacity_mah": 2000.0,
+      "c_rating": 0.75,
+      "unit_price_eur": 2.3,
+      "shop": "Berrybase",
+      "url": "https://www.berrybase.de/en/varta-high-energy-alkaline-aa-batteries-blister-pack-of-4",
+      "note": "Four 1.5 V alkaline AA cells, 6 V in series; about 2000 mAh at a few hundred mA and 1.5 A peaks (c_rating 0.75). 2.30 EUR, in stock at Berrybase on 2026-10-24.",
+      "aliases": ["aa batteries", "4 aa cells", "alkaline aa", "mignon"]
     }
   ]
 }

@@ -24,6 +24,22 @@ def test_library_lists_the_new_reference_builds() -> None:
         assert rows[ref_id]["thumbnail_url"] == "/api/library/" + ref_id + "/thumbnail"
 
 
+@pytest.mark.parametrize(
+    ("ref_id", "checks"),
+    [
+        ("otto-biped", ["check_totals", "check_torque", "check_tip_over", "check_power", "check_runtime"]),
+        ("mearm", ["check_totals", "check_torque", "check_deflection", "check_tip_over", "check_power", "check_runtime"]),
+    ],
+)
+def test_servo_builds_buy_every_part_from_a_product_page(ref_id, checks) -> None:
+    ref = json.loads((REFERENCES_DIR / ref_id / "reference.json").read_text(encoding="utf-8"))
+    catalog = {item["id"]: item for item in catalog_items()}
+    picks = [catalog[pick["select_id"]] for pick in ref["picks"].values()]
+    assert len(picks) == 6
+    assert all(item["url"] and "search" not in item["url"] for item in picks)
+    assert [c["tool"] for c in ref["checks"]] == checks
+
+
 def test_library_lists_the_camera_builds() -> None:
     rows = {row["id"]: row for row in list_references()}
     for ref_id in ("face-tracking-cam", "bird-feeder-cam", "motion-camera-trap"):

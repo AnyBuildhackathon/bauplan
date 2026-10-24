@@ -93,6 +93,7 @@ async def main() -> None:
     check(any(r["id"] == "phone-stand" for r in references), "the registry has the phone stand reference")
     ids = {r["id"] for r in references}
     check({"desk-lamp", "bike-mount", "pet-feeder"} <= ids, "the registry has the desk lamp, the bike mount and the pet feeder")
+    check({"otto-biped", "mearm"} <= ids, "the registry has the Otto DIY biped robot and the MeArm")
     check({"face-tracking-cam", "bird-feeder-cam", "motion-camera-trap"} <= ids, "the registry has the face-tracking camera, the bird feeder camera and the camera trap")
     for row in references:
         folder = SESSIONS_DIR / ("smoke-ref-" + row["id"])
