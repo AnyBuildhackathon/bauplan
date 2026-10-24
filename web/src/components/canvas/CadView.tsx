@@ -14,6 +14,7 @@ import { assetUrl } from "../../lib/api";
 import { fmtNum } from "../../lib/format";
 import { useHighlight } from "../../lib/hooks";
 import { AnchorScope, useAnchor } from "./anchors";
+import { GridStage, usePrefersReducedMotion } from "./GridStage";
 
 export const CAD_SOURCE_LABEL = { freecad: "FreeCAD", cadquery: "CadQuery" } as const;
 
@@ -50,23 +51,30 @@ export function partColor(name: string): { color: string; opacity: number } {
   return hex.length === 9 ? { color: hex.slice(0, 7), opacity: parseInt(hex.slice(7), 16) / 255 } : { color: hex, opacity: 1 };
 }
 
-function Part({ url, zUp }: { url: string; zUp: boolean }) {
+function Part({ url, zUp, onSize }: { url: string; zUp: boolean; onSize?: (size: number) => void }) {
   const gltf = useLoader(GLTFLoader, url);
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
   const size = useThree((s) => s.size);
   const controls = useThree((s) => s.controls) as unknown as { target: THREE.Vector3; update: () => void } | null;
   const highlight = useHighlight();
   const glow = highlight.has("frame");
+  const staged = !!onSize;
 
   // One calm CAD material plus crisp edges, whatever the exporter put in the file.
-  const { object, center, radius, edges } = useMemo(() => {
+  const { object, center, radius, size: partSize, edges } = useMemo(() => {
     const root = gltf.scene.clone(true);
     // Generated parts are modelled Z-up like FreeCAD; three.js is Y-up.
     if (zUp) {
       root.rotation.x = -Math.PI / 2;
       root.updateMatrixWorld(true);
     }
-    const box = new THREE.Box3().setFromObject(root);
+    let box = new THREE.Box3().setFromObject(root);
+    // On the stage the part stands on the floor at y = 0.
+    if (staged) {
+      root.position.y -= box.min.y;
+      root.updateMatrixWorld(true);
+      box = new THREE.Box3().setFromObject(root);
+    }
     const sphere = box.getBoundingSphere(new THREE.Sphere());
     const lines: THREE.LineSegments[] = [];
     root.traverse((o) => {
@@ -90,8 +98,9 @@ function Part({ url, zUp }: { url: string; zUp: boolean }) {
         lines.push(e);
       }
     });
-    return { object: root, center: sphere.center, radius: sphere.radius || 1, edges: lines };
-  }, [gltf, zUp]);
+    const extent = box.getSize(new THREE.Vector3());
+    return { object: root, center: sphere.center, radius: sphere.radius || 1, size: Math.max(extent.x, extent.y, extent.z) || 0.1, edges: lines };
+  }, [gltf, zUp, staged]);
 
   useEffect(() => {
     object.traverse((o) => {
@@ -99,6 +108,7 @@ function Part({ url, zUp }: { url: string; zUp: boolean }) {
     });
   }, [object, glow]);
   useEffect(() => () => edges.forEach((e) => e.geometry.dispose()), [edges]);
+  useEffect(() => onSize?.(partSize), [onSize, partSize]);
 
   useLayoutEffect(() => {
     const vfov = THREE.MathUtils.degToRad(camera.fov);
@@ -108,14 +118,15 @@ function Part({ url, zUp }: { url: string; zUp: boolean }) {
     const dir = new THREE.Vector3(0.75, 0.62, 0.95).normalize();
     camera.position.copy(center).addScaledVector(dir, dist);
     camera.near = dist / 100;
-    camera.far = dist * 10;
+    // On the stage the floor has to reach its fog, about 26 part sizes out.
+    camera.far = staged ? Math.max(dist * 10, partSize * 40) : dist * 10;
     camera.lookAt(center);
     camera.updateProjectionMatrix();
     if (controls) {
       controls.target.copy(center);
       controls.update();
     }
-  }, [camera, center, radius, size.width, size.height, controls]);
+  }, [camera, center, radius, partSize, staged, size.width, size.height, controls]);
 
   const anchor = useAnchor("frame", radius * 0.8);
   return (
@@ -126,18 +137,26 @@ function Part({ url, zUp }: { url: string; zUp: boolean }) {
   );
 }
 
-export function CadScene({ url, zUp = false }: { url: string; zUp?: boolean }) {
+/** The generated part in 3D; with `stage` it stands on the grid stage (Model tab), otherwise on plain paper (CAD tab). */
+export function CadScene({ url, zUp = false, stage = false }: { url: string; zUp?: boolean; stage?: boolean }) {
+  const [size, setSize] = useState<number | null>(null);
+  const still = usePrefersReducedMotion();
   return (
     <Canvas dpr={[1, 2]} camera={{ fov: 30 }} gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}>
       <AnchorScope primary>
-        <ambientLight intensity={0.65} />
-        <hemisphereLight args={["#ffffff", "#d9d6e8", 0.7]} />
-        <directionalLight position={[3, 5, 2]} intensity={1.7} />
-        <directionalLight position={[-3, 2, -2]} intensity={0.5} />
+        <ambientLight intensity={stage ? 0.35 : 0.65} />
+        {!stage && (
+          <>
+            <hemisphereLight args={["#ffffff", "#d9d6e8", 0.7]} />
+            <directionalLight position={[3, 5, 2]} intensity={1.7} />
+            <directionalLight position={[-3, 2, -2]} intensity={0.5} />
+          </>
+        )}
+        {stage && size !== null && <GridStage size={size} shadowArea={size * 3} shadowReach={size * 0.8} />}
         <Suspense fallback={null}>
-          <Part url={url} zUp={zUp} />
+          <Part url={url} zUp={zUp} onSize={stage ? setSize : undefined} />
         </Suspense>
-        <OrbitControls makeDefault enablePan={false} autoRotate autoRotateSpeed={0.5} />
+        <OrbitControls makeDefault enablePan={false} autoRotate={!still} autoRotateSpeed={0.5} maxPolarAngle={stage ? Math.PI / 2.08 : Math.PI} />
       </AnchorScope>
     </Canvas>
   );
