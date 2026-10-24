@@ -66,6 +66,8 @@ interface TrainerState {
   tilesAt: number;
   best: Best | null;
   error: string | null;
+  /** Started with runLocalTraining: never sent to the backend. */
+  local: boolean;
   startedAt: number;
   finishedAt: number;
 }
@@ -86,6 +88,7 @@ const initial: TrainerState = {
   tilesAt: 0,
   best: null,
   error: null,
+  local: false,
   startedAt: 0,
   finishedAt: 0,
 };
@@ -164,6 +167,34 @@ export async function runBrowserTraining(jobId: string, fallback: { productId: s
       () => undefined,
     );
 
+  await trainLoop(ctl, productId, spec, population, generations, report);
+}
+
+/**
+ * A run that never reaches the backend (static demo, backend down): same pool, ES and
+ * local store as a claimed job, but no claim and no progress POSTs, so no job_id.
+ */
+export async function runLocalTraining(productId: string, spec: unknown, population = 64, generations = 16) {
+  const cur = useTrainer.getState();
+  if (cur.status === "running" || cur.status === "claiming") return;
+  abort?.abort();
+  const ctl = new AbortController();
+  abort = ctl;
+  const pool = sharedPool();
+  useTrainer.setState({ ...initial, local: true, status: "running", productId, spec, population, generations, workers: pool.size, startedAt: Date.now() });
+  await trainLoop(ctl, productId, spec, population, generations, async () => undefined);
+}
+
+/** The evolution strategy over the pool; `report` posts each generation (a no-op for local runs). */
+async function trainLoop(
+  ctl: AbortController,
+  productId: string,
+  spec: unknown,
+  population: number,
+  generations: number,
+  report: (body: Record<string, unknown>) => Promise<unknown>,
+) {
+  const pool = sharedPool();
   try {
     const product = productFor(productId);
     const es = new CrossEntropy(product.params, product.search);

@@ -117,6 +117,12 @@ async def _first(ctx: Ctx) -> bool:
 
 async def run_prompt(ctx: Ctx, text: str, messages: list[dict]) -> None:
     await ctx.chat("user", text)
+    # "Train it, then stress test it": training first, so the stress test flies the trained gains.
+    if not claude_enabled() and wants_train_then_stress(text):
+        await _first(ctx)
+        await run_mock_training(ctx, offer_stress=False)
+        await run_stress_mock(ctx)
+        return
     # "Stress test the trained controller" is a stress test, not a training run.
     if not claude_enabled() and _TRAIN.search(text) and not _OMNIVERSE.search(text) and not wants_stress(text, ctx.state.finished):
         await _first(ctx)
@@ -175,6 +181,13 @@ async def _mock_omniverse(ctx: Ctx, text: str) -> bool:
 
 _TRAIN = re.compile(r"\btrain|\btrainier", re.IGNORECASE)
 _OMNIVERSE = re.compile(r"\b(omniverse|isaac)\b", re.IGNORECASE)
+_TRAIN_THEN_STRESS = re.compile(r"\btrain\w*\b.*\b(then|and|before)\b.*\bstress", re.IGNORECASE)
+
+
+def wants_train_then_stress(text: str) -> bool:
+    """One prompt that asks for a training run followed by a stress test."""
+
+    return bool(_TRAIN_THEN_STRESS.search(text))
 
 _REVIEW_DONE = re.compile(
     r"\b(review|meeting)\b.*\b(durch|vorbei|zu ende|fertig|beendet|aus|done|over|ended|finished)\b|\b(bau|baue|rebuild|build)\b.*\b(neu|again)\b",
