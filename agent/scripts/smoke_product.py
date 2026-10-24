@@ -76,7 +76,8 @@ async def main() -> None:
     cad = [e for e in bus.events if e["type"] == "cad" and e.get("assembly")][-1]
     check("base.depth_mm" in cad["params"] and cad["params"]["base.depth_mm"]["value"] == 110, "the assembly sliders name the part and show the fix")
     bom = [e for e in bus.events if e["type"] == "bom"][-1]
-    check(len(bom["items"]) == 3 and abs(bom["total_eur"] - 3.32) < 0.05, "the bill of materials has two printed parts and the feet for 3.32 EUR")
+    parts = [item for item in bom["items"] if not item["name"].startswith("Filament")]
+    check(len(parts) == 3 and abs(bom["total_eur"] - 3.32) < 0.05, "the bill of materials has two printed parts and the feet for 3.32 EUR (plus the filament line)")
     check(all((directory / name).is_file() for name in ("assembly.glb", "assembly.stl", "part-base.step", "part-back-rest.step")), "assembly and part files are on disk")
     check(state.built["base"]["generated"] is False, "library scripts are not reported as written by Claude")
 
@@ -92,6 +93,7 @@ async def main() -> None:
     check(any(r["id"] == "phone-stand" for r in references), "the registry has the phone stand reference")
     ids = {r["id"] for r in references}
     check({"desk-lamp", "bike-mount", "pet-feeder"} <= ids, "the registry has the desk lamp, the bike mount and the pet feeder")
+    check("otto-biped" in ids, "the registry has the Otto DIY biped robot")
     for row in references:
         folder = SESSIONS_DIR / ("smoke-ref-" + row["id"])
         shutil.rmtree(folder, ignore_errors=True)

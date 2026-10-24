@@ -24,6 +24,15 @@ def test_library_lists_the_new_reference_builds() -> None:
         assert rows[ref_id]["thumbnail_url"] == "/api/library/" + ref_id + "/thumbnail"
 
 
+def test_otto_biped_buys_every_part_from_a_product_page() -> None:
+    ref = json.loads((REFERENCES_DIR / "otto-biped" / "reference.json").read_text(encoding="utf-8"))
+    catalog = {item["id"]: item for item in catalog_items()}
+    picks = [catalog[pick["select_id"]] for pick in ref["picks"].values()]
+    assert len(picks) == 6
+    assert all(item["url"] and "search" not in item["url"] for item in picks)
+    assert [c["tool"] for c in ref["checks"]] == ["check_totals", "check_torque", "check_tip_over", "check_power", "check_runtime"]
+
+
 @pytest.mark.parametrize("folder", REFERENCES, ids=lambda folder: folder.name)
 def test_reference_is_complete(folder) -> None:
     ref = json.loads((folder / "reference.json").read_text(encoding="utf-8"))
