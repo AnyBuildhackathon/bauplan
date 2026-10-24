@@ -280,11 +280,11 @@ export function RigidSimView() {
         >
           {playing ? <Pause className="h-4 w-4" fill="currentColor" /> : <Play className="h-4 w-4 translate-x-[1px]" fill="currentColor" />}
         </button>
-        <SimSpeed />
         <div className="min-w-0 flex-1">
-          <div className="flex items-baseline justify-between text-[13px] font-semibold text-muted">
-            <span>{after.run.mode === "drop" ? "Tilt while it lands" : "Tilt over time"}</span>
-            <span className="num text-ink-2">
+          <div className="flex items-center justify-between text-[13px] font-semibold text-muted">
+            <span className="min-w-0 truncate">{after.run.mode === "drop" ? "Tilt while it lands" : "Tilt over time"}</span>
+            <SimSpeed />
+            <span className="num shrink-0 whitespace-nowrap text-ink-2">
               {fmtNum(t, 1)} / {fmtNum(duration, 1)} s
             </span>
           </div>
