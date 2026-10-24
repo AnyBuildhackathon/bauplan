@@ -2,7 +2,9 @@
 // grid, the rollout counter up to 1,024, the fitness curve, and the best run large.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { productFor } from "../../sim/products";
-import { GRID_SIZE, REPLAY_SPEED, useTrainer, type Tile } from "../../sim/trainer";
+import { GRID_SIZE, REPLAY_SPEED, runLocalTraining, useTrainer, type Tile } from "../../sim/trainer";
+import { useSource } from "../../events/source";
+import { PillButton } from "../ui/primitives";
 import type { DroneSpec } from "../../sim/drone";
 import type { GripperSpec } from "../../sim/gripper";
 import { fmtGain, fmtNum } from "./format";
@@ -102,7 +104,45 @@ function fit(cv: HTMLCanvasElement) {
   }
 }
 
+/** The drone the backend trains when nothing is built yet (browser_train._NOMINAL). */
+const NOMINAL_DRONE: DroneSpec = {
+  product: "drone",
+  nominal: true,
+  label: "nominal drone",
+  mass_g: 36.7,
+  thrust_g: 4 * 28,
+  motors: 4,
+  arm_length_mm: 36,
+  parts: [],
+};
 
+/** Live with a backend: ask Bolzen, so the agent narrates. Demo or no backend: train right here. */
+function TrainHereButton() {
+  const mode = useSource((s) => s.mode);
+  const live = useSource((s) => s.live);
+  const busy = useTrainer((s) => s.status === "running" || s.status === "claiming");
+  const viaAgent = mode === "live" && live === "open";
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <PillButton
+        variant="agent"
+        size="sm"
+        disabled={busy}
+        onClick={() => (viaAgent ? void useSource.getState().sendPrompt("train it") : void runLocalTraining("drone", NOMINAL_DRONE))}
+      >
+        Train in this browser
+      </PillButton>
+      {!viaAgent && <span className="text-[12px] text-muted">local run, not sent to the agent</span>}
+    </div>
+  );
+}
+
+/** "about 20 s left", from the pace of the generations so far. */
+function timeLeft(startedAt: number, generation: number, generations: number): string {
+  if (!startedAt || generation < 1 || generation >= generations) return "";
+  const s = Math.max(1, Math.round((((Date.now() - startedAt) / generation) * (generations - generation)) / 1000));
+  return ` · about ${s} s left`;
+}
 
 export function BrowserTraining() {
   const local = useTrainer();
@@ -133,12 +173,14 @@ export function BrowserTraining() {
   const bestMetrics = here ? local.best?.metrics : sse?.best_metrics ?? undefined;
   const status = here ? local.status : sse?.status ?? "idle";
   const bestScore = curve.at(-1)?.[1];
+  const demo = useSource((s) => s.mode === "demo");
 
   if (!sse && local.status === "idle") {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
         <p className="text-[18px] font-semibold text-ink-2">No training yet</p>
         <p className="max-w-sm text-[15px] text-muted">Ask Bolzen to “train it”: 1,024 MuJoCo simulations run right here in the browser.</p>
+        <TrainHereButton />
       </div>
     );
   }
@@ -152,7 +194,9 @@ export function BrowserTraining() {
           ? "starting workers"
           : local.status === "elsewhere"
             ? "running in another dashboard tab"
-            : `generation ${generation} / ${generations}`;
+            : `generation ${generation} / ${generations}${here ? timeLeft(local.startedAt, generation, generations) : ""}`;
+  // In the recorded demo the pane may already hold the recording's run: offer a fresh local one.
+  const offerLocal = demo && local.status !== "running" && local.status !== "claiming";
 
   return (
     <div className="grid h-full min-h-0 gap-3 p-3" style={{ gridTemplateColumns: "minmax(0,1.3fr) minmax(0,1fr)" }}>
@@ -162,7 +206,11 @@ export function BrowserTraining() {
             {fmtNum(rollouts)}
           </span>
           <span className="num text-[16px] font-bold whitespace-nowrap text-muted">/ {fmtNum(total)} simulations</span>
-          <span className="ml-auto truncate text-[13px] font-semibold text-muted">{statusText}</span>
+          <span className="ml-auto truncate text-[13px] font-semibold text-muted">
+            {local.local && here ? "local run · " : ""}
+            {statusText}
+          </span>
+          {offerLocal && <TrainHereButton />}
         </div>
         <div className="grid min-h-0 flex-1 grid-cols-4 grid-rows-4 gap-1.5">
           {Array.from({ length: GRID_SIZE }, (_, k) => {
