@@ -235,6 +235,9 @@ def _product(rows: list[dict], plan: _Plan) -> dict | None:
     volts = float(item["voltage_v"])
     is_battery = _num(item.get("capacity_mah")) is not None
     budget_supply = {"kind": "battery" if is_battery else "supply", "name": supply["name"], "voltage_v": volts}
+    if is_battery:
+        # A battery rated in amps instead of C still needs its capacity for the runtime.
+        budget_supply["capacity_mah"] = float(item["capacity_mah"])
     if _num(item.get("max_current_a")):
         budget_supply["max_current_a"] = float(item["max_current_a"])
     elif is_battery:

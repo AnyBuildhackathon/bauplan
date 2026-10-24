@@ -51,6 +51,10 @@ const RECORDED: ReferenceBuild[] = [
       ["face-tracking-cam", "Face-tracking pan-tilt camera", "An M5Stack Timer Camera on two SG90 servos that turns to keep a face in the middle of the picture, on a weighted printed base and USB power.", 3, 4, 6],
       ["bird-feeder-cam", "AI bird feeder camera", "A seed tray with a perch and a weatherproof box for a Raspberry Pi 4 and the Raspberry Pi AI Camera, which names every bird that lands, on one USB-C supply.", 4, 3, 7],
       ["motion-camera-trap", "Motion camera trap", "An M5Stack Timer Camera that sleeps until a PIR sensor sees movement, then takes a photo; a month on one 18650 cell in a printed weatherproof box.", 3, 4, 5],
+      ["so101-arm", "SO-101 desktop robot arm", "The open-source SO-101 LeRobot arm: six Feetech STS3215 bus servos with magnetic encoders turn, lift, bend, tilt, roll and grip, driven over USB from a laptop, on a 12 V supply, clamped to the desk.", 6, 7, 7],
+      ["robot-dog", "12-servo quadruped robot dog", "A Mini Pupper sized robot dog: twelve MG90S metal-gear servos (hip, thigh and knee per leg) on a PCA9685, an ESP32 runs the trot gait with an MPU-6050 for balance and an HC-SR04 in the head, on two 18650 cells.", 4, 9, 7],
+      ["balance-bot", "Self-balancing two-wheel robot", "An inverted pendulum on two wheels: an ESP32 reads an MPU-6050 200 times a second and drives two Nema17 steppers through A4988 drivers to stay upright, on a 3S 18650 pack carried high on the top deck.", 4, 7, 7],
+      ["lidar-rover", "Lidar rover (TurtleBot-style)", "A TurtleBot-style differential-drive base for ROS 2: two 37 mm encoder gear motors, two ball casters, a Raspberry Pi 4 running SLAM on a 360 degree RPLIDAR C1, three round plates and a 3S 18650 pack.", 4, 10, 8],
     ] as const
   ).map(
     ([id, name, summary, printed, bought, requirements]): ReferenceBuild => ({

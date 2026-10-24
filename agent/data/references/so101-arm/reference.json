@@ -1,0 +1,504 @@
+{
+  "id": "so101-arm",
+  "name": "SO-101 desktop robot arm",
+  "summary": "The open-source SO-101 LeRobot arm: six Feetech STS3215 bus servos with magnetic encoders turn, lift, bend, tilt, roll and grip, driven over USB from a laptop, on a 12 V supply, clamped to the desk.",
+  "spec": {
+    "name": "SO-101 Desktop Robot Arm",
+    "function": "A six-axis desktop robot arm in the SO-101 layout: base, shoulder, elbow, wrist flex, wrist roll and gripper are Feetech STS3215 bus servos with 12-bit encoders, read and driven over one serial bus from a laptop for LeRobot imitation learning, on a 12 V wall supply.",
+    "quote": "Let's build an SO-101 style arm for LeRobot: six STS3215 bus servos, the 12 volt ones, a Waveshare bus board on USB and a 12 volt brick. Stretched all the way out with a 100 gram cube in the gripper the shoulder needs at least 1.5 times the torque, the forearm can't sag more than half a millimetre, and the supply needs 20 percent headroom when everything moves at once. Under 220 euros and 1.2 kilos, and it has to fit a 50 centimetre desk spot.",
+    "assemblies": [],
+    "parts": [
+      {
+        "id": "base",
+        "name": "Base",
+        "kind": "printed",
+        "qty": 1,
+        "assembly": null,
+        "description": "Foot plate 110 x 110 x 6 mm centred on X=Y=0 with a clamp tab at the back and a 56 x 46 x 40 mm housing for the base servo in the middle (Z 6 to 46).",
+        "size_mm": [
+          110.0,
+          140.0,
+          46.0
+        ],
+        "position_mm": null,
+        "rotation_deg": null,
+        "material": "PLA",
+        "params": {
+          "width_mm": 110.0,
+          "depth_mm": 110.0,
+          "plate_mm": 6.0,
+          "housing_height_mm": 40.0
+        }
+      },
+      {
+        "id": "shoulder",
+        "name": "Shoulder bracket",
+        "kind": "printed",
+        "qty": 1,
+        "assembly": null,
+        "description": "Turntable of 56 mm diameter on the base servo (Z 46 to 52) with two 6 mm cheeks 40 mm deep at X=+-22 up to Z=104, the shoulder axis at Z=90.",
+        "size_mm": [
+          56.0,
+          56.0,
+          58.0
+        ],
+        "position_mm": null,
+        "rotation_deg": null,
+        "material": "PLA",
+        "params": {
+          "radius_mm": 28.0,
+          "disc_mm": 6.0,
+          "cheek_mm": 6.0,
+          "shoulder_z_mm": 90.0
+        }
+      },
+      {
+        "id": "upper-arm",
+        "name": "Upper arm",
+        "kind": "printed",
+        "qty": 1,
+        "assembly": null,
+        "description": "Hollow link 30 x 24 mm with 116 mm between the shoulder axis (Y=0, Z=90) and the elbow, raised 30 degrees forwards.",
+        "size_mm": [
+          30.0,
+          140.0,
+          95.0
+        ],
+        "position_mm": null,
+        "rotation_deg": null,
+        "material": "PLA",
+        "params": {
+          "length_mm": 116.0,
+          "width_mm": 30.0,
+          "thickness_mm": 24.0,
+          "angle_deg": 30.0
+        }
+      },
+      {
+        "id": "forearm",
+        "name": "Forearm",
+        "kind": "printed",
+        "qty": 1,
+        "assembly": null,
+        "description": "Hollow horizontal link 28 x 24 mm, 135 mm from the elbow (Y=100.5, Z=148) forwards to the wrist.",
+        "size_mm": [
+          28.0,
+          147.0,
+          24.0
+        ],
+        "position_mm": null,
+        "rotation_deg": null,
+        "material": "PLA",
+        "params": {
+          "length_mm": 135.0,
+          "width_mm": 28.0,
+          "thickness_mm": 24.0
+        }
+      },
+      {
+        "id": "wrist",
+        "name": "Wrist housing",
+        "kind": "printed",
+        "qty": 1,
+        "assembly": null,
+        "description": "Hollow box 40 x 55 x 36 mm at the forearm tip (Y 235.5 to 290.5, Z=148) holding the wrist-flex and wrist-roll servos.",
+        "size_mm": [
+          40.0,
+          55.0,
+          36.0
+        ],
+        "position_mm": null,
+        "rotation_deg": null,
+        "material": "PLA",
+        "params": {
+          "length_mm": 55.0,
+          "width_mm": 40.0,
+          "height_mm": 36.0
+        }
+      },
+      {
+        "id": "gripper",
+        "name": "Gripper jaws",
+        "kind": "printed",
+        "qty": 1,
+        "assembly": null,
+        "description": "Palm 60 x 12 x 30 mm on the wrist roll (Y from 290.5) with a fixed and a moving jaw, each 10 x 70 x 20 mm, 40 mm apart.",
+        "size_mm": [
+          60.0,
+          82.0,
+          30.0
+        ],
+        "position_mm": null,
+        "rotation_deg": null,
+        "material": "PLA",
+        "params": {
+          "opening_mm": 40.0,
+          "finger_mm": 70.0
+        }
+      },
+      {
+        "id": "base-servo",
+        "name": "Base servo",
+        "kind": "bought",
+        "qty": 1,
+        "assembly": null,
+        "description": "Turns the shoulder bracket",
+        "size_mm": [
+          45.2,
+          24.7,
+          35.0
+        ],
+        "position_mm": [
+          0.0,
+          0.0,
+          26.0
+        ],
+        "rotation_deg": null,
+        "mass_g": null,
+        "category": "servo",
+        "query": "STS3215 12V bus servo"
+      },
+      {
+        "id": "shoulder-servo",
+        "name": "Shoulder servo",
+        "kind": "bought",
+        "qty": 1,
+        "assembly": null,
+        "description": "Lifts the upper arm",
+        "size_mm": [
+          45.2,
+          24.7,
+          35.0
+        ],
+        "position_mm": [
+          0.0,
+          0.0,
+          90.0
+        ],
+        "rotation_deg": null,
+        "mass_g": null,
+        "category": "servo",
+        "query": "STS3215 12V bus servo"
+      },
+      {
+        "id": "elbow-servo",
+        "name": "Elbow servo",
+        "kind": "bought",
+        "qty": 1,
+        "assembly": null,
+        "description": "Bends the forearm",
+        "size_mm": [
+          45.2,
+          24.7,
+          35.0
+        ],
+        "position_mm": [
+          0.0,
+          100.5,
+          148.0
+        ],
+        "rotation_deg": null,
+        "mass_g": null,
+        "category": "servo",
+        "query": "STS3215 12V bus servo"
+      },
+      {
+        "id": "wrist-servos",
+        "name": "Wrist flex and roll servos",
+        "kind": "bought",
+        "qty": 2,
+        "assembly": null,
+        "description": "Tilt and roll the gripper",
+        "size_mm": [
+          45.2,
+          24.7,
+          35.0
+        ],
+        "position_mm": [
+          0.0,
+          263.0,
+          148.0
+        ],
+        "rotation_deg": null,
+        "mass_g": null,
+        "category": "servo",
+        "query": "STS3215 12V bus servo"
+      },
+      {
+        "id": "gripper-servo",
+        "name": "Gripper servo",
+        "kind": "bought",
+        "qty": 1,
+        "assembly": null,
+        "description": "Swings the moving jaw",
+        "size_mm": [
+          45.2,
+          24.7,
+          35.0
+        ],
+        "position_mm": [
+          0.0,
+          300.0,
+          148.0
+        ],
+        "rotation_deg": null,
+        "mass_g": null,
+        "category": "servo",
+        "query": "STS3215 12V bus servo"
+      },
+      {
+        "id": "bus-board",
+        "name": "Bus servo driver board",
+        "kind": "bought",
+        "qty": 1,
+        "assembly": null,
+        "description": "USB to the servo bus, 12 V in",
+        "size_mm": [
+          42.0,
+          33.0,
+          12.0
+        ],
+        "position_mm": [
+          0.0,
+          20.0,
+          12.0
+        ],
+        "rotation_deg": null,
+        "mass_g": null,
+        "category": "driver",
+        "query": "Waveshare bus servo adapter"
+      },
+      {
+        "id": "psu",
+        "name": "12 V 5 A power supply",
+        "kind": "bought",
+        "qty": 1,
+        "assembly": null,
+        "description": "Wall plug for the servo bus, on the desk beside the base",
+        "size_mm": [
+          110.0,
+          50.0,
+          32.0
+        ],
+        "position_mm": [
+          110.0,
+          -20.0,
+          16.0
+        ],
+        "rotation_deg": null,
+        "mass_g": null,
+        "category": "power",
+        "query": "12V 5A power supply"
+      },
+      {
+        "id": "cube",
+        "name": "Payload, a 100 g cube",
+        "kind": "external",
+        "qty": 1,
+        "assembly": null,
+        "description": "What the gripper picks up",
+        "size_mm": [
+          40.0,
+          40.0,
+          40.0
+        ],
+        "position_mm": [
+          0.0,
+          345.0,
+          148.0
+        ],
+        "rotation_deg": null,
+        "mass_g": 100.0,
+        "category": "",
+        "query": "Payload, a 100 g cube"
+      }
+    ],
+    "requirements": [
+      {
+        "id": "r_cost",
+        "text": "Parts under 220 euros",
+        "check": "cost",
+        "quote": "Under 220 euros and 1.2 kilos",
+        "max": 220.0,
+        "unit": "eur"
+      },
+      {
+        "id": "r_mass",
+        "text": "Weighs under 1.2 kg with the supply",
+        "check": "mass",
+        "quote": "Under 220 euros and 1.2 kilos",
+        "max": 1200.0,
+        "unit": "g"
+      },
+      {
+        "id": "r_size",
+        "text": "Fits a 50 cm desk spot",
+        "check": "size",
+        "quote": "it has to fit a 50 centimetre desk spot",
+        "max": 500.0,
+        "unit": "mm"
+      },
+      {
+        "id": "r_torque",
+        "text": "Shoulder servo holds the stretched arm and a 100 g cube with at least 1.5 times the torque",
+        "check": "torque",
+        "quote": "the shoulder needs at least 1.5 times the torque",
+        "min": 1.5,
+        "unit": "x"
+      },
+      {
+        "id": "r_sag",
+        "text": "Forearm sags under 0.5 mm with the wrist, gripper and cube",
+        "check": "deflection",
+        "quote": "the forearm can't sag more than half a millimetre",
+        "max": 0.5,
+        "unit": "mm",
+        "part_id": "forearm"
+      },
+      {
+        "id": "r_power",
+        "text": "The 12 V supply covers all six servos moving at once with at least 1.2 times headroom",
+        "check": "power",
+        "quote": "the supply needs 20 percent headroom when everything moves at once",
+        "min": 1.2,
+        "unit": "x"
+      },
+      {
+        "id": "r_print",
+        "text": "All printed parts are printable",
+        "check": "printable",
+        "quote": ""
+      }
+    ]
+  },
+  "scripts": {
+    "base": {
+      "file": "base.py",
+      "generated": true
+    },
+    "shoulder": {
+      "file": "shoulder.py",
+      "generated": true
+    },
+    "upper-arm": {
+      "file": "upper-arm.py",
+      "generated": true
+    },
+    "forearm": {
+      "file": "forearm.py",
+      "generated": true
+    },
+    "wrist": {
+      "file": "wrist.py",
+      "generated": true
+    },
+    "gripper": {
+      "file": "gripper.py",
+      "generated": true
+    }
+  },
+  "picks": {
+    "base-servo": {
+      "select_id": "servo-sts3215-c018-eck",
+      "reason": "The SO-101's own servo in its 12 V version: 30 kg cm and an encoder that LeRobot reads for teleoperation."
+    },
+    "shoulder-servo": {
+      "select_id": "servo-sts3215-c018-eck",
+      "reason": "The shoulder carries the whole stretched arm, so it gets the 30 kg cm 12 V servo rather than the 19 kg cm 7.4 V one."
+    },
+    "elbow-servo": {
+      "select_id": "servo-sts3215-c018-eck",
+      "reason": "Same servo on every joint: one spare fits anywhere and the bus sees six identical IDs."
+    },
+    "wrist-servos": {
+      "select_id": "servo-sts3215-c018-eck",
+      "reason": "Wrist flex and roll on the same bus, 55 g each."
+    },
+    "gripper-servo": {
+      "select_id": "servo-sts3215-c018-eck",
+      "reason": "The encoder reports the jaw position, so the policy knows when it has closed on the cube."
+    },
+    "bus-board": {
+      "select_id": "bus-servo-board-ws25514-eck",
+      "reason": "The SO-ARM bus board: USB-C to the laptop and 12 V straight through to the servos."
+    },
+    "psu": {
+      "select_id": "psu-12v5a-gfd-a9-eck",
+      "reason": "12 V 5 A covers six servos moving together; the SO-ARM101 guide uses the same rating."
+    }
+  },
+  "checks": [
+    {
+      "tool": "check_totals",
+      "args": {}
+    },
+    {
+      "tool": "check_torque",
+      "args": {
+        "actuator_part_id": "shoulder-servo",
+        "lever_mm": 300,
+        "load_mass_g": 350
+      }
+    },
+    {
+      "tool": "check_deflection",
+      "args": {
+        "part_id": "forearm",
+        "span_mm": 135,
+        "width_mm": 28,
+        "thickness_mm": 24,
+        "load_n": 3.0,
+        "support": "cantilever"
+      }
+    },
+    {
+      "tool": "check_power",
+      "args": {
+        "supply_part_id": "psu",
+        "loads": [
+          {
+            "part_id": "shoulder-servo",
+            "name": "STS3215 shoulder servo",
+            "power_w": 6.0,
+            "duty": 0.6,
+            "peak_factor": 2.0
+          },
+          {
+            "part_id": "elbow-servo",
+            "name": "STS3215 elbow servo",
+            "power_w": 6.0,
+            "duty": 0.6,
+            "peak_factor": 2.0
+          },
+          {
+            "part_id": "base-servo",
+            "name": "STS3215 base servo",
+            "power_w": 3.0,
+            "duty": 0.4,
+            "peak_factor": 2.0
+          },
+          {
+            "part_id": "wrist-servos",
+            "name": "2 x STS3215 wrist servos",
+            "power_w": 6.0,
+            "duty": 0.4,
+            "peak_factor": 2.0
+          },
+          {
+            "part_id": "gripper-servo",
+            "name": "STS3215 gripper servo",
+            "power_w": 3.0,
+            "duty": 0.3,
+            "peak_factor": 2.0
+          },
+          {
+            "part_id": "bus-board",
+            "duty": 1.0
+          }
+        ]
+      }
+    }
+  ],
+  "kind": "reference",
+  "saved_at": "2026-10-24T18:43:41"
+}

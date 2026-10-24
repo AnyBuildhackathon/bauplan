@@ -40,6 +40,24 @@ def test_servo_builds_buy_every_part_from_a_product_page(ref_id, checks) -> None
     assert [c["tool"] for c in ref["checks"]] == checks
 
 
+@pytest.mark.parametrize(
+    ("ref_id", "bought", "checks"),
+    [
+        ("so101-arm", 7, ["check_totals", "check_torque", "check_deflection", "check_power"]),
+        ("robot-dog", 9, ["check_totals", "check_torque", "check_tip_over", "check_power", "check_runtime"]),
+        ("balance-bot", 7, ["check_totals", "check_torque", "check_deflection", "check_power", "check_runtime"]),
+        ("lidar-rover", 10, ["check_totals", "check_torque", "check_deflection", "check_tip_over", "check_power", "check_runtime"]),
+    ],
+)
+def test_robot_builds_buy_every_part_from_a_product_page(ref_id, bought, checks) -> None:
+    ref = json.loads((REFERENCES_DIR / ref_id / "reference.json").read_text(encoding="utf-8"))
+    catalog = {item["id"]: item for item in catalog_items()}
+    picks = [catalog[pick["select_id"]] for pick in ref["picks"].values()]
+    assert len(picks) == bought
+    assert all(item["url"] and "search" not in item["url"] for item in picks)
+    assert [c["tool"] for c in ref["checks"]] == checks
+
+
 def test_library_lists_the_camera_builds() -> None:
     rows = {row["id"]: row for row in list_references()}
     for ref_id in ("face-tracking-cam", "bird-feeder-cam", "motion-camera-trap"):
