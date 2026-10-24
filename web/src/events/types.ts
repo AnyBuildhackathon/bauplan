@@ -39,6 +39,8 @@ export interface RequirementEvent {
   meeting_title?: string;
   /** The earlier wording when a later meeting changed this requirement. */
   changed_from?: string | null;
+  /** The number the check found against the limit, e.g. "0.81 N, min. 0.75 N" (any product). */
+  detail?: string | null;
 }
 /** One key number as the backend wants it shown (products other than the drone send these). */
 export interface MetricCard {
@@ -50,6 +52,8 @@ export interface MetricCard {
   /** The limit line under the number, e.g. "min. 2 ×". */
   limit: string;
   ok: boolean;
+  /** The check behind this card has not run yet. */
+  pending?: boolean;
 }
 export interface MetricsEvent {
   type: "metrics";
@@ -68,19 +72,40 @@ export interface SimEvent {
   result: "pass" | "fail";
   summary: string;
   trajectory: TrajectorySample[];
-  /** "grip": a gripper lifts and shakes an object; trajectory z is the object's rise, `hand` the hand's. */
-  kind?: "hover" | "grip";
+  /** "grip": a gripper lifts and shakes an object; trajectory z is the object's rise, `hand` the hand's.
+   * "rigid": any assembly as one body in a push or drop test; `poses` drive its model. */
+  kind?: "hover" | "grip" | "rigid";
   hand?: [number, number][];
   object_width_mm?: number;
   payload_g?: number;
-  force_n?: number;
+  force_n?: number | null;
   slip_mm?: number;
+  /** rigid: push or drop. */
+  mode?: "push" | "drop";
+  /** rigid: [t, x, y, z, qw, qx, qy, qz] of the body frame, metres, z up. */
+  poses?: number[][];
+  /** rigid: [t, tilt in degrees]. */
+  tilt?: [number, number][];
+  /** rigid: the assembly model; the body frame is its frame shifted down by floor_mm. */
+  glb_url?: string;
+  floor_mm?: number;
+  bbox_mm?: number[];
+  /** rigid push: where it is pushed in the body frame (mm), the direction in plan view, and when. */
+  push_point_mm?: number[] | null;
+  push_dir?: number[] | null;
+  push_window_s?: number[] | null;
+  limit_deg?: number | null;
 }
 /** Which product this session builds. */
 export interface ProductEvent {
   type: "product";
-  id: "drone" | "gripper";
+  /** "drone", "gripper", or the slug of a product spec such as "phone-stand". */
+  id: string;
   label: string;
+  /** "generic" for a product built from a spec. */
+  kind?: "generic";
+  /** A spec's requirement ids; a revised spec drops the rows it no longer has. */
+  requirements?: string[];
 }
 export interface DrawEvent {
   type: "draw";
@@ -95,6 +120,10 @@ export interface BomItem {
   weight_g: number;
   shop: string;
   url: string;
+  /** Where the price comes from: a catalog sample, an estimate, or a live shop price. */
+  price_source?: "sample" | "estimated" | "live";
+  /** The spec part this line belongs to (any product). */
+  category?: string;
 }
 export interface BomEvent {
   type: "bom";
@@ -155,6 +184,8 @@ export interface CadParam {
   min: number;
   max: number;
   unit: string;
+  /** Display name; an assembly names the part, e.g. "Base plate · depth". */
+  label?: string;
 }
 /** A CAD part as FreeCAD or CadQuery built it. File URLs are served by the backend under /files/. */
 export interface CadEvent {
@@ -177,6 +208,8 @@ export interface CadEvent {
     /** true when Claude wrote the script, false for a library template. */
     generated: boolean;
   };
+  /** true for a whole assembled product: `part` then sums its printed parts. */
+  assembly?: boolean;
 }
 /** One Blender render. */
 export interface RenderEvent {
@@ -278,6 +311,26 @@ export interface TaskItem {
   done: boolean;
   part_category: string;
 }
+/** One agent on the bench: the orchestrator, or a sub-agent it delegated a bounded job to. */
+export interface AgentRunEvent {
+  type: "agent";
+  id: string;
+  role: "orchestrator" | "cad" | "parts" | "checks" | "pricing";
+  label: string;
+  model: string;
+  model_label: string;
+  effort: string;
+  task: string;
+  status: "running" | "done" | "error";
+  /** Model calls so far. */
+  rounds: number;
+  input_tokens: number;
+  output_tokens: number;
+  cache_read_tokens: number;
+  cost_usd: number;
+  /** What it is doing now, or its report when done. */
+  summary: string;
+}
 export interface TasksEvent {
   type: "tasks";
   meeting_id: string;
@@ -308,6 +361,7 @@ export type AgentEvent =
   | QuestionEvent
   | TasksEvent
   | ProductEvent
+  | AgentRunEvent
   | ResetEvent
   | ReplayedEvent;
 
@@ -333,6 +387,7 @@ const EVENT_TYPES = new Set<AgentEvent["type"]>([
   "question",
   "tasks",
   "product",
+  "agent",
   "reset",
   "replayed",
 ]);

@@ -268,6 +268,69 @@ async def cad_params(request: Request) -> dict:
     return {"ok": True, "source": result.get("source"), "mass_g": result.get("mass_g")}
 
 
+class LibraryIn(BaseModel):
+    id: str | None = None
+    name: str | None = None
+    summary: str = ""
+
+
+@app.get("/api/library")
+async def library() -> dict:
+    from pai_agent.references import list_references
+
+    return {"ok": True, "items": list_references()}
+
+
+@app.post("/api/library/{item_id}/open")
+async def library_open(item_id: str, request: Request) -> dict:
+    _require_json(request)
+    from pai_agent.references import list_references
+
+    if item_id not in {row["id"] for row in list_references()}:
+        raise HTTPException(status_code=404, detail="unknown library item")
+    return await request.app.state.session.start_reference(item_id)
+
+
+@app.get("/api/library/{item_id}/thumbnail")
+async def library_thumbnail(item_id: str) -> FileResponse:
+    from pai_agent.references import folder_of
+
+    folder = folder_of(item_id)
+    if folder is None or not (folder / "thumbnail.png").is_file():
+        raise HTTPException(status_code=404, detail="no thumbnail")
+    return FileResponse(folder / "thumbnail.png", media_type="image/png")
+
+
+@app.post("/api/library")
+async def library_save(body: LibraryIn, request: Request) -> dict:
+    _require_json(request)
+    result = request.app.state.session.save_reference(body.id, body.name, body.summary)
+    if result.get("ok") is False:
+        raise HTTPException(status_code=409 if result.get("busy") else 400, detail=str(result["error"]))
+    return result
+
+
+@app.get("/api/settings")
+async def settings_get() -> dict:
+    from pai_agent import settings
+
+    return {"ok": True, **settings.public()}
+
+
+@app.post("/api/settings")
+async def settings_post(request: Request) -> dict:
+    _require_json(request)
+    from pai_agent import settings
+
+    try:
+        body = await request.json()
+        if not isinstance(body, dict):
+            raise ValueError("JSON object required")
+        return {"ok": True, **settings.update(body)}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @app.post("/api/cad/open")
 async def cad_open(request: Request) -> dict:
     _require_json(request)

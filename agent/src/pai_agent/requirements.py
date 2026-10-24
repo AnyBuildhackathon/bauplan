@@ -12,6 +12,12 @@ def met_for(state: BuildState, requirement: dict) -> bool | None:
     metrics = state.metrics
     if state.product == "gripper":
         return _gripper_met(state, requirement)
+    if state.product == "generic":
+        from pai_agent.tools.checks import judge
+
+        met, detail = judge(state, requirement)
+        requirement["_detail"] = detail
+        return met
     if requirement_id == "budget":
         if "price_eur" not in metrics:
             return None
@@ -59,10 +65,12 @@ def _gripper_met(state: BuildState, requirement: dict) -> bool | None:
 
 
 async def emit_requirement(ctx: Ctx, requirement: dict, met: bool | None) -> None:
-    if requirement.get("_emitted") and requirement.get("_met") is met:
+    detail = requirement.get("_detail")
+    if requirement.get("_emitted") and requirement.get("_met") is met and requirement.get("_shown_detail") == detail:
         return
     requirement["_emitted"] = True
     requirement["_met"] = met
+    requirement["_shown_detail"] = detail
     await ctx.emit(
         {
             "type": "requirement",
@@ -74,6 +82,7 @@ async def emit_requirement(ctx: Ctx, requirement: dict, met: bool | None) -> Non
             "time": requirement.get("time", ""),
             "meeting_title": requirement.get("meeting_title", ""),
             "changed_from": requirement.get("changed_from"),
+            "detail": detail or None,
         }
     )
 

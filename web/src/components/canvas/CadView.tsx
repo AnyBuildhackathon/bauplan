@@ -42,6 +42,13 @@ class LoadBoundary extends Component<{ children: ReactNode; fallback: ReactNode;
 
 const AGENT = new THREE.Color("#ff8a3d");
 
+/** A generated body names its color `pai:#rrggbb`, or `pai:#rrggbbaa` when it is see-through (a load). */
+export function partColor(name: string): { color: string; opacity: number } {
+  if (!name.startsWith("pai:")) return { color: "#c9ccd3", opacity: 1 };
+  const hex = name.slice(4);
+  return hex.length === 9 ? { color: hex.slice(0, 7), opacity: parseInt(hex.slice(7), 16) / 255 } : { color: hex, opacity: 1 };
+}
+
 function Part({ url, zUp }: { url: string; zUp: boolean }) {
   const gltf = useLoader(GLTFLoader, url);
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
@@ -64,9 +71,17 @@ function Part({ url, zUp }: { url: string; zUp: boolean }) {
     root.traverse((o) => {
       if (o instanceof THREE.Mesh) {
         // A generated part names its colors `pai:#rrggbb`; everything else gets the calm CAD grey.
-        const named = (o.material as THREE.Material | undefined)?.name ?? "";
-        const color = named.startsWith("pai:") ? named.slice(4) : "#c9ccd3";
-        o.material = new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0.08, emissive: AGENT, emissiveIntensity: 0 });
+        const { color, opacity } = partColor((o.material as THREE.Material | undefined)?.name ?? "");
+        o.material = new THREE.MeshStandardMaterial({
+          color,
+          roughness: 0.55,
+          metalness: 0.08,
+          emissive: AGENT,
+          emissiveIntensity: 0,
+          transparent: opacity < 1,
+          opacity,
+          depthWrite: opacity >= 1,
+        });
         o.castShadow = true;
         const e = new THREE.LineSegments(new THREE.EdgesGeometry(o.geometry, 30), new THREE.LineBasicMaterial({ color: "#2b2d33", transparent: true, opacity: 0.55 }));
         e.matrixAutoUpdate = false;
@@ -175,7 +190,7 @@ function ParamSlider({
   return (
     <label className="block" data-target={`param:${name} ${name}`}>
       <div className="flex items-baseline justify-between">
-        <span className="text-[14px] font-semibold text-ink-2">{paramLabel(name)}</span>
+        <span className="truncate text-[14px] font-semibold text-ink-2">{param.label ?? paramLabel(name)}</span>
         <span className={`num text-[15px] font-bold ${pending ? "text-agent-ink" : changed ? "text-ink" : "text-ink"}`}>
           {changed && <span className="mr-1 text-[13px] font-semibold text-faint">{fmtNum(param.value, step < 1 ? 1 : 0)} →</span>}
           {fmtNum(value, step < 1 ? 1 : 0)} {param.unit}
@@ -192,7 +207,7 @@ function ParamSlider({
         onKeyUp={(e) => ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(e.key) && onCommit()}
         className={`bevel-range mt-1.5 w-full ${pending ? "is-pending" : ""}`}
         style={{ "--p": `${pct}%` } as React.CSSProperties}
-        aria-label={paramLabel(name)}
+        aria-label={param.label ?? paramLabel(name)}
       />
       <div className="num flex justify-between text-[11px] font-semibold text-faint">
         <span>{fmtNum(param.min)}</span>
@@ -233,13 +248,16 @@ function ScriptPanel({ url, onClose }: { url: string; onClose: () => void }) {
   );
 }
 
-function PartFacts({ part }: { part: NonNullable<CadEvent["part"]> }) {
+function PartFacts({ part, assembly }: { part: NonNullable<CadEvent["part"]>; assembly: boolean }) {
   const b = part.bbox_mm;
   const size = b.length === 6 ? [0, 1, 2].map((i) => fmtNum(b[i + 3] - b[i], 0)).join(" × ") : "";
+  const runs = `${part.attempts} FreeCAD run${part.attempts === 1 ? "" : "s"}`;
+  const fixed = `by Claude, fixed after ${part.attempts - 1} error${part.attempts > 2 ? "s" : ""}`;
+  const script = !part.generated ? "library template" : assembly ? `by Claude, ${runs}` : part.attempts > 1 ? fixed : "by Claude";
   const rows: [string, string][] = [
-    ["Printed mass", `${fmtNum(part.mass_g, 1)} g ${part.material}`],
+    [assembly ? "Printed parts" : "Printed mass", `${fmtNum(part.mass_g, 1)} g ${part.material}`],
     ["Size", `${size} mm`],
-    ["Script", part.generated ? (part.attempts > 1 ? `by Claude, fixed after ${part.attempts - 1} error${part.attempts > 2 ? "s" : ""}` : "by Claude") : "library template"],
+    [assembly ? "Scripts" : "Script", script],
   ];
   return (
     <section className="mt-4">
@@ -276,8 +294,8 @@ export function CadView() {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 px-8 text-center">
         <Layers className="h-8 w-8 text-faint" />
-        <p className="text-[18px] font-semibold text-ink-2">{cadStep === "running" ? "The CAD part is being built …" : "No CAD part yet"}</p>
-        <p className="max-w-sm text-[15px] text-muted">CadQuery or FreeCAD builds the frame in the CAD step. After that you can change the dimensions with the sliders.</p>
+        <p className="text-[18px] font-semibold text-ink-2">{cadStep === "running" ? "FreeCAD is building the part …" : "No CAD part yet"}</p>
+        <p className="max-w-sm text-[15px] text-muted">FreeCAD builds every printed part in the CAD step. Then the sliders here change its dimensions and the checks run again.</p>
       </div>
     );
   }
@@ -342,7 +360,7 @@ export function CadView() {
           </ul>
         </section>
 
-        {cad.part && <PartFacts part={cad.part} />}
+        {cad.part && <PartFacts part={cad.part} assembly={!!cad.assembly} />}
 
         {Object.keys(cad.params).length > 0 && (
           <section className="mt-4 space-y-3">

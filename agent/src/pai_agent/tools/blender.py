@@ -54,6 +54,14 @@ def _part_spec(state) -> dict:
     }
 
 
+def _generic_spec(state) -> dict:
+    """Any product: every assembled body (printed parts, bought blocks, loads) with its own color."""
+
+    directory = Path(state.directory)
+    bodies = [body for body in state.assembly["bodies"] if body.get("stl")]
+    return {"mode": "part", "parts": [{"stl": str(directory / b["stl"]), "color": b.get("color"), "name": b["name"]} for b in bodies]}
+
+
 def _render(binary: str, stl: Path, png: Path, spec: dict) -> None:
     png.parent.mkdir(parents=True, exist_ok=True)
     spec_path = png.with_suffix(".json")
@@ -82,7 +90,12 @@ async def blender_render(ctx: Ctx, args: dict) -> dict:
     png = Path(ctx.state.directory) / name
     if binary is not None:
         try:
-            spec = _part_spec(ctx.state) if ctx.state.product != "drone" and ctx.state.part else _assembly(ctx.state)
+            if ctx.state.product == "generic" and ctx.state.assembly:
+                spec = _generic_spec(ctx.state)
+            elif ctx.state.product != "drone" and ctx.state.part:
+                spec = _part_spec(ctx.state)
+            else:
+                spec = _assembly(ctx.state)
             await asyncio.to_thread(_render, binary, stl, png, spec)
         except (OSError, TimeoutError, RuntimeError, subprocess.SubprocessError):
             binary = None

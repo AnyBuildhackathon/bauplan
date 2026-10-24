@@ -42,7 +42,7 @@ export default function SidebarChatInput({
   onSubmit,
   onVoice,
   disabled = false,
-  placeholder = "Say or type what should change",
+  placeholder = "Say or type what to build or change",
   size = "md",
 }: SidebarChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
