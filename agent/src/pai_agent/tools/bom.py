@@ -35,7 +35,7 @@ async def bom_build(ctx: Ctx, args: dict) -> dict:
                 "url": part["url"],
             }
         )
-    return await _priced_bom(ctx, items, lambda total: "Bill of materials €" + de(total, 2) + ", prices are samples")
+    return await _priced_bom(ctx, items, lambda total: "Bill of materials €" + de(total, 2) + ", shop prices checked on 2026-10-24")
 
 
 async def _gripper_bom(ctx: Ctx) -> dict:

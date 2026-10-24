@@ -18,15 +18,17 @@ function download(fw: FirmwareEvent) {
 }
 
 const GAINS_LABEL: Record<FirmwareEvent["gains_source"], string> = {
-  training: "trained gains",
-  defaults: "default gains",
+  isaac: "Isaac Lab gains",
+  browser: "Browser-tuned gains",
+  defaults: "Default gains",
   none: "",
 };
 
 export function FirmwareSection() {
   const fw = useSession((s) => s.firmware);
   if (!fw) return null;
-  const subtitle = [fw.kind === "betaflight" ? "Betaflight CLI" : "Arduino sketch", GAINS_LABEL[fw.gains_source]].filter(Boolean).join(" · ");
+  const subtitle = fw.kind === "betaflight" ? "Betaflight CLI" : "Arduino sketch";
+  const gainsLabel = GAINS_LABEL[fw.gains_source];
   return (
     <section className="card px-4 pt-4 pb-3" data-target="firmware">
       <div className="mb-2 flex items-center gap-3 px-2">
@@ -35,10 +37,15 @@ export function FirmwareSection() {
           <h2 className="text-[18px] font-bold">Firmware and wiring</h2>
           <p className="truncate text-[13px] font-semibold text-muted">{subtitle}</p>
         </div>
+        {gainsLabel && (
+          <span className="ml-auto shrink-0 text-[13px] font-semibold text-muted" data-target="firmware:gains_source">
+            {gainsLabel}
+          </span>
+        )}
         <button
           type="button"
           onClick={() => download(fw)}
-          className="ml-auto inline-flex h-10 shrink-0 items-center gap-2 rounded-full bg-agent px-4 text-[15px] font-bold text-white hover:brightness-105"
+          className={`${gainsLabel ? "" : "ml-auto "}inline-flex h-10 shrink-0 items-center gap-2 rounded-full bg-agent px-4 text-[15px] font-bold text-white hover:brightness-105`}
         >
           <Download className="h-4.5 w-4.5" /> Download firmware
         </button>

@@ -236,6 +236,8 @@ export interface OmniverseEvent {
   parameters?: Record<string, string | number>;
   metrics: Record<string, number>;
   curve: [number, number][];
+  /** Trained Betaflight gains for the firmware, read from a live `done` training; no Isaac job emits them yet. */
+  gains?: Partial<Record<"roll" | "pitch" | "yaw", Partial<{ p: number; i: number; d: number; f: number }>>>;
   video_url: string | null;
   json_url: string | null;
   passed?: boolean;
@@ -442,7 +444,8 @@ export interface FirmwareEvent {
   /** The whole file, so the download also works in the static demo. */
   content: string;
   gains: FirmwareGains | null;
-  gains_source: "training" | "defaults" | "none";
+  /** Isaac Lab training, then the browser training, then the Betaflight defaults; `none` for an Arduino sketch. */
+  gains_source: "isaac" | "browser" | "defaults" | "none";
   explanation: string;
   wiring: WiringRow[];
 }

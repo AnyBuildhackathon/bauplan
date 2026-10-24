@@ -68,9 +68,9 @@ The recorded drone run plays only with `?demo` or when no backend answers, and s
 ## Mock Mode
 
 Without `ANTHROPIC_API_KEY`, mock mode walks through the entire story using the same tools that Claude calls.
-The story arrives at a real reference build, the 1S 2-inch toothpick from Mediocre Nerd's video "Build a Micro FPV Drone for $59": Twiglet 2" carbon frame, 1103 15000KV motors, Gemfan 2020 four-blade props, Caddx Ant camera, BetaFPV Matrix 1S 5in1 V2 AIO, canopy with battery holder, M1.4 bolts and a 1S pack, each a bill-of-materials line with its mass, sample price and shop link.
-The kickoff meeting builds version 1: specifications from Jamie, warning about the FunFly 4S, a flight simulation pushed to the ground by a downdraft gust in MuJoCo, battery swap to the Tattu R-Line 1S 550, frame in FreeCAD, studio render in Blender, bill of materials, order tasks, and attaching the version to the meeting (47.2 g, 8.5 min, 113.64 €).
-The review meeting builds version 2: mascot Mechanic asks which flight time counts when the review contradicts the kickoff, swaps to the BetaFPV LAVA II 1S 680 for 10 minutes, and writes the difference back as a note (48.4 g, 10.4 min, 115.12 €).
+The story arrives at a real reference build, the 1S 2-inch toothpick from Mediocre Nerd's video "Build a Micro FPV Drone for $59": Twiglet 2" carbon frame, 1103 15000KV motors, Gemfan 2020 four-blade props, Caddx Ant camera, BetaFPV Matrix 1S 5in1 V2 AIO, canopy with battery holder, M1.4 bolts and a 1S pack, each a bill-of-materials line with its mass, its shop price checked on 2026-10-24 and the product page of that exact part (`agent/data/parts.json`).
+The kickoff meeting builds version 1: specifications from Jamie, warning about the FunFly 4S, a flight simulation pushed to the ground by a downdraft gust in MuJoCo, battery swap to the Tattu R-Line 1S 550, frame in FreeCAD, studio render in Blender, bill of materials, order tasks, and attaching the version to the meeting (47.2 g, 8.5 min, 117.38 €).
+The review meeting builds version 2: mascot Mechanic asks which flight time counts when the review contradicts the kickoff, swaps to the BetaFPV LAVA II 1S 680 for 10 minutes, and writes the difference back as a note (48.4 g, 10.4 min, 117.60 €).
 Sending an additional prompt in the same session does not trigger a rebuild.
 A prompt asking for a phone stand plays the generic story through the same tools Claude uses: spec, two printed PETG parts from the phone stand reference build (`agent/data/references/phone-stand/`), rubber feet from the catalog, a tip-over check and MuJoCo push test that fail with a 60 mm base, the fix to a 110 mm base with every check passing, the Blender render and the bill of materials.
 `POST /api/reset` resets the session to start over.
@@ -111,6 +111,10 @@ The `cad_frame` tool searches for `freecadcmd` under `/Applications/FreeCAD.app/
 The script `agent/freecad/frame_build.py` builds the whole drone, the 1S 2-inch toothpick of the reference build, from the frame parameters and the parts chosen so far.
 The Twiglet carbon X-frame is a unibody plate with rounded arms, motor pads and lightening slots; FreeCAD weighs it at carbon-plate density (5.2 g against the 5.3 g listing) and that mass replaces the catalog figure.
 The other parts sit around it at catalog size, each its own body and GLB node: 1103 motors with stator, windings, magnets and screws, Gemfan 2020 four-blade props, the AIO flight controller on standoffs with its wiring, the TPU canopy with the Caddx Ant and the antenna tube, the battery holder, the 1S pack strapped under the frame, and the antennas.
+The canopy and the camera are downloaded models of the real parts, used 1:1 from `agent/freecad/parts/`: DLQFPV's toothpick canopy for a 14 mm camera (CC BY 4.0) and Youfu's Caddx Ant Lite (CC0), which has the same 14 x 14 mm body as the Ant.
+The canopy's feet set the stack: the 26 x 26 mm AIO sits turned 45 degrees, as in the reference photo.
+No openly licensed model exists of the Twiglet, the 1103 motor, the Gemfan 2020 or the Matrix AIO, so those are remodeled from published dimensions; [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) lists every source, author and license.
+The GLB carries real materials: a generated 2x2 twill carbon weave (base colour, normal and roughness maps) under a clear coat on the frame, black anodized motor bells with a bare aluminium lip and copper windings behind the bell windows, clear grey polycarbonate props, a green solder-mask board with chips and 0402 passives, and black TPU for the canopy.
 It writes `frame.FCStd` (the assembly), `frame.step` and `frame.stl` (the X-frame), `drone.step` (the assembly), and `frame.glb`, the assembly with one node per scene target and PBR materials, which the Model and CAD tabs show.
 If FreeCAD is absent or the script fails, CadQuery generates the bare frame and the dashboard keeps showing the recorded drone.
 `POST /api/cad/params` recalculates the frame with adjusted dimensions, and `POST /api/cad/open` opens the model inside the FreeCAD application.
@@ -132,7 +136,7 @@ cp -R freecad-mcp/addon/FreeCADMCP "$HOME/Library/Application Support/FreeCAD/v1
 
 Then in FreeCAD, open the `MCP Addon` workbench and select `Toggle Auto Start` so the RPC server launches automatically with the GUI on localhost.
 
-The `blender_render` tool searches for Blender at `/Applications/Blender.app/Contents/MacOS/Blender` and renders the FreeCAD drone GLB headless in a virtual studio: a clear-coated carbon weave on the frame, see-through props, an infinity curve with a soft key, fill and two rim lights, path-traced in Cycles (Metal GPU when available) at 1600 x 900:
+The `blender_render` tool searches for Blender at `/Applications/Blender.app/Contents/MacOS/Blender` and renders the FreeCAD drone GLB headless with the materials from the file, on a workbench like the reference photo of the build: a green self-healing cutting mat with a 10 mm grid, an overhead panel, a desk lamp from the left and a rim light, seen from above the nose, path-traced in Cycles (Metal GPU when available) at 1600 x 900:
 
 ```bash
 blender -b -P agent/blender/studio.py -- frame.stl studio-v1.png assembly.json

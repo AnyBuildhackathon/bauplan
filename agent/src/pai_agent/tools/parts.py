@@ -22,7 +22,7 @@ def _public(part: dict) -> dict:
     hidden = {"bom_qty"}
     shown = {key: value for key, value in part.items() if key not in hidden}
     shown["qty"] = part["bom_qty"]
-    shown["price_is_sample"] = True
+    shown["price_is_sample"] = part.get("price_is_sample", True)
     return shown
 
 

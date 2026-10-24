@@ -1,0 +1,64 @@
+# AnyBuild firmware: Betaflight CLI configuration
+# Product: drone v2
+# Flight controller: BetaFPV Matrix 1S 5IN1 V2 AIO
+# Motors: 1103 15000KV (no-name)
+# Propellers: Gemfan 2020 51 mm 4-blade
+# Battery: BetaFPV LAVA II 1S 680mAh 95C
+# PID gains: defaults
+# Paste into the Betaflight Configurator CLI tab and press Enter. The board saves and reboots.
+# A motor that spins the wrong way: swap any two of its phase wires, or reverse it in the Motors tab.
+
+batch start
+
+# Motor order (Quad X, props in)
+#   M1 rear right CW
+#   M2 front right CCW
+#   M3 rear left CCW
+#   M4 front left CW
+mixer QUADX
+set yaw_motors_reversed = OFF
+set motor_pwm_protocol = DSHOT300
+set dshot_bidir = ON
+set motor_poles = 12
+
+# Battery
+set vbat_max_cell_voltage = 435
+set vbat_warning_cell_voltage = 350
+set vbat_min_cell_voltage = 330
+
+# Receiver and arming switch on AUX1
+feature RX_SERIAL
+set serialrx_provider = CRSF
+aux 0 0 0 1700 2100 0 0
+
+profile 0
+
+set p_roll = 45
+set i_roll = 80
+set d_roll = 40
+set f_roll = 120
+set p_pitch = 47
+set i_pitch = 84
+set d_pitch = 46
+set f_pitch = 125
+set p_yaw = 45
+set i_yaw = 80
+set d_yaw = 0
+set f_yaw = 120
+
+rateprofile 0
+
+set rates_type = ACTUAL
+set roll_rc_rate = 7
+set roll_srate = 67
+set roll_expo = 0
+set pitch_rc_rate = 7
+set pitch_srate = 67
+set pitch_expo = 0
+set yaw_rc_rate = 7
+set yaw_srate = 67
+set yaw_expo = 0
+
+batch end
+
+save

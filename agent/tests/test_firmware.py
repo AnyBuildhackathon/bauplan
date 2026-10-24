@@ -102,15 +102,63 @@ def test_defaults_without_training(tmp_path):
     assert event["gains"] == DEFAULT_GAINS
 
 
-def test_trained_gains_from_the_last_training_event(tmp_path):
+BROWSER_DONE = {
+    "type": "training",
+    "source": "browser",
+    "status": "done",
+    "gains": {"kp_z": 9.1, "kd_att": 0.002, "roll": {"p": 61.4, "i": 999}, "pitch": {"p": 52, "i": 90}},
+}
+ISAAC_DONE = {"type": "omniverse", "mode": "train", "source": "live", "status": "done", "gains": {"roll": {"p": 70, "d": 44}, "yaw": {"p": 33}}}
+
+
+def test_browser_gains_from_the_final_training_event(tmp_path):
     ctx = _ctx(tmp_path)
-    asyncio.run(ctx.emit({"type": "training", "status": "done", "gains": {"roll": {"p": 61.4, "d": 999}, "yaw": {"p": 33}}}))
-    asyncio.run(ctx.emit({"type": "training", "status": "done"}))
+    asyncio.run(ctx.emit(BROWSER_DONE))
+    asyncio.run(ctx.emit({"type": "training", "source": "browser", "status": "running", "gains": {"roll": {"p": 10}}}))
     _, event = _run(ctx)
-    assert event["gains_source"] == "training"
-    assert event["gains"]["roll"] == {"p": 61, "i": 80, "d": 250, "f": 120}
-    assert event["gains"]["yaw"]["p"] == 33
+    assert event["gains_source"] == "browser"
+    assert event["gains"]["roll"] == {"p": 61, "i": 250, "d": 40, "f": 120}
+    assert event["gains"]["pitch"] == {"p": 52, "i": 90, "d": 46, "f": 125}
+    assert event["gains"]["yaw"] == DEFAULT_GAINS["yaw"]
     assert "set p_roll = 61" in event["content"]
+    assert "# PID gains: the browser-tuned controller" in event["content"]
+
+
+def test_isaac_gains_win_over_browser_gains(tmp_path):
+    ctx = _ctx(tmp_path)
+    asyncio.run(ctx.emit(ISAAC_DONE))
+    asyncio.run(ctx.emit(BROWSER_DONE))
+    _, event = _run(ctx)
+    assert event["gains_source"] == "isaac"
+    assert event["gains"]["roll"] == {"p": 70, "i": 80, "d": 44, "f": 120}
+    assert event["gains"]["yaw"]["p"] == 33
+    assert "Isaac Lab" in event["explanation"]
+
+
+def test_recorded_or_gainless_isaac_results_fall_back(tmp_path):
+    ctx = _ctx(tmp_path)
+    asyncio.run(ctx.emit({**ISAAC_DONE, "source": "recorded", "status": "recorded"}))
+    asyncio.run(ctx.emit({"type": "omniverse", "mode": "train", "source": "live", "status": "done", "metrics": {"final_reward": 1}}))
+    asyncio.run(ctx.emit({**ISAAC_DONE, "mode": "test"}))
+    _, event = _run(ctx)
+    assert event["gains_source"] == "defaults"
+    asyncio.run(ctx.emit(BROWSER_DONE))
+    _, event = _run(ctx)
+    assert event["gains_source"] == "browser"
+
+
+def test_training_after_the_firmware_rebuilds_it(tmp_path):
+    from pai_agent.tools.firmware import refresh_after_training
+
+    ctx = _ctx(tmp_path)
+    _, first = _run(ctx)
+    assert first["gains_source"] == "defaults"
+    asyncio.run(ctx.emit(BROWSER_DONE))
+    asyncio.run(refresh_after_training(ctx))
+    latest = [event for event in ctx.bus.events if event["type"] == "firmware"]
+    assert len(latest) == 2 and latest[-1]["gains_source"] == "browser"
+    asyncio.run(refresh_after_training(ctx))
+    assert len([event for event in ctx.bus.events if event["type"] == "firmware"]) == 2
 
 
 def test_explanation_comes_from_the_call(tmp_path):

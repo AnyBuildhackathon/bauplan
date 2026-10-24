@@ -316,7 +316,7 @@ A finished build, attached to the meeting it came from.
 `parts` maps each category to the part name.
 `diff` lists what changed against the previous version: `{key, label, before, after, unit}`.
 Number rows have a `unit`; part rows have `key` `part:{category}`, names in `before` and `after`, and an empty `unit`.
-`summary` is one line such as `48.4 g · 10.4 min · 115.12 €`.
+`summary` is one line such as `48.4 g · 10.4 min · 117.60 €`.
 
 ### part
 
@@ -371,7 +371,7 @@ It does not guess from a screenshot.
 `curve` is `[[step, reward], ...]`.
 `video_url` is a backend path such as `/files/fallback/hover.mp4`, or `null` when there is no clip.
 A `done` event after an `offline` tool means the fallback file was played, not that a pod finished a job.
-`gains` is optional: the training task may emit the trained controller gains as `{roll, pitch, yaw}`, each `{p, i, d, f}` in Betaflight units.
+The browser training's `done` event carries `gains` (see the browser run below); the firmware reads its `roll` and `pitch` `{p, i}` as browser-tuned gains.
 
 ### firmware
 
@@ -382,8 +382,12 @@ The firmware and wiring for the built product, from the `firmware` tool after `b
 `content` is the whole file, so a client can offer the download without the backend.
 The file is a fixed template filled from the chosen parts; only `explanation`, one or two sentences, may come from Claude.
 `gains` is `{roll, pitch, yaw}`, each `{p, i, d, f}` in Betaflight units, or `null` for an Arduino sketch.
-`gains_source` says where they came from: `training`, `defaults`, or `none`.
-`training` means the optional `gains` field of the last `training` event that carries one; missing terms keep the defaults.
+`gains_source` says where they came from, first match wins: `isaac`, `browser`, `defaults`, or `none` (an Arduino sketch).
+`isaac` is the `gains` field of the last live Isaac Lab training (`omniverse` with `mode: "train"`, `source: "live"`, `status: "done"`); no Isaac job emits it yet, so this source stays inactive until one does.
+`browser` is the `gains` field of the last `done` browser `training` event (`source: "browser"`).
+`defaults` are the Betaflight 4.4 starting values for a 1S whoop. With `isaac` or `browser`, missing terms keep the defaults.
+When a training run finishes after the firmware was made and changes the gains, a new `firmware` event follows with the new source.
+The dashboard shows the source next to Download firmware: Isaac Lab gains, Browser-tuned gains, or Default gains.
 `wiring` is a list of `{component, connects_to, pin, wire, note}`, one row per connection of a chosen part.
 
 ### stress
@@ -530,11 +534,11 @@ The story arrives at the reference micro build from Mediocre Nerd's "Build a Mic
 The agent reads the kickoff (under 120 €, at least 8 minutes, under 50 g, hover, frame as STL and STEP), finds the 1103 15000KV from last week's flight test and Lea's warning about the FunFly 4S.
 It tries the FunFly anyway: the MuJoCo gust pushes it to the floor, the swap to the Tattu R-Line 1S 550 passes.
 A 34 mm arm lets the 51 mm propellers touch, so the frame becomes the Twiglet's 42.5 mm.
-v1 is 47.2 g, 8.5 min, 113.64 €.
+v1 is 47.2 g, 8.5 min, 117.38 €.
 Each build writes a `build_guide` from the same step template with the parts it chose: frame, motors, flight controller, wiring, camera and canopy, battery, motor test, propellers.
 The review "Review 1" asks for 10 minutes.
 Mechanic asks which flight time counts and swaps to the BetaFPV LAVA II 1S 680, the other pack from the video.
-v2 is 48.4 g, 10.4 min, 115.12 €, and the difference goes back to the review as a note.
+v2 is 48.4 g, 10.4 min, 117.60 €, and the difference goes back to the review as a note.
 A later prompt in the same session does not rebuild.
 A prompt with the word "stress" ("stress test it") runs `stress_test` on the current build instead; without a build Mechanic asks for the kickoff first.
 Once a build has finished, "robust" asks for it too ("how robust is it?"); a prompt that ends a review still runs the review first.
@@ -560,6 +564,7 @@ The dashboard's `?demo` replays exactly the drone run from `web/src/events/recor
 `product_tested: false` identifies reference training and illustrative replays.
 A recorded result is never evidence that the requested product or conditions were simulated.
 `assembly_mass_g` excludes payload; `total_mass_g` includes it.
+`gains` is optional on a live `done` training: the trained controller as `{roll, pitch, yaw}`, each `{p, i, d, f}` in Betaflight 4.4 units, which the firmware prefers over the browser-tuned gains; no Isaac job emits it yet.
 Recorded fixture masses stay fixed and are identified separately from the displayed build version.
 The tools `product_usd`, `isaac_test`, and `isaac_train` are documented in [Omniverse experiments](omniverse.md).
 
