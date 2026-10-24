@@ -149,13 +149,13 @@ export default function SidebarChat() {
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-page" data-target="chat">
       {/* Header */}
-      <div className="mx-6 flex h-[60px] shrink-0 items-center gap-3 border-b border-line">
+      <div className="mx-5 flex h-[56px] shrink-0 items-center gap-3 border-b border-line">
         <div data-target="mascot bolzen" className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-tile">
           <MascotLive state={mascot.state} size={40} crop="head" />
         </div>
         <div className="min-w-0 flex-1 leading-tight">
-          <div className="truncate text-[16px] font-semibold text-ink">{productLabel || "Mechanic"}</div>
-          <div className={`truncate text-[13px] font-medium ${stateTone}`}>
+          <div className="truncate text-[15px] font-semibold text-ink">{productLabel || "Mechanic"}</div>
+          <div className={`truncate text-[12px] font-medium ${stateTone}`}>
             Mechanic · {MASCOT_LABEL[mascot.state]}
             {working && <span className="text-muted"> · {step.label}</span>}
           </div>
@@ -239,9 +239,9 @@ export default function SidebarChat() {
         ) : (
           <div
             ref={scrollContainerRef}
-            className="scroll-soft flex-1 overflow-y-auto px-6 [mask-image:linear-gradient(to_bottom,transparent,black_28px)]"
+            className="scroll-soft flex-1 overflow-y-auto px-5 [mask-image:linear-gradient(to_bottom,transparent,black_28px)]"
           >
-            <div className="space-y-2 pt-4 pb-4">
+            <div className="space-y-1.5 pt-3 pb-3">
               <AnimatePresence initial={false}>
                 {rows.map((item) => (
                   <motion.div
@@ -284,7 +284,7 @@ export default function SidebarChat() {
         {showScrollButton && !isEmpty && (
           <button
             onClick={() => scrollToBottom()}
-            className="absolute bottom-[150px] left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-card text-muted shadow-[var(--shadow-pill)] transition-colors hover:text-ink"
+            className="absolute bottom-[96px] left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-card text-muted shadow-[var(--shadow-pill)] transition-colors hover:text-ink"
             aria-label="Scroll to bottom"
           >
             <ArrowDown className="h-4 w-4" />
@@ -293,7 +293,7 @@ export default function SidebarChat() {
 
         {/* Follow-up suggestions */}
         {!isEmpty && !working && live && (
-          <div className="shrink-0 px-6 pb-1" data-target="follow_ups">
+          <div className="shrink-0 px-5 pb-1" data-target="follow_ups">
             {(FOLLOW_UPS[product ?? ""] ?? FOLLOW_UPS.default).map((text) => (
               <button
                 key={text}
@@ -302,9 +302,9 @@ export default function SidebarChat() {
                   stickToBottom.current = true;
                   void sendPrompt(text);
                 }}
-                className="flex w-full items-center gap-3 border-t border-line py-2.5 text-left text-[16px] text-ink-2 transition hover:text-ink"
+                className="flex w-full items-center gap-2.5 border-t border-line py-2 text-left text-[14px] text-ink-2 transition hover:text-ink"
               >
-                <CornerDownRight className="h-4 w-4 shrink-0 text-faint" />
+                <CornerDownRight className="h-3.5 w-3.5 shrink-0 text-faint" />
                 {text}
               </button>
             ))}
@@ -312,7 +312,7 @@ export default function SidebarChat() {
         )}
 
         {/* Input */}
-        <div className="shrink-0 px-6 pt-2 pb-4">
+        <div className="shrink-0 px-5 pt-2 pb-4">
           <SidebarChatInput
             value={input}
             onChange={setInput}

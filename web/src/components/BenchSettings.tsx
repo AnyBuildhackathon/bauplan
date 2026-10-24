@@ -1,6 +1,7 @@
 // The Settings panel behind the sliders icon. The dashboard shows only the essentials;
-// these toggles add the rest (agent steps, tool cards, Jamie activity, all metrics),
-// switch the mic from hands-free to push-to-talk, and switch to the recorded demo. In live mode it also holds the bench's model settings:
+// these toggles add the rest (agent steps, tool cards, Jamie activity, all metrics,
+// learning mode), show which speech recognition listens, switch the mic from
+// hands-free to push-to-talk, and switch to the recorded demo. In live mode it also holds the bench's model settings:
 // which Claude orchestrates, which runs the sub-agents, how hard each one thinks
 // (effort), and whether the orchestrator delegates. GET/POST /api/settings.
 import { useEffect, useRef, useState } from "react";
@@ -14,7 +15,14 @@ const DISPLAY: { key: keyof Display; label: string; hint: string }[] = [
   { key: "tools", label: "Show tool details", hint: "FreeCAD, Blender, MuJoCo cards" },
   { key: "jamie", label: "Show Jamie activity", hint: "Tags, notes and tasks written to Jamie" },
   { key: "allMetrics", label: "Show all metrics", hint: "Thrust to weight and the rest" },
+  { key: "learning", label: "Learning mode", hint: "What you learned, in the logbook" },
 ];
+
+const SPEECH: Record<"reson8" | "browser" | "none", string> = {
+  reson8: "Speech recognition: Reson8 · English",
+  browser: "Speech recognition: browser · English",
+  none: "No speech recognition in this browser. Type instead.",
+};
 
 function Toggle({ label, hint, on, onChange }: { label: string; hint?: string; on: boolean; onChange: (on: boolean) => void }) {
   return (
@@ -70,6 +78,7 @@ export function BenchSettings() {
   const resetUi = useUi((s) => s.resetUi);
   const micMode = useUi((s) => s.micMode);
   const setMicMode = useUi((s) => s.setMicMode);
+  const stt = useUi((s) => s.stt);
   const mode = useSource((s) => s.mode);
   const live = mode === "live";
 
@@ -131,6 +140,7 @@ export function BenchSettings() {
             on={micMode === "ptt"}
             onChange={(on) => setMicMode(on ? "ptt" : "handsfree")}
           />
+          <p className="pt-1 text-[12px] text-muted">{SPEECH[stt]}</p>
           <h3 className="eyebrow mt-3 mb-1 border-t border-line pt-3">Source</h3>
           <Toggle
             label="Recorded demo"
