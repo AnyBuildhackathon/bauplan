@@ -94,12 +94,20 @@ test("independent partner states, NVIDIA header and job progress", async ({ page
     isaac: { host: "gpu.example", gpu: "NVIDIA A40", state: "live", detail: "SSH connected.", last_run: null },
   } }));
   await freshBench(page, "live");
-  await expect(page.locator('header [data-partner="claude"]')).toHaveAttribute("data-state", "live");
-  await expect(page.locator('header [data-partner="jamie"]')).toHaveAttribute("data-state", "mock");
-  await expect(page.locator('header [data-partner="reson8"]')).toHaveAttribute("data-state", "offline");
+  await expect(page.locator("header [data-partner]")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Settings", exact: true })).toBeVisible();
   await expect(page.locator("header").getByRole("navigation", { name: "Jamie meetings" })).toHaveCount(0);
+  await expect.poll(async () => page.evaluate(async () => {
+    const { usePartners } = await import("/src/lib/partners.ts");
+    return usePartners.getState().isaac.gpu;
+  })).toBe("NVIDIA A40");
   await page.clock.install();
-  await page.locator('[data-partner="isaac"]').click();
+  await emit(page, { type: "chat", role: "agent", text: "Ready." });
+  await page.evaluate(async () => {
+    const { useUi } = await import("/src/lib/ui.ts");
+    useUi.getState().setView("werkbank");
+    useUi.getState().selectTab("omniverse");
+  });
   const header = page.locator('[data-target="isaac:connection"]');
   await expect(header).toContainText("NVIDIA A40");
   await expect(header).toContainText("gpu.example");
@@ -119,8 +127,7 @@ test("independent partner states, NVIDIA header and job progress", async ({ page
 test("unavailable status marks every provider offline without hiding settings", async ({ page }) => {
   await page.route("**/api/status", (route) => route.fulfill({ status: 503, json: { detail: "Unavailable" } }));
   await freshBench(page, "live");
-  await expect(page.locator("header [data-partner]")).toHaveCount(8);
-  await expect(page.locator('header [data-partner][data-state="offline"]')).toHaveCount(8);
+  await expect(page.locator("header [data-partner]")).toHaveCount(0);
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await expect(page.getByRole("switch", { name: /Director mode/ })).toBeVisible();
 });

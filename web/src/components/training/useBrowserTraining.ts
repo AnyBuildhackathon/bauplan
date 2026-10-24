@@ -34,9 +34,12 @@ export function useBrowserTraining() {
       if (t.source !== "browser" || !t.job_id) return;
       const local = useTrainer.getState();
       if (t.status === "queued" && Date.now() - t.at < FRESH_MS && local.jobId !== t.job_id) {
-        useUi.getState().setView("werkbank");
-        useUi.getState().setTab("simulation");
-        useSimPane.getState().setPane("training");
+        // The Training page already shows this run. Other views jump to the simulation grid.
+        if (useUi.getState().view !== "training") {
+          useUi.getState().setView("werkbank");
+          useUi.getState().setTab("simulation");
+          useSimPane.getState().setPane("training");
+        }
         void runBrowserTraining(t.job_id, {
           productId: t.product ?? "drone",
           spec: t.spec,

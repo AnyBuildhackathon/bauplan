@@ -1,12 +1,16 @@
-// One microphone feeds Gemini and Reson8 in parallel. Transcript text never starts a second build.
+// Gemini Live is Mechanic's only voice. One microphone feeds Gemini and Reson8 in parallel;
+// Reson8 only writes the chat transcript and never starts a second build. Without Gemini Live
+// the microphone still dictates, and Mechanic answers in text.
 import { apiFetch, apiStreamUrl } from "./api";
 import { openMic, startHandsFree, voiceCapabilities, type HandsFree, type HandsFreeHandlers } from "./voice";
 import { markTurnEnd, playLivePcm, stopSpeaking, unlockAudio } from "./speech";
 import { useUi } from "./ui";
-import { selectedVoiceEngine, useVoiceEngine } from "./voiceEngine";
 
 export async function startVoiceConversation(handlers: HandsFreeHandlers, onHeard: (text: string) => void): Promise<HandsFree | null> {
-  if (selectedVoiceEngine() !== "gemini" || !voiceCapabilities().geminiLive) return startHandsFree(handlers);
+  if (!voiceCapabilities().geminiLive) {
+    handlers.onError("Gemini Live is not configured. Mechanic answers in text.");
+    return startHandsFree(handlers);
+  }
   let stopped = false;
   let failed = false;
   let ready = false;
@@ -24,7 +28,6 @@ export async function startVoiceConversation(handlers: HandsFreeHandlers, onHear
     transcript = null;
     live.close();
     stopSpeaking();
-    useVoiceEngine.setState({ active: false });
     useUi.getState().setUserTalking(false);
     onHeard("");
   };
@@ -33,7 +36,7 @@ export async function startVoiceConversation(handlers: HandsFreeHandlers, onHear
     failed = true;
     release();
     if (!useUi.getState().handsFree) return;
-    handlers.onError("Gemini Live is unavailable. Using the ElevenLabs voice loop.");
+    handlers.onError("Gemini Live is unavailable. Mechanic answers in text.");
     try { fallback = await startHandsFree(handlers); }
     catch { handlers.onError("The microphone is unavailable. Check its permission or type instead."); }
     if (stopped) fallback?.stop();
@@ -48,7 +51,6 @@ export async function startVoiceConversation(handlers: HandsFreeHandlers, onHear
     if (data.type === "ready") {
       ready = true;
       clearTimeout(timer);
-      useVoiceEngine.setState({ active: true });
       resolveReady(true);
     } else if (data.type === "audio") {
       useUi.getState().setUserTalking(false);

@@ -10,7 +10,7 @@ Event payloads are specified in [events.md](events.md#tools), and the step each 
 
 | Software or service | Used by | How it is called | Fallback without it |
 | --- | --- | --- | --- |
-| **Anthropic Claude** (Opus 5.5, Sonnet 5.5, Haiku 5.5) | Orchestrator, sub-agents, `cad_part` script writing, `sketch_to_spec` (vision), `bom_build` live prices (server-side web search), spoken replies, learning-mode explanations | Anthropic Python SDK, Messages API with tool use, adaptive thinking and effort | Scripted mock stories through the same tools |
+| **Anthropic Claude** (Opus 5.5, Sonnet 5.5, Haiku 5.5) | Orchestrator, sub-agents, `cad_part` script writing, `sketch_to_spec` (vision), `bom_build` live prices (server-side web search), learning-mode explanations | Anthropic Python SDK, Messages API with tool use, adaptive thinking and effort | Scripted mock stories through the same tools |
 | **FreeCAD 1.1** | `cad_frame`, `cad_part`, `cad_update`, `POST /api/cad/open` | GUI over the [freecad-mcp](https://github.com/neka-nat/freecad-mcp) XML-RPC add-on on port 9875, or headless `freecadcmd` in a sandbox | CadQuery (frame) or a marked placeholder block (generated parts) |
 | **CadQuery 2.8** (OpenCascade) | `cad_frame` fallback | Python library | None needed |
 | **Blender 5** | `blender_render`, `product_usd` | Headless `blender -b -P agent/blender/studio.py` (Cycles with Metal GPU, or EEVEE) | Recorded still `agent/runs/fallback/render.png` |
@@ -18,7 +18,7 @@ Event payloads are specified in [events.md](events.md#tools), and the step each 
 | **NVIDIA Isaac Sim 5.1 and Isaac Lab 2.3** | `isaac_test`, `isaac_train` and aliases | SSH to a GPU host prepared by `runpod/setup.sh`, job script `runpod/isaac_job.py` | Recorded, clearly labelled result |
 | **Jamie MCP** | All `jamie_*` tools, `requirements_accept`, `version_commit` | Streamable HTTP MCP client (`jamie_client.py`) with a bearer token | Fixture meetings and local outbox `jamie_outbox.json` |
 | **Reson8** | Voice input (not a tool) | Browser WebSocket with a short-lived token from the backend | Browser Web Speech recognition |
-| **ElevenLabs** | Mechanic's voice (not a tool) | Streaming TTS through `POST /api/voice/speak` | Silent, text only |
+| **Gemini Live** | Mechanic's only voice (not a tool) | Native realtime audio through `WS /api/voice/live` | Silent, text only |
 | **Betaflight and Arduino** | `firmware` | Deterministic templates filled from the chosen parts | None needed |
 
 ## Product definition
@@ -28,7 +28,7 @@ Event payloads are specified in [events.md](events.md#tools), and the step each 
 | `product_spec` | `name` (required): string; `function` (required): string; `quote`: string; `requirements` (required): array; `assemblies`: array; `parts` (required): array | Validates the full spec of any product (`spec.py`) and lists every problem at once until it is right; emits `product` and `requirement` rows. | Python validation |
 | `product_brief` | `product` (required): `drone` or `gripper`; `object_mass_g`, `object_width_mm`, `max_weight_g`, `budget_eur`: number; `quote`: string | Starts a drone or gripper build and turns the request into requirement checks. | Python |
 | `sketch_to_spec` | `sketch`: string (file name); `note`: string | Reads a hand-sketch photo: a validated spec, every dimension with value, unit and confidence, what was unreadable, and a summary; emits `sketch`. | Claude vision |
-| `reference_load` | `id`: string | Without `id` lists the reference builds; with `id` loads one onto the bench (spec, part scripts, picks, assembly, checks, render, BOM). | `agent/data/references/` |
+| `reference_load` | `id`: string | Without `id` lists the reference builds. With `id` and no live key, loads the saved build onto the bench. With a live key, returns the spec and parts (`request`) and does not replay the saved run. | `agent/data/references/` |
 | `delegate` | `agent` (required): `parts`, `checks` or `pricing`; `task` (required): string | Runs a sub-agent with only its tools and returns its report, tool calls, tokens and cost; emits `agent`. | Claude Sonnet 5.5 |
 
 ## CAD and assembly

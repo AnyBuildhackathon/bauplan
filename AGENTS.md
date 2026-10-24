@@ -20,7 +20,7 @@ Physics and aerodynamic simulators validate real-world performance against envir
 Rendering tools produce photorealistic studio visualizations for team review.
 Bill of materials calculators price orderable parts and sync purchasing tasks back into Jamie.
 Realtime speech-to-text with Reson8 enables spoken dialogue with mascot Mechanic during design reviews.
-Mechanic answers with the ElevenLabs voice and stays silent, showing text, without it.
+Mechanic speaks only through Gemini Live, inside a voice conversation the user starts, and stays silent, showing text, without it.
 Offline fallbacks run the complete workflow when API keys are absent.
 
 ## Worked Demo Example: Drone Design
@@ -58,7 +58,7 @@ The repository is structured into five main directories:
   - `agent/src/pai_agent/tools/`: Tool definitions for CAD, MuJoCo simulation, Blender, Jamie, BOM, and UI interaction.
   - `agent/src/pai_agent/freecad_run.py`: FreeCAD MCP RPC connector and headless fallback execution.
   - `agent/src/pai_agent/jamie_client.py`: Streamable HTTP client for the Jamie MCP server.
-  - `agent/src/pai_agent/voice.py`: Reson8 STT token management and ElevenLabs TTS audio synthesis.
+  - `agent/src/pai_agent/voice.py`: Reson8 STT token management and voice capabilities.
   - `agent/scripts/smoke_sse.py`: End-to-end SSE mock verification script.
 - `web/`: Vite, React, and Three.js frontend dashboard.
   - `web/src/App.tsx`: Top-level application layout containing chat, timeline, canvas, and panels.
@@ -170,9 +170,9 @@ All clients and backend tools must adhere to that specification.
 - `POST /api/tasks/{id}`: Toggles status of parts ordering tasks.
 - `POST /api/cad/params`: Recomputes frame parameters dynamically.
 - `POST /api/cad/open`: Launches FreeCAD GUI with the current CAD file.
-- `GET /api/voice`: Returns speech-to-text and text-to-speech capabilities.
+- `GET /api/voice`: Returns speech-to-text capabilities and Gemini Live availability.
 - `POST /api/voice/token`: Generates short-lived Reson8 STT authorization tokens.
-- `POST /api/voice/speak`: Produces audio streams via ElevenLabs TTS.
+- `WS /api/voice/live`: Gemini Live realtime voice conversation, Mechanic's only voice.
 - `GET /api/health`: Reports server status and mock mode flag.
 - `GET /files/{bucket}/{name}`: Serves generated CAD assets, renders, and videos.
 
@@ -217,9 +217,8 @@ Never commit `.env` files or secret keys to the repository.
 - `JAMIE_WEBHOOK_SECRET`: Secret token validated against incoming Jamie webhook requests.
 - `RESON8_API_KEY`: API key for generating live Reson8 speech-to-text tokens.
 - `RESON8_LANGUAGE`: Language code for Reson8 speech-to-text; defaults to `de`.
-- `ELEVENLABS_API_KEY`: API key for Mechanic speech generation through ElevenLabs.
-- `ELEVENLABS_VOICE_ID`: Custom voice identifier for ElevenLabs audio output.
-- `ELEVENLABS_MODEL`: Model identifier for ElevenLabs voice generation; defaults to `eleven_flash_v2_5`.
+- `GEMINI_LIVE_MODEL`: Gemini Live model for Mechanic's voice; defaults to `gemini-3.8-live`.
+- `GEMINI_LIVE_VOICE`: Gemini Live prebuilt voice; defaults to `Fenrir`.
 - `FREECAD_GUI`: Determines FreeCAD execution mode (`auto` connects to open window, `launch` starts app, `off` forces headless).
 - `FREECAD_MCP_URL`: Target URL of the FreeCAD MCP RPC server; defaults to `http://127.0.0.1:9875`.
 - `PAI_ASK_TIMEOUT_S`: Seconds Mechanic waits for question input before adopting default option; defaults to `20`.

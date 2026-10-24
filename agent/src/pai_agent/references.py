@@ -130,6 +130,62 @@ def name_of(ref_id: str) -> str:
     return str(ref.get("name") or ref_id) if ref else ref_id
 
 
+def reference_brief(ref_id: str) -> tuple[str, str]:
+    """The line shown in chat, and the request the live model builds from.
+
+    The model request carries the reference's spec and parts so a live rebuild starts
+    there, the same way a fresh prompt does, instead of replaying a saved run.
+    """
+
+    slug = _slug(ref_id)
+    code = CODE_REFERENCES.get(slug)
+    if code is not None:
+        name = str(code["name"])
+        if slug == "micro-drone":
+            detail = (
+                _drone_summary()
+                + " Kickoff limits: under 120 €, at least 8 minutes, under 50 g, it must hover, and the frame is an STL and a STEP. "
+                + "Use a 1S pack, not the FunFly 4S."
+            )
+        else:
+            detail = code["summary"]()
+            if slug == "robot-gripper":
+                detail = GRIPPER_REQUEST + " " + detail
+        return "Rebuild " + name + ".", _live_request(slug, name, detail)
+    ref = _read(ref_id)
+    if ref is None:
+        raise ValueError("No reference " + str(ref_id) + ".")
+    spec = ref.get("spec") or {}
+    parts = ", ".join(f"{p.get('qty', 1)}× {p.get('name')} ({p.get('kind')})" for p in spec.get("parts", []))
+    requirements = ", ".join(str(item.get("text") or item.get("id")) for item in spec.get("requirements", []))
+    detail = "\n".join(
+        line
+        for line in (
+            "Name: " + str(spec.get("name") or ref.get("name") or ref_id),
+            "Request: " + str(spec.get("quote") or ref.get("summary") or ""),
+            "Function: " + str(spec.get("function") or ""),
+            "Parts: " + parts,
+            "Requirements: " + requirements,
+        )
+        if line.split(": ", 1)[-1]
+    )
+    name = str(ref.get("name") or ref_id)
+    return "Rebuild " + name + ".", _live_request(str(ref.get("id") or slug), name, detail)
+
+
+def _live_request(ref_id: str, name: str, detail: str) -> str:
+    return (
+        "Rebuild the library reference "
+        + ref_id
+        + " ("
+        + name
+        + "). This is a fresh build with the live tools: the drone or gripper flow, or product_spec for anything else, "
+        + "then FreeCAD, the checks, the render and the bill of materials. "
+        + "Do not call reference_load; that replays a saved run. Start from this spec and these parts:\n"
+        + detail
+    )
+
+
 def _read(ref_id: str) -> dict | None:
     folder = folder_of(ref_id)
     return None if folder is None else json.loads((folder / "reference.json").read_text(encoding="utf-8"))

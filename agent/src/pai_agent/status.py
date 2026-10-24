@@ -61,7 +61,6 @@ def partner_statuses(events: list[dict]) -> list[dict]:
     claude = claude_enabled()
     jamie = configured("JAMIE_MCP_TOKEN")
     reson8 = configured("RESON8_API_KEY")
-    eleven = configured("ELEVENLABS_API_KEY")
     gemini = gemini_available()
     freecad = bool(find_freecadcmd()) or (gui_mode() != "off" and rpc_available())
     blender = bool(find_blender())
@@ -69,8 +68,7 @@ def partner_statuses(events: list[dict]) -> list[dict]:
         partner("claude", "Claude", "live" if claude else "mock", "Engineering orchestration." + api_hint if claude else "Scripted build: Claude is disabled or its API key is absent."),
         partner("jamie", "Jamie", "live" if jamie else "mock", "Meeting transcripts, notes and tasks." + api_hint if jamie else "Fixture meetings and a local task outbox; Jamie is not connected."),
         partner("reson8", "Reson8", "live" if reson8 else "offline", "Realtime speech recognition." + api_hint if reson8 else "No Reson8 key; browser speech recognition is the fallback."),
-        partner("elevenlabs", "ElevenLabs", "live" if eleven else "offline", "Mechanic's spoken replies." + api_hint if eleven else "No ElevenLabs key; Mechanic replies with text."),
-        partner("gemini", "Gemini Live", "live" if gemini else "offline", "Conversational voice, selectable in Settings." + api_hint if gemini else "Gemini Live is not configured; use ElevenLabs or text replies."),
+        partner("gemini", "Gemini Live", "live" if gemini else "offline", "Mechanic's realtime voice." + api_hint if gemini else "Gemini Live is not configured; Mechanic replies with text."),
         partner("freecad", "FreeCAD", "live" if freecad else "offline", "Local FreeCAD is available for CAD generation." if freecad else "FreeCAD is unavailable; CadQuery is the fallback."),
         partner("blender", "Blender", "live" if blender else "offline", "Local Blender is available for studio rendering." if blender else "Blender is unavailable; a recorded still is the fallback."),
     ]

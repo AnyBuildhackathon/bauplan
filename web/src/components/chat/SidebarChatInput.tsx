@@ -7,10 +7,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowUp, Mic, MousePointer2 } from "lucide-react";
 import { useUi } from "../../lib/ui";
-import { hold, isEcho, isSpeaking, markTurnEnd, release, stopSpeaking, unlockAudio, warmUp } from "../../lib/speech";
+import { unlockAudio, useSpeech } from "../../lib/speech";
 import { startListening as listen, type HandsFree, type Listener } from "../../lib/voice";
 import { startVoiceConversation } from "../../lib/geminiLive";
-import { useVoiceEngine } from "../../lib/voiceEngine";
 import { pickImage, SketchButton, SketchChip } from "./SketchDrop";
 
 interface SidebarChatInputProps {
@@ -63,10 +62,10 @@ export default function SidebarChatInput({
   const listening = useUi((s) => s.listening);
   const setListening = useUi((s) => s.setListening);
   const micMode = useUi((s) => s.micMode);
-  const engineChoice = useVoiceEngine((s) => s.choice);
   const handsFree = useUi((s) => s.handsFree);
   const setHandsFree = useUi((s) => s.setHandsFree);
   const userTalking = useUi((s) => s.userTalking);
+  const speaking = useSpeech((s) => s.speaking);
   const setUserTalking = useUi((s) => s.setUserTalking);
   const [hint, setHint] = useState<string | null>(null);
   const lg = size === "lg";
@@ -96,8 +95,6 @@ export default function SidebarChatInput({
   const starting = useRef(false);
   const onVoiceRef = useRef(onVoice);
   onVoiceRef.current = onVoice;
-  // Whether Mechanic was talking when this turn began; only then can the turn be his own echo.
-  const overMechanic = useRef(false);
 
   const stopHandsFree = useCallback(() => {
     conversation.current?.stop();
@@ -113,29 +110,16 @@ export default function SidebarChatInput({
     unlockAudio();
     setHandsFree(true);
     const active = await startVoiceConversation({
+      // Dictation without Gemini Live: the finished turn is sent as text and answered in text.
       onTurnStart: () => {
-        // Barge-in: Mechanic pauses mid-word the moment the person starts talking.
-        overMechanic.current = isSpeaking();
-        hold();
-        warmUp();
         setUserTalking(true);
         setHeard("");
       },
-      onPartial: (text) => {
-        setHeard(text);
-        if (text && !(overMechanic.current && isEcho(text))) stopSpeaking();
-      },
+      onPartial: setHeard,
       onTurnEnd: (text) => {
         setUserTalking(false);
         setHeard("");
-        if (!text || (overMechanic.current && isEcho(text))) {
-          // Noise, or Mechanic hearing himself: he carries on.
-          release();
-          return;
-        }
-        stopSpeaking();
-        markTurnEnd();
-        onVoiceRef.current?.(text);
+        if (text) onVoiceRef.current?.(text);
       },
       onError: flash,
     }, setHeard).catch(() => {
@@ -155,7 +139,6 @@ export default function SidebarChatInput({
     useUi.getState().setHandsFree(false);
     conversation.current?.stop();
   }, []);
-  useEffect(() => stopHandsFree(), [engineChoice, stopHandsFree]);
   useEffect(() => {
     if (micMode === "ptt") stopHandsFree();
   }, [micMode, stopHandsFree]);
@@ -313,17 +296,23 @@ export default function SidebarChatInput({
             if (handsFree) stopHandsFree();
             else void startConversation();
           }}
-          className={`flex shrink-0 items-center justify-center rounded-full transition select-none ${
-            micHot ? "scale-105 bg-accent text-white shadow-[0_0_0_8px_rgb(31_111_120/0.16)]" : "bg-tile text-ink-2 hover:bg-track hover:text-ink"
-          } ${lg ? "h-11 w-11" : "h-9 w-9"}`}
-          title={stt === "none" ? "No speech recognition in this browser" : micMode === "ptt" ? "Hold to speak, or hold space" : handsFree ? "Stop listening" : "Talk hands-free"}
+          className={`flex shrink-0 items-center justify-center gap-1.5 rounded-full font-semibold transition select-none ${
+            micHot ? "bg-accent text-white shadow-[0_0_0_6px_rgb(31_111_120/0.16)]" : "bg-tile text-ink-2 hover:bg-track hover:text-ink"
+          } ${micMode === "handsfree" ? (lg ? "h-11 px-4 text-[15px]" : "h-9 px-3 text-[13px]") : lg ? "h-11 w-11" : "h-9 w-9"}`}
+          title={stt === "none" && micMode === "ptt" ? "No speech recognition in this browser" : micMode === "ptt" ? "Hold to speak, or hold space" : handsFree ? "End the voice conversation" : "Talk to Mechanic"}
+          aria-label={micMode === "ptt" ? "Hold to speak" : handsFree ? "End the voice conversation" : "Talk to Mechanic"}
           aria-pressed={micMode === "handsfree" ? handsFree : undefined}
         >
-          <Mic className={lg ? "h-5 w-5" : "h-4 w-4"} strokeWidth={2} />
+          {micMode === "handsfree" && handsFree ? <Waveform active={speaking || userTalking} bars={4} className="[&>span]:bg-white" /> : <Mic className={lg ? "h-5 w-5" : "h-4 w-4"} strokeWidth={2} />}
+          {micMode === "handsfree" && <span>{handsFree ? "End" : "Talk"}</span>}
         </button>
         </div>
       </div>
-      {hint && <p className="mt-1.5 px-2 text-[12px] text-agent-ink">{hint}</p>}
+      {hint ? (
+        <p className="mt-1.5 px-2 text-[12px] text-agent-ink">{hint}</p>
+      ) : handsFree && micMode === "handsfree" ? (
+        <p className="mt-1.5 px-2 text-[12px] text-agent-ink">Live with Mechanic. Just talk; press End to stop.</p>
+      ) : null}
     </div>
   );
 }

@@ -1,8 +1,8 @@
 // Library: the reference builds (the micro FPV drone first, the robot gripper second) and
-// the projects saved from a session, from GET /api/library. Pick one to inspect it on the
-// right, "Rebuild" starts a fresh bench from it (POST /api/library/{id}/open).
+// the projects saved from a session, from GET /api/library. Opening one rebuilds it on a
+// fresh bench (POST /api/library/{id}/open).
 import { useEffect, useMemo, useState } from "react";
-import { Box, Plus, RotateCcw, Save, Search } from "lucide-react";
+import { Box, Plus, Save, Search } from "lucide-react";
 import { useSession } from "../events/store";
 import { useSource, type ReferenceBuild } from "../events/source";
 import { apiFetch, assetUrl } from "../lib/api";
@@ -101,14 +101,15 @@ function partsLine(item: ReferenceBuild): string {
   return bits.join(" · ");
 }
 
-function Card({ item, selected, onSelect }: { item: ReferenceBuild; selected: boolean; onSelect: () => void }) {
+function Card({ item, selected, onOpen }: { item: ReferenceBuild; selected: boolean; onOpen: () => void }) {
   return (
     <button
       type="button"
-      onClick={onSelect}
+      onClick={onOpen}
       data-target={`library:${item.id}`}
       data-control={`library:${item.id}`}
       aria-pressed={selected}
+      title="Rebuild this on the bench"
       className={`flex flex-col gap-3 rounded-[20px] bg-card p-2.5 pb-4 text-left transition ${
         selected ? "ring-[1.5px] ring-ink" : "ring-1 ring-line hover:ring-track"
       }`}
@@ -125,47 +126,6 @@ function Card({ item, selected, onSelect }: { item: ReferenceBuild; selected: bo
         <div className="num mt-2 text-[13px] font-medium text-ink-2">{partsLine(item)}</div>
       </div>
     </button>
-  );
-}
-
-function Inspect({ item, live, onRebuild }: { item: ReferenceBuild; live: boolean; onRebuild: () => void }) {
-  return (
-    <aside className="card flex max-h-full min-h-0 flex-col gap-4 self-start overflow-y-auto px-5 pt-4 pb-5" data-target="library_inspect">
-      <Thumbnail item={item} className="aspect-[16/10] w-full shrink-0" />
-      <div>
-        <div className="text-[13px] font-medium text-muted">
-          {SOURCE_LABEL[item.source]}
-          {item.product !== "generic" ? ` · ${item.product}` : ""}
-          {item.saved_at ? ` · ${savedLabel(item.saved_at)}` : ""}
-        </div>
-        <h2 className="text-[20px] leading-tight font-semibold tracking-[-0.01em] text-ink">{item.name}</h2>
-        <p className="mt-2 font-read text-[14px] leading-normal text-ink-2">{item.summary}</p>
-      </div>
-      <div className="grid grid-cols-3 gap-3 border-y border-line py-3">
-        {[
-          { label: "Bought", value: item.bought },
-          { label: "Printed", value: item.printed },
-          { label: "Requirements", value: item.requirements ?? "–" },
-        ].map((n) => (
-          <div key={n.label}>
-            <div className="text-[13px] font-medium text-muted">{n.label}</div>
-            <div className="num text-[26px] leading-tight font-semibold text-ink">{n.value}</div>
-          </div>
-        ))}
-      </div>
-      <button
-        type="button"
-        onClick={onRebuild}
-        disabled={!live}
-        data-target="library_rebuild"
-        className="flex h-12 shrink-0 items-center justify-center gap-2 rounded-full bg-ink text-[16px] font-semibold text-white transition hover:bg-[#333] disabled:bg-tile disabled:text-faint"
-      >
-        <RotateCcw className="h-4.5 w-4.5" /> Rebuild
-      </button>
-      <p className="-mt-2 text-center text-[13px] text-muted">
-        {live ? "Starts a fresh bench from this build; then Mechanic asks what to change." : "Rebuilding needs the live backend."}
-      </p>
-    </aside>
   );
 }
 
@@ -196,7 +156,6 @@ export function LibraryView() {
     const q = query.trim().toLowerCase();
     return all.filter((i) => (filter === "all" || i.kind === filter) && (!q || `${i.name} ${i.summary}`.toLowerCase().includes(q)));
   }, [all, filter, query]);
-  const selected = all.find((i) => i.id === picked) ?? items[0] ?? null;
   const counts = { all: all.length, reference: all.filter((i) => i.kind === "reference").length, project: all.filter((i) => i.kind === "project").length };
 
   const rebuild = (id: string) => {
@@ -222,8 +181,8 @@ export function LibraryView() {
   };
 
   return (
-    <div className="grid h-full min-h-0 grid-cols-[minmax(0,1fr)_360px] gap-6 px-6 pt-5 pb-5">
-      <div className="flex min-h-0 min-w-0 flex-col">
+    <div className="flex h-full min-h-0 flex-col px-6 pt-5 pb-5">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="flex shrink-0 items-end gap-6 border-b border-line" role="tablist">
           {(
             [
@@ -262,7 +221,7 @@ export function LibraryView() {
           <div className="mb-5 flex items-end justify-between gap-4 px-1">
             <div>
               <h1 className="text-[28px] font-semibold tracking-[-0.02em] text-ink">Library</h1>
-              <p className="font-read text-[15px] leading-normal text-ink-2">Start from a build that already flies or grips. Every project keeps its parts, checks and render.</p>
+              <p className="font-read text-[15px] leading-normal text-ink-2">Open a build to rebuild it on the bench. Every project keeps its parts, checks and render.</p>
             </div>
             {live && hasBuild && (
               <button
@@ -277,7 +236,7 @@ export function LibraryView() {
           </div>
           <div className="grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-4 pb-2">
             {items.map((item) => (
-              <Card key={item.id} item={item} selected={selected?.id === item.id} onSelect={() => setPicked(item.id)} />
+              <Card key={item.id} item={item} selected={picked === item.id} onOpen={() => live && rebuild(item.id)} />
             ))}
             <button
               type="button"
@@ -298,7 +257,6 @@ export function LibraryView() {
           {items.length === 0 && <p className="px-1 py-4 text-[15px] text-muted">Nothing matches “{query}”.</p>}
         </div>
       </div>
-      {selected ? <Inspect item={selected} live={live} onRebuild={() => rebuild(selected.id)} /> : <div />}
     </div>
   );
 }
