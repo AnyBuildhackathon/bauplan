@@ -11,7 +11,7 @@
 }
 
 /* AnyBuild look as tokens: an off-white, airy, almost borderless reading surface.
-   Inter Tight carries the interface. Reading text (Mechanic's answers, the Jamie quotes)
+   Inter Tight carries the interface. Reading text (Mechanic's answers, the request quotes)
    uses the system sans, as core.so's agent chat does, and Chivo Mono marks small labels,
    numbers and tool lines in the chat.
    Colors carry meaning: agent (orange) = what the agent is doing right now, ok (green)
@@ -50,7 +50,7 @@
   --color-link: #1f6f78;
   --color-lavender: #ebe6fb;
   --color-sky: #6fa8ff;
-  --color-jamie: #6b4fd8;
+  --color-violet: #6b4fd8;
 
   --radius-card: 20px;
   --radius-tile: 14px;

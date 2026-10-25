@@ -255,7 +255,7 @@ export function LibraryView() {
                 <Plus className="h-4.5 w-4.5 text-ink-2" />
               </span>
               <span className="text-[15px] font-semibold text-ink-2">New project</span>
-              <span className="text-[13px] text-muted">From a meeting, a sketch or a prompt</span>
+              <span className="text-[13px] text-muted">From a sketch or a prompt</span>
             </button>
           </div>
           {items.length === 0 && <p className="px-1 py-4 text-[15px] text-muted">Nothing matches “{query}”.</p>}

@@ -124,7 +124,7 @@ async def product_brief(ctx: Ctx, args: dict) -> dict:
                     row["changed_from"] = old["text"]
         state.product = product
         state.requirements = requirements
-        await ctx.emit({"type": "product", "id": product, "label": PRODUCTS[product]})
+        await ctx.emit({"type": "product", "id": product, "label": PRODUCTS[product], "requirements": [r["id"] for r in requirements]})
         return {
             "ok": True,
             "detail": "Micro drone, " + str(len(requirements)) + " requirements from the request",

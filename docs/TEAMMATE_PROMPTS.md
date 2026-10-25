@@ -19,9 +19,9 @@ Each prompt starts with the same shared block.
 ## Shared block (paste at the top of every prompt)
 
 ```
-You work on AnyBuild (repo AnyBuildhackathon/bauplan), a general engineering agent for the Agentic AI Hack Berlin today: the team's Jamie meetings set requirements, Claude designs the product through tool use (FreeCAD, Blender, MuJoCo), and the dashboard analyses it. The drone is the demo product; a second product is being added by another agent.
+You work on AnyBuild (repo AnyBuildhackathon/bauplan), a general engineering agent for the Agentic AI Hack Berlin today: the user's request sets the requirements, Claude designs the product through tool use (FreeCAD, Blender, MuJoCo), and the dashboard analyses it. The drone is the demo product; a second product is being added by another agent.
 Read AGENTS.md and docs/PLAN.md first, then docs/events.md (SSE event contract) and agent/src/pai_agent/tools/registry.py (how agent tools register).
-Rules: English only in UI and docs. Stay in your own new files; do not restyle the UI (the captain owns design) and do not edit agent/src/pai_agent/tools/jamie.py, the Omniverse/Isaac code, the general CAD code or the AnyBuild rename work, which other agents own. If you must touch a shared file (registry.py, events.md, a canvas tab), keep the change minimal and say so in the PR description. Never commit keys or .env files.
+Rules: English only in UI and docs. Stay in your own new files; do not restyle the UI (the captain owns design) and do not edit the Omniverse/Isaac code, the general CAD code or the AnyBuild rename work, which other agents own. If you must touch a shared file (registry.py, events.md, a canvas tab), keep the change minimal and say so in the PR description. Never commit keys or .env files.
 Run the backend with PORT=<your backend port> and the web with `npm run dev -- --port <your web port>` and BACKEND_URL=http://localhost:<your backend port>; use mock mode (PAI_FORCE_MOCK=1) unless told otherwise.
 Work in small steps, commit with plain messages, open one PR into main when it works, and say what to click to see it. Feature freeze is 16:00.
 ```

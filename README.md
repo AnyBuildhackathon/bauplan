@@ -2,19 +2,19 @@
 
 ![AnyBuild workbench cube](docs/assets/anybuild-social.png)
 
-**An engineering agent that develops physical products from your team's meetings.**
+**An engineering agent that develops physical products from what you ask for.**
 
-AnyBuild listens to how a team talks about a product, in recorded meetings, in the chat or by voice, and turns it into a checked design.
+AnyBuild takes what you ask for, typed in the chat or said by voice, and turns it into a checked design.
 Claude plans the work like a lead engineer with a small team of sub-agents and drives real engineering software through tool use: FreeCAD builds the parts, MuJoCo tests them, Blender renders them, and a bill of materials prices every orderable part.
-Every requirement links back to the sentence in the meeting that asked for it, contradictions between meetings become questions before anything is built, and each new design version is written back to the meeting it came from.
+Every requirement comes from your own words and links back to them; a limit you did not give is marked as proposed by Mechanic, and every change builds a new version with its difference.
 It targets diverse physical products, from a phone stand to a plant-watering robot; the micro FPV drone is the worked example of our stage demo.
 
 - **Live app:** https://anybuild-demo.vercel.app (the real app on our live backend; the access code is shared with the jury separately).
 - **Built at:** {Tech: Europe} Agentic AI Hack Berlin, 2026-10-24.
-- **Partner technology:** Anthropic Claude, Jamie, Reson8 (see [Partner technology](#partner-technology)).
+- **Partner technology:** Anthropic Claude, Reson8 (see [Partner technology](#partner-technology)).
 - **Documentation:** [Architecture](docs/ARCHITECTURE.md), [API](docs/API.md), [Agent tools](docs/TOOLS.md), [Frameworks](docs/FRAMEWORKS.md), [Event contract](docs/events.md).
 
-![The workbench: chat with Mechanic on the left, the Jamie meeting timeline on top, the assembled drone in the Model tab](docs/assets/screenshots/workbench-model.jpg)
+![The workbench: chat with Mechanic on the left, the assembled drone in the Model tab](docs/assets/screenshots/workbench-model.jpg)
 
 | CAD tab: FreeCAD assembly, feature tree and live parameters | Simulation tab: MuJoCo hover test before and after a fix |
 | --- | --- |
@@ -22,13 +22,13 @@ It targets diverse physical products, from a phone stand to a plant-watering rob
 
 ## What it does
 
-- **Any product from a description, a sketch or a meeting.** Type or say what you need, upload a photo of a hand sketch, start from a reference build, remix a community project, or let a Jamie meeting webhook start the build.
-- **Spec with traceable requirements.** Claude writes a full product spec; every requirement names the check that judges it, its limit, and the quote, speaker and time it came from.
+- **Any product from a description or a sketch.** Type or say what you need, upload a photo of a hand sketch, start from a reference build, or remix a community project.
+- **Spec with traceable requirements.** Claude writes a full product spec; every requirement names the check that judges it, its limit, and the words from your request it came from, or is marked as proposed by Mechanic.
 - **Real CAD.** Claude writes FreeCAD Python for every printed part; FreeCAD builds it visibly in the open window or headless in a sandbox, with STEP, STL, GLB and a live feature tree and parameter sliders.
 - **Real parts.** Bought parts come from curated catalogs with shop links and checked prices, or live shop prices through Claude web search; estimates are marked as estimates.
 - **Engineering checks and physics.** Mass, cost, size, tip-over, deflection, torque, runtime, power, thermal and roll-over checks, plus MuJoCo push, drop, hover and grip tests replayed in 3D.
 - **Fix loop.** When a check fails, Claude changes a dimension or swaps a part, rebuilds and reruns every check, and says why.
-- **Meeting memory with Jamie.** Warnings from earlier meetings surface before a part is chosen, contradictions become multiple-choice questions, each version is attached to its meeting with a diff note, and order tasks with assignees land in Jamie.
+- **Versions.** Every change you ask for builds a new version with its difference in weight, price, parts and checks; an old version can be restored or compared.
 - **Talk to Mechanic.** One button: press **Talk** and Mechanic greets you, then you just speak, and **End** turns him off; Gemini Live (`gemini-3.8-live`, voice Fenrir) is the whole voice agent: it listens, transcribes and speaks as Mechanic, with barge-in, while Claude handles engineering.
   Mechanic never narrates on his own: he answers you, plus one short line when a build finishes, and without Gemini Live he answers in text.
   [Setup and measured latency](docs/GEMINI_LIVE.md).
@@ -42,29 +42,27 @@ It targets diverse physical products, from a phone stand to a plant-watering rob
 
 ```mermaid
 flowchart LR
-    M[Jamie meetings] -->|webhook and MCP| B
     V[Voice: Gemini Live] --> W
     W[Web dashboard<br/>React, Three.js] -->|HTTP| B[FastAPI backend]
     B -->|SSE event stream| W
     B --> O[Orchestrator<br/>Claude Opus 5.5]
     O -->|delegate| S[Sub-agents<br/>Claude Sonnet 5.5]
-    O --> T[54 tools]
+    O --> T[47 tools]
     S --> T
     T --> FC[FreeCAD]
     T --> MJ[MuJoCo]
     T --> BL[Blender]
     T --> PR[Catalogs and live prices]
-    T --> J2[Jamie notes, tags, tasks]
     W <-->|PCM WebSocket| B
     B <-->|audio and Claude tool calls| G[Gemini Live]
 ```
 
-1. A request arrives from the chat, a voice turn, a sketch upload or a Jamie webhook.
-2. Claude writes the spec, and `spec.py` validates it until it is complete.
+1. A request arrives from the chat, a voice turn or a sketch upload.
+2. Claude writes the spec from the request, and `spec.py` validates it until it is complete.
 3. CAD sub-agents write one FreeCAD script per printed part, in parallel; FreeCAD builds them.
 4. The parts agent picks the bought parts, the assembly is computed, and the analysis agent runs every check and the MuJoCo test.
 5. On a failure the orchestrator changes the design and everything reruns.
-6. Blender renders the result, the pricing agent builds the bill of materials, and the version is written back to Jamie.
+6. Blender renders the result, the pricing agent builds the bill of materials, and the build is saved as the next version.
 7. Every step is an event on one Server-Sent Events stream, which the dashboard renders live.
 
 The details are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md); every tool is described in [docs/TOOLS.md](docs/TOOLS.md).
@@ -82,7 +80,7 @@ A good reading order:
 | How is a spec validated and pass or fail decided? | `spec.py` (`validate_spec`), `requirements.py`, `tools/checks.py`, `analysis.py`, `rigid_sim.py` |
 | How is generated CAD code kept safe? | `cad_script.py` (`check_script`, `run_script`), `tools/cad_part.py` |
 | How does the voice agent hand work to Claude? | `gemini_live.py` (`execute`), `web/src/lib/geminiLive.ts`, [docs/GEMINI_LIVE.md](docs/GEMINI_LIVE.md) |
-| How do Jamie meetings drive versions? | `tools/jamie.py`, `jamie_client.py`, `meetings.py`, `versions.py` |
+| Where do requirements come from, and how do versions work? | `requirements.py` (`attribute`), `tools/gripper.py` (`product_brief`), `versions.py` |
 | How does the dashboard stay in sync? | `bus.py`, `web/src/events/source.ts`, `web/src/events/store.ts`, [docs/events.md](docs/events.md) |
 | Why these design choices? | [Design decisions](docs/ARCHITECTURE.md#design-decisions) |
 | What runs without keys? | [Mock mode and fallbacks](docs/ARCHITECTURE.md#mock-mode-and-fallbacks) |
@@ -92,18 +90,10 @@ A good reading order:
 ### Anthropic Claude
 
 Claude is the engineer.
-The orchestrator runs on Claude Opus 5.5 with adaptive thinking and a configurable effort level, and it drives the whole bench through 54 tools with the Messages API tool-use loop (`agent/src/pai_agent/orchestrator.py`).
+The orchestrator runs on Claude Opus 5.5 with adaptive thinking and a configurable effort level, and it drives the whole bench through 47 tools with the Messages API tool-use loop (`agent/src/pai_agent/orchestrator.py`).
 It delegates bounded jobs to Claude Sonnet 5.5 sub-agents that see only the tools their job needs (`agent/src/pai_agent/agents.py`).
 Claude writes the FreeCAD Python for every generated part and repairs it from FreeCAD's error messages, reads hand sketches with vision, and finds live shop prices with server-side web search.
 Claude Haiku 5.5 writes the learning-mode explanations, using only numbers the tools produced.
-
-### Jamie
-
-Jamie is the team's memory and AnyBuild's sensory backbone.
-AnyBuild talks to the Jamie MCP server over Streamable HTTP (`agent/src/pai_agent/jamie_client.py`) with `list_meetings`, `get_meeting`, `get_meeting_transcript`, `search_meetings`, `upsert_template`, `create_tasks`, `update_tasks`, `create_tag` and `add_tag_to_meetings`.
-It creates the summary templates "Hardware-Anforderungen" and "Drohnen-Review", reads requirements with quote, speaker and timestamp, searches earlier meetings for warnings about a part, and detects contradictions between meetings.
-When a meeting ends, Jamie's webhook starts a build; the finished version is attached to the meeting with a diff note and tags, and order tasks with assignees and due dates are created in Jamie and ticked when a part is ordered.
-Without a Jamie token, the same calls answer from local fixture meetings and write to a local outbox, so the demo never stops.
 
 ### Reson8
 
@@ -167,23 +157,22 @@ Design a phone stand for my desk that holds my phone for video calls. It must no
 Design a robot gripper for our arm that picks up a 200 g soda can, 66 mm wide. Keep it under 150 g and 30 €.
 ```
 
-Or start from a reference build in the Library, upload a sketch, or replay the two drone meetings through the Jamie webhook:
+Or start from a reference build in the Library, upload a sketch, or build the drone from a request and then change it:
 
-```bash
-curl -s -X POST http://127.0.0.1:8100/api/webhooks/jamie \
-  -H 'content-type: application/json' \
-  --data @agent/data/webhooks/meeting-ended.json
-curl -s -X POST http://127.0.0.1:8100/api/webhooks/jamie \
-  -H 'content-type: application/json' \
-  --data @agent/data/webhooks/review-ended.json
+```text
+I want to build a drone that hunts flies under 150 euros
 ```
 
-The kickoff builds drone version 1 (47.2 g, 8.5 min, 117.38 EUR); the review asks which flight time counts, swaps the battery and builds version 2 (48.4 g, 10.4 min, 117.60 EUR).
+```text
+Make it fly 10 minutes.
+```
+
+In mock mode the first request builds drone version 1 to your budget; the change revises the flight-time requirement, swaps the battery and builds version 2 with its difference.
 `curl -s -X POST http://127.0.0.1:8100/api/reset -H 'content-type: application/json'` starts over.
 
 ### Mock mode
 
-Without `ANTHROPIC_API_KEY`, the backend runs scripted stories through the same tools that Claude calls: the drone kickoff and review, the phone stand (a tip-over failure fixed by a wider base), the robot gripper (an SG90 servo that drops the can, replaced by an MG996R) and the reference builds.
+Without `ANTHROPIC_API_KEY`, the backend runs scripted stories through the same tools that Claude calls: the drone from a typed request and a typed change, the phone stand (a tip-over failure fixed by a wider base), the robot gripper (an SG90 servo that drops the can, replaced by an MG996R) and the reference builds.
 The top bar says whether Claude is live or the mock runs.
 `PAI_FORCE_MOCK=1` forces the mock even with a key.
 
@@ -218,8 +207,6 @@ Every variable is optional.
 | `PAI_DELEGATION` | `0` lets the orchestrator do the sub-agents' jobs itself. |
 | `ANTHROPIC_VOICE_MODEL` | Model for the learning-mode explanations (default `claude-haiku-5-5`). |
 | `PAI_FORCE_MOCK` | `1` forces the mock even with a key. |
-| `JAMIE_MCP_TOKEN`, `JAMIE_MCP_URL` | Live Jamie MCP access (default URL `https://mcp.meetjamie.ai/mcp`); empty uses fixtures and the outbox. |
-| `JAMIE_WEBHOOK_SECRET` | Required in `X-Jamie-Secret` or `?secret=` on the webhook when set. |
 | `GEMINI_LIVE_PROVIDER`, `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION`, `GEMINI_API_KEY`, `GEMINI_LIVE_MODEL`, `GEMINI_LIVE_VOICE` | Mechanic's only voice, Gemini Live (default model `gemini-3.8-live`, voice `Fenrir`): Vertex with gcloud user OAuth or AI Studio with a server-only key; empty keeps Mechanic silent with text replies; see [voice setup](docs/GEMINI_LIVE.md). |
 | `RESON8_API_KEY`, `RESON8_LANGUAGE`, `RESON8_CUSTOM_MODEL_ID` | Reson8 speech-to-text (default language `en`); empty uses browser speech recognition. |
 
@@ -313,7 +300,7 @@ A live run with a key is the measurement that counts.
 
 ```bash
 cd agent && uv run --with pytest pytest tests          # unit tests
-cd agent && uv run python scripts/smoke_sse.py         # drone kickoff and review over SSE, mock mode, port 8101
+cd agent && uv run python scripts/smoke_sse.py         # drone request and change over SSE, mock mode, port 8101
 cd agent && uv run python scripts/smoke_product.py     # any-product flow
 cd agent && uv run python scripts/smoke_cad_part.py    # generated FreeCAD part, no network
 cd agent && uv run python scripts/smoke_community.py   # publish and remix round trip

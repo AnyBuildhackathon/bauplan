@@ -24,7 +24,7 @@ export const LESSONS: Record<StepId, Lesson> = {
   meeting: {
     step: "meeting",
     concept: "Requirements",
-    body: "Sentences in a meeting become numbers a test can check. “Under 250 grams” the simulation can check. “Should look good” it cannot. Every requirement keeps its quote, so it stays clear who wanted it.",
+    body: "Sentences in your request become numbers a test can check. “Under 250 grams” the simulation can check. “Should look good” it cannot. Every requirement keeps its quote, so it stays clear who wanted it.",
     diagram: "requirements",
     formula: () => ({ left: "Sentence → number → test", right: "every requirement has a source" }),
     question: "Which requirement can the simulation check directly?",

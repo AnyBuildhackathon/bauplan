@@ -1,5 +1,5 @@
 // The Settings panel behind the sliders icon. The dashboard shows only the essentials;
-// these toggles add the rest (agent steps, tool cards, Jamie activity, all metrics,
+// these toggles add the rest (agent steps, tool cards, all metrics,
 // learning mode), show which speech recognition listens, switch the mic from
 // hands-free to push-to-talk. In live mode it also holds the bench's model settings:
 // which Claude orchestrates, which runs the sub-agents, how hard each one thinks
@@ -14,7 +14,6 @@ import { useBenchResults } from "../views/BenchResults";
 const DISPLAY: { key: keyof Display; label: string; hint: string; control?: string }[] = [
   { key: "agents", label: "Show agent steps and costs", hint: "Orchestrator and sub-agents in the chat", control: "setting:agents" },
   { key: "tools", label: "Show tool details", hint: "FreeCAD, Blender, MuJoCo cards", control: "setting:tools" },
-  { key: "jamie", label: "Show Jamie activity", hint: "Tags, notes and tasks written to Jamie", control: "setting:jamie" },
   { key: "allMetrics", label: "Show all metrics", hint: "Thrust to weight and the rest", control: "setting:all_metrics" },
   { key: "mascot", label: "Show Mechanic on the canvas", hint: "His full figure in the corner while he speaks or explains" },
   { key: "learning", label: "Learning mode", hint: "Mechanic explains each decision with the physics; the logbook shows what you learned" },

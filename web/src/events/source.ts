@@ -61,11 +61,7 @@ interface SourceState {
   resetSession: () => Promise<void>;
   /** Reopens a saved chat on the bench; resolves to false when it did not open. */
   openChat: (id: string) => Promise<boolean>;
-  /** Ticks or unticks "bestellt" on an order task; the backend mirrors it to Jamie. */
-  toggleTask: (id: string, done: boolean) => Promise<void>;
-  /** Stands in for Jamie's webhook: marks a meeting as running, or as ended (which rebuilds). */
-  meetingWebhook: (event: "started" | "ended", meeting: { id: string; title: string }) => Promise<void>;
-  /** Answers Mechanic's question (a contradiction between meetings) with one of its options. */
+  /** Answers Mechanic's question with one of its options. */
   answerQuestion: (id: string, answerId: string) => Promise<void>;
   /** Pauses, resumes or stops the build that runs now; it takes effect between tool calls. */
   controlRun: (action: "pause" | "resume" | "stop") => Promise<void>;
@@ -382,35 +378,6 @@ export const useSource = create<SourceState>((set, get) => {
       } catch (err) {
         notify(failure("The chat did not open", err));
         return false;
-      }
-    },
-
-    toggleTask: async (id, done) => {
-      const session = useSession.getState();
-      const tasks = session.tasks;
-      if (!tasks) return;
-      try {
-        const res = await apiFetch(`/api/tasks/${encodeURIComponent(id)}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ done }),
-        });
-        await ensureOk(res);
-      } catch (err) {
-        notify(failure("Task was not saved", err));
-      }
-    },
-
-    meetingWebhook: async (event, meeting) => {
-      try {
-        const res = await apiFetch("/api/webhooks/jamie", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ event: `meeting.${event}`, meeting_id: meeting.id, title: meeting.title }),
-        });
-        await ensureOk(res);
-      } catch (err) {
-        notify(failure("Jamie event did not arrive", err));
       }
     },
 

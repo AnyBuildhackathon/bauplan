@@ -37,7 +37,6 @@ It has no OpenAPI page; FastAPI's generated docs are turned off on purpose for t
 | `POST` | `/api/run/resume` | Carry on a paused build from where it holds. 409 when nothing is paused. | | [Pause and stop](events.md#pause-and-stop) |
 | `POST` | `/api/run/stop` | End the build at its next checkpoint and keep everything built so far; the next message continues from there. 409 when nothing runs. | | [Pause and stop](events.md#pause-and-stop) |
 | `POST` | `/api/control` | Press Run test (`run:test`) or Rebuild and recheck (`run:rebuild`). | build | [HTTP](events.md#http) |
-| `POST` | `/api/tasks/{task_id}` | Tick an order task as ordered; mirrored to Jamie (`update_tasks`). | | [HTTP](events.md#http) |
 
 ### CAD and files
 
@@ -85,7 +84,6 @@ It has no OpenAPI page; FastAPI's generated docs are turned off on purpose for t
 | `GET` | `/api/voice` | Capabilities: `gemini_live` availability (Mechanic's only voice), STT (`reson8` or `browser`), Reson8 endpoints, language, phrase list. | | [HTTP](events.md#http) |
 | `POST` | `/api/voice/token` | A short-lived Reson8 token for the browser's WebSocket; 503 without `RESON8_API_KEY`. | stt | [HTTP](events.md#http) |
 | `WS` | `/api/voice/live` | Server-proxied Gemini Live audio and engineering tool calls; Vertex OAuth or AI Studio, with credentials kept on the backend. | One active session; the newest replaces it | [Realtime voice](GEMINI_LIVE.md#websocket-protocol) |
-| `POST` | `/api/voice/note` | Send a displayed conversation to a selected Jamie meeting, with offline outbox fallback. | | [Realtime voice](GEMINI_LIVE.md#websocket-protocol) |
 
 ### Learning mode, settings and training jobs
 
@@ -100,13 +98,12 @@ It has no OpenAPI page; FastAPI's generated docs are turned off on purpose for t
 | `POST` | `/api/stress/{job_id}/claim` | One dashboard tab claims a queued stress test and gets the 50 seeded worlds. | | [Learning mode](events.md#learning-mode) |
 | `POST` | `/api/stress/{job_id}/progress` | The claiming tab hands finished worlds back for scoring. | | [Learning mode](events.md#learning-mode) |
 
-### Access and webhooks
+### Access
 
 | Method | Path | Purpose | Limit | Spec |
 | --- | --- | --- | --- | --- |
 | `POST` | `/api/access` | Exchange the access code for a 24-hour session token and cookie; ten wrong codes per IP in 15 minutes are blocked. | | [Access](events.md#access) |
 | `GET` | `/api/access` | 200 while the session is valid, always 200 without an access code. | | [Access](events.md#access) |
-| `POST` | `/api/webhooks/jamie` | Jamie meeting lifecycle: `meeting.started` marks the meeting live, `meeting.ended` builds from it; optional `JAMIE_WEBHOOK_SECRET` in `X-Jamie-Secret` or `?secret=`. | build | [HTTP](events.md#http) |
 
 ## Server-Sent Events
 
@@ -117,7 +114,7 @@ Each event has a `type`; every stream begins with `reset`, then the backlog, the
 | --- | --- | --- |
 | `reset` | Drop all client state; first event of every stream and every server reset. | [reset](events.md#reset) |
 | `replayed` | Everything before it on this connection was backlog. | [replayed](events.md#replayed) |
-| `step` | A workflow step changed status (`meeting`, `teile` parts, `cad`, `render`, `simulation`, `training`, `stueckliste` bill of materials). | [step](events.md#step) |
+| `step` | A workflow step changed status (`meeting` spec, `teile` parts, `cad`, `render`, `simulation`, `training`, `stueckliste` bill of materials). | [step](events.md#step) |
 | `chat` | A user or agent utterance. | [chat](events.md#chat) |
 | `tool` | A tool's connection or run status (`connected`, `running`, `ok`, `error`, `offline`). | [tool](events.md#tool) |
 | `agent` | The orchestrator or a sub-agent: role, model, effort, job, status, tokens and cost. | [agent](events.md#agent) |
@@ -139,10 +136,7 @@ Each event has a `type`; every stream begins with `reset`, then the backlog, the
 | `print` | Per-part print time, filament, cost, orientation, warnings and G-code when sliced; otherwise labelled estimates. | [print](events.md#print) |
 | `build_guide` | The step-by-step build guide for the current bill of materials. | [build_guide](events.md#build_guide) |
 | `firmware` | Betaflight CLI or Arduino sketch and the wiring table. | [firmware](events.md#firmware) |
-| `tasks` | The order tasks, one per part, and whether they live in Jamie or the outbox. | [tasks](events.md#tasks) |
-| `jamie` | One Jamie MCP action and whether it went live or to the outbox. | [jamie](events.md#jamie) |
-| `meeting` | One meeting on the timeline. | [meeting](events.md#meeting) |
-| `version` | A finished build attached to the meeting it came from, with its numbers. | [version](events.md#version) |
+| `version` | A finished build with its trigger, numbers and difference to the last version. | [version](events.md#version) |
 | `mascot` | Mechanic's expression and speech bubble. | [mascot](events.md#mascot) |
 | `point` | The 3D pointer flies to a scene part. | [point](events.md#point) |
 | `draw` | A halo, arrow, circle or note on a scene part. | [draw](events.md#draw) |

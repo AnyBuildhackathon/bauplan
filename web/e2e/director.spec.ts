@@ -50,7 +50,6 @@ test("Director preference persists and leaves other main views alone", async ({ 
   await director.click();
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page.getByRole("button", { name: "Logbook", exact: true }).click();
-  await expect(page.getByRole("navigation", { name: "Jamie meetings" })).toBeVisible();
   await emit(page, { type: "step", id: "simulation", status: "running", label: "Simulation" });
   await expect(page.getByRole("heading", { name: "Logbook", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Workbench", exact: true }).click();
@@ -60,7 +59,7 @@ test("Director preference persists and leaves other main views alone", async ({ 
 test("completed rebuild shows the Model version diff", async ({ page }) => {
   await freshBench(page, "live");
   const version = {
-    type: "version" as const, n: 1, meeting_id: "kickoff", meeting_title: "Kickoff",
+    type: "version" as const, n: 1,
     weight_g: 40, thrust_to_weight: 2, flight_time_min: 8, price_eur: 60,
     sim: "pass" as const, parts: { battery: "550 mAh" }, diff: [], summary: "First build", product: "drone" as const,
   };
@@ -79,7 +78,8 @@ test("completed rebuild shows the Model version diff", async ({ page }) => {
   await tab(page, "CAD").click();
   await emit(page, { type: "reset" });
   await page.clock.fastForward(31_000);
-  await expect(tab(page, "CAD")).toHaveAttribute("aria-selected", "true");
+  // A reset empties the bench: the start screen asks what to build, no compare survives.
+  await expect(page.locator('[data-target^="prompt:"]').first()).toBeVisible();
   await expect(page.locator('[data-target="compare"]')).toHaveCount(0);
 });
 
@@ -87,7 +87,6 @@ test("independent partner states, NVIDIA header and job progress", async ({ page
   await page.route("**/api/status", (route) => route.fulfill({ json: {
     partners: [
       { id: "claude", label: "Claude", state: "live", detail: "Credentials configured." },
-      { id: "jamie", label: "Jamie", state: "mock", detail: "Local outbox." },
       { id: "reson8", label: "Reson8", state: "offline", detail: "Browser fallback." },
       { id: "isaac", label: "NVIDIA Isaac", state: "live", detail: "SSH connected." },
     ],
@@ -96,7 +95,6 @@ test("independent partner states, NVIDIA header and job progress", async ({ page
   await freshBench(page, "live");
   await expect(page.locator("header [data-partner]")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Settings", exact: true })).toBeVisible();
-  await expect(page.locator("header").getByRole("navigation", { name: "Jamie meetings" })).toHaveCount(0);
   await expect.poll(async () => page.evaluate(async () => {
     const { usePartners } = await import("/src/lib/partners.ts");
     return usePartners.getState().isaac.gpu;

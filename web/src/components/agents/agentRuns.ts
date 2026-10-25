@@ -8,7 +8,6 @@ import {
   Eye,
   Gauge,
   Network,
-  NotebookPen,
   Package,
   Receipt,
   Rocket,
@@ -114,7 +113,7 @@ export function modelFamily(model: string): ModelFamily {
 export const MODEL_STYLE: Record<ModelFamily, { chip: string; bar: string }> = {
   opus: { chip: "bg-accent-soft text-accent", bar: "bg-accent" },
   sonnet: { chip: "bg-[#e6effd] text-[#2a5aa8]", bar: "bg-[#5b8fe0]" },
-  haiku: { chip: "bg-lavender text-jamie", bar: "bg-jamie" },
+  haiku: { chip: "bg-lavender text-violet", bar: "bg-violet" },
   fable: { chip: "bg-agent-soft text-agent-ink", bar: "bg-agent" },
   other: { chip: "bg-tile text-ink-2", bar: "bg-ink-2" },
 };
@@ -138,7 +137,6 @@ export function toolInfo(tool: string): { label: string; icon: LucideIcon } {
   if (tool.startsWith("part")) return { label: "Catalog", icon: Package };
   if (tool === "bom_build") return { label: "BOM", icon: Receipt };
   if (tool.startsWith("check") || tool === "assemble") return { label: "Checks", icon: Gauge };
-  if (tool.startsWith("jamie")) return { label: "Jamie", icon: NotebookPen };
   if (tool === "delegate") return { label: "Delegating", icon: Network };
   return { label: tool.replace(/_/g, " "), icon: Wrench };
 }

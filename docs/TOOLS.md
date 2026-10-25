@@ -1,7 +1,7 @@
 # Agent tools
 
 Claude builds products by calling tools; it never invents a number that a tool did not compute.
-The backend registers 54 tools in `agent/src/pai_agent/tools/registry.py`, with one schema list (`SCHEMAS`) and one dispatch (`call_tool`) shared by Claude and the offline mock.
+The backend registers 47 tools in `agent/src/pai_agent/tools/registry.py`, with one schema list (`SCHEMAS`) and one dispatch (`call_tool`) shared by Claude and the offline mock.
 This document lists every tool with its inputs, what it returns and emits, and the external software behind it.
 The inputs below are generated from `SCHEMAS`; "(required)" marks required fields.
 Event payloads are specified in [events.md](events.md#tools), and the step each tool lights up on the dashboard is in `_STEP` in the registry.
@@ -16,7 +16,6 @@ Event payloads are specified in [events.md](events.md#tools), and the step each 
 | **Blender 5** | `blender_render`, `product_usd` | Headless `blender -b -P agent/blender/studio.py` (Cycles with Metal GPU, or EEVEE) | Recorded still `agent/runs/fallback/render.png` |
 | **MuJoCo 3.17** | `simulate_drone`, `simulate_assembly`, `simulate_grip` on the backend; `train_in_browser`, `stress_test` in the browser | Python bindings; `@mujoco/mujoco` WebAssembly in the dashboard | None needed |
 | **NVIDIA Isaac Sim 5.1 and Isaac Lab 2.3** | `isaac_test`, `isaac_train` and aliases | SSH to a GPU host prepared by `runpod/setup.sh`, job script `runpod/isaac_job.py` | Recorded, clearly labelled result |
-| **Jamie MCP** | All `jamie_*` tools, `requirements_accept`, `version_commit` | Streamable HTTP MCP client (`jamie_client.py`) with a bearer token | Fixture meetings and local outbox `jamie_outbox.json` |
 | **Reson8** | Push-to-talk dictation (not a tool) | Browser WebSocket with a short-lived token from the backend | Browser Web Speech recognition |
 | **Gemini Live** | Mechanic's only voice (not a tool) | Native realtime audio through `WS /api/voice/live` | Silent, text only |
 | **Betaflight and Arduino** | `firmware` | Deterministic templates filled from the chosen parts | None needed |
@@ -26,7 +25,7 @@ Event payloads are specified in [events.md](events.md#tools), and the step each 
 | Tool | Inputs | Returns and emits | Behind it |
 | --- | --- | --- | --- |
 | `product_spec` | `name` (required): string; `function` (required): string; `quote`: string; `requirements` (required): array; `assemblies`: array; `parts` (required): array | Validates the full spec of any product (`spec.py`) and lists every problem at once until it is right; emits `product` and `requirement` rows. | Python validation |
-| `product_brief` | `product` (required): `drone` or `gripper`; `object_mass_g`, `object_width_mm`, `max_weight_g`, `budget_eur`: number; `quote`: string | Starts a drone or gripper build and turns the request into requirement checks. | Python |
+| `product_brief` | `product` (required): `drone` or `gripper`; drone: `requirements` array of `{id: budget, flight_time or weight, limit, quote, proposed}`; gripper: `object_mass_g`, `object_width_mm`, `max_weight_g`, `budget_eur`: number, `quote`: string | Starts a drone or gripper build and turns the request into requirement checks; a requirement whose quote is not in the user's words is shown as proposed by Mechanic. | Python (`requirements.attribute`) |
 | `sketch_to_spec` | `sketch`: string (file name); `note`: string | Reads a hand-sketch photo: a validated spec, every dimension with value, unit and confidence, what was unreadable, and a summary; emits `sketch`. | Claude vision |
 | `reference_load` | `id`: string | Without `id` lists the reference builds. With `id` and no live key, loads the saved build onto the bench. With a live key, returns the spec and parts (`request`) and does not replay the saved run. | `agent/data/references/` |
 | `delegate` | `agent` (required): `parts`, `checks` or `pricing`; `task` (required): string | Runs a sub-agent with only its tools and returns its report, tool calls, tokens and cost; emits `agent`. | Claude Sonnet 5.5 |
@@ -46,7 +45,7 @@ Event payloads are specified in [events.md](events.md#tools), and the step each 
 | Tool | Inputs | Returns and emits | Behind it |
 | --- | --- | --- | --- |
 | `part_pick` | `part_id` (required): string; `query`, `category`, `select_id`, `reason`: string; `estimate`: object | Searches every catalog or binds a part; when nothing fits, an estimate marked as estimated; emits `part`. | `agent/data/catalogs/`, `pricing.register_provider` |
-| `parts_search` | `category` (required): enum; `query`, `select_id`, `reason`: string; `because`: enum | Drone catalog search; every hit carries `jamie_notes`, what earlier meetings said about the part; emits `part` with quote and warnings. | `agent/data/parts.json`, Jamie |
+| `parts_search` | `category` (required): enum; `query`, `select_id`, `reason`: string; `because`: enum | Drone catalog search; `select_id` binds a part, `because` names the requirement it serves; emits `part` with the request quote behind that requirement. | `agent/data/parts.json` |
 | `catalog_search` | `category` (required): `servo`, `pads`, `hardware` or `driver`; `query`, `select_id`, `reason`: string | Gripper catalog search and selection. | `agent/data/catalogs/gripper.json` |
 | `bom_build` | none | The bill of materials with quantities, unit prices, weights, shop links and `price_source`; with `ANTHROPIC_API_KEY` it searches live shop prices (EU first); emits `bom` and `metrics`. | Claude server-side web search (`tools/parts_search.py`) |
 
@@ -103,18 +102,11 @@ See [omniverse.md](omniverse.md) for the GPU host setup, the experiment contract
 | `optimize_design` | `goals` (required): array of `lighter`, `cheaper`, `longer_runtime`, `stronger`; `keep`: object (`min_flight_time_min`, `max_weight_g`, `max_price_eur`, `min_thrust_to_weight`, `min_arm_stiffness`); `count`: integer 4 to 8 | Explores drone variants (battery, arm length, plate thickness), each proposed by its own sub-agent in parallel and run through the CadQuery frame mass, `physics_calc`'s numbers, the MuJoCo gust test, prop clearance and the keep limits; returns every variant with pass or fail and the Pareto set; emits `optimize`. | Claude Sonnet 5.5 sub-agents (fixed strategies without a key), CadQuery, MuJoCo |
 | `optimize_apply` | `id`: string; `variant`: string | Builds one variant through `parts_search`, `cad_frame`, `physics_calc`, `simulate_drone`, `blender_render` and `bom_build`, and commits it as the next version. | The normal drone tools |
 
-## Jamie meeting loop
+## Questions
 
 | Tool | Inputs | Returns and emits | Behind it |
 | --- | --- | --- | --- |
-| `jamie_templates` | none | Creates the summary templates "Hardware-Anforderungen" and "Drohnen-Review" (`upsert_template`); emits `jamie`. | Jamie MCP |
-| `jamie_requirements` | `meeting_id`: string | The kickoff requirements, each with quote, speaker and time; emits `requirement`. | Jamie MCP (`get_meeting`, transcript) |
-| `jamie_search` | `query` (required): string | Earlier meetings that mention a part, for warnings. | Jamie MCP (`search_meetings`) |
-| `jamie_meeting` | `meeting_id` (required): string | A finished review: changed requirements, conflicts with earlier meetings, and part complaints resolved to the meeting they refer to. | Jamie MCP |
-| `requirements_accept` | `meeting_id` (required): string; `ids`: array | Accepts some or all requirements of a meeting into the build. | Jamie MCP |
-| `ask_user` | `question`, `options`, `default_id` (all required) | Asks the room and waits for a click, speech or text; the default applies after `PAI_ASK_TIMEOUT_S`; emits `question`. | Dashboard |
-| `version_commit` | `meeting_id`: string | Attaches the version to its meeting, writes the difference as a note and tags the meeting `drohne-v{n}`; emits `version`. | Jamie MCP (`create_tag`, `add_tag_to_meetings`) |
-| `jamie_create_tasks` | `meeting_id`: string | One order or print task per BOM line with a person and due date; replaced parts are closed; emits `tasks`. | Jamie MCP (`create_tasks`, `update_tasks`) |
+| `ask_user` | `question`, `options`, `default_id` (all required) | Asks the user and waits for a click, speech or text; the default applies after `PAI_ASK_TIMEOUT_S`; emits `question`. | Dashboard |
 
 ## Dashboard and mascot
 

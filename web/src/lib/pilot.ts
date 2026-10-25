@@ -39,7 +39,7 @@ const SETTLE_MS = 320;
 
 const TABS: Record<string, CanvasTab> = { model: "modell", cad: "cad", simulation: "simulation", omniverse: "omniverse" };
 const VIEWS: Record<string, View> = { workbench: "werkbank", library: "library", training: "training", logbook: "logbuch" };
-const DISPLAY: Record<string, keyof Display> = { agents: "agents", tools: "tools", jamie: "jamie", all_metrics: "allMetrics" };
+const DISPLAY: Record<string, keyof Display> = { agents: "agents", tools: "tools", all_metrics: "allMetrics" };
 
 /** Scrolls a control that sits below the fold (a library card) into view before the pointer goes there. */
 async function reveal(control: string) {

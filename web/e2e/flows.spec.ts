@@ -1,6 +1,6 @@
 // The stage flows in mock mode: no key, no FreeCAD or Blender needed (CadQuery and the recorded still stand in).
 import { expect, test } from "@playwright/test";
-import { ask, bomButton, freshBench, idle, requirement, timeline } from "./helpers";
+import { ask, bomButton, freshBench, idle, requirement } from "./helpers";
 
 const GRIPPER = "Design a robot gripper that picks up a 200 g soda can, 66 mm wide";
 const STAND = "Design a phone stand for my desk";
@@ -19,19 +19,23 @@ test("drone reference: Library, Rebuild, v1 with every check met", async ({ page
   await expect(page.locator("canvas").first()).toBeAttached();
 });
 
-test("review: Start and End on the timeline rebuild v2, the question closes by its default", async ({ page }) => {
-  // Continues the bench of the drone test; a fresh page replays the backlog.
-  await page.goto("/?mute&view=logbuch");
-  await expect(timeline(page)).toContainText("v1");
-  await page.locator('[data-target="meeting_end"]').dispatchEvent("click");
-  await expect(page.locator('[data-target="meeting_end"]')).toHaveText("End");
-  await page.locator('[data-target="meeting_end"]').dispatchEvent("click");
-  // The flight-time question opens and closes on its own after PAI_ASK_TIMEOUT_S.
-  await expect(timeline(page)).toContainText("v2", { timeout: 45_000 });
+test("typed drone request: the requirements card is built from the prompt, a typed change builds v2", async ({ page }) => {
+  await freshBench(page);
+  await ask(page, "I want to build a drone that hunts flies under 150 euros");
+  await expect(page.getByText("Version 1", { exact: false }).first()).toBeAttached({ timeout: 60_000 });
+  const budget = requirement(page, "budget");
+  // The typed limit, quoted from the prompt: no stock budget, no meeting.
+  await expect(budget).toContainText("Total price under €150");
+  await expect(budget).toContainText("you");
+  await expect(requirement(page, "hover")).toContainText("Mechanic");
+  await expect(page.locator('[data-target~="requirements"]')).toContainText("from your request");
+  await expect(page.getByText(/Jamie|kickoff/i)).toHaveCount(0);
   await idle(page);
-  await page.getByRole("button", { name: "Workbench", exact: true }).dispatchEvent("click");
-  // v2 only builds after the question closed; its card stays in the chat with the default marked.
-  await expect(page.locator('[data-target~="question"]').first()).toBeAttached();
+  await ask(page, "Make it fly 10 minutes.");
+  await expect(page.getByText("Version 2", { exact: false }).first()).toBeAttached({ timeout: 60_000 });
+  await expect(requirement(page, "flight_time")).toContainText("At least 10 minutes of flight time");
+  await idle(page);
+  await expect(bomButton(page)).toContainText("€");
 });
 
 test("robot gripper from a chat request: the grip test holds and the BOM closes", async ({ page }) => {

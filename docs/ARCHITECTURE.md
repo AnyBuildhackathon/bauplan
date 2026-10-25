@@ -1,6 +1,6 @@
 # Architecture
 
-AnyBuild turns a request, a hand sketch or a recorded team meeting into a checked physical product: printed parts in CAD, bought parts with prices, engineering checks, a physics test, a studio render and a bill of materials.
+AnyBuild turns a typed or spoken request or a hand sketch into a checked physical product: printed parts in CAD, bought parts with prices, engineering checks, a physics test, a studio render and a bill of materials.
 This document explains the components, how data flows between them, how Claude plans and delegates the work, and how the dashboard follows along over one event stream.
 The wire format is specified in [events.md](events.md), every endpoint and event is indexed in [API.md](API.md), and every agent tool is described in [TOOLS.md](TOOLS.md).
 
@@ -11,7 +11,6 @@ flowchart LR
     subgraph Inputs
         U[Chat and voice<br/>typed or spoken]
         S[Hand sketch photo]
-        J[Jamie meetings<br/>webhooks and MCP]
     end
 
     subgraph Web["web/ (React, Three.js, MuJoCo WASM)"]
@@ -25,7 +24,7 @@ flowchart LR
         ORC[Orchestrator<br/>Claude Opus 5.5]
         SUB[Sub-agents<br/>Claude Sonnet 5.5]
         GLV[Gemini Live gateway<br/>WS /api/voice/live]
-        REG[Tool registry<br/>54 tools]
+        REG[Tool registry<br/>47 tools]
         BUS[Event bus<br/>SSE fan-out]
     end
 
@@ -35,7 +34,6 @@ flowchart LR
         BL[Blender<br/>Cycles and EEVEE]
         MJ[MuJoCo]
         IS[Isaac Sim and Isaac Lab<br/>GPU host over SSH]
-        JM[Jamie MCP]
         R8[Reson8 STT]
         GL[Gemini Live<br/>Vertex gemini-3.8-live]
         WS[Claude web search<br/>live shop prices]
@@ -43,7 +41,6 @@ flowchart LR
 
     U --> UI
     S --> UI
-    J --> API
     UI -- "POST /api/*" --> API
     API --> SES
     SES --> ORC
@@ -56,7 +53,6 @@ flowchart LR
     REG --> BL
     REG --> MJ
     REG --> IS
-    REG --> JM
     REG --> WS
     REG --> BUS
     GLV <--> GL
@@ -78,7 +74,6 @@ flowchart LR
 | Engineering core | `spec.py`, `analysis.py`, `analysis_more.py`, `rigid_sim.py`, `grip_sim.py`, `assembly.py` | Spec validation, closed-form checks, MuJoCo rigid-body tests and the assembly model. |
 | CAD runners | `freecad_run.py`, `cad_script.py`, `agent/freecad/` | FreeCAD in the open window over `freecad-mcp`, headless `freecadcmd` in a sandbox, CadQuery as the last fallback. |
 | Rendering | `agent/blender/studio.py`, `tools/blender.py` | Headless Blender studio renders of the assembled GLB. |
-| Jamie client | `agent/src/pai_agent/jamie_client.py`, `meetings.py` | Streamable HTTP MCP client with a local fixture and outbox fallback. |
 | Library and community | `references.py`, `community.py`, `agent/data/references/`, `agent/data/community/` | Known reference builds, saved projects, the published feed and remixes. |
 | Cache and warm-up | `cache.py`, `warm.py` | Reuse identical FreeCAD and Blender results and pre-load slow imports at start. |
 | Dashboard | `web/src/` | React 19 app: the Zustand store (`events/store.ts`) folds SSE events into UI state; Three.js renders the model, CAD and simulation replays. |
@@ -87,12 +82,12 @@ flowchart LR
 
 ## Data flow of one build
 
-1. A request arrives as `POST /api/prompt` (typed or spoken), `POST /api/sketch` (photo), `POST /api/library/{id}/open` (reference), `POST /api/community/{id}/remix` (remix) or `POST /api/webhooks/jamie` (a meeting ended).
+1. A request arrives as `POST /api/prompt` (typed or spoken), `POST /api/sketch` (photo), `POST /api/library/{id}/open` (reference) or `POST /api/community/{id}/remix` (remix).
 2. `app_control.py` answers pure dashboard commands ("show me the CAD", "pull it apart") at once with `ui_control` calls, without a model call.
 3. Everything else starts a run in the session; the HTTP call returns immediately with `status: started`.
 4. The orchestrator writes one short sentence per step, then calls tools; every tool result is also published as events (`tool`, `cad`, `sim`, `requirement`, `metrics`, `bom`, and more).
 5. When a check fails, the orchestrator changes a parameter with `cad_update` or swaps a part, and every check that ran before runs again.
-6. The run ends with a render, a bill of materials, and for meeting-driven builds a version attached to the meeting with the difference written back to Jamie.
+6. The run ends with a render, a bill of materials and a version with its difference to the previous one.
 7. The dashboard never polls: it renders whatever the event stream says, so a reconnecting client replays the backlog onto an empty state.
 
 ```mermaid
@@ -103,7 +98,6 @@ sequenceDiagram
     participant Orc as Orchestrator (Opus)
     participant Sub as Sub-agents (Sonnet)
     participant Tools as FreeCAD / MuJoCo / Blender
-    participant Jamie
 
     User->>Web: "Design a phone stand under 6 euros"
     Web->>API: POST /api/prompt
@@ -119,7 +113,6 @@ sequenceDiagram
     Sub-->>Orc: report with pass and fail
     Orc->>Tools: cad_update on a failed check
     Orc->>Tools: blender_render, bom_build
-    Orc->>Jamie: version_commit, jamie_create_tasks
     Tools-->>Web: SSE events (cad, sim, requirement, metrics, bom, version)
 ```
 
@@ -151,11 +144,10 @@ Paths are relative to `agent/src/pai_agent/` unless they start with `web/`.
    The model never sets a row to met; it can only change the design and let the checks run again.
 10. **The fix loop.** On a failed check Claude calls `cad_update` (`tools/product.py`), which rebuilds that part with the new parameter, reassembles and reruns every check that ran before (`rerun_checks`), or swaps a bought part with `part_pick`.
 11. **Deliverables.** `blender_render` (`tools/blender.py`) renders the assembly, `safety_check` (`tools/safety.py`) runs right before `bom_build` (`tools/bom.py`), which emits the bill of materials with a `price_source` per line, then `print_prep` and, for products with electronics, `electronics_plan`.
-    For any product other than the drone, `call_tool` hands a successful `bom_build` to `versions.after_tool`, which commits the build as a version with its diff to the previous one (the drone commits through `version_commit` with its meeting).
+    For every product, the drone included, `call_tool` hands a successful `bom_build` to `versions.after_tool`, which commits the build as a version with its diff to the previous one.
 12. **Back in the browser.** `web/src/events/source.ts` receives every event over `GET /api/events` and `web/src/events/store.ts` folds it into state; the chat, the Model, CAD and Simulation tabs and the requirement cards re-render from that store.
 
 The voice path joins at step 1: Gemini Live's `engineer` function (`gemini_live.execute`) calls the same `Session.start` with the spoken request, waits for the run, and reads the measured result back as speech.
-A Jamie `meeting.ended` webhook joins at step 3 through `Session.start_from_meeting` and `orchestrator.run_meeting`.
 
 ## Orchestrator and sub-agents
 
@@ -205,7 +197,6 @@ The dashboard renders any product from the spec and the check results: requireme
 - **From a sketch:** `POST /api/sketch` stores the photo, `sketch_to_spec` reads it with Claude vision (every dimension with value, unit and confidence), and the orchestrator continues with `product_spec`.
 - **From a reference:** the library (`agent/data/references/`) holds known products with their real parts; loading one rebuilds it through the same tools, then the user changes it in the chat.
 - **From the community:** a published project is remixed on a fresh bench with a link back to the original.
-- **From a meeting:** a Jamie `meeting.ended` webhook builds from that meeting's requirements.
 
 The library (`GET /api/library`) lists the micro FPV drone first and the robot gripper second, both built by their own code, then the reference builds and the projects users saved with `POST /api/library`.
 Each saved or reference build is one `reference.json` with the spec, the picks and the checks, one FreeCAD script per printed part, and a studio render as thumbnail.
@@ -220,26 +211,16 @@ The second built-in product is a parametric two-finger robot gripper, chosen bec
 `product_brief` turns the request into checks, `catalog_search` picks servo, pads, hardware and driver from `agent/data/catalogs/gripper.json`, `grip_calc` computes finger force and grip safety, `simulate_grip` lifts and shakes the object in MuJoCo, and `cad_part` builds the gripper from `agent/freecad/library/gripper.py` with the servo pocket sized for the chosen servo, then `blender_render` and `bom_build`.
 In the mock, the SG90 servo drops the can and the MG996R holds it.
 
-## The drone worked example and Jamie loop
+## The drone worked example
 
-The stage demo builds a 1S 2-inch toothpick FPV drone from two recorded meetings.
+The stage demo builds a 1S 2-inch toothpick FPV drone from a typed request, then changes it from a typed message.
 It arrives at a real reference build, the toothpick from Mediocre Nerd's video "Build a Micro FPV Drone for $59": Twiglet 2" carbon frame, 1103 15000KV motors, Gemfan 2020 four-blade props, Caddx Ant camera, BetaFPV Matrix 1S 5in1 V2 AIO, canopy with battery holder, M1.4 bolts and a 1S pack.
 Each is a bill-of-materials line with its mass, its shop price checked on 2026-10-24 and the product page of that exact part (`agent/data/parts.json`).
-The kickoff meeting builds version 1: requirements from Jamie, a warning from an earlier workshop note about the FunFly 4S battery, a MuJoCo hover test that a downdraft gust pushes to the ground, the swap to the Tattu R-Line 1S 550, the frame in FreeCAD, the studio render in Blender, the bill of materials, order tasks and the version attached to the meeting (47.2 g, 8.5 min, 117.38 EUR).
-The review meeting builds version 2: Mechanic asks which flight time counts when the review contradicts the kickoff, swaps to the BetaFPV LAVA II 1S 680 for 10 minutes, and writes the difference back to Jamie as a note (48.4 g, 10.4 min, 117.60 EUR).
-
-Jamie is the sensory backbone of this loop:
-
-- `jamie_templates` creates the summary templates "Hardware-Anforderungen" and "Drohnen-Review".
-- `jamie_requirements` reads the template fields with quote, speaker and timestamp, then the meeting's requirement list, then transcript sentences.
-- `jamie_search` surfaces warnings from earlier meetings before a part is chosen.
-- `jamie_meeting` reads a review: changed requirements, contradictions with earlier meetings, and part complaints, resolving "last week" to meetings 4 to 10 days earlier.
-- `ask_user` lets Mechanic ask the room a multiple-choice question when meetings contradict each other.
-- `version_commit` writes the design difference back as a note and tags the meeting with `drohne` and `drohne-v{n}`.
-- `jamie_create_tasks` creates one order task per bill-of-materials line with an assignee and due date; ticking a part as ordered in the dashboard ticks the task in Jamie.
-
-With `JAMIE_MCP_TOKEN`, calls go live to `https://mcp.meetjamie.ai/mcp`; without it, or when a live call fails, the same methods answer from the fixture meetings in `agent/data/meetings/` and writes go to the session outbox `jamie_outbox.json`.
-The dashboard looks the same in both modes; chat cards say "local outbox" when offline.
+`product_brief` turns the request into requirements: every number the user typed (a budget, a flight time, a weight) becomes a requirement quoting the user's words, and hover and the printable frame are added as proposed by Mechanic.
+`requirements.attribute` only attributes a requirement to the user when its quote is in what the user typed; any other limit is shown as proposed by Mechanic, never as someone's sentence.
+Then `parts_search` picks every part with the requirement it serves, `physics_calc` and `simulate_drone` check the hover against a downdraft gust, `cad_frame` builds the frame in FreeCAD, `blender_render` renders it and `bom_build` prices it and commits the version.
+In the offline demo the first build tries the FunFly 4S, fails the gust, swaps to the Tattu R-Line 1S 550 and builds version 1 (48.3 g, 8.2 min, 117.38 EUR for under 120 euros, 8 minutes and 50 g); "Make it fly 10 minutes." revises the flight-time requirement and swaps to the BetaFPV LAVA II 1S 680 for version 2 (49.5 g, 10.1 min, 117.60 EUR).
+`ask_user` stays for decisions only the user can make, such as accepting a lower limit when a requirement cannot be met.
 
 ## CAD pipeline
 
@@ -316,7 +297,6 @@ Every external dependency has a fallback, so the full workflow runs on a laptop 
 | Missing | Fallback |
 | --- | --- |
 | `ANTHROPIC_API_KEY` | Scripted mock stories (`mock_story.py`, `mock_product.py`, `mock_gripper.py`, `mock_categories.py`) call the same tools with the same events. |
-| `JAMIE_MCP_TOKEN` | Fixture meetings in `agent/data/meetings/` and the local outbox `jamie_outbox.json`. |
 | `RESON8_API_KEY` | Push-to-talk uses browser Web Speech recognition; typing always works. |
 | Gemini Live (`GOOGLE_CLOUD_PROJECT` with gcloud, or `GEMINI_API_KEY`) | Mechanic stays silent and shows text; the microphone still dictates. |
 | FreeCAD window | Headless `freecadcmd`, then CadQuery. |
@@ -342,27 +322,27 @@ The reasons behind the main choices, for a reviewer who wants to know why the co
 - **The model decides, tools compute.** Every number the dashboard shows comes from a tool result; requirement rows are recomputed from state after each call (`requirements.refresh_requirements`), and the system prompt forbids stating a number a tool did not produce.
   This makes model errors visible as failed checks instead of confident text.
 - **One tool dispatch for every caller.** Claude, the sub-agents, the offline mock runners and the dashboard controls all go through `tools/registry.call_tool`.
-  The offline demo therefore exercises the same CAD, simulation, pricing and Jamie code as a live run, and every call gets the same timeout, `tool` events and requirement refresh.
+  The offline demo therefore exercises the same CAD, simulation and pricing code as a live run, and every call gets the same timeout, `tool` events and requirement refresh.
 - **Sub-agents for bounded jobs.** Writing one part's FreeCAD script, picking parts and running checks do not need the orchestrator's model or its whole context.
   Each sub-agent sees only its role's tools and a short task (`agents.ROLES`), so it is cheaper, cannot change what it was not asked to change, and several CAD agents run in parallel.
   The orchestrator keeps the spec, the fixes and the final word.
-- **Validate before building, check before ordering.** `spec.validate_spec` rejects an incomplete spec with every problem at once before any CAD runs, and the orchestrator prompt runs the requirement checks and `safety_check` before `bom_build` and `jamie_create_tasks`, so parts go on an order list only after the design was tested.
+- **Validate before building, check before ordering.** `spec.validate_spec` rejects an incomplete spec with every problem at once before any CAD runs, and the orchestrator prompt runs the requirement checks and `safety_check` before `bom_build`, so parts go on an order list only after the design was tested.
 - **Generated code runs sandboxed.** Claude writes FreeCAD Python, so `cad_script.py` treats it as untrusted: a static check of imports and attribute access, a fresh temporary directory, an environment without the backend's secrets, a timeout, and `sandbox-exec` on macOS.
 - **Everything degrades with a label, nothing silently.** Each external dependency has a fallback (see [Mock mode and fallbacks](#mock-mode-and-fallbacks)), and each fallback says so: `price_source: estimate`, `source: recorded`, a marked placeholder block, a recorded still.
 - **One event stream as the only state channel.** The backend never renders UI and the dashboard never polls; it replays the backlog onto an empty store (`bus.EventBus`, `events/store.ts`).
   A reconnecting or second client shows exactly the same bench, which is also what makes the Mac app and the public web app identical.
 - **Gemini for conversation, Claude for engineering.** Gemini Live handles low-latency speech, barge-in and transcription; engineering requests go through its `engineer` function into the same Claude run as typed text, so spoken and typed requests produce the same, checked result.
-- **Meetings as the source of requirements.** Each requirement and part choice keeps the quote, speaker and time it came from (Jamie), and contradictions between meetings become a question (`ask_user`) before a build, so a design decision can be traced to the conversation that made it.
+- **The request as the source of requirements.** Each requirement and part choice keeps the user's words it came from, and a limit the user did not give is marked as proposed by Mechanic (`requirements.attribute`), so a design decision can be traced to the request that made it and no default replaces what was asked.
 
 ## Repository layout
 
 | Path | Contents |
 | --- | --- |
 | `agent/src/pai_agent/` | Backend package: API, session, orchestrator, sub-agents, engineering core, voice. |
-| `agent/src/pai_agent/tools/` | The 54 agent tools, see [TOOLS.md](TOOLS.md). |
+| `agent/src/pai_agent/tools/` | The 47 agent tools, see [TOOLS.md](TOOLS.md). |
 | `agent/freecad/` | FreeCAD build scripts, the part harness, parametric library parts and downloaded part models. |
 | `agent/blender/` | The Blender studio scene script. |
-| `agent/data/` | Part catalogs, reference builds, community seeds, meeting fixtures, webhook samples, the sample sketch. |
+| `agent/data/` | Part catalogs, reference builds, community seeds, the sample sketch. |
 | `agent/scripts/` | Smoke tests, the demo recorder, profiling and seeding scripts. |
 | `agent/tests/` | Pytest unit tests. |
 | `web/src/` | Dashboard: `events/` (store, SSE source, types), `components/`, `views/`, `sim/` (MuJoCo WASM). |

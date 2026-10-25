@@ -13,7 +13,6 @@ AnyBuild's own code is MIT licensed (see [LICENSE](../LICENSE)); third-party mod
 | Anthropic Claude Sonnet 5.5 | `claude-sonnet-5-5` | Sub-agents: FreeCAD scripts, parts, checks, pricing. | Anthropic API terms |
 | Anthropic Claude Haiku 5.5 | `claude-haiku-5-5` | Learning-mode explanations. | Anthropic API terms |
 | Anthropic server-side web search | `web_search` tool | Live shop prices for the bill of materials. | Anthropic API terms |
-| Jamie | MCP server `https://mcp.meetjamie.ai/mcp` | Meeting requirements, quotes, warnings, templates, notes, tags and order tasks. | Jamie terms |
 | Google Gemini Live | `gemini-3.8-live` (Vertex and AI Studio) | Mechanic's only voice: native speech conversation, barge-in and calls to Claude engineering tools; Fenrir voice. | Google Cloud / Gemini API terms |
 | Reson8 | Realtime speech-to-text | Push-to-talk dictation. | Reson8 terms |
 
@@ -27,7 +26,7 @@ AnyBuild's own code is MIT licensed (see [LICENSE](../LICENSE)); third-party mod
 | uvicorn | 0.54.0 | BSD-3-Clause | ASGI server. |
 | pydantic | 2.14.1 | MIT | Request models. |
 | websockets | 17.3 | BSD-3-Clause | Backend Gemini Live WebSocket connection. |
-| httpx2 | 2.16.0 | BSD-3-Clause | HTTP client for Jamie MCP and Reson8. |
+| httpx2 | 2.16.0 | BSD-3-Clause | HTTP client for Reson8. |
 | mujoco | 3.17.0 | Apache-2.0 | Rigid-body physics: hover, push, drop and grip tests. |
 | cadquery | 2.8.0 | Apache-2.0 | CAD fallback when FreeCAD is missing. |
 | cadquery-ocp | 7.9.3.1.1 | Apache-2.0 (bindings), OpenCascade under LGPL-2.1 with exception | OpenCascade geometry kernel for CadQuery. |
