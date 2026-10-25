@@ -109,7 +109,7 @@ export function RequirementsCard() {
       <div className="mb-1 flex items-center gap-2 px-1.5">
         <span className="text-[14px] font-semibold text-ink">Requirements</span>
         <span className="font-label text-[11px] text-muted">
-          {proposed ? `from your request · ${proposed} proposed by Mechanic` : "from your request"}
+          {proposed ? `from your request · ${proposed} proposed` : "from your request"}
         </span>
         <span
           className={`ml-auto font-label text-[11px] ${failed ? "text-fail-ink" : met === requirements.length ? "text-ok-ink" : "text-muted"}`}

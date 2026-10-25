@@ -836,7 +836,7 @@ async def _advance(ctx: Ctx, name: str, result: dict, started: bool) -> None:
         await ctx.step("training", "done")
     elif name == "isaac_lab_status" and result.get("training_status") == "done":
         await ctx.step("training", "done")
-    elif name in {"blender_render", "isaac_sim_render", "cad_frame", "cad_part", "cad_update", "assemble", "product_brief", "product_spec", "sketch_to_spec", "reference_load", "part_pick"}:
+    elif name in {"blender_render", "isaac_sim_render", "cad_frame", "cad_part", "cad_update", "assemble", "product_brief", "product_spec", "sketch_to_spec", "reference_load", "part_pick", "bom_build", "print_prep"}:
         await ctx.step(step, "done")
 
 

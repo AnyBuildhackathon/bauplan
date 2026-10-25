@@ -73,34 +73,38 @@ async def parts_search(ctx: Ctx, args: dict) -> dict:
         message = "category must be motor, propeller, battery, flight_controller or frame."
         return {"ok": False, "error": message, "detail": message}
     query = str(args.get("query", "")).strip().lower()
-    matches = []
-    for part in catalog()["parts"]:
-        if part["category"] != category:
-            continue
+    in_category = [part for part in catalog()["parts"] if part["category"] == category]
+    if not in_category:
+        message = "No " + category + " parts in the catalog."
+        return {"ok": False, "error": message, "detail": message}
+    # Word by word, best match first: "motor 1103 micro brushless" still finds the 1103.
+    words = [word for word in query.replace(",", " ").split() if word != category.replace("_", " ")]
+    scored = []
+    for part in in_category:
         haystack = " ".join(
             [str(part.get(key, "")) for key in ("id", "name", "shop", "note")] + list(part.get("aliases") or [])
         ).lower()
-        if query and query not in haystack:
-            continue
-        matches.append(part)
+        scored.append((sum(1 for word in words if word in haystack), part))
+    matches = [part for score, part in sorted(scored, key=lambda row: -row[0]) if score > 0]
+    unmatched = bool(words) and not matches
     if not matches:
-        message = "No match for " + category + (" " + query if query else "") + "."
-        return {"ok": False, "error": message, "detail": message}
+        # Nothing matches the words: the whole category, so a select_id from it still works.
+        matches = in_category
 
     selected = None
     select_id = str(args.get("select_id", "")).strip()
     if select_id:
-        chosen = next((part for part in matches if part["id"] == select_id), None)
+        chosen = next((part for part in in_category if part["id"] == select_id), None)
         if chosen is None:
-            known = ", ".join(part["id"] for part in matches)
-            message = "select_id " + select_id + " is not in this search. Here: " + known + "."
+            known = ", ".join(part["id"] for part in in_category)
+            message = "select_id " + select_id + " is not a " + category + " part. Here: " + known + "."
             return {"ok": False, "error": message, "detail": message}
         ctx.state.selected[category] = dict(chosen)
         selected = select_id
         await emit_part(ctx, chosen, str(args.get("because", "")).strip(), str(args.get("reason", "")).strip())
 
     shown = [_public(part) for part in matches[:8]]
-    detail = category + ": " + str(len(shown)) + " hits"
+    detail = category + ": " + str(len(shown)) + " hits" + (" (nothing matched " + repr(query) + ", showing the whole category)" if unmatched else "")
     if selected:
         detail = "Picked: " + ctx.state.selected[category]["name"]
     return {

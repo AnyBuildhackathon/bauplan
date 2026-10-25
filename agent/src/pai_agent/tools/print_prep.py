@@ -248,7 +248,10 @@ def printed_parts(ctx: Ctx) -> list[dict]:
                 }
             )
     elif state.product == "gripper" and state.part:
-        stl = Path(state.part.get("stl_path") or directory / "part.stl")
+        from pai_agent.paths import REPO_ROOT
+
+        # cad_part records the newest STL on the state (part-<name>.stl), not on the part.
+        stl = REPO_ROOT / state.stl_path if state.stl_path else directory / "part.stl"
         parts.append({"id": "body", "name": state.part.get("name", "Gripper") + " body", "material": str(state.part.get("material") or "PETG").upper(), "qty": 1, "stl": stl, "min_wall_mm": None})
     elif state.product == "drone" and state.stl_path:
         from pai_agent.paths import REPO_ROOT

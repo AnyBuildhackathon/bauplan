@@ -107,3 +107,22 @@ def test_generic_spec_requirements_keep_the_users_words():
     rows = {row["check"]: row for row in ctx.state.requirements}
     assert rows["cost"]["source"] == "user" and rows["cost"]["speaker"] == "You"
     assert rows["mass"]["source"] == "proposed" and rows["mass"]["speaker"] == "Mechanic"
+
+
+def test_parts_search_matches_words_and_falls_back_to_the_category():
+    ctx = _ctx(FLY)
+    found = asyncio.run(call_tool(ctx, "parts_search", {"category": "motor", "query": "motor 1103 micro brushless"}))
+    assert found["ok"] is not False and found["parts"][0]["id"] == "generic-1103-15000kv"
+    nothing = asyncio.run(call_tool(ctx, "parts_search", {"category": "camera", "query": "thermal imager"}))
+    assert nothing["ok"] is not False and nothing["parts"] and "whole category" in nothing["detail"]
+
+
+def test_bill_of_materials_closes_its_step_in_live_runs():
+    from pai_agent.tools.registry import _advance
+
+    ctx = Ctx(Bus(), BuildState(session_id="t", directory=Path(tempfile.mkdtemp())), auto_steps=True)
+    for name in ("bom_build", "print_prep"):
+        asyncio.run(_advance(ctx, name, {}, started=True))
+        asyncio.run(_advance(ctx, name, {"ok": True}, started=False))
+    steps = [e for e in ctx.bus.events if e.get("type") == "step" and e["id"] == "stueckliste"]
+    assert steps[-1]["status"] == "done"

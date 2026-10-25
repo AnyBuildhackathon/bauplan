@@ -96,8 +96,24 @@ function watchStalls() {
  * up for good after an HTTP error (for example 502 from the proxy while the backend
  * is still starting), so a closed stream is reopened here until it connects.
  */
+let liveStatus: ((s: LiveStatus) => void) | null = null;
+
+// The backend echoes every sent message on the stream at once. When nothing at all arrives, the
+// stream is dead without an error (a proxy keeps it open across a backend restart), so it is
+// reopened: its backlog then shows the message and the run, instead of a screen that looks frozen.
+const ECHO_MS = 4000;
+
+function expectEcho() {
+  const sentAt = Date.now();
+  setTimeout(() => {
+    if (lastEventAt >= sentAt || !eventSource || !liveStatus) return;
+    openLive(liveStatus);
+  }, ECHO_MS);
+}
+
 function openLive(onStatus: (s: LiveStatus) => void) {
   closeLive();
+  liveStatus = onStatus;
   onStatus("connecting");
   const es = new EventSource(apiStreamUrl("/api/events"));
   eventSource = es;
@@ -223,6 +239,7 @@ export const useSource = create<SourceState>((set, get) => {
           body: JSON.stringify({ text: trimmed, voice }),
         });
         await ensureOk(res);
+        expectEcho();
       } catch (err) {
         notify(failure("Your message did not reach AnyBuild", err));
       }

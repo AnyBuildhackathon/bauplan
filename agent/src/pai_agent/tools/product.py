@@ -118,6 +118,7 @@ async def product_spec(ctx: Ctx, args: dict) -> dict:
         state.picked = {}
         state.checks = {}
     rebuild: list[str] = []
+    previous_checks: dict = {}
     if revision:
         # A revised spec keeps what still holds: a printed part with the same description and material keeps its
         # script (new numbers rebuild it below, without Claude), a part that is still bought keeps its pick.
@@ -138,6 +139,7 @@ async def product_spec(ctx: Ctx, args: dict) -> dict:
                 picked[part["id"]] = state.picked[part["id"]]
         state.built = built
         state.picked = picked
+        previous_checks = state.checks
         state.checks = {}
     state.product = "generic"
     state.spec = spec
@@ -172,6 +174,12 @@ async def product_spec(ctx: Ctx, args: dict) -> dict:
     to_pick = [p["id"] for p in bought if p["id"] not in state.picked]
     if state.built:
         await ensure_assembly(ctx)
+    rechecked = []
+    if revision and previous_checks and not to_build and not to_pick:
+        # A revision that keeps every part (a new limit, new wording) is judged again at once,
+        # so no requirement row is left blank after the checks already ran.
+        state.checks = previous_checks
+        rechecked = await rerun_checks(ctx)
     return {
         "ok": True,
         "detail": spec["name"] + ": " + str(len(printed)) + " printed, " + str(len(bought)) + " bought, " + str(len(spec["requirements"])) + " requirements",
@@ -182,7 +190,10 @@ async def product_spec(ctx: Ctx, args: dict) -> dict:
         "rebuilt_with_new_params": rebuild,
         "to_build": to_build,
         "to_pick": to_pick,
-        "next": "cad_part for each part in to_build, part_pick for each in to_pick, then assemble and the checks.",
+        "rechecked": rechecked,
+        "next": "cad_part for each part in to_build, part_pick for each in to_pick, then assemble and the checks."
+        if to_build or to_pick
+        else "Every part is kept and the earlier checks ran again (rechecked); run any new check the revised requirements need.",
     }
 
 
