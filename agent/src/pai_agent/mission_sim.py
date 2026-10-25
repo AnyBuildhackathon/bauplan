@@ -15,8 +15,9 @@ The airframe (`airframe`) comes from the parts, nothing is a fixed constant of o
   loaded rpm = 75 % of kv times the pack's voltage (capped at 3.8 V per cell the motor is
   rated for). Without a pitch the propeller is taken as
   pitch = 0.8 diameter; without a kv, the pitch speed is 35 m/s.
-- Motor response: a first-order lag of 15 ms for a 51 mm propeller, growing with the square of
-  the diameter (bigger props spin up slower), 10 to 120 ms.
+- Motor response: a first-order lag of 15 ms for a 51 mm propeller, growing in proportion to the
+  diameter, 10 to 120 ms. That puts a 5.1 inch prop at 39 ms, the time constant measured on a
+  thrust stand for the Agilicious 5-inch racer (Foehn et al., Science Robotics 2022: 39.1 ms).
 - Yaw: each propeller's drag torque is 0.012 m per newton of thrust per 51 mm of diameter;
   props spin as in `freecad/frame_build.py`.
 - Drag: the body's flat-plate drag, 0.5 rho Cd A v^2 with Cd 1.0 sideways and 1.2 through the
@@ -27,9 +28,10 @@ The airframe (`airframe`) comes from the parts, nothing is a fixed constant of o
   vortex ring state, sensor noise and estimator delay. The pack is taken as fresh.
 
 The flight controller is the same for every build: a geometric attitude controller whose
-bandwidth follows the motor lag, mixing with attitude priority, thrust tilt limited to 70 degrees,
-and per-mission outer loops on position or velocity. A build only differs by its parts, so a
-heavier or weaker build measurably loses speed, turns slower or misses the chase.
+bandwidth follows the motor lag (0.8 / lag, at most 28 rad/s: half the 1.6 / lag where a PD loop
+on a lagging motor goes unstable, a gain margin of 2), mixing with attitude priority, thrust tilt
+limited to 70 degrees, and per-mission outer loops on position or velocity. A build only differs
+by its parts, so a heavier or weaker build measurably loses speed, turns slower or misses the chase.
 
 All missions are deterministic: fixed start, fixed seed for the target's dodges and the wind.
 """
@@ -68,6 +70,12 @@ CHASE_FLIES = 5
 
 class AirframeError(ValueError):
     pass
+
+
+def motor_lag_s(diameter_mm: float) -> float:
+    """The motor's first-order time constant for this propeller diameter."""
+
+    return min(0.12, max(0.01, 0.015 * diameter_mm / 51.0))
 
 
 def _num(part: dict | None, key: str) -> float | None:
@@ -136,7 +144,7 @@ def airframe(geo: dict, selected: dict) -> dict:
         "t0": thrust_per_motor_g(motor, float(battery["voltage_v"]))[0] / 1000.0 * GRAVITY if battery.get("voltage_v") else thrust_g / 1000.0 * GRAVITY,
         "pitch_speed": pitch_speed,
         "tip_speed": tip_speed,
-        "tau": min(0.12, max(0.01, 0.015 * scale * scale)),
+        "tau": motor_lag_s(diameter),
         "kq": 0.012 * scale,
         "cda_side": 1.0 * side,
         "cda_top": 1.2 * top,
@@ -197,7 +205,8 @@ class _Flight:
         mix = np.vstack([np.ones(4), self.r[:, 1], -self.r[:, 0], -self.spin * frame["kq"]])
         self.unmix = np.linalg.inv(mix)
         self.thrust = np.full(4, self.mass * GRAVITY / 4)
-        omega = min(28.0, 0.4 / frame["tau"])
+        # tau * k_r < k_w keeps the loop stable on a lagging motor (omega < 1.6 / tau); half of that.
+        omega = min(28.0, 0.8 / frame["tau"])
         self.k_r = omega * omega
         self.k_w = 1.6 * omega
         self.t = 0.0
