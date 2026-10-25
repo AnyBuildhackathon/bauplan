@@ -217,20 +217,20 @@ def _value(entry):
     return entry["value"] if isinstance(entry, dict) and "value" in entry else entry
 
 
-def build_part(part_id: str, spec: dict, write_step: bool = False) -> dict:
-    """Build one part's model and return its manifest entry."""
+def build_part(part_id: str, spec: dict, write_step: bool = False, glb_path: Path | None = None) -> dict:
+    """Build one part's model and return its manifest entry (a web find's GLB goes to glb_path)."""
 
     kind = spec["type"]
     dims = {name: _value(v) for name, v in spec.get("dims", {}).items()}
     params = {"id": part_id, **spec.get("style", {}), **spec.get("estimate", {}), **dims}
-    glb_path = WEB_DIR / f"{part_id}.glb"
+    glb_path = glb_path or WEB_DIR / f"{part_id}.glb"
     entry: dict = {
         "id": part_id,
         "name": spec["name"],
         "catalogs": spec.get("catalogs", []),
         "category": spec.get("category"),
         "generator": kind,
-        "glb": f"models/parts/{part_id}.glb",
+        "glb": f"models/parts/{part_id}.glb" if glb_path.parent == WEB_DIR else str(glb_path),
         "step": None,
         "frame": FRAME,
         "source_url": spec.get("source"),
@@ -238,10 +238,10 @@ def build_part(part_id: str, spec: dict, write_step: bool = False) -> dict:
     }
     if kind == "official":
         official = spec["official"]
-        step = _official_step(official)
+        step = Path(official["path"]) if official.get("path") else _official_step(official)
         model = official_model({"id": part_id, **official}, step)
         entry.update(kind="official", author=official["author"], license=official["license"], model_url=official["url"])
-        if step.parent == OFFICIAL_DIR:
+        if step.parent == OFFICIAL_DIR and glb_path.parent == WEB_DIR:
             entry["step"] = str(step.relative_to(REPO_ROOT))
         info = model.write(glb_path, tolerance=official.get("tolerance"))
         missing: list[str] = []

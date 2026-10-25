@@ -438,6 +438,8 @@ A CadQuery fallback has the tree `Frame` with `Hub`, `Arms`, and `Motor pads` an
 `glb_url`, `stl_url`, and `step_url` are `/files/{session}/{file}` paths.
 `view_png_url` is `/files/{session}/view.png` when the frame was built in the open FreeCAD window (freecad-mcp on `127.0.0.1:9875`), otherwise `null`.
 While the window builds, `tool` events for `cad_frame` stay `running` and carry the step in `detail`, such as `FreeCAD: Arm 2 of 4`.
+The motor, propeller, battery, flight controller and camera nodes show the chosen part's own 3D model when it has one (`agent/data/models/manifest.json`, or one built for a part found on the web), in place of the simple solid.
+`part_models` lists those nodes as `{node, part_id, part_name, model_kind, model_missing, model_source}`, and each such node's extras carry the same fields; `model_kind` is `official` (the maker's or a library's model, under its license), `look-alike` (built from the part's measured numbers) or `approximate` (`model_missing` names the numbers no real source gave, drawn in proportion).
 
 A part from `cad_part` adds `script_url` (`/files/{session}/part-{name}.py`, the FreeCAD script that built it) and `part`, `{name, material, mass_g, bbox_mm, attempts, generated}`.
 `bbox_mm` is `[xmin, ymin, zmin, xmax, ymax, zmax]`, `attempts` counts script runs including failed ones, `generated` is `true` when Claude wrote the script and `false` for a library template.
@@ -450,7 +452,7 @@ A whole product built from a spec sends `assembly: true`.
 Its tree is the product with one node per assembly and one per part (`(bought)` and `(load)` mark bought parts and loads, each label ends in its mass and material or its catalog name).
 Its `params` are every printed part's sliders as `{part_id}.{param}`, each with a `label` such as `Base plate · depth`.
 `bodies` has one row per GLB node, `{name, part_id, part_name, kind, group, mass_g}`, where `name` is the node name, `group` the spec assembly id or `null`, and `mass_g` the body's mass (the explode view groups and labels the parts with it).
-`glb_url` and `stl_url` are `assembly.glb` (all bodies, bought parts and loads as blocks) and `assembly.stl` (printed bodies), `step_url` is `null` (each part has its own STEP), `script_url` is `assembly-scripts.py` with every part's script, and `part` sums the printed parts.
+`glb_url` and `stl_url` are `assembly.glb` (all bodies; bought parts as their own 3D models fitted to their size and position when they have one, listed in `part_models` as for a drone, else as blocks; loads as blocks) and `assembly.stl` (printed bodies), `step_url` is `null` (each part has its own STEP), `script_url` is `assembly-scripts.py` with every part's script, and `part` sums the printed parts.
 
 ### render
 

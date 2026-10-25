@@ -138,3 +138,97 @@ def test_official_models_carry_their_licenses():
     for entry in MANIFEST.values():
         if entry["kind"] == "official":
             assert entry["model_url"].split("/-/")[0].split("/tree/")[0] in text
+
+
+def _library_drone(tmp_path):
+    from types import SimpleNamespace
+
+    from pai_agent import drone_assembly, drone_geometry
+    from pai_agent.paths import PARTS_PATH
+
+    parts = {p["id"]: p for p in json.loads(PARTS_PATH.read_text())["parts"]}
+    pick = {
+        "motor": "betafpv-0802-22000kv",
+        "propeller": "gemfan-1614-3",
+        "battery": "betafpv-lava-1s-300",
+        "flight_controller": "betafpv-matrix-1s-5in1-v2",
+        "camera": "betafpv-c03",
+    }
+    state = SimpleNamespace(selected={k: parts[v] for k, v in pick.items()}, cad_params={}, frame_mass_g=None, product="drone")
+    params = {"arm_length_mm": 30.0, "thickness_mm": 2.0, "motor_spacing_mm": 6.6}
+    drone_assembly.build(tmp_path, params, drone_geometry.geometry(state, params), state.selected)
+    return state
+
+
+def test_a_built_drone_shows_its_parts_own_models(tmp_path):
+    from pai_agent.part_models import swap
+
+    state = _library_drone(tmp_path)
+    rows = swap.into_drone_glb(tmp_path / "frame.glb", state.selected)
+    by_node = {row["node"]: row for row in rows}
+    for corner in ("front_left", "front_right", "rear_left", "rear_right"):
+        assert by_node["motor_" + corner]["part_id"] == "betafpv-0802-22000kv"
+        assert by_node["propeller_" + corner]["model_kind"] == "look-alike"
+    assert by_node["battery"]["part_id"] == "betafpv-lava-1s-300"
+    assert by_node["flight_controller"]["model_kind"] == "approximate"
+    assert by_node["flight_controller"]["model_missing"]
+    document, blob = swap._read(tmp_path / "frame.glb")
+    node = next(n for n in document["nodes"] if n.get("name") == "motor_front_left")
+    assert node["extras"]["part_id"] == "betafpv-0802-22000kv"
+    # The motor stands on its pad: its model's bell is the real 10.55 mm across, around the node origin.
+    points = [p for prim in document["meshes"][node["mesh"]]["primitives"] for p in swap._accessor(document, blob, prim["attributes"]["POSITION"])]
+    radius = max(math.hypot(p[0], p[2]) for p in points if p[1] > 0.004) * 1000
+    assert abs(radius - 10.55 / 2) < 0.3
+
+
+def test_the_cadquery_step_carries_the_models(tmp_path):
+    import cadquery as cq
+
+    _library_drone(tmp_path)
+    names = [name for _, name, _, _ in cq.Assembly.importStep(str(tmp_path / "drone.step"))]
+    assert sum(name.startswith("drone/motor_front_left_") for name in names) > 4
+
+
+def test_a_products_bought_part_is_its_model_in_its_box(tmp_path):
+    from pai_agent import assembly
+    from pai_agent.mesh_export import stls_to_glb
+    from pai_agent.part_models import swap
+
+    vertices = assembly.box_triangles([22.2, 11.8, 31.0], (50.0, 0.0, 15.5), assembly.rotation(None))
+    assembly.write_stl(tmp_path / "servo.stl", vertices)
+    stls_to_glb([("Gripper servo", tmp_path / "servo.stl", "#888888")], tmp_path / "a.glb")
+    bodies = [{"part_id": "servo", "name": "Gripper servo", "kind": "bought", "stl": "servo.stl", "com_mm": [50.0, 0.0, 15.5]}]
+    picked = {"servo": {"id": "servo-sg90", "size_mm": [22.5, 12.2, 27.0]}}
+    parts = [{"id": "servo", "size_mm": [22.2, 11.8, 31.0]}]
+    rows = swap.into_product_glb(tmp_path / "a.glb", bodies, picked, parts, assembly.rotation)
+    assert rows and rows[0]["part_id"] == "servo-sg90"
+    # The servo stands upright in its box: its case's 22.2 mm along x, its spline up.
+    nodes = read_glb(tmp_path / "a.glb")
+    points = nodes["Gripper servo"]
+    assert max(p[2] for p in points) - min(p[2] for p in points) > 28.0
+    assert min(p[0] for p in points) < 50.0 - 11.0 and max(p[0] for p in points) > 50.0 + 11.0
+
+
+def test_a_web_part_gets_a_look_alike_from_its_numbers(tmp_path, monkeypatch):
+    from pai_agent.part_models import web
+
+    monkeypatch.setattr(web, "CACHE_DIR", tmp_path)
+    monkeypatch.setattr(web, "_MEMO", {})
+    part = {
+        "id": "web-motor-1203",
+        "name": "Some 1203 motor",
+        "category": "motor",
+        "kv": 8000,
+        "diameter_mm": 16.0,
+        "height_mm": 14.0,
+        "shaft_mm": 1.5,
+        "mount_diameter_mm": 9.0,
+        "source_url": "https://example.com/motor",
+        "estimated": [],
+    }
+    glb, entry = web.web_model(part)
+    assert glb.exists() and entry["generator"] == "brushless_motor"
+    assert entry["kind"] == "approximate" and "bolts" in entry["missing"]
+    nodes = read_glb(glb)
+    bell = nodes["bell"]
+    assert abs(max(p[0] for p in bell) - min(p[0] for p in bell) - 16.0) < 0.4

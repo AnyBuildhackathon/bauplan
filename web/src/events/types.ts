@@ -322,6 +322,18 @@ export interface CadEvent {
   assembly?: boolean;
   /** An assembled product: one row per GLB node, with its spec part, assembly group and mass. */
   bodies?: CadBody[];
+  /** The GLB nodes that show a bought part's own 3D model instead of a simple solid. */
+  part_models?: PartModelRow[];
+}
+/** Which 3D model a GLB node shows: official, a look-alike from measured numbers, or approximate. */
+export interface PartModelRow {
+  node: string;
+  part_id: string;
+  part_name: string;
+  model_kind: "official" | "look-alike" | "approximate";
+  /** The numbers no real source gave, drawn in proportion (approximate models only). */
+  model_missing: string[];
+  model_source: string | null;
 }
 export interface CadBody {
   name: string;

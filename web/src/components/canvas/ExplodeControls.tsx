@@ -1,9 +1,9 @@
 // The explode slider in the corner of the Model tab, and the card a hovered or clicked part
-// shows: its name, the part that was picked for it, mass, price and the shop link.
+// shows: its name, the part that was picked for it, mass, price, the shop link and which 3D model it shows.
 import { ArrowUpRight, Expand, X } from "lucide-react";
 import { useEffect } from "react";
 import { useSession } from "../../events/store";
-import type { BomItem } from "../../events/types";
+import type { BomItem, PartModelRow } from "../../events/types";
 import { fmtEur, fmtGram } from "../../lib/format";
 import { normaliseName } from "../../lib/targets";
 import { useUi } from "../../lib/ui";
@@ -55,6 +55,15 @@ interface Facts {
   qty: number;
   url: string | null;
   shop: string | null;
+  model: PartModelRow | null;
+}
+
+/** How the card names a part's 3D model; an approximate one says what no source gave. */
+export function modelLine(row: PartModelRow): string {
+  if (row.model_kind === "official") return "Official 3D model";
+  if (row.model_kind === "look-alike") return "3D look-alike from measured drawings";
+  const missing = row.model_missing.map((name) => name.replace(/_mm$/, "").replace(/_/g, " "));
+  return "Approximate 3D model" + (missing.length ? ": no source for " + missing.join(", ") : "");
 }
 
 function usePartFacts(key: string | null, label: string): Facts | null {
@@ -62,8 +71,10 @@ function usePartFacts(key: string | null, label: string): Facts | null {
   const parts = useSession((s) => s.parts);
   const bom = useSession((s) => s.bom);
   const bodies = useSession((s) => s.cad?.bodies);
+  const models = useSession((s) => s.cad?.part_models);
   if (!key) return null;
-  const facts: Facts = { title: label, picked: null, mass: null, price: null, qty: 1, url: null, shop: null };
+  const model = models?.find((row) => normaliseName(row.node) === normaliseName(key)) ?? null;
+  const facts: Facts = { title: label, picked: null, mass: null, price: null, qty: 1, url: null, shop: null, model };
   let item: BomItem | undefined;
   if (product === "drone") {
     const category = DRONE_CATEGORY.find(([re]) => re.test(key))?.[1];
@@ -85,6 +96,21 @@ function usePartFacts(key: string | null, label: string): Facts | null {
     facts.url = item.shop !== "printed" && /^https?:\/\//.test(item.url) ? item.url : null;
   }
   return facts;
+}
+
+/** Above the explode slider: which parts the 3D view shows as approximate models, if any. */
+export function ApproximateModelsNote() {
+  const models = useSession((s) => s.cad?.part_models);
+  const names = [...new Set((models ?? []).filter((row) => row.model_kind === "approximate").map((row) => row.part_name))];
+  if (!names.length) return null;
+  return (
+    <p
+      className="absolute bottom-[60px] left-3 z-10 max-w-[60%] truncate rounded-full bg-white/90 px-3.5 py-1.5 text-[13px] font-semibold text-agent-ink shadow-[var(--shadow-pill)] backdrop-blur"
+      title={names.join(", ")}
+    >
+      Approximate 3D model: {names.join(", ")}
+    </p>
+  );
 }
 
 export function PartCard() {
@@ -125,6 +151,11 @@ export function PartCard() {
           </dd>
         </div>
       </dl>
+      {facts.model && (
+        <p className={`mt-2 text-[13px] leading-snug font-semibold ${facts.model.model_kind === "approximate" ? "text-agent-ink" : "text-muted"}`}>
+          {modelLine(facts.model)}
+        </p>
+      )}
       {facts.url && (
         <a href={facts.url} target="_blank" rel="noreferrer" className="mt-2.5 inline-flex h-8 items-center gap-1 rounded-full bg-ink px-3 text-[13px] font-bold text-white hover:bg-[#333]">
           {facts.shop || "Shop"} <ArrowUpRight className="h-3.5 w-3.5" />
