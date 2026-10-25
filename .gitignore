@@ -7,5 +7,6 @@
 agent/runs/sessions/
 agent/runs/cache/
 agent/runs/community/
+agent/runs/subscription/
 web/test-results/
 web/playwright-report/

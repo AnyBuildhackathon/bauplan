@@ -6,9 +6,9 @@ import asyncio
 import os
 import time
 
-from pai_agent.env import claude_enabled
 from pai_agent.freecad_run import find_freecadcmd, gui_mode, rpc_available
 from pai_agent.gemini_live import available as gemini_available
+from pai_agent.provider import describe
 from pai_agent.tools.blender import find_blender
 from pai_agent.tools.isaac import _connection, ssh_setting
 
@@ -58,13 +58,15 @@ def partner_statuses(events: list[dict]) -> list[dict]:
         return {"id": id, "label": label, "state": state, "detail": detail}
 
     api_hint = " Credentials configured; authentication and quota are checked on use."
-    claude = claude_enabled()
+    llm = describe()
+    claude = llm["active"] != "mock"
     reson8 = configured("RESON8_API_KEY")
     gemini = gemini_available()
     freecad = bool(find_freecadcmd()) or (gui_mode() != "off" and rpc_available())
     blender = bool(find_blender())
     rows = [
-        partner("claude", "Claude", "live" if claude else "mock", "Engineering orchestration." + api_hint if claude else "Scripted build: Claude is disabled or its API key is absent."),
+        # provider says which Claude runs: the API key, the local subscription or the mock.
+        {**partner("claude", "Claude", "live" if claude else "mock", "Engineering orchestration. " + llm["detail"] + (api_hint if llm["active"] == "api" else "")), "provider": llm["active"]},
         partner("reson8", "Reson8", "live" if reson8 else "offline", "Realtime speech recognition." + api_hint if reson8 else "No Reson8 key; browser speech recognition is the fallback."),
         partner("gemini", "Gemini Live", "live" if gemini else "offline", "Mechanic's realtime voice." + api_hint if gemini else "Gemini Live is not configured; Mechanic replies with text."),
         partner("freecad", "FreeCAD", "live" if freecad else "offline", "Local FreeCAD is available for CAD generation." if freecad else "FreeCAD is unavailable; CadQuery is the fallback."),

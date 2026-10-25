@@ -8,7 +8,7 @@ This file is the only copy of the wire format.
 
 `POST /api/prompt` with `{"text": "..."}` starts or continues the one local session; `"voice": true` marks the text as a spoken turn.
 The response is `{"ok": true, "mode": "mock"|"claude", "status": "started"|"already_running"|"answered"|"ui"}`.
-`mode` is `mock` when `ANTHROPIC_API_KEY` is empty or `PAI_FORCE_MOCK` is `1`.
+`mode` is `mock` when no Claude runs (no `ANTHROPIC_API_KEY` and no logged-in local Claude Code subscription under `PAI_LLM_PROVIDER`, see [Settings](#settings)) or `PAI_FORCE_MOCK` is `1`.
 
 `POST /api/sketch` with `{"image_base64": "...", "media_type": "image/png", "note": "..."}` starts a new product from a photo of a hand sketch, on a fresh bench.
 `image_base64` is plain base64 or a data URL; the type is read from the bytes: PNG, JPEG or WebP up to 8 MB, anything else (HEIC too) is HTTP 400, and while Mechanic builds it is HTTP 409.
@@ -206,6 +206,9 @@ The bench sends no SSE events of its own; "Open on bench" in the drawer runs the
 
 `GET /api/settings` answers `{"ok": true, "orchestrator_model": "claude-opus-5-5", "orchestrator_effort": "high", "subagent_model": "claude-sonnet-5-5", "subagent_effort": "medium", "delegation": true, "models": [{id, label}], "efforts": ["low", "medium", "high", "xhigh", "max"]}`.
 `POST /api/settings` with any of those five fields changes them for the next request and answers the same shape; HTTP 400 for an unknown effort or a model id that does not start with `claude-`.
+The answer also carries `llm_provider` (`auto`, `api` or `subscription`, from `PAI_LLM_PROVIDER` until changed), `provider` (`{"requested", "active": "api"|"subscription"|"mock", "detail", "public"}`) and `providers` (`[{id, label}]`).
+`POST /api/settings` with `llm_provider` switches where Claude runs: `api` is the Anthropic API key, `subscription` the Claude Code installed and logged in on this machine, `auto` the key when set, else the subscription when logged in, else the mock.
+With `ANYBUILD_ACCESS_CODE` set (a public server) `subscription` is refused with HTTP 400 and the reason in `detail`.
 The defaults come from `PAI_ORCHESTRATOR_MODEL` (else `ANTHROPIC_MODEL`), `PAI_ORCHESTRATOR_EFFORT`, `PAI_SUBAGENT_MODEL`, `PAI_SUBAGENT_EFFORT` and `PAI_DELEGATION`.
 
 ### Learning mode
@@ -214,7 +217,7 @@ The defaults come from `PAI_ORCHESTRATOR_MODEL` (else `ANTHROPIC_MODEL`), `PAI_O
 `kind` is `swap` (`id` a part category: the part before and after, the numbers on each side and the runs around it), `part` (a category or spec part id), `requirement` (a requirement id), `sim` (a run number) or `param` (a CAD parameter, `arm_length_mm` or `{part_id}.{param}`).
 It answers `{"ok": true, "key", "kind", "target_id", "title", "text", "formula", "numbers": [{"label", "value", "unit"}], "source": "claude"|"template", "model": "claude-haiku-5-5"|null}`; HTTP 404 when the decision does not exist yet, such as a requirement whose check has not run.
 The facts and the formula line come from the build state and the published events (the same formulas as `analysis.py` and `tools/physics.py`), so their numbers are computed.
-With `ANTHROPIC_API_KEY` Claude Haiku (`ANTHROPIC_VOICE_MODEL`) writes `text` from the facts and the formula only; a reply with a number that is not in them, a 6 s timeout or no key gives the template text and `source: "template"`.
+With `ANTHROPIC_API_KEY` or the local Claude subscription, Claude Haiku (`ANTHROPIC_VOICE_MODEL`) writes `text` from the facts and the formula only; a reply with a number that is not in them, a 6 s timeout or no key gives the template text and `source: "template"`.
 Answers are cached in memory by `key` (kind, id and a hash of the facts), so a repeated call is instant and a rebuild with new numbers gets a new explanation.
 Every answer is also published as an `explain` event; `chat` is copied into it.
 
@@ -226,12 +229,12 @@ It is HTTP 409 when another client holds the job or it is over, and 404 for a jo
 `POST /api/stress/{job_id}/progress` with `{"client", "status": "running"|"done"|"failed", "results": [{i, metrics, trajectory}], "error"}` from the claiming client hands finished worlds to the backend, which scores them and publishes the `stress` events; `metrics` are the drone episode's `crashed`, `drift_m`, `low_z_m`, and `tail_z_m`, and `trajectory` is `[[t, x, y, z], ...]` at 20 Hz.
 `GET /api/training/browser` returns `{"ok": true, "job": {...}}` with the latest browser job of the session in the `training` event shape without `type`, or `job: null`.
 
-`GET /api/health` returns `{"ok": true, "mode": "mock"|"claude", "busy": bool, "access": "open"|"required"}`; `busy` is true while a run is in flight, which the end-to-end tests and agent/scripts/profile_build.py wait on.
+`GET /api/health` returns `{"ok": true, "mode": "mock"|"claude", "provider": "api"|"subscription"|"mock", "busy": bool, "access": "open"|"required"}`; `busy` is true while a run is in flight, which the end-to-end tests and agent/scripts/profile_build.py wait on.
 The dashboard calls it on start: when the backend answers it opens with an empty bench (after the access code, when `access` is `required`); without a backend it shows "Live backend offline, try again shortly" and retries.
 
 ### Partner status and Director mode
 
-`GET /api/status` returns `{"partners": [{"id", "label", "state", "detail"}], "isaac": {"host", "gpu", "state", "detail", "last_run"}}`.
+`GET /api/status` returns `{"partners": [{"id", "label", "state", "detail"}], "isaac": {"host", "gpu", "state", "detail", "last_run"}}`; the Claude row also has `provider` (`api`, `subscription` or `mock`), which the top bar shows.
 It requires the same access session as other API routes and never returns keys, tokens or private-key paths.
 Partner ids are `claude`, `reson8`, `gemini`, `freecad`, `blender` and `isaac`.
 `state` is `live`, `offline` or `mock`; `detail` explains the provider and its fallback in English.
@@ -475,7 +478,7 @@ Printed parts are priced at filament cost, and their `url` is the part's STL.
 `url` may be an empty string for the printed frame.
 `total_eur` is the sum of `unit_price_eur * qty`.
 `prices` is `catalog`, `searching`, or `live`.
-With `ANTHROPIC_API_KEY` set, `bom_build` first sends the catalog list with `prices: "searching"`, then a second `bom` with the live lines; the second replaces the first.
+With `ANTHROPIC_API_KEY` set, or on the local Claude subscription (one Claude Code web search for all lines), `bom_build` first sends the catalog list with `prices: "searching"`, then a second `bom` with the live lines; the second replaces the first.
 Without the key every line stays on the catalog and `prices` is `catalog`.
 `prices` is `live` when at least one line has a live price, else `catalog`.
 Each item also has `price_source` (`live`, or `catalog` for the drone and gripper; a spec product keeps `sample` or `estimated` when no live price is found), `currency`, and `availability` (`in_stock`, `out_of_stock`, or `unknown`).
@@ -528,7 +531,7 @@ Without an answer the default applies after `timeout_s` (`PAI_ASK_TIMEOUT_S`, de
 
 The orchestrator and the sub-agents it delegates to, one card per agent, sent again whenever it reports.
 `id` is stable for one agent run, `role` is `orchestrator`, `cad` (writes one part's FreeCAD script), `parts`, `checks`, `pricing` or `optimizer` (one design optimizer variant, "Variant agent A"), `label` its name ("Orchestrator", "CAD agent", "Parts agent", "Analysis agent", "Pricing agent").
-`model` and `model_label` (`claude-sonnet-5-5`, "Sonnet 5.5"), `effort`, `task` (the job in one line), `status` (`queued`, `running`, `done` or `error`), `rounds` (model calls so far), `input_tokens`, `output_tokens`, `cache_read_tokens`, `cost_usd` (from the published per-token prices) and `summary` (what it does now, or its report when done).
+`model` and `model_label` (`claude-sonnet-5-5`, "Sonnet 5.5"), `effort`, `task` (the job in one line), `status` (`queued`, `running`, `done` or `error`), `rounds` (model calls so far), `input_tokens`, `output_tokens`, `cache_read_tokens`, `cost_usd` (from the published per-token prices), `billing` (`api`, or `subscription` when it ran on the local Claude Code login: then `cost_usd` is 0 and the dashboard shows "subscription") and `summary` (what it does now, or its report when done).
 `queued` comes before `running` when a job waits for another job of the same fan-out to finish first.
 `sent_at` is the server time of this report in epoch seconds, so a replayed backlog keeps its real timing.
 `parent` is the `id` of the orchestrator run that delegated the job, `null` for the orchestrator itself and for a sub-agent started outside a run.

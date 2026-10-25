@@ -12,6 +12,7 @@ dependencies = [
   "pydantic>=2",
   "httpx2>=2.16",
   "websockets>=15,<18",
+  "claude-agent-sdk>=0.2.174",
 ]
 
 [project.scripts]

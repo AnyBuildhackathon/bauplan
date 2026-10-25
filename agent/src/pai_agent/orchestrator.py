@@ -24,6 +24,10 @@ Design decisions:
 - Every model call has a timeout (`PAI_MODEL_TIMEOUT_S`) and the loop a round limit, so a
   stuck model ends the run with a message instead of freezing the stage.
 
+On the local Claude Code subscription (`provider.py`), `_run_claude` hands the same prompt and
+tools to `subscription.lead_loop`, which runs the loop in Claude Code with the tools on an
+in-process MCP server and continues the conversation through its session id.
+
 Without a key, the same entry points route by keywords to deterministic mock runners
 (`mock_story.py`, `mock_product.py`, `mock_gripper.py`, `mock_lamp.py`, `mock_categories.py`)
 that call the very same tools through the same `call_tool`, so offline runs exercise the real
@@ -345,19 +349,28 @@ async def _run_claude(ctx: Ctx, text: str, messages: list[dict]) -> None:
     config = settings.current()
     delegation = bool(config["delegation"])
     lead = AgentRun(ctx, "orchestrator", "Orchestrator", config["orchestrator_model"], config["orchestrator_effort"], text.strip()[:120])
-    if not messages and ((ctx.state.product == "generic" and ctx.state.spec) or (ctx.state.finished and ctx.state.selected)):
+    local = lead.billing == "subscription"
+    fresh = not ctx.state.llm_session if local else not messages
+    if fresh and ((ctx.state.product == "generic" and ctx.state.spec) or (ctx.state.finished and ctx.state.selected)):
         # A build Claude did not make (a loaded reference): it reads the build before the request.
         from pai_agent.references import build_context
 
         text = build_context(ctx.state) + text
-    _add_request(messages, text)
+    if not local:
+        _add_request(messages, text)
     ctx.lead_id = lead.id
     # The first planning round takes a while; the person sees at once that Mechanic is on it.
     await ctx.emit({"type": "mascot", "state": "denkt", "say": "On it, thinking it through."})
     try:
-        await _lead_loop(ctx, lead, delegation, messages)
+        if local:
+            from pai_agent.subscription import lead_loop
+
+            await lead_loop(ctx, lead, _system(delegation)[0]["text"], _tools(delegation), text, frozenset(_PARALLEL))
+        else:
+            await _lead_loop(ctx, lead, delegation, messages)
     except RunStopped:
-        _close_stopped(messages)
+        if not local:
+            _close_stopped(messages)
         await lead.emit("done", "stopped by the user after " + str(lead.rounds) + " round(s)")
         raise
     finally:

@@ -239,6 +239,13 @@ async def _read_with_claude(ctx: Ctx, path: Path, note: str) -> dict:
 
 
 def _create(model: str, messages: list[dict], tool: dict):
+    from pai_agent.provider import active
+
+    if active() == "subscription":
+        from pai_agent import subscription
+
+        # The photo goes to Claude Code as an image block of the prompt, read on the local subscription.
+        return subscription.create_message(model, "medium", tools=[tool], tool_choice={"type": "tool", "name": tool["name"]}, messages=messages, thinking=False)
     import anthropic
 
     # A forced tool call returns the spec as JSON. Forced tool use does not combine with extended thinking, so none here.

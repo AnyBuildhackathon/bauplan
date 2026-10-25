@@ -336,8 +336,8 @@ function AgentPartRenderer({ item }: { item: Extract<ChatItem, { kind: "agent" }
       </div>
       {agent.summary && <p className="mt-1.5 line-clamp-2 text-[13px] leading-snug text-muted">{stripMarkdown(agent.summary).replace(/\s+/g, " ")}</p>}
       <div className="num mt-1 font-label text-[12px] font-semibold text-faint">
-        {agent.rounds} call{agent.rounds === 1 ? "" : "s"} · {fmtTokens(agent.input_tokens + agent.cache_read_tokens)} in · {fmtTokens(agent.output_tokens)} out · $
-        {fmtNum(agent.cost_usd, agent.cost_usd < 0.1 ? 3 : 2)}
+        {agent.rounds} call{agent.rounds === 1 ? "" : "s"} · {fmtTokens(agent.input_tokens + agent.cache_read_tokens)} in · {fmtTokens(agent.output_tokens)} out ·{" "}
+        {agent.billing === "subscription" ? "subscription" : `$${fmtNum(agent.cost_usd, agent.cost_usd < 0.1 ? 3 : 2)}`}
       </div>
     </div>
   );

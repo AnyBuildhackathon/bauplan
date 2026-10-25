@@ -17,6 +17,8 @@ A part that passes carries `provenance: "web"`, `source_url`, `shop`, `checked` 
 `estimated`, exactly like a curated part, and joins the session's library and a small file cache
 (`agent/runs/cache/web_parts.json`) so the same search does not cost twice. Nothing here invents a
 number: a field the page does not give stays out, and a required one makes the whole part fail.
+On the local Claude Code subscription the search runs on Claude Code's WebSearch and WebFetch
+instead, and its answer passes the same `validate`.
 """
 
 from __future__ import annotations
@@ -31,6 +33,7 @@ from pathlib import Path
 
 from pai_agent.env import model_name
 from pai_agent.paths import RUNS_DIR
+from pai_agent import provider
 from pai_agent.tools.parts_search import _ask_claude, _parse, _version, _web_search_tool, live_prices_enabled
 
 log = logging.getLogger(__name__)
@@ -408,6 +411,16 @@ def enabled() -> bool:
     return live_prices_enabled()
 
 
+def _search(request: dict, deadline: float) -> str:
+    """The API's server-side web search, or Claude Code's WebSearch and WebFetch on the local subscription."""
+
+    if provider.active() == "subscription":
+        from pai_agent.subscription import ask_web
+
+        return ask_web(request["model"], request["system"], request["messages"][0]["content"], deadline, max_turns=12)
+    return _ask_claude(request, deadline)
+
+
 async def discover(category: str, need: str) -> dict:
     """{ok, part} with a validated web part, or {ok: False, error, problems} saying why not."""
 
@@ -415,14 +428,14 @@ async def discover(category: str, need: str) -> dict:
     if not need:
         return {"ok": False, "error": "Say what the part must do: query names the need, e.g. '1S whoop motor, 40 g thrust'."}
     if not enabled():
-        return {"ok": False, "error": "Web discovery needs ANTHROPIC_API_KEY; pick from the curated library instead."}
+        return {"ok": False, "error": "Web discovery needs Claude (ANTHROPIC_API_KEY or the local Claude subscription); pick from the curated library instead."}
     key = category + "|" + need.lower()
     cached = _SEARCHES.get(key)
     if cached and time.monotonic() - cached[0] < _SEARCH_TTL_S and cached[1] in _FOUND:
         return {"ok": True, "part": dict(_FOUND[cached[1]]), "cached": True}
     try:
         deadline = time.monotonic() + TIMEOUT_S
-        text = await asyncio.wait_for(asyncio.to_thread(_ask_claude, request_for(category, need, model_name()), deadline), TIMEOUT_S + 5)
+        text = await asyncio.wait_for(asyncio.to_thread(_search, request_for(category, need, model_name()), deadline), TIMEOUT_S + 5)
     except Exception as exc:
         log.warning("web part search failed for %s: %s", need, exc)
         return {"ok": False, "error": "The web search failed: " + str(exc)[:160]}

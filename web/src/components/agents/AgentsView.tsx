@@ -119,7 +119,7 @@ function SubNode({ node, now, compact, selected, onOpen, style }: { node: AgentN
       <div className="flex min-w-0 items-center gap-1.5">
         <ModelChip node={node} />
         <StatusPill status={ev.status} />
-        {compact && <span className="num ml-auto shrink-0 text-[13px] font-bold text-ink-2">{fmtCost(ev.cost_usd)}</span>}
+        {compact && <span className="num ml-auto shrink-0 text-[13px] font-bold text-ink-2">{fmtCost(ev.cost_usd, ev.billing)}</span>}
       </div>
       {!compact && (
         <div className="flex h-[22px] min-w-0 items-center gap-2">
@@ -132,7 +132,7 @@ function SubNode({ node, now, compact, selected, onOpen, style }: { node: AgentN
               {ev.rounds} call{ev.rounds === 1 ? "" : "s"} · {fmtTokens(ev.input_tokens + ev.output_tokens + ev.cache_read_tokens)} tok · {fmtSeconds(elapsed(node, now))}
             </span>
           )}
-          <span className="num ml-auto shrink-0 text-[13px] font-bold text-ink-2">{fmtCost(ev.cost_usd)}</span>
+          <span className="num ml-auto shrink-0 text-[13px] font-bold text-ink-2">{fmtCost(ev.cost_usd, ev.billing)}</span>
         </div>
       )}
     </button>
@@ -166,7 +166,7 @@ function LeadNode({ run, now, selected, onOpen, style }: { run: AgentTeamRun; no
       <div className="flex min-w-0 items-center gap-1.5">
         {lead && <ModelChip node={lead} />}
         <StatusPill status={status} />
-        <span className="num ml-auto shrink-0 text-[15px] font-bold text-ink">{fmtCost(run.costUsd)}</span>
+        <span className="num ml-auto shrink-0 text-[15px] font-bold text-ink">{fmtCost(run.costUsd, run.billing)}</span>
       </div>
       <div className="num flex items-center justify-between gap-2 text-[12px] font-semibold text-faint">
         {lead?.ev.tool && status === "running" ? <ToolChip tool={lead.ev.tool} /> : <span className="truncate">{counts}</span>}
@@ -348,7 +348,7 @@ function LogSheet({ node, now, onClose }: { node: AgentNode; now: number; onClos
   const stats: [string, string][] = [
     ["Model calls", String(ev.rounds)],
     ["Time", fmtSeconds(elapsed(node, now))],
-    ["Cost", fmtCost(ev.cost_usd)],
+    ["Cost", fmtCost(ev.cost_usd, ev.billing)],
     ["Input", fmtTokens(ev.input_tokens)],
     ["Output", fmtTokens(ev.output_tokens)],
     ["Cache read", fmtTokens(ev.cache_read_tokens)],
@@ -490,7 +490,7 @@ export function AgentsView() {
           </div>
         )}
         <span className="text-[13px] font-semibold text-muted">
-          {run.subs.length} sub-agent{run.subs.length === 1 ? "" : "s"} · {fmtCost(run.costUsd)} · {fmtSeconds((run.to ?? now) - run.from)}
+          {run.subs.length} sub-agent{run.subs.length === 1 ? "" : "s"} · {fmtCost(run.costUsd, run.billing)} · {fmtSeconds((run.to ?? now) - run.from)}
         </span>
       </div>
       <Graph run={run} now={now} selected={open} onOpen={setOpen} />

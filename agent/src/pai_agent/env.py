@@ -1,8 +1,9 @@
 """Environment loading and the switch between the live Claude loop and the offline mock runners.
 
 `agent/.env` is read once; variables already set in the shell win. `claude_enabled` is the
-single place that decides whether a run uses Claude (`ANTHROPIC_API_KEY` set and
-`PAI_FORCE_MOCK` not 1) or the deterministic mock stories. Never log secret values.
+single place that decides whether a run uses Claude (the API key or the local Claude Code
+subscription, `provider.py`; `PAI_FORCE_MOCK` not 1) or the deterministic mock stories.
+Never log secret values.
 """
 
 from __future__ import annotations
@@ -35,11 +36,9 @@ def load_env() -> None:
 
 
 def claude_enabled() -> bool:
-    load_env()
-    forced = os.environ.get("PAI_FORCE_MOCK", "").strip().lower()
-    if forced in {"1", "true", "yes"}:
-        return False
-    return bool(os.environ.get("ANTHROPIC_API_KEY", "").strip())
+    from pai_agent.provider import active
+
+    return active() != "mock"
 
 
 def model_name() -> str:

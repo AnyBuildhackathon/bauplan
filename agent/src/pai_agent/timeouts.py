@@ -5,6 +5,8 @@ call (FreeCAD 60 s per script, Blender 180 s, Isaac by ISAAC_TIMEOUT_S);
 the budget here is the backstop above that, sized so it never cuts a healthy run short.
 PAI_TIMEOUT_<TOOL> (for example PAI_TIMEOUT_BLENDER_RENDER=30) overrides one tool,
 PAI_TOOL_TIMEOUT_S the default for tools without their own entry. 0 turns a budget off.
+On the local Claude Code subscription the tools that wait for Claude get twice their budget:
+each Claude call there starts a Claude Code process.
 """
 
 from __future__ import annotations
@@ -50,6 +52,9 @@ BUDGET_S = {
     "ui_draw": 10.0,
     "mascot_say": 10.0,
 }
+
+# The tools whose time is mostly Claude's: slower on the subscription (`provider.py`).
+CLAUDE_BOUND = {"cad_part", "cad_update", "bom_build", "part_pick", "parts_search", "delegate", "sketch_to_spec", "optimize_design"}
 
 # What takes over when the tool's own fallback did not get there in time.
 FALLBACKS = {
@@ -104,10 +109,15 @@ def limit(name: str) -> float | None:
     own = _seconds(os.environ.get("PAI_TIMEOUT_" + name.upper()))
     if own is None:
         own = BUDGET_S.get(name)
-    if own is None:
-        own = _seconds(os.environ.get("PAI_TOOL_TIMEOUT_S"))
-    if own is None:
-        own = DEFAULT_S
+        if own is None:
+            own = _seconds(os.environ.get("PAI_TOOL_TIMEOUT_S"))
+        if own is None:
+            own = DEFAULT_S
+        if own and name in CLAUDE_BOUND:
+            from pai_agent.provider import active
+
+            if active() == "subscription":
+                own *= 2
     return own or None
 
 

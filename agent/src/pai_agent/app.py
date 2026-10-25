@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import re
 from contextlib import asynccontextmanager
@@ -30,6 +31,7 @@ from pydantic import BaseModel
 from pai_agent import explain
 from pai_agent.access import AccessGate, access_code
 from pai_agent.env import claude_enabled, load_env
+from pai_agent.provider import active as active_provider
 from pai_agent.paths import FALLBACK_DIR, REPO_ROOT, SESSIONS_DIR
 from pai_agent.gemini_live import router as gemini_live_router
 from pai_agent.session import Session
@@ -72,6 +74,11 @@ async def _lifespan(app: FastAPI):
     session = Session()
     app.state.session = session
     await session.bootstrap()
+    from pai_agent import provider
+
+    # Which Claude runs, said once: a subscription refused on a public server says why here too.
+    llm = await asyncio.to_thread(provider.describe)
+    logging.getLogger(__name__).info("Claude provider: %s. %s", llm["active"], llm["detail"])
     from pai_agent import warm
 
     if warm.enabled():
@@ -120,6 +127,7 @@ async def health(request: Request) -> dict:
     return {
         "ok": True,
         "mode": "claude" if claude_enabled() else "mock",
+        "provider": active_provider(),
         "busy": request.app.state.session._busy(),
         "run": request.app.state.session.run.status,
         "access": "required" if access_code() else "open",
@@ -605,8 +613,6 @@ async def files(bucket: str, name: str) -> FileResponse:
 
 
 def main() -> None:
-    import logging
-
     import uvicorn
 
     load_env()
