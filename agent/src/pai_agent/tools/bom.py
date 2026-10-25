@@ -14,7 +14,7 @@ from collections.abc import Callable
 
 from pai_agent.context import Ctx, de
 from pai_agent.scene import PART_CATEGORIES
-from pai_agent.tools.physics import REQUIRED
+from pai_agent.tools.physics import PERFORMANCE_KEYS, REQUIRED
 from pai_agent.tools.parts_search import catalog_line, live_lines, live_prices_enabled
 
 
@@ -104,7 +104,29 @@ async def _priced_bom(ctx: Ctx, items: list[dict], catalog_detail: Callable[[flo
         if ctx.state.product == "generic":
             await _sync_metrics(ctx, bom["total_eur"])
         detail = catalog_detail(bom["total_eur"])
-    return {"ok": True, "detail": detail, **bom}
+    result = {"ok": True, "detail": detail, **bom}
+    over = _over_budget(ctx, bom["total_eur"])
+    if over:
+        result["over_budget"] = over
+        result["next"] = (
+            "The bill of materials is over the budget (" + over["text"] + "): " + f"{bom['total_eur']:.2f}" + " € at "
+            + ("live shop prices" if bom["prices"] == "live" else "catalog prices") + ". Do not finish here: swap the most expensive parts for cheaper ones "
+            "(parts_search or part_pick, also with web true) and run bom_build again, or ask_user whether to keep trying or accept the higher price. "
+            "Never loosen a limit the user typed without their own answer."
+        )
+    return result
+
+
+def _over_budget(ctx: Ctx, total: float) -> dict | None:
+    """The budget or cost requirement this total fails, if any."""
+
+    from pai_agent.requirements import met_for
+
+    for requirement in ctx.state.requirements:
+        if requirement["id"] == "budget" or requirement.get("check") == "cost":
+            if met_for(ctx.state, requirement) is False:
+                return {"id": requirement["id"], "text": requirement["text"], "limit_eur": requirement.get("max"), "total_eur": total, "source": requirement.get("source")}
+    return None
 
 
 def _bom(ctx: Ctx, items: list[dict], prices: str) -> dict:
@@ -144,6 +166,9 @@ async def _sync_metrics(ctx: Ctx, total: float) -> None:
             "thrust_to_weight": metrics["thrust_to_weight"],
             "flight_time_min": metrics["flight_time_min"],
             "price_eur": total,
+            # The flight performance does not change with the price; it repeats so the card keeps it.
+            **{key: metrics[key] for key in PERFORMANCE_KEYS if metrics.get(key) is not None},
+            **({"estimate": True} if metrics.get("top_speed_mps") is not None else {}),
         }
     )
 

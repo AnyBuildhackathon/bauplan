@@ -17,7 +17,7 @@ import json
 
 from pai_agent.context import Ctx
 from pai_agent.paths import DATA_DIR
-from pai_agent.requirements import attribute
+from pai_agent.requirements import attribute, keep_user_limits
 from pai_agent.tools.parts_search import unit_price_eur
 
 GRAVITY = 9.80665
@@ -118,8 +118,11 @@ async def product_brief(ctx: Ctx, args: dict) -> dict:
         state.training_video = None
     if product == "drone":
         requirements, problems = drone_requirements(state, args.get("requirements") or [])
+        if state.product == "drone" and state.requirements:
+            problems += keep_user_limits(state, state.requirements, requirements)
         if problems:
             return _fail("Fix the requirements and call product_brief again: " + " | ".join(problems))
+        state.relax_consent = False
         revision = state.product == "drone" and bool(state.selected)
         if not revision:
             _reset_build(state)

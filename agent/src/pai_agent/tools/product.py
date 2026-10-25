@@ -20,7 +20,7 @@ from pai_agent import web_parts
 from pai_agent.context import Ctx
 from pai_agent.paths import DATA_DIR, PARTS_PATH, REPO_ROOT
 from pai_agent.pricing import price
-from pai_agent.requirements import attribute
+from pai_agent.requirements import attribute, keep_user_limits
 from pai_agent.spec import SpecError, find_part, part_of, slug, validate_spec
 
 _CATALOGS: list[dict] | None = None
@@ -121,6 +121,9 @@ async def product_spec(ctx: Ctx, args: dict) -> dict:
     )
     if revision:
         spec["id"] = state.spec["id"]
+        refused = keep_user_limits(state, state.requirements, _requirement_rows(state, spec))
+        if refused:
+            return _fail("A requirement the user typed cannot be loosened: " + " | ".join(refused), problems=refused)
     if not revision:
         state.selected = {}
         state.metrics = {}
@@ -163,7 +166,12 @@ async def product_spec(ctx: Ctx, args: dict) -> dict:
     state.assembly = None
     state.assembly_stale = True
     state.bom = None
-    state.requirements = _requirement_rows(state, spec)
+    rows = _requirement_rows(state, spec)
+    if revision:
+        # Same limits keep the user's quote; looser ones were refused above or have their consent.
+        keep_user_limits(state, state.requirements, rows)
+    state.requirements = rows
+    state.relax_consent = False
     await ctx.emit(
         {"type": "product", "id": spec["id"], "label": spec["name"], "kind": "generic", "requirements": [r["id"] for r in spec["requirements"]]}
     )

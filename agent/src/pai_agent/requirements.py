@@ -48,6 +48,40 @@ def attribute(state: BuildState, quote: str, proposed: bool, reason: str = "") -
 _MISSION_REQUIREMENTS = {"top_speed", "turn_rate", "hold_error", "chase_time"}
 
 
+def keep_user_limits(state: BuildState, old_rows: list[dict], new_rows: list[dict]) -> list[str]:
+    """A limit the user typed stays theirs: it may not get looser, nor lose its "You" label, on Mechanic's say-so.
+
+    It may loosen only when the new limit is in words the user typed (a later message) or the user
+    themselves answered an ask_user question since (`state.relax_consent`); a question that timed out
+    on its default is not their answer. A revision that keeps the limit but would relabel the row as
+    proposed keeps the user's quote instead. Returns the problems for the rows it refuses.
+    """
+
+    problems = []
+    before = {row["id"]: row for row in old_rows if row.get("source") == "user"}
+    for row in new_rows:
+        old = before.get(row["id"])
+        if old is None:
+            continue
+        key = "max" if "max" in old else "min" if "min" in old else None
+        if key is None or key not in row:
+            if row.get("source") != "user" and row.get("text") == old.get("text"):
+                row.update({k: old[k] for k in ("source", "source_quote", "speaker", "time")})
+            continue
+        new, was = float(row[key]), float(old[key])
+        looser = new > was if key == "max" else new < was
+        if looser and row.get("source") != "user" and not state.relax_consent:
+            problems.append(
+                row["id"] + ": the user typed " + key + " " + f"{was:g}" + " (" + repr(old["source_quote"]) + "). A looser " + f"{new:g}" + " needs the user's own answer: "
+                "a question that timed out on its default is not consent. Keep " + f"{was:g}" + " and swap parts until it passes, or ask_user again and wait for their answer."
+            )
+        elif new == was and row.get("source") != "user":
+            row.update({k: old[k] for k in ("source", "source_quote", "speaker", "time")})
+        elif looser and row.get("source") != "user":
+            row.update({"source": "user", "speaker": "You", "source_quote": state.consent_quote or old["source_quote"]})
+    return problems
+
+
 def met_for(state: BuildState, requirement: dict) -> bool | None:
     requirement_id = requirement["id"]
     metrics = state.metrics
