@@ -12,7 +12,7 @@ import { assetUrl } from "../../lib/api";
 import { fmtEur } from "../../lib/format";
 import { CadScene, CadView } from "./CadView";
 import { CompareView } from "./CompareView";
-import { ExplodeSlider, PartCard } from "./ExplodeControls";
+import { ApproximateModelsNote, ExplodeSlider, PartCard } from "./ExplodeControls";
 import { RenderGallery } from "./RenderGallery";
 import { ModelScene } from "./Scenes";
 import { SimView } from "./SimView";
@@ -215,6 +215,7 @@ export function CanvasCard() {
         {tab === "modell" && !compare && (showRender ? <RenderGallery /> : product === "drone" ? <ModelScene look="modell" /> : <PartModel />)}
         {tab === "modell" && !compare && <SketchInset />}
         {tab === "modell" && !compare && !showRender && (product === "drone" || !!cad?.glb_url) && <ExplodeSlider />}
+        {tab === "modell" && !compare && !showRender && <ApproximateModelsNote />}
         <PartCard />
         {tab === "cad" && <CadView />}
         {tab === "simulation" && (showTraining ? <BrowserTraining /> : pane === "missions" ? <MissionView /> : <SimView />)}

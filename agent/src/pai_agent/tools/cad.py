@@ -17,6 +17,7 @@ import threading
 from pathlib import Path
 
 from pai_agent import cache, drone_assembly, drone_geometry, freecad_run
+from pai_agent.part_models import swap
 from pai_agent.context import Ctx
 from pai_agent.freecad_run import FreeCADFailed, build_in_gui, build_with_freecad, ensure_gui, find_freecadcmd
 from pai_agent.mesh_export import stl_to_glb
@@ -150,8 +151,8 @@ def apply_param_body(current: dict, body: dict) -> dict:
     return params
 
 
-def _cadquery_bundle(directory: Path, params: dict, geo: dict) -> float:
-    return drone_assembly.build(directory, params, geo)
+def _cadquery_bundle(directory: Path, params: dict, geo: dict, selected: dict | None = None) -> float:
+    return drone_assembly.build(directory, params, geo, selected)
 
 
 def _param_payload(params: dict) -> dict:
@@ -268,7 +269,7 @@ async def cad_frame(ctx: Ctx, args: dict) -> dict:
             source = "cadquery"
             try:
                 geo = drone_geometry.geometry(ctx.state, params)
-                mass_g = await asyncio.to_thread(_cadquery_bundle, directory, params, geo)
+                mass_g = await asyncio.to_thread(_cadquery_bundle, directory, params, geo, dict(ctx.state.selected))
             except Exception as fallback:
                 message = "CadQuery could not build the frame: " + str(fallback)
                 return _fail(message)
@@ -280,6 +281,13 @@ async def cad_frame(ctx: Ctx, args: dict) -> dict:
     if cache_entry is not None and not viewed:
         files = {name: directory / name for name in _FRAME_FILES if (directory / name).is_file()}
         cache.store("frames", cache_entry, files, {"files": list(files), "mass_g": mass_g, "source": source})
+    # The bought parts in the 3D view are their own models (official or look-alike), not the
+    # simple solids; a part without a model keeps its solid.
+    try:
+        part_models = await asyncio.to_thread(swap.into_drone_glb, directory / "frame.glb", dict(ctx.state.selected))
+    except Exception as exc:  # the drone still shows with its simple solids
+        log.warning("part models not placed: %s", exc)
+        part_models = []
 
     mass_g = round(mass_g, 2)
     ctx.state.frame_mass_g = mass_g
@@ -300,6 +308,7 @@ async def cad_frame(ctx: Ctx, args: dict) -> dict:
             "stl_url": _file_url(session_id, "frame.stl", build),
             "step_url": _file_url(session_id, "frame.step", build),
             "view_png_url": view_url,
+            "part_models": part_models,
         }
     )
     where = "FreeCAD window" if viewed else ("FreeCAD headless" if source == "freecad" else "CadQuery")

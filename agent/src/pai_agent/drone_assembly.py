@@ -290,8 +290,11 @@ def write_glb(nodes: list[dict], geo: dict, path: Path) -> None:
     path.write_bytes(data)
 
 
-def build(directory: Path, params: dict, geo: dict) -> float:
-    """Writes frame.stl, frame.step, the assembly drone.step and the assembly frame.glb; returns the frame mass."""
+def build(directory: Path, params: dict, geo: dict, selected: dict | None = None) -> float:
+    """Writes frame.stl, frame.step, the assembly drone.step and the assembly frame.glb; returns the frame mass.
+
+    With the chosen parts (`selected`), the STEP shows each bought part's own model where it has one.
+    """
 
     import cadquery as cq
     from cadquery import exporters
@@ -301,11 +304,25 @@ def build(directory: Path, params: dict, geo: dict) -> float:
     exporters.export(frame, str(directory / "frame.stl"))
     exporters.export(frame, str(directory / "frame.step"))
     nodes = assembly_parts(geo, frame)
+    # The STEP carries each bought part's own model where the library has one (part_models).
+    try:
+        from pai_agent.part_models.swap import drone_step_solids
+
+        models = drone_step_solids(nodes, selected) if selected else {}
+    except Exception:  # the simple solids stay
+        models = {}
     assembly = cq.Assembly(name="drone")
     for n in nodes:
-        for k, (material, solid) in enumerate(n["solids"]):
-            rgb = _MATERIALS[material][0]
-            assembly.add(solid.translate(n["origin"]), name=n["node"] + "_" + str(k), color=cq.Color(*rgb))
+        solids = n["solids"]
+        if n["node"] in models:
+            # Keep the frame-side standoffs under a swapped flight controller.
+            solids = [s for s in solids if s[0] == "anodized"] + models[n["node"]]
+        for k, (material, solid) in enumerate(solids):
+            if isinstance(material, str):
+                color = cq.Color(*_MATERIALS[material][0])
+            else:
+                color = cq.Color(*(int(material.color[i : i + 2], 16) / 255.0 for i in (1, 3, 5)), material.alpha)
+            assembly.add(solid.translate(n["origin"]), name=n["node"] + "_" + str(k), color=color)
     if hasattr(assembly, "export"):
         assembly.export(str(directory / "drone.step"))
     else:

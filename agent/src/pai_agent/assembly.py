@@ -239,6 +239,14 @@ def build(spec: dict, built: dict, picked: dict, directory: Path) -> dict:
     write_stl(assembly_stl, [v for body in shapes if body["kind"] == "printed" for v in body["vertices"]])
     glb = directory / "assembly.glb"
     stls_to_glb([(body["name"], directory / body["stl"], body["color"]) for body in shapes], glb)
+    # Bought parts show their own 3D models, turned to fit their boxes; the boxes stay the maths.
+    try:
+        from pai_agent.part_models.swap import into_product_glb
+
+        part_models = into_product_glb(glb, bodies, picked, spec["parts"], rotation)
+    except Exception as error:  # the boxes stay in the view
+        warnings.append("Part models not placed: " + str(error))
+        part_models = []
     return {
         "bodies": [{k: v for k, v in body.items() if k != "vertices"} for body in bodies],
         "printed_stls": [p.name for p in printed_stls],
@@ -257,5 +265,6 @@ def build(spec: dict, built: dict, picked: dict, directory: Path) -> dict:
         "bought_cost_eur": round(bought_cost, 2),
         "cost_eur": round(printed_cost + bought_cost, 2),
         "hull_points_mm": sorted({(round(v[0], 1), round(v[1], 1), round(v[2], 1)) for v in every}),
+        "part_models": part_models,
         "warnings": warnings,
     }

@@ -382,6 +382,7 @@ async def _emit_assembly(ctx: Ctx) -> None:
             "step_url": None,
             "view_png_url": None,
             "script_url": "/files/" + session + "/assembly-scripts.py?build=" + str(n),
+            "part_models": built.get("part_models", []),
             "part": {
                 "name": state.spec["name"],
                 "material": " + ".join(materials),
