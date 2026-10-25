@@ -21,6 +21,8 @@ import {
   type RenderEvent,
   type MascotState,
   type MetricsEvent,
+  type MissionEvent,
+  type GeometryEvent,
   type PartEvent,
   type ProductEvent,
   type SketchEvent,
@@ -134,6 +136,8 @@ export type ChatItem =
   | { kind: "msg"; id: string; seq: number; at: number; role: "user" | "agent"; text: string; local?: boolean; voice?: boolean }
   | { kind: "tool"; id: string; seq: number; at: number; name: string; phase: Phase; detail: string; endedAt?: number; instant?: boolean }
   | { kind: "sim"; id: string; seq: number; at: number; run: number; result: "pass" | "fail"; summary: string }
+  /** One card per simulate_mission batch; it lists the batch's runs and reads them from `missionRuns`. */
+  | { kind: "missions"; id: string; seq: number; at: number; runs: number[] }
   | { kind: "bom"; id: string; seq: number; at: number; count: number; total: number; numbers: ResultNumber[] }
   /** The one requirements card; it reads the live requirements from the store. */
   | { kind: "requirements"; id: string; seq: number; at: number }
@@ -148,6 +152,11 @@ export type ChatItem =
   | { kind: "optimize"; id: string; seq: number; at: number; optimizeId: string };
 
 export interface Run extends SimEvent {
+  seq: number;
+  at: number;
+}
+
+export interface MissionRun extends MissionEvent {
   seq: number;
   at: number;
 }
@@ -172,6 +181,10 @@ export interface SessionState {
   requirements: RequirementEvent[];
   metrics: MetricsEvent | null;
   runs: Run[];
+  /** Mission tests by run number; the Simulation tab shows the newest run of each mission. */
+  missionRuns: Record<number, MissionRun>;
+  /** The drone's parts at their real sizes, the latest `geometry` event. */
+  geometry: GeometryEvent | null;
   draws: Draw[];
   point: Pointing | null;
   mascot: { state: MascotState; say: string; voice?: string; at: number };
@@ -260,6 +273,7 @@ const TOOL_ALIASES: Record<string, string> = {
   check_runtime: "Analysis",
   simulate_assembly: "MuJoCo",
   simulate_drone: "MuJoCo",
+  simulate_mission: "MuJoCo",
   stress_test: "MuJoCo",
   blender_render: "Blender",
   isaac_sim_render: "Isaac Sim",
@@ -320,6 +334,8 @@ function emptyState() {
     requirements: [] as RequirementEvent[],
     metrics: null as MetricsEvent | null,
     runs: [] as Run[],
+    missionRuns: {} as Record<number, MissionRun>,
+    geometry: null as GeometryEvent | null,
     draws: [] as Draw[],
     point: null as Pointing | null,
     mascot: { state: "ruhig" as MascotState, say: "", at: 0 },
@@ -459,6 +475,18 @@ export const useSession = create<SessionState>((set, get) => ({
         // A new run result starts a fresh explanation, so old annotations go away.
         return set({ log, runs, chat, draws: [] });
       }
+      case "mission": {
+        const missionRuns = { ...s.missionRuns, [ev.run]: { ...ev, seq, at } };
+        // Missions of one simulate_mission call share a card: the previous run joins it.
+        const last = s.chat[s.chat.length - 1];
+        const chat: ChatItem[] =
+          last?.kind === "missions" && last.runs.includes(ev.run - 1)
+            ? [...s.chat.slice(0, -1), { ...last, runs: [...last.runs, ev.run] }]
+            : [...s.chat, { kind: "missions", id: nextId("missions"), seq, at, runs: [ev.run] }];
+        return set({ log, missionRuns, chat, draws: [] });
+      }
+      case "geometry":
+        return set({ log, geometry: ev });
       case "draw": {
         const draws = [...s.draws, { ...ev, id: nextId("draw"), at }].slice(-MAX_DRAWS);
         return set({ log, draws });
@@ -541,6 +569,8 @@ export const useSession = create<SessionState>((set, get) => ({
           metrics: null,
           omniverse: null,
           runs: [],
+          missionRuns: {},
+          geometry: null,
           draws: [],
           bom: null,
           buildGuide: null,

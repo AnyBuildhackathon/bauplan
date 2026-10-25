@@ -38,6 +38,21 @@ test("typed drone request: the requirements card is built from the prompt, a typ
   await expect(bomButton(page)).toContainText("€");
 });
 
+test("fly hunter: the request picks mission tests, each a requirement, replayed in the Missions pane", async ({ page }) => {
+  await freshBench(page);
+  await ask(page, "a fly hunter drone, incredibly fast, small and light, under 100 euros");
+  await expect(page.getByText(/Missions · \d of 3 passed/)).toBeVisible({ timeout: 60_000 });
+  await expect(requirement(page, "top_speed")).toContainText("Top speed at least 60 km/h");
+  await expect(requirement(page, "chase_time")).toContainText("Mechanic");
+  await idle(page);
+  await page.locator('[data-target="tab:simulation"]').dispatchEvent("click");
+  await page.locator('[data-target~="sim:missions"]').dispatchEvent("click");
+  for (const mission of ["speed_run", "turn", "chase"]) await expect(page.locator(`[data-target="mission:${mission}"]`)).toBeVisible();
+  await page.locator('[data-target="mission:chase"]').dispatchEvent("click");
+  await expect(page.getByText(/Chase · (passed|failed)/)).toBeVisible();
+  await expect(page.getByText("Distance to the fly")).toBeVisible();
+});
+
 test("robot gripper from a chat request: the grip test holds and the BOM closes", async ({ page }) => {
   await freshBench(page);
   await ask(page, GRIPPER);

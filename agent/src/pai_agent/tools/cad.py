@@ -1,7 +1,10 @@
 """Parametric whoop frame. arm_length is center to motor shaft, motor_spacing is the bolt-circle diameter.
 
 FreeCAD runs first when freecadcmd is on the machine: it builds the whole hero drone around the
-frame (freecad/frame_build.py) from the parts chosen so far. CadQuery is the frame-only fallback.
+frame (freecad/frame_build.py) from the parts chosen so far. CadQuery is the fallback, and it
+builds the whole drone too, from simple parametric parts (`drone_assembly.py`). Both size the
+motors, propellers, pack and flight controller from the chosen parts (`drone_geometry.py`), and
+the motor pads take the chosen motor's own bolt circle.
 """
 
 from __future__ import annotations
@@ -13,7 +16,7 @@ import subprocess
 import threading
 from pathlib import Path
 
-from pai_agent import cache, freecad_run
+from pai_agent import cache, drone_assembly, drone_geometry, freecad_run
 from pai_agent.context import Ctx
 from pai_agent.freecad_run import FreeCADFailed, build_in_gui, build_with_freecad, ensure_gui, find_freecadcmd
 from pai_agent.mesh_export import stl_to_glb
@@ -69,6 +72,9 @@ def _assembly(state) -> dict:
         out["motor_diameter_mm"] = float(motor["diameter_mm"])
     if motor.get("shaft_mm"):
         out["shaft_mm"] = float(motor["shaft_mm"])
+    controller = state.selected.get("flight_controller") or {}
+    if controller.get("mount_mm"):
+        out["fc_mount_mm"] = float(controller["mount_mm"])
     camera = state.selected.get("camera") or {}
     if camera.get("size_mm"):
         out["camera_mm"] = float(camera["size_mm"])
@@ -125,76 +131,8 @@ def _number(args: dict, key: str) -> float | None:
         return None
 
 
-def build_frame(arm_length_mm: float, thickness_mm: float, motor_spacing_mm: float):
-    import cadquery as cq
-
-    arm_width = 6.0
-    hub_radius = 20.0
-    pad_radius = 6.0
-    bolt_radius = motor_spacing_mm / 2.0
-
-    def arm():
-        return cq.Workplane("XY").box(
-            arm_length_mm,
-            arm_width,
-            thickness_mm,
-            centered=(False, True, False),
-        )
-
-    frame = arm()
-    for angle in (90, 180, 270):
-        frame = frame.union(arm().rotate((0, 0, 0), (0, 0, 1), angle))
-    frame = frame.union(cq.Workplane("XY").circle(hub_radius).extrude(thickness_mm))
-    for angle in (0, 90, 180, 270):
-        radians = math.radians(angle)
-        frame = frame.union(
-            cq.Workplane("XY")
-            .center(arm_length_mm * math.cos(radians), arm_length_mm * math.sin(radians))
-            .circle(pad_radius)
-            .extrude(thickness_mm)
-        )
-
-    cutters = cq.Workplane("XY")
-    first = True
-    holes: list[tuple[float, float, float]] = [(0.0, 0.0, 2.2)]
-    for sign_x in (-1, 1):
-        for sign_y in (-1, 1):
-            holes.append((13.0 * sign_x, 13.0 * sign_y, 1.1))
-    for angle in (0, 90, 180, 270):
-        radians = math.radians(angle)
-        cx = arm_length_mm * math.cos(radians)
-        cy = arm_length_mm * math.sin(radians)
-        holes.append((cx, cy, 1.0))
-        for index in range(3):
-            hole_angle = math.radians(angle + index * 120)
-            holes.append(
-                (
-                    cx + bolt_radius * math.cos(hole_angle),
-                    cy + bolt_radius * math.sin(hole_angle),
-                    0.8,
-                )
-            )
-    for x_mm, y_mm, radius in holes:
-        cutter = (
-            cq.Workplane("XY")
-            .center(x_mm, y_mm)
-            .circle(radius)
-            .extrude(thickness_mm + 2)
-            .translate((0, 0, -1))
-        )
-        cutters = cutter if first else cutters.union(cutter)
-        first = False
-    frame = frame.cut(cutters)
-    return frame
-
-
-def export_frame(frame, path: Path) -> float:
-    from cadquery import exporters
-
-    path.parent.mkdir(parents=True, exist_ok=True)
-    exporters.export(frame, str(path))
-    volume_mm3 = float(frame.val().Volume())
-    return volume_mm3 * _CARBON_G_PER_MM3
+# The plate alone, for the optimizer's mass estimates; the CadQuery drone is drone_assembly.build.
+build_frame = drone_assembly.build_frame
 
 
 def apply_param_body(current: dict, body: dict) -> dict:
@@ -212,13 +150,8 @@ def apply_param_body(current: dict, body: dict) -> dict:
     return params
 
 
-def _cadquery_bundle(directory: Path, params: dict) -> float:
-    frame = build_frame(params["arm_length_mm"], params["thickness_mm"], params["motor_spacing_mm"])
-    directory.mkdir(parents=True, exist_ok=True)
-    mass_g = export_frame(frame, directory / "frame.stl")
-    export_frame(frame, directory / "frame.step")
-    stl_to_glb(directory / "frame.stl", directory / "frame.glb")
-    return mass_g
+def _cadquery_bundle(directory: Path, params: dict, geo: dict) -> float:
+    return drone_assembly.build(directory, params, geo)
 
 
 def _param_payload(params: dict) -> dict:
@@ -238,7 +171,7 @@ _FRAME_FILES = ("frame.stl", "frame.step", "frame.glb", "frame.FCStd", "drone.st
 
 
 def _frame_cache_key(build_params: dict) -> str:
-    code = sorted((AGENT_ROOT / "freecad").glob("*.py")) + [Path(__file__), Path(freecad_run.__file__)]
+    code = sorted((AGENT_ROOT / "freecad").glob("*.py")) + [Path(__file__), Path(freecad_run.__file__), Path(drone_assembly.__file__), Path(drone_geometry.__file__)]
     return cache.key("frame", build_params, cache.tool_version(find_freecadcmd()), [cache.digest(path) for path in code])
 
 
@@ -254,6 +187,17 @@ async def cad_frame(ctx: Ctx, args: dict) -> dict:
         return _fail("thickness_mm must be between 1.2 and 6.")
     if not 4 <= motor_spacing <= 16:
         return _fail("motor_spacing_mm is the bolt circle of the motor screws and must be between 4 and 16.")
+
+    # The pads take the chosen motor's own bolt circle, whatever spacing was asked for.
+    notes: list[str] = []
+    motor = ctx.state.selected.get("motor") or {}
+    try:
+        bolt_circle = float(motor["mount_diameter_mm"])
+    except (KeyError, TypeError, ValueError):
+        bolt_circle = None
+    if bolt_circle and 4 <= bolt_circle <= 16 and abs(bolt_circle - motor_spacing) > 0.3:
+        notes.append("Motor pads use the " + str(motor.get("name") or "motor") + "'s " + f"{bolt_circle:g}" + " mm bolt circle, not " + f"{motor_spacing:g}" + " mm.")
+        motor_spacing = bolt_circle
 
     propeller = ctx.state.selected.get("propeller")
     clearance = None
@@ -323,7 +267,8 @@ async def cad_frame(ctx: Ctx, args: dict) -> dict:
             log.info("FreeCAD fällt auf CadQuery zurück: %s", exc)
             source = "cadquery"
             try:
-                mass_g = await asyncio.to_thread(_cadquery_bundle, directory, params)
+                geo = drone_geometry.geometry(ctx.state, params)
+                mass_g = await asyncio.to_thread(_cadquery_bundle, directory, params, geo)
             except Exception as fallback:
                 message = "CadQuery could not build the frame: " + str(fallback)
                 return _fail(message)
@@ -349,7 +294,7 @@ async def cad_frame(ctx: Ctx, args: dict) -> dict:
         {
             "type": "cad",
             "source": source,
-            "tree": _tree(ctx.state, source == "freecad"),
+            "tree": _tree(ctx.state, source == "freecad" or (directory / "drone.step").is_file()),
             "params": _param_payload(params),
             "glb_url": _file_url(session_id, "frame.glb", build),
             "stl_url": _file_url(session_id, "frame.stl", build),
@@ -358,7 +303,7 @@ async def cad_frame(ctx: Ctx, args: dict) -> dict:
         }
     )
     where = "FreeCAD window" if viewed else ("FreeCAD headless" if source == "freecad" else "CadQuery")
-    detail = where + ", " + f"{mass_g:.1f}" + " g carbon, STL and STEP"
+    detail = where + ", " + f"{mass_g:.1f}" + " g carbon, STL and STEP" + ("" if not notes else ". " + " ".join(notes))
     return {
         "ok": True,
         "detail": detail,
@@ -369,4 +314,5 @@ async def cad_frame(ctx: Ctx, args: dict) -> dict:
         "thickness_mm": thickness,
         "motor_spacing_mm": motor_spacing,
         "prop_clearance_mm": round(clearance, 1) if clearance is not None else None,
+        "notes": notes,
     }

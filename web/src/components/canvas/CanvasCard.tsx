@@ -20,7 +20,8 @@ import { SketchInset } from "./SketchInset";
 import { OmniverseView } from "./OmniverseView";
 import { AgentsView } from "../agents/AgentsView";
 import { BrowserTraining } from "../training/BrowserTraining";
-import { useBrowserTrainingEvent, useSimPane } from "../training/useBrowserTraining";
+import { useBrowserTrainingEvent, useSimPane, type SimPane } from "../training/useBrowserTraining";
+import { MissionView } from "./MissionView";
 
 const TABS: { value: CanvasTab; label: string; icon: typeof Box }[] = [
   { value: "modell", label: "Model", icon: Box },
@@ -91,6 +92,7 @@ export function CanvasCard() {
   const setLook = useUi((s) => s.setLook);
   const compare = useUi((s) => s.compare);
   const runs = useSession((s) => s.runs.length);
+  const missions = useSession((s) => Object.keys(s.missionRuns).length);
   const cad = useSession((s) => s.cad);
   const renders = useSession((s) => s.renders.length);
   const product = useSession((s) => s.product);
@@ -98,7 +100,7 @@ export function CanvasCard() {
   const supportsOmniverse = product === "drone" && !cad?.script_url;
   const tabs = TABS.filter((t) => t.value !== "omniverse" || supportsOmniverse || tab === "omniverse");
   const agentsWorking = useSession((s) => Object.values(s.agents).some((a) => a.status === "running" || a.status === "queued"));
-  const badges: Partial<Record<CanvasTab, boolean>> = { cad: !!cad, simulation: runs > 0, omniverse: !!omniverse, agents: agentsWorking };
+  const badges: Partial<Record<CanvasTab, boolean>> = { cad: !!cad, simulation: runs > 0 || missions > 0, omniverse: !!omniverse, agents: agentsWorking };
   const showRender = tab === "modell" && look === "render";
   const pane = useSimPane((s) => s.pane);
   const setPane = useSimPane((s) => s.setPane);
@@ -171,13 +173,14 @@ export function CanvasCard() {
       >
         <div key={tab} className="h-full min-h-0 motion-safe:animate-[canvas-enter_200ms_ease-out_both]">
         {tab === "simulation" && (
-          <Segmented<"hover" | "training">
+          <Segmented<SimPane>
             size="sm"
             className="absolute top-3 right-3 z-10 bg-white/90 shadow-[var(--shadow-pill)] backdrop-blur"
             value={pane}
             onChange={(pane) => { selectTab("simulation"); setPane(pane); }}
             options={[
               { value: "hover", label: "Hover test", target: "sim:hover" },
+              ...(missions > 0 || pane === "missions" ? [{ value: "missions" as const, label: "Missions", target: "sim:missions missions" }] : []),
               {
                 value: "training",
                 label: "Training",
@@ -214,10 +217,10 @@ export function CanvasCard() {
         {tab === "modell" && !compare && !showRender && (product === "drone" || !!cad?.glb_url) && <ExplodeSlider />}
         <PartCard />
         {tab === "cad" && <CadView />}
-        {tab === "simulation" && (showTraining ? <BrowserTraining /> : <SimView />)}
+        {tab === "simulation" && (showTraining ? <BrowserTraining /> : pane === "missions" ? <MissionView /> : <SimView />)}
         {tab === "omniverse" && <OmniverseView />}
         {tab === "agents" && <AgentsView />}
-        {tab !== "cad" && tab !== "omniverse" && tab !== "agents" && !(tab === "modell" && compare) && <SpokenLine lifted={(tab === "simulation" && (runs > 0 || showTraining)) || (showRender && renders > 1)} overSlider={tab === "modell" && !showRender} />}
+        {tab !== "cad" && tab !== "omniverse" && tab !== "agents" && !(tab === "modell" && compare) && <SpokenLine lifted={(tab === "simulation" && (runs > 0 || missions > 0 || showTraining)) || (showRender && renders > 1)} overSlider={tab === "modell" && !showRender} />}
         </div>
       </div>
     </div>

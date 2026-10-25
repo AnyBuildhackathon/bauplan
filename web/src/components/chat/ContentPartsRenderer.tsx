@@ -29,6 +29,7 @@ import { ExplainChatCard } from "../learn/Explain";
 import { RequirementsCard, ResultsCard } from "./BuildCards";
 import { SafetyCard } from "../safety/SafetyCard";
 import { OptimizeCard } from "./OptimizeCard";
+import { useSimPane } from "../training/useBrowserTraining";
 
 const TOOL_LABELS: Record<string, { running: string; done: string }> = {
   Claude: { running: "Claude is thinking", done: "Claude" },
@@ -106,6 +107,44 @@ function SimPartRenderer({ item }: { item: Extract<ChatItem, { kind: "sim" }> })
       </div>
       <p className="mt-1 text-[14px] leading-snug text-ink-2">{item.summary}</p>
     </button>
+  );
+}
+
+/** One simulate_mission call: each mission with its result and number; a click opens its replay. */
+function MissionsPartRenderer({ item }: { item: Extract<ChatItem, { kind: "missions" }> }) {
+  const runs = useSession((s) => s.missionRuns);
+  const setTab = useUi((s) => s.setTab);
+  const setView = useUi((s) => s.setView);
+  const selectMission = useUi((s) => s.selectMission);
+  const rows = item.runs.flatMap((n) => (runs[n] ? [runs[n]] : []));
+  const passed = rows.filter((r) => r.result === "pass").length;
+  const open = (run: number) => {
+    setView("werkbank");
+    setTab("simulation");
+    useSimPane.getState().setPane("missions");
+    selectMission(run);
+  };
+  return (
+    <div className={`w-full rounded-2xl p-3 ${passed === rows.length ? "bg-ok-soft" : "bg-fail-soft"}`}>
+      <div className={`text-[14px] font-bold ${passed === rows.length ? "text-ok-ink" : "text-fail-ink"}`}>
+        Missions · {passed} of {rows.length} passed
+      </div>
+      <div className="mt-1.5 flex flex-col gap-1">
+        {rows.map((r) => (
+          <button key={r.run} type="button" onClick={() => open(r.run)} className="group flex items-start gap-2 text-left">
+            {r.result === "pass" ? (
+              <CircleCheck className="mt-0.5 h-4 w-4 shrink-0 text-ok" strokeWidth={2.2} />
+            ) : (
+              <CircleX className="mt-0.5 h-4 w-4 shrink-0 text-fail" strokeWidth={2.2} />
+            )}
+            <span className="min-w-0 flex-1 text-[14px] leading-snug text-ink-2">
+              <span className="font-semibold text-ink">{r.label}.</span> {r.summary.replace(/^(Pass|Fail)\. /, "")}
+            </span>
+            <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-muted transition group-hover:translate-x-0.5" />
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -310,6 +349,8 @@ function ContentPartsRenderer({ item }: { item: Exclude<ChatItem, { kind: "msg" 
       return <ToolCallPartRenderer item={item} />;
     case "sim":
       return <SimPartRenderer item={item} />;
+    case "missions":
+      return <MissionsPartRenderer item={item} />;
     case "bom":
       return <ResultsCard item={item} />;
     case "requirements":

@@ -110,6 +110,7 @@ async def product_spec(ctx: Ctx, args: dict) -> dict:
         state.metrics = {}
         state.last_sim = None
         state.sim_run = 0
+        state.missions = {}
         state.stl_path = None
         state.part = None
         state.frame_mass_g = None

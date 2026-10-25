@@ -26,6 +26,11 @@ class BuildState:
     requirements: list[dict] = field(default_factory=list)
     sim_run: int = 0
     last_sim: dict | None = None
+    # Mission tests (simulate_mission): the latest outcome per mission, without its replay data.
+    missions: dict[str, dict] = field(default_factory=dict)
+    mission_run: int = 0
+    # The last `geometry` event, so it is only sent again when a part or the frame changed.
+    geometry_shown: dict | None = None
     stl_path: str | None = None
     cad_params: dict = field(default_factory=dict)
     cad_builds: int = 0

@@ -342,7 +342,8 @@ A `cad` event's `source` is `cadquery` when FreeCAD was missing or stuck and Cad
 ### requirement
 
 Requirements come from what the user typed or said, never from a template or a recording.
-For the drone, `id` is `budget`, `flight_time`, `weight`, `hover`, or `printable`; `product_brief` sets `budget`, `flight_time`, and `weight` from the numbers in the request, and adds `hover` and `printable`.
+For the drone, `id` is `budget`, `flight_time`, `weight`, `hover`, `printable`, or a mission row: `top_speed` (min km/h), `turn_rate` (min °/s), `hold_error` (max cm) or `chase_time` (max s); `product_brief` sets `budget`, `flight_time`, `weight` and any mission limit from the numbers in the request, and adds `hover` and `printable`.
+`simulate_mission` adds the row of each mission it flies when the brief has none, as Mechanic's proposal (60 km/h, 120 °/s, 15 cm, 4 s), and judges it; a revised brief keeps the mission rows it does not mention.
 `text` is the requirement.
 `source` is `user` when the limit is in the user's words, or `proposed` when Mechanic proposed it because the request named no number.
 A requirement counts as `user` only when its quote is really in a request of this session; any other quote turns it into `proposed`.
@@ -405,6 +406,21 @@ The assembly is one rigid body: the convex hull of all its bodies collides with 
 `bbox_mm` and `size_mm` describe the assembly.
 A push carries `force_n`, `push_point_mm` (body frame, mm), `push_dir` (plan view unit vector), `push_window_s` (`[0.5, 0.8]`) and `limit_deg`; it passes when the final tilt stays within `limit_deg`.
 A drop falls from `drop_height_mm` with a 5° tilt and reports the peak load in g in `summary`.
+
+### mission
+
+One mission test of the drone (`simulate_mission`), flown in MuJoCo with the chosen parts: `run` (counts up per mission flown), `mission` (`speed_run`, `turn`, `hold` or `chase`), `label`, `result` (`pass` or `fail` against the requirement), `summary` (one sentence with the number and the limit), `why` (what limits this build in this mission, the direction for a fix), `requirement_id`, `limit`, `limit_kind` (`min` or `max`), `unit`, `value` (the judged number, `null` when there is none, such as no fly caught), `metrics` (every number of the run), `mass_g` and `parts` (the motor, propeller, battery, flight controller and frame ids it flew).
+`poses` is `[[t, x, y, z, qw, qx, qy, qz], ...]` every 0.02 s (metres, z up, the nose on +y) and `series` is `[[t, value], ...]` of the mission's own curve: speed in m/s, course in degrees, drift in cm, or distance to the fly in cm.
+`speed_run`: full throttle along +x from a hover at 1.5 m, height held; `top_speed_kmh` and `time_to_top_s` (to 95 % of it).
+`turn`: at 8 m/s (29 km/h) along +x, a 90° course change at 1 s; `turn_rate_dps` is 90° over the time to 85.5°, plus `overshoot_pct` and `peak_body_rate_dps`.
+`hold`: hold a point at 1.5 m in a 3 m/s side wind gusting by up to 3 m/s with a cross gust, and a 2 m/s downdraft at 2.5 s; `hold_error_cm` is the worst drift, `rms_error_cm` the mean; `wind` is `[[t, wx, wy, wz], ...]` of the air.
+`chase`: five flies at 9 km/h, each darting 45° to 120° off course every 0.5 to 0.9 s in a 12 × 12 × 3 m room; a fly is caught within 12 cm. `capture_s` is the median capture time (a missed fly counts as never), `captured` of `flies`, `capture_times_s` per fly, `miss_distance_cm` the closest miss; `target` is `[[t, x, y, z], ...]` of the fly closest to the median, and `poses` that chase.
+The model behind it is in `agent/src/pai_agent/mission_sim.py`: mass and inertia from every part at its place, thrust from the motors' `thrust_g` falling to zero at the propeller's pitch speed, motor lag from the propeller size, body and rotor drag. The client shows the newest run of each mission in the Simulation tab's Missions pane, and one chat card per `simulate_mission` call.
+
+### geometry
+
+The drone's parts at their real sizes (`agent/src/pai_agent/drone_geometry.py`), sent after any tool call that changed a part or the frame: `arm_length_mm`, `thickness_mm`, `motor` (`id`, `bell_diameter_mm`, `height_mm`, `stator_diameter_mm`, `stator_height_mm` from the motor code, `shaft_mm`, `size`), `propeller` (`id`, `diameter_mm`, `pitch_in`, `blades`, `z_mm`), `battery` (`id`, `size_mm` length, width, height), `flight_controller` (`id`, `mount_mm`, `board_mm`), `prop_clearance_mm`, `total_mass_g` (the same mass `physics_calc` and the mission simulator weigh) and `assumed` (fields a part did not carry, filled from the reference build).
+The CAD builds its motors, propellers, pack and board from the same numbers; the client scales a part chosen after the last CAD build from the size baked into the model (the `drone` node's `extras`) to this one.
 
 ### cad
 
@@ -701,7 +717,7 @@ Closing buttons are tagged `{control}:close`, and `look:3d` is the 3D switch of 
 
 ## Tools
 
-`ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `stress_test`, `cad_frame`, `cad_part`, `product_brief`, `product_spec`, `sketch_to_spec`, `reference_load`, `delegate`, `part_pick`, `assemble`, `cad_update`, `check_totals`, `check_tip_over`, `check_deflection`, `check_torque`, `check_runtime`, `check_power`, `check_thermal`, `check_rollover`, `simulate_assembly`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `blender_render`, `bom_build`, `print_prep`, `build_guide`, `firmware`, `electronics_plan`, `safety_check`, `ui_point_at`, `ui_draw`, `ui_control`, `mascot_say`, `train_in_browser`, `optimize_design`, `optimize_apply`.
+`ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `simulate_mission`, `stress_test`, `cad_frame`, `cad_part`, `product_brief`, `product_spec`, `sketch_to_spec`, `reference_load`, `delegate`, `part_pick`, `assemble`, `cad_update`, `check_totals`, `check_tip_over`, `check_deflection`, `check_torque`, `check_runtime`, `check_power`, `check_thermal`, `check_rollover`, `simulate_assembly`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `blender_render`, `bom_build`, `print_prep`, `build_guide`, `firmware`, `electronics_plan`, `safety_check`, `ui_point_at`, `ui_draw`, `ui_control`, `mascot_say`, `train_in_browser`, `optimize_design`, `optimize_apply`.
 
 `optimize_design` (drone, after a build) takes `goals`, `keep` and `count` (4 to 8, default 6). With a key, `count` variant agents on the sub-agent model run in parallel (`agent` events with `role` `optimizer`, `label` "Variant agent A" ...), each proposing one battery, arm length and plate thickness; without one, fixed strategies propose them. A proposal that repeats the current build or another variant is replaced by the next strategy. Every variant runs the same checks and the result is the `optimize` event; `optimize_apply` takes `id` and `variant` (default the latest run and its recommendation) and builds it as `POST /api/optimize/apply` does.
 
@@ -764,10 +780,12 @@ Without `ANTHROPIC_API_KEY` only templates and passed scripts build.
 In mock mode a prompt containing "train" runs it after a short Mechanic line, and the `training` step goes `running`, then `done` or `failed`.
 
 `cad_frame` arguments are `arm_length_mm` (center to motor shaft), `thickness_mm`, and `motor_spacing_mm` (bolt-circle diameter of the motor screws).
-The 1103 mount is 6.6 mm.
+The 1103 mount is 6.6 mm; with a motor chosen, the pads take its own `mount_diameter_mm` and the result's `notes` say so when the argument differed.
+FreeCAD and CadQuery both build the whole drone around the frame from the chosen parts: motor bells at their diameter and height with the stator from the motor code, propellers at their diameter and blade count, the pack at its size, the flight controller scaled to its `mount_mm`. The GLB's `drone` node carries `extras` with the sizes it was built with.
+`simulate_mission` takes `missions`, a list of `{mission, limit, quote, proposed}` (`mission` alone takes the brief's limit or Mechanic's proposal); see the `mission` event. It needs every drone part chosen and flies one mission at a time.
 With a propeller chosen, an arm whose neighbouring motors stand closer than the propeller diameter plus 4 mm is an error that names the minimum arm.
 The open FreeCAD window builds first when its RPC answers; on an error or a step over 12 seconds, `freecadcmd` builds headless.
-CadQuery writes the same STL, STEP, and GLB when FreeCAD is missing or the script fails.
+CadQuery writes the same STL, STEP, and GLB when FreeCAD is missing or the script fails: the frame plate as STL and STEP, the whole drone from simple parametric parts as `drone.step` and the GLB.
 `blender_render` runs `blender -b -P` on the current drone GLB, or on the frame STL after a CadQuery fallback.
 `build_guide` is drone only, comes after `bom_build`, and takes `steps` as in the `build_guide` event, without `items`; a step number out of order, an unknown part, or a scene part no step installs is an error that names it.
 A step may add `bom_parts`, categories from the bill of materials that have no scene part (`camera`, `canopy`, `hardware`); they show up in `items`.
@@ -782,6 +800,7 @@ It tries the FunFly 4S first: the MuJoCo gust pushes it to the floor, the swap t
 A 34 mm arm lets the 51 mm propellers touch, so the frame becomes the Twiglet's 42.5 mm.
 v1 is 48.3 g, 8.2 min, 117.38 €.
 Each build writes a `print` plan for the frame (an estimate without a slicer) and a `build_guide` from the same step template with the parts it chose: frame, motors, flight controller, wiring, camera and canopy, battery, motor test, propellers.
+A request that names a job flies mission tests after the hover test (`missions_from_text`): fast or racing words fly the speed run and the turn, agile the turn, precise or steady the hold, hunt, catch or chase the chase with the speed run and the turn; a number in km/h, °/s, cm or seconds to catch becomes that mission's limit. "a fly hunter drone, incredibly fast, small and light, under 100 euros" flies the speed run, the turn and the chase against Mechanic's proposed limits. A later version flies the same missions again.
 A typed change with a new limit ("Make it fly 10 minutes.") revises that requirement, keeps the others, and swaps to the BetaFPV LAVA II 1S 680, the other pack from the video.
 v2 is 49.5 g, 10.1 min, 117.60 €, with its difference to v1.
 A later prompt without a new limit does not rebuild; Mechanic asks for a number.

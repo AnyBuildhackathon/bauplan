@@ -80,7 +80,7 @@ export function ModelScene({ look }: { look: "modell" | "render" }) {
         {/* The pack hangs under the frame; lift the drone so it stands on it. */}
         <group position={[0, build.battery[2] + 0.0028, 0]}>
           <Suspense fallback={null}>
-            <HeroDrone url={url} battery={build.battery} highlight={highlight} spin={spin} explodable={!render} />
+            <HeroDrone url={url} battery={build.battery} sizes={build.sizes} highlight={highlight} spin={spin} explodable={!render} />
           </Suspense>
         </group>
         {!render && <ExplodeCamera maxDistance={0.45} />}
@@ -128,7 +128,7 @@ function FlyingDrone({ run, color }: { run: Run; color: string }) {
     <group ref={ref}>
       <group scale={DRONE_SCALE}>
         <Suspense fallback={null}>
-          <HeroDrone url={url} battery={build.battery} highlight={highlight} spin={spin} />
+          <HeroDrone url={url} battery={build.battery} sizes={build.sizes} highlight={highlight} spin={spin} />
         </Suspense>
       </group>
       <pointLight color={color} intensity={0.4} distance={0.8} position={[0, -0.05, 0]} />

@@ -37,6 +37,8 @@ interface UiState {
   compare: [number, number] | null;
   /** Simulation run picked in the Simulation tab; null follows the newest run. */
   selectedRun: number | null;
+  /** Mission test run picked in the Simulation tab; null shows the hover test, or the newest mission when it came last. */
+  selectedMission: number | null;
   bomOpen: boolean;
   /** The drawer was opened by confirming the design: it leads with the price and the order by shop. */
   bomPricing: boolean;
@@ -87,6 +89,7 @@ interface UiState {
   setVersionsOpen: (open: boolean) => void;
   setCompare: (pair: [number, number] | null) => void;
   selectRun: (run: number | null) => void;
+  selectMission: (run: number | null) => void;
   setBomOpen: (open: boolean) => void;
   openLesson: (step: StepId) => void;
   closeLesson: () => void;
@@ -179,6 +182,7 @@ export const useUi = create<UiState>((set) => ({
   versionsOpen: false,
   compare: null,
   selectedRun: null,
+  selectedMission: null,
   bomOpen: params().has("bom"),
   bomPricing: false,
   confirmedBuild: null,
@@ -231,7 +235,8 @@ export const useUi = create<UiState>((set) => ({
   selectVersion: (selectedVersion) => set({ selectedVersion }),
   setVersionsOpen: (versionsOpen) => set({ versionsOpen }),
   setCompare: (compare) => set(compare ? { compare, tab: "modell", look: "3d" } : { compare }),
-  selectRun: (selectedRun) => set({ selectedRun }),
+  selectRun: (selectedRun) => set({ selectedRun, selectedMission: null }),
+  selectMission: (selectedMission) => set({ selectedMission }),
   // Closing the pricing returns to the model it priced.
   setBomOpen: (bomOpen) => set((s) => (bomOpen || !s.bomPricing ? { bomOpen } : { bomOpen, bomPricing: false, tab: "modell" })),
   openLesson: (lessonStep) =>
@@ -251,5 +256,5 @@ export const useUi = create<UiState>((set) => ({
     }
     set({ voiceOn });
   },
-  resetUi: () => set({ selectedVersion: null, versionsOpen: false, compare: null, selectedRun: null, lessonStep: null, concepts: {}, bomOpen: false, bomPricing: false, confirmedBuild: null, explode: 0, focus: null }),
+  resetUi: () => set({ selectedVersion: null, versionsOpen: false, compare: null, selectedRun: null, selectedMission: null, lessonStep: null, concepts: {}, bomOpen: false, bomPricing: false, confirmedBuild: null, explode: 0, focus: null }),
 }));

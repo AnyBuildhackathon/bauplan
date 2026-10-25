@@ -36,7 +36,20 @@ _LIMITS = (
     ("budget", re.compile(r"(?:(?:under|below|less than|at most|max(?:imum)?|within|for)\s+)?(?:€\s*" + _NUMBER + r"|" + _NUMBER + r"\s*(?:euros?|eur\b|€))", re.I)),
     ("flight_time", re.compile(r"(?:(?:at least|min(?:imum)?|for|fly(?:ing)?|of)\s+)?" + _NUMBER + r"\s*(?:minutes?|mins?\b)", re.I)),
     ("weight", re.compile(r"(?:under|below|less than|at most|max(?:imum)?|lighter than)\s+" + _NUMBER + r"\s*(?:grams?|g\b)", re.I)),
+    # Mission limits (simulate_mission): speed, turn rate, hold precision, catch time.
+    ("top_speed", re.compile(r"(?:(?:at least|over|above|faster than|min(?:imum)?|up to|reach(?:es)?|of)\s+)?" + _NUMBER + r"\s*(?:km/?h|kph)\b", re.I)),
+    ("turn_rate", re.compile(r"(?:(?:at least|over|min(?:imum)?)\s+)?" + _NUMBER + r"\s*(?:°|deg(?:rees)?)\s*(?:/|per)\s*(?:s|sec(?:ond)?)\b", re.I)),
+    ("hold_error", re.compile(r"(?:within|to|under|below|at most)\s+" + _NUMBER + r"\s*(?:cm|centimet(?:er|re)s?)\b", re.I)),
+    ("chase_time", re.compile(r"(?:catch\w*|chas\w*|intercept\w*)\b[^.]*?(?:in|within|under)\s+" + _NUMBER + r"\s*(?:s|secs?|seconds?)\b", re.I)),
 )
+# What a request asks the drone to do, in words: the missions that test it (see the orchestrator prompt).
+_MISSION_WORDS = (
+    ("chase", re.compile(r"\b(hunt\w*|catch\w*|chas\w*|intercept\w*|pursu\w*)", re.I)),
+    ("speed_run", re.compile(r"\b(fast\w*|speed\w*|quick\w*|rac(?:e|er|ing)|hunt\w*|catch\w*|chas\w*|intercept\w*)", re.I)),
+    ("turn", re.compile(r"\b(agil\w*|nimble|turn\w*|fast\w*|rac(?:e|er|ing)|hunt\w*|catch\w*|chas\w*|intercept\w*)", re.I)),
+    ("hold", re.compile(r"\b(precis\w*|steady|stable|hold\w*|hover\w* still|film\w*|inspect\w*)", re.I)),
+)
+_MISSION_ORDER = ("speed_run", "turn", "hold", "chase")
 
 
 def _number(raw: str) -> float:
@@ -54,6 +67,18 @@ def limits_from_text(text: str) -> list[dict]:
             raw = next(group for group in match.groups() if group)
             found.append({"id": rid, "limit": _number(raw), "quote": match.group(0).strip()})
     return found
+
+
+def missions_from_text(text: str) -> list[str]:
+    """The mission tests a request calls for, in a fixed order; none for a request that names no task."""
+
+    wanted = {mission for mission, pattern in _MISSION_WORDS if pattern.search(text or "")}
+    for limit in limits_from_text(text):
+        wanted |= {mission for mission, rid in _MISSION_LIMITS.items() if rid == limit["id"]}
+    return [mission for mission in _MISSION_ORDER if mission in wanted]
+
+
+_MISSION_LIMITS = {"speed_run": "top_speed", "turn": "turn_rate", "hold": "hold_error", "chase": "chase_time"}
 
 
 def en(value: float, digits: int) -> str:
@@ -303,6 +328,7 @@ async def _first_build(ctx: Ctx, text: str, team: MockTeam) -> None:
     await _say(ctx, "freut_sich", "Second run holds the gust. Told you.")
     await _need(ctx, "ui_draw", {"kind": "halo", "target": "battery", "text": "fits"})
     await _swap_pack(ctx)
+    await _missions(ctx, missions_from_text(request))
 
     version = await _build_tail(ctx, "v1", team)
     await _say(
@@ -312,6 +338,31 @@ async def _first_build(ctx: Ctx, text: str, team: MockTeam) -> None:
         "Version 1: " + version["summary"] + ", " + _passes(ctx) + ". Shop prices are from 2026-10-24; check them before ordering. Tell me what to change, for example a longer flight time.",
     )
     ctx.state.finished = True
+
+
+async def _missions(ctx: Ctx, missions: list[str]) -> None:
+    """The mission tests the request calls for, flown with the final parts; each judges one requirement."""
+
+    if not missions:
+        return
+    await _beat()
+    await ctx.step("simulation", "running")
+    names = {"speed_run": "a speed run", "turn": "a hard turn", "hold": "a position hold in wind", "chase": "a chase of five dodging flies"}
+    await _say(
+        ctx,
+        "erklaert",
+        "Now the job itself. Missions in MuJoCo.",
+        "Your request is a job, so I fly it: " + ", ".join(names[m] for m in missions) + ". Mass, inertia, thrust and drag come from the parts I picked.",
+    )
+    flown = await _need(ctx, "simulate_mission", {"missions": [{"mission": m} for m in missions]})
+    await _need(ctx, "ui_control", {"control": "tab:simulation"})
+    failed = [m for m in flown["missions"] if m["result"] == "fail"]
+    await ctx.step("simulation", "failed" if failed else "done")
+    if failed:
+        worst = failed[0]
+        await _say(ctx, "besorgt", "Mission check: not all green.", worst["summary"] + " " + worst["why"] + " The offline catalog has no stronger part for this; with the live model I would search for one.")
+    else:
+        await _say(ctx, "freut_sich", "All missions pass.", "All " + str(len(flown["missions"])) + " missions pass with these parts; the card has the numbers and every replay is in the Simulation tab.")
 
 
 async def _swap_pack(ctx: Ctx) -> bool:
@@ -390,6 +441,8 @@ async def _next_version(ctx: Ctx, changes: list[dict], team: MockTeam) -> None:
         _swap_pack(ctx),
     )
     await ctx.step("teile", "done")
+    # The missions already flown fly again with the new parts.
+    await _missions(ctx, [m for m in _MISSION_ORDER if m in state.missions])
     run = state.last_sim or {}
     if run.get("result") == "pass":
         await _say(ctx, "freut_sich", "Longer in the air and still holds the gust. You are welcome.")
