@@ -28,6 +28,7 @@ CHECKS = {
     "power": ("min", ("x",)),
     "thermal": ("max", ("deg_c",)),
     "rollover": ("min", ("g", "deg")),
+    "strength": ("min", ("x",)),
 }
 MAX_PRINTED = 6
 MAX_PARTS = 16

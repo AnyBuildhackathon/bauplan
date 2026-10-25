@@ -13,6 +13,7 @@ from __future__ import annotations
 import re
 
 from pai_agent.context import Ctx
+from pai_agent.mock_printer import printed_parts
 from pai_agent.mock_story import _beat, _need, _say
 from pai_agent.references import REFERENCES_DIR
 from pai_agent.tools.registry import call_tool
@@ -145,6 +146,19 @@ async def run_product_mock(ctx: Ctx, text: str, sketch: bool = False) -> None:
         "Stays put now.",
         summary + f" The free top of the back rest bends {deflection['deflection_mm']:.2f} mm under a 5 N press, stress safety {deflection['stress_safety']:.0f}x.",
     )
+    # With the user's printer: the material per part and FEM on the real shapes (mock_printer.py).
+    # A charging phone warms the back rest to about 40 °C; the back rest also takes the 5 N press of the stiffness requirement.
+    phone = next(p for p in ctx.state.spec["parts"] if p["id"] == "phone")
+    await printed_parts(
+        ctx,
+        [("back-rest", {"max_temp_c": 40}), ("base", {})],
+        cases={
+            "back-rest": [
+                {"name": "phone set down", "region": {"near": phone["position_mm"]}, "force_n": [0, 0, -2 * phone["mass_g"] / 1000 * 9.80665]},
+                {"name": "5 N press on the top edge", "region": {"face": "z_max"}, "force_n": [0, 5, 0]},
+            ]
+        },
+    )
 
     await _beat()
     await ctx.step("render", "running")
@@ -155,13 +169,16 @@ async def run_product_mock(ctx: Ctx, text: str, sketch: bool = False) -> None:
     totals = await _need(ctx, "check_totals", {})
     bom = await _need(ctx, "bom_build", {})
     await call_tool(ctx, "print_prep", {})
+    # On the user's printer the print plan prices the parts from the grams it prints.
+    total = float((ctx.state.bom or bom)["total_eur"])
+    materials = " and ".join(sorted({info["material"] for info in ctx.state.built.values()}))
     await ctx.step("stueckliste", "done")
     ctx.state.finished = True
     await _say(
         ctx,
         "freut_sich",
-        f"Phone stand done: {totals['mass_g']:.0f} g, {bom['total_eur']:.2f} €.",
-        f"Done. Two PETG parts and four rubber feet, {totals['mass_g']:.0f} g and {bom['total_eur']:.2f} € in parts. "
+        f"Phone stand done: {totals['mass_g']:.0f} g, {total:.2f} €.",
+        f"Done. Two {materials} parts and four rubber feet, {totals['mass_g']:.0f} g and {total:.2f} € in parts. "
         "Drag the sliders in the CAD tab and FreeCAD rebuilds it, then every check runs again.",
     )
 

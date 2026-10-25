@@ -561,7 +561,8 @@ export interface BuildGuideEvent {
   total_minutes: number;
 }
 export interface PrintWarning {
-  kind: "overhang" | "thin_wall" | "bed_size";
+  /** material: the user's printer cannot print it or it is not among their spools; warp: warping risk on that printer. */
+  kind: "overhang" | "thin_wall" | "bed_size" | "material" | "warp";
   text: string;
 }
 /** One printed part of the print plan, for a single piece. */
@@ -583,15 +584,85 @@ export interface PrintPart {
   gcode_url: string;
   source: "slicer" | "estimate";
   slicer_error?: string;
+  /** Overhangs need supports in this pose; support_g is the support plastic in the grams. */
+  supports?: boolean;
+  support_g?: number;
 }
 /** Print plan from print_prep: a headless slicer when installed, else an estimate from the mesh. */
 export interface PrintEvent {
   type: "print";
   source: "slicer" | "estimate";
   slicer: string;
-  profile: { printer: string; nozzle_mm: number; layer_height_mm: number; infill_pct: number; walls: number; bed_mm: number[] };
+  profile: { printer: string; nozzle_mm: number; layer_height_mm: number; infill_pct: number; walls: number; bed_mm: number[]; enclosure?: boolean | null };
+  /** The user's own printer when one is set, else null (a generic 220 mm bed). */
+  printer?: string | null;
   parts: PrintPart[];
-  totals: { parts: number; time_min: number; filament_g: number; cost_eur: number; warnings: number };
+  totals: { parts: number; time_min: number; filament_g: number; cost_eur: number; warnings: number; support_g?: number };
+}
+/** One load case of a FEM run. */
+export interface FemCase {
+  name: string;
+  force_n: number[];
+  max_von_mises_mpa: number;
+  max_across_layers_mpa: number;
+  max_deflection_mm: number;
+  safety: number;
+  safety_in_plane: number;
+  safety_across_layers: number;
+  governs: "layers" | "in-plane";
+  hot_spot_mm: number[];
+}
+/** FEM of one printed part on its real shape (gmsh + CalculiX), the stress-coloured model and the verdict. */
+export interface FemEvent {
+  type: "fem";
+  part_id: string;
+  part_name: string;
+  material: string;
+  /** Plastic share of the section (walls solid, core at infill_pct) that scales modulus and strength. */
+  fill: number;
+  infill_pct: number;
+  walls: number;
+  modulus_mpa: number;
+  strength_mpa: number;
+  z_strength_mpa: number;
+  safety: number;
+  max_von_mises_mpa: number;
+  max_deflection_mm: number;
+  governing: string;
+  governs: "layers" | "in-plane";
+  limit: number;
+  result: "pass" | "fail";
+  cases: FemCase[];
+  /** Where it is held and what loads it, one line each. */
+  loads: string[];
+  /** Vertex-coloured surface of the governing case: blue no stress, red at scale_mpa (the printed strength). */
+  glb_url: string;
+  scale_mpa: number;
+  nodes: number;
+  elements: number;
+  solver: string;
+  printer: string | null;
+  hot_spot_mm: number[];
+}
+/** A printer profile from the backend's store, with the maker's spec page. */
+export interface PrinterProfile {
+  id: string;
+  name: string;
+  maker: string;
+  bed_mm: number[];
+  nozzle_mm: number;
+  max_hotend_c: number;
+  max_bed_c: number;
+  enclosure: boolean;
+  materials: string[];
+  source_url: string;
+}
+/** The user's printer as the backend has it: the profile, their filaments, which of them it prints. */
+export interface UserPrinter extends Omit<PrinterProfile, "id"> {
+  model: string;
+  filaments: string[];
+  printable: string[];
+  not_printable: string[];
 }
 export interface WiringRow {
   component: string;
@@ -743,6 +814,7 @@ export type AgentEvent =
   | RemixEvent
   | BuildGuideEvent
   | PrintEvent
+  | FemEvent
   | FirmwareEvent
   | ElectronicsEvent
   | SafetyEvent
@@ -780,6 +852,7 @@ const EVENT_TYPES = new Set<AgentEvent["type"]>([
   "remix",
   "build_guide",
   "print",
+  "fem",
   "firmware",
   "electronics",
   "safety",

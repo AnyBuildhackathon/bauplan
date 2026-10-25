@@ -11,6 +11,7 @@ import { useSpeech } from "../../lib/speech";
 import { startListening as listen, type Listener } from "../../lib/voice";
 import { startVoice, stopVoice, useVoiceChat } from "../../lib/geminiLive";
 import { pickImage, SketchButton, SketchChip } from "./SketchDrop";
+import { PrinterButton } from "../print/PrinterPicker";
 
 interface SidebarChatInputProps {
   value: string;
@@ -237,6 +238,7 @@ export default function SidebarChatInput({
           </button>
         )}
         {sketches && !hearing && <SketchButton onPick={(file) => onSketchChange?.(file)} onError={flash} large={lg} />}
+        <PrinterButton size={lg ? "lg" : "sm"} />
         <ClickyToggle size={lg ? "lg" : "sm"} />
         <button
           type="button"

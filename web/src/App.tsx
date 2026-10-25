@@ -5,6 +5,7 @@
 // session store (events/store.ts) and every view renders from that store. The hooks mounted in
 // Bench run the background jobs: the camera director, the browser training and stress runners
 // (MuJoCo WASM claims jobs the backend queues), Mechanic's dashboard pilot and learning mode.
+import { usePrinterSync } from "./lib/printer";
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { IconRail } from "./components/IconRail";
@@ -87,6 +88,7 @@ export default function App() {
 
 function Bench() {
   useDirector();
+  usePrinterSync();
   const view = useUi((s) => s.view);
   const chatExpanded = useUi((s) => s.chatExpanded);
   useBolzenVoice();

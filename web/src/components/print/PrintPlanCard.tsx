@@ -1,5 +1,6 @@
 // Print plan in the chat: totals for every printed part, then one row per part with
-// time, filament, cost, printability warnings and the G-code or STL download.
+// time, filament, cost, printability warnings and the G-code or STL download. With the user's
+// printer set it names the printer and each part's pose and supports.
 import { useState } from "react";
 import { AlertTriangle, ChevronDown, Download, Printer } from "lucide-react";
 import type { PrintEvent, PrintPart } from "../../events/types";
@@ -10,6 +11,8 @@ function fmtTime(min: number): string {
   const m = Math.round(min);
   return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")} min`;
 }
+
+const ORIENTATION: Record<string, string> = { flat: "lying flat", upright: "standing up", as_modeled: "as modelled" };
 
 function PartRow({ part }: { part: PrintPart }) {
   const gcode = assetUrl(part.gcode_url);
@@ -25,9 +28,10 @@ function PartRow({ part }: { part: PrintPart }) {
       </div>
       <div className="num text-[13px] text-muted">
         {part.material} · {fmtTime(part.time_min)} · {fmtGram(part.filament_g)} · {part.size_mm.map((v) => Math.round(v)).join(" × ")} mm
+        {part.supports !== undefined && ` · ${ORIENTATION[part.orientation] ?? part.orientation}, ${part.supports ? `supports ${fmtGram(part.support_g ?? 0)}` : "no supports"}`}
       </div>
-      {part.warnings.map((w) => (
-        <div key={w.kind} className="mt-1 flex items-start gap-1.5 text-[13px] leading-snug text-fail-ink">
+      {part.warnings.map((w, i) => (
+        <div key={`${w.kind}-${i}`} className="mt-1 flex items-start gap-1.5 text-[13px] leading-snug text-fail-ink">
           <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           <span>{w.text}</span>
         </div>
@@ -66,6 +70,7 @@ export function PrintPlanCard({ plan }: { plan: PrintEvent }) {
             <span className="rounded-full bg-white px-2 py-0.5 text-[12px] font-semibold text-muted">
               {estimate ? "estimate" : plan.slicer || "slicer"}
             </span>
+            {plan.printer && <span className="min-w-0 truncate text-[12px] font-semibold text-muted">{plan.printer}</span>}
           </div>
           <div className="num text-[13px] text-muted">
             {fmtTime(totals.time_min)} · {fmtGram(totals.filament_g)} · {fmtEur(totals.cost_eur)}

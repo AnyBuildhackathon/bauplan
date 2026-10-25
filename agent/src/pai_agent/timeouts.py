@@ -18,7 +18,8 @@ DEFAULT_S = 120.0
 BUDGET_S = {
     # FreeCAD: up to three script attempts plus the simplified-block fallback.
     "cad_part": 300.0,
-    "cad_update": 300.0,
+    # A change reruns every check, the FEM too.
+    "cad_update": 480.0,
     "cad_frame": 200.0,
     "assemble": 120.0,
     "reference_load": 600.0,
@@ -42,6 +43,9 @@ BUDGET_S = {
     "bom_build": 120.0,
     # A slicer takes seconds to a minute per part; its own subprocess timeout is 180 s.
     "print_prep": 300.0,
+    # FEM meshes and solves each load case in CalculiX (150 s each at most); a material change reruns it.
+    "fem_check": 420.0,
+    "material_pick": 420.0,
     # A web part search reads shop pages for up to 120 s.
     "part_pick": 150.0,
     "parts_search": 150.0,

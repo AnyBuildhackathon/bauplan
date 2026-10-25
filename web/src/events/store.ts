@@ -13,6 +13,7 @@ import {
   type BomEvent,
   type BuildGuideEvent,
   type PrintEvent,
+  type FemEvent,
   type ExplainEvent,
   type CadEvent,
   type DrawEvent,
@@ -236,6 +237,9 @@ export interface SessionState {
   buildGuide: BuildGuideEvent | null;
   /** The latest print plan: time, filament, cost and warnings per printed part. */
   printPlan: PrintEvent | null;
+  /** FEM of printed parts by part id, the latest run of each; `femOrder` lists them newest last. */
+  fem: Record<string, FemEvent & { seq: number; at: number }>;
+  femOrder: string[];
   /** Learning-mode explanations by key, the latest of each. */
   explains: Record<string, ExplainEvent>;
   /** Design optimizer runs by id, the latest event of each. */
@@ -376,6 +380,8 @@ function emptyState() {
     stress: {} as SessionState["stress"],
     buildGuide: null as BuildGuideEvent | null,
     printPlan: null as PrintEvent | null,
+    fem: {} as SessionState["fem"],
+    femOrder: [] as string[],
     explains: {} as Record<string, ExplainEvent>,
     optimizes: {} as Record<string, OptimizeEvent>,
     ui: null as SessionState["ui"],
@@ -592,6 +598,8 @@ export const useSession = create<SessionState>((set, get) => ({
           bom: null,
           buildGuide: null,
           printPlan: null,
+          fem: {},
+          femOrder: [],
           cad: null,
           renders: [],
           parts: {},
@@ -610,6 +618,8 @@ export const useSession = create<SessionState>((set, get) => ({
         return set({ log, buildGuide: ev });
       case "print":
         return set({ log, printPlan: ev, chat: [...s.chat, { kind: "print", id: nextId("print"), seq, at, plan: ev }] });
+      case "fem":
+        return set({ log, fem: { ...s.fem, [ev.part_id]: { ...ev, seq, at } }, femOrder: [...s.femOrder.filter((id) => id !== ev.part_id), ev.part_id] });
       case "explain": {
         const explains = { ...s.explains, [ev.key]: ev };
         const known = s.chat.some((c) => c.kind === "explain" && c.key === ev.key);

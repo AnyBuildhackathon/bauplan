@@ -16,7 +16,7 @@ import subprocess
 import threading
 from pathlib import Path
 
-from pai_agent import cache, drone_assembly, drone_geometry, freecad_run
+from pai_agent import cache, drone_assembly, drone_geometry, freecad_run, printers
 from pai_agent.part_models import swap
 from pai_agent.context import Ctx
 from pai_agent.freecad_run import FreeCADFailed, build_in_gui, build_with_freecad, ensure_gui, find_freecadcmd
@@ -289,6 +289,10 @@ async def cad_frame(ctx: Ctx, args: dict) -> dict:
         log.warning("part models not placed: %s", exc)
         part_models = []
 
+    # FreeCAD and CadQuery weigh the frame as carbon plate; printed on the user's printer it weighs its filament.
+    printed = ctx.state.print_materials.get("frame") if printers.current() else None
+    if printed:
+        mass_g = mass_g * printers.density(printed["material"]) / (_CARBON_G_PER_MM3 * 1000.0)
     mass_g = round(mass_g, 2)
     ctx.state.frame_mass_g = mass_g
     ctx.state.cad_params = params
@@ -312,7 +316,13 @@ async def cad_frame(ctx: Ctx, args: dict) -> dict:
         }
     )
     where = "FreeCAD window" if viewed else ("FreeCAD headless" if source == "freecad" else "CadQuery")
-    detail = where + ", " + f"{mass_g:.1f}" + " g carbon, STL and STEP" + ("" if not notes else ". " + " ".join(notes))
+    detail = where + ", " + f"{mass_g:.1f}" + " g " + (printed["material"] if printed else "carbon") + ", STL and STEP" + ("" if not notes else ". " + " ".join(notes))
+    # A frame that was simulated before is simulated again on its new shape.
+    from pai_agent.tools.fem import refresh_fem
+
+    refreshed = await refresh_fem(ctx, "frame")
+    if refreshed is not None:
+        notes.append("FEM again: " + str(refreshed.get("detail") or refreshed.get("error") or ""))
     return {
         "ok": True,
         "detail": detail,

@@ -2,13 +2,14 @@
 
 Defaults come from the environment and can be changed at runtime through POST /api/settings
 (the settings control in the dashboard), including `llm_provider`: the API key, the local Claude
-Code subscription or auto (`provider.py`). Never holds or logs a key.
+Code subscription or auto (`provider.py`), and the user's 3D printer (`printers.py`). Never holds or logs a key.
 """
 
 from __future__ import annotations
 
 import os
 
+from pai_agent import printers
 from pai_agent.env import load_env
 
 MODELS = ("claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5", "claude-fable-5-1")
@@ -60,6 +61,9 @@ def update(body: dict) -> dict:
             changes[key] = value
     if "delegation" in body:
         changes["delegation"] = bool(body["delegation"])
+    if "printer" in body:
+        # Validated before any other change lands, so a bad printer leaves the models as they were.
+        printers.set_printer(body["printer"])
     if "llm_provider" in body:
         from pai_agent import provider
 
@@ -83,6 +87,8 @@ def public() -> dict:
             {"id": "api", "label": "API key"},
             {"id": "subscription", "label": "My Claude subscription (local)"},
         ],
+        "printer": printers.current(),
+        "printer_catalog": printers.catalog(),
     }
 
 

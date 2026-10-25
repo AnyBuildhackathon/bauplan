@@ -90,8 +90,8 @@ It has no OpenAPI page; FastAPI's generated docs are turned off on purpose for t
 | Method | Path | Purpose | Limit | Spec |
 | --- | --- | --- | --- | --- |
 | `POST` | `/api/explain` | Explain one decision (`swap`, `part`, `requirement`, `sim`, `param`) with computed facts and a formula. | explain | [Learning mode](events.md#learning-mode) |
-| `GET` | `/api/settings` | Where Claude runs (API key or local subscription), orchestrator and sub-agent models, effort levels and delegation. | | [Settings](events.md#settings) |
-| `POST` | `/api/settings` | Change any of those for the next request. | | [Settings](events.md#settings) |
+| `GET` | `/api/settings` | Where Claude runs (API key or local subscription), orchestrator and sub-agent models, effort levels, delegation, and the user's 3D printer with the printer catalog. | | [Settings](events.md#settings) |
+| `POST` | `/api/settings` | Change any of those for the next request; `printer` `{model, filaments}` or `null`. | | [Settings](events.md#settings) |
 | `GET` | `/api/training/browser` | The latest browser training job. | | [Learning mode](events.md#learning-mode) |
 | `POST` | `/api/training/{job_id}/claim` | One dashboard tab claims a queued browser training job. | | [Learning mode](events.md#learning-mode) |
 | `POST` | `/api/training/{job_id}/progress` | The claiming tab reports generations and the best controller. | | [Learning mode](events.md#learning-mode) |

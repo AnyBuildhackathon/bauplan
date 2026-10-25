@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+from pai_agent import printers
 from pai_agent.context import Ctx, de
 from pai_agent.scene import PART_CATEGORIES
 from pai_agent.tools.physics import PERFORMANCE_KEYS, REQUIRED
@@ -34,6 +35,22 @@ async def bom_build(ctx: Ctx, args: dict) -> dict:
         mass = float(part["mass_g"])
         if category == "frame" and ctx.state.frame_mass_g is not None:
             mass = float(ctx.state.frame_mass_g)
+        printed = printers.printed_frame(ctx.state) if category == "frame" else None
+        if printed:
+            # The user prints the frame: its filament replaces the shop's frame.
+            items.append(
+                {
+                    "name": printers.printed_line_name("Frame", printed["material"]),
+                    "qty": int(part["bom_qty"]),
+                    "unit_price_eur": printed["price_eur"],
+                    "weight_g": round(mass, 2),
+                    "shop": "printed",
+                    "url": "",
+                    "price_source": "printer",
+                    "category": "frame",
+                }
+            )
+            continue
         items.append(
             {
                 "name": part["name"],
@@ -101,7 +118,7 @@ async def _priced_bom(ctx: Ctx, items: list[dict], catalog_detail: Callable[[flo
         await _sync_metrics(ctx, bom["total_eur"])
         detail = "Bill of materials " + f"{bom['total_eur']:.2f}" + " €, live prices for " + str(found) + " of " + str(len(items)) + " lines"
     else:
-        if ctx.state.product == "generic":
+        if ctx.state.product == "generic" or printers.printed_frame(ctx.state):
             await _sync_metrics(ctx, bom["total_eur"])
         detail = catalog_detail(bom["total_eur"])
     result = {"ok": True, "detail": detail, **bom}
@@ -194,15 +211,17 @@ async def _generic_bom(ctx: Ctx) -> dict:
         if part["kind"] == "printed":
             info = state.built[part["id"]]
             mass = float(info["mass_g"])
+            own = printers.current() is not None and info["material"] in printers.MATERIALS
             items.append(
                 {
-                    "name": part["name"] + ", printed " + info["material"],
+                    "name": printers.printed_line_name(part["name"], info["material"]),
                     "qty": part["qty"],
-                    "unit_price_eur": round(mass * COST_EUR_PER_G.get(info["material"], 0.03), 2),
+                    # On the user's own printer a part costs its filament at that spool's price.
+                    "unit_price_eur": round(mass * (printers.eur_per_g(info["material"]) if own else COST_EUR_PER_G.get(info["material"], 0.03)), 2),
                     "weight_g": round(mass, 2),
                     "shop": "printed",
                     "url": "/files/" + state.session_id + "/part-" + part["id"] + ".stl",
-                    "price_source": "estimated",
+                    "price_source": "printer" if own else "estimated",
                     "category": part["id"],
                 }
             )
