@@ -11,7 +11,8 @@ The airframe (`airframe`) comes from the parts, nothing is a fixed constant of o
 - Thrust: each motor's peak static thrust is its catalog `thrust_g` (the bench figure at its
   rated voltage; a higher-voltage pack never adds thrust). Thrust falls linearly with the air
   speed through the disc, to zero at the propeller's pitch speed: pitch times loaded rpm, with
-  loaded rpm = 75 % of kv times the pack's voltage. Without a pitch the propeller is taken as
+  loaded rpm = 75 % of kv times the pack's voltage (capped at 3.8 V per cell the motor is
+  rated for). Without a pitch the propeller is taken as
   pitch = 0.8 diameter; without a kv, the pitch speed is 35 m/s.
 - Motor response: a first-order lag of 15 ms for a 51 mm propeller, growing with the square of
   the diameter (bigger props spin up slower), 10 to 120 ms.
@@ -92,6 +93,10 @@ def airframe(geo: dict, selected: dict) -> dict:
     pitch_in = _num(prop, "pitch_in") or diameter * 0.8 / 25.4
     kv = _num(motor, "kv")
     volts = _num(battery, "voltage_v")
+    cells_max = _num(motor, "cells_max")
+    if volts and cells_max:
+        # A pack above the motor's rating spins it no faster here, as physics_calc adds no thrust for it.
+        volts = min(volts, cells_max * 3.8)
     if kv and volts:
         rpm = kv * volts * LOADED_RPM
         pitch_speed = pitch_in * 0.0254 * rpm / 60.0
