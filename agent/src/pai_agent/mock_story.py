@@ -358,12 +358,11 @@ async def _missions(ctx: Ctx, missions: list[str]) -> None:
     await _need(ctx, "ui_control", {"control": "tab:simulation"})
     failed = [m for m in flown["missions"] if m["result"] == "fail"]
     await ctx.step("simulation", "failed" if failed else "done")
-    lines = "\n".join("- " + m["summary"] for m in flown["missions"])
     if failed:
         worst = failed[0]
-        await _say(ctx, "besorgt", "Mission check: not all green.", "Mission results:\n\n" + lines + "\n\n" + worst["why"] + " The offline catalog has no stronger part for this; with the live model I would search for one.")
+        await _say(ctx, "besorgt", "Mission check: not all green.", worst["summary"] + " " + worst["why"] + " The offline catalog has no stronger part for this; with the live model I would search for one.")
     else:
-        await _say(ctx, "freut_sich", "All missions pass. Fast, and it catches flies.", "Mission results:\n\n" + lines)
+        await _say(ctx, "freut_sich", "All missions pass.", "All " + str(len(flown["missions"])) + " missions pass with these parts; the card has the numbers and every replay is in the Simulation tab.")
 
 
 async def _swap_pack(ctx: Ctx) -> bool:

@@ -23,10 +23,10 @@ const ORDER: MissionId[] = ["speed_run", "turn", "hold", "chase"];
 
 /** How each mission is framed: stage size, drawn drone scale, and whether the camera follows. */
 const FRAMING: Record<MissionId, { stage: number; scale: number; follow: boolean }> = {
-  speed_run: { stage: 3, scale: 5, follow: true },
-  turn: { stage: 1.5, scale: 5, follow: true },
+  speed_run: { stage: 3, scale: 4, follow: true },
+  turn: { stage: 1.5, scale: 4, follow: true },
   hold: { stage: 0.5, scale: 2, follow: false },
-  chase: { stage: 1, scale: 4, follow: false },
+  chase: { stage: 1, scale: 6, follow: false },
 };
 
 /** three.js is y-up; MuJoCo is z-up with the nose on +y, the model's nose on -z. */
@@ -104,11 +104,11 @@ function Fly({ target }: { target: number[][] }) {
   return (
     <group ref={ref}>
       <mesh>
-        <sphereGeometry args={[0.07, 16, 12]} />
+        <sphereGeometry args={[0.1, 16, 12]} />
         <meshStandardMaterial color="#1c1c1f" roughness={0.4} />
       </mesh>
       <mesh rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[0.12, 0.006, 8, 40]} />
+        <torusGeometry args={[0.16, 0.01, 8, 40]} />
         <meshBasicMaterial color="#ff8a3d" transparent opacity={0.7} />
       </mesh>
     </group>
@@ -165,7 +165,7 @@ function MissionCamera({ run, bounds }: { run: MissionRun; bounds: THREE.Box3 })
     if (!follow) return;
     const { p } = poseAt(run.poses, simClock.t);
     // Beside and a little behind the flight, so speed and lean both read.
-    const want = p.clone().add(new THREE.Vector3(-1.6, 1.4, 4.2));
+    const want = p.clone().add(new THREE.Vector3(-1.1, 0.55, 3.0));
     camera.position.lerp(want, 0.2);
     look.current.lerp(p, 0.3);
     camera.lookAt(look.current);
@@ -333,7 +333,7 @@ export function MissionView() {
               height={70}
               xDomain={[0, duration]}
               yDomain={[0, yMax]}
-              yTicks={[0, c.marker]}
+              yTicks={c.marker > yMax * 0.2 ? [0, c.marker] : [c.marker, Math.round(yMax * 0.8)]}
               formatY={(v) => `${fmtNum(v)} ${c.unit}`}
               marker={{ y: c.marker, label: c.markerLabel }}
             />
