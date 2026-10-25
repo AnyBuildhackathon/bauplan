@@ -122,6 +122,15 @@ def met_for(state: BuildState, requirement: dict) -> bool | None:
         if not state.stl_path:
             return None
         return (REPO_ROOT / state.stl_path).is_file()
+    if requirement_id == "strength":
+        # The printed frame's FEM safety factor (tools/fem.py), on a printer the user has.
+        from pai_agent.tools.fem import strength_value
+
+        value = strength_value(state, requirement)
+        if value is None:
+            return None
+        requirement["_detail"] = f"{value:.1f}x, min. {float(requirement.get('min', 2)):g}x"
+        return value >= float(requirement.get("min", 2))
     return None
 
 

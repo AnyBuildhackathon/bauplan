@@ -211,6 +211,11 @@ The answer also carries `llm_provider` (`auto`, `api` or `subscription`, from `P
 With `ANYBUILD_ACCESS_CODE` set (a public server) `subscription` is refused with HTTP 400 and the reason in `detail`.
 The defaults come from `PAI_ORCHESTRATOR_MODEL` (else `ANTHROPIC_MODEL`), `PAI_ORCHESTRATOR_EFFORT`, `PAI_SUBAGENT_MODEL`, `PAI_SUBAGENT_EFFORT` and `PAI_DELEGATION`.
 
+The same answer carries the user's 3D printer: `printer` is `null`, or `{model, name, maker, bed_mm, nozzle_mm, max_hotend_c, max_bed_c, enclosure, materials, source_url, filaments, printable, not_printable}` (`filaments` the user's spools, `printable` those this printer prints, `not_printable` the rest, for example ABS or ASA on a printer without an enclosure).
+`printer_catalog` is `{printers: [{id, name, maker, bed_mm, nozzle_mm, max_hotend_c, max_bed_c, enclosure, materials, source_url}], filaments: [{id, name, eur_per_kg, needs_enclosure}], checked}`; the profiles come from each maker's spec page (`source_url`), the filament properties from the makers' data sheets (`agent/src/pai_agent/printers.py`).
+`POST /api/settings` with `printer` `{model, filaments}` sets it (filaments `PLA`, `PETG`, `ABS`, `ASA`, `NYLON`, `TPU`; leaving `filaments` out takes every material the printer prints) and `null` clears it; HTTP 400 for an unknown model or filament.
+The dashboard keeps the choice in the browser and sends it again whenever the backend connects. With a printer set, every request to the orchestrator starts with one line naming the printer, its bed and the filaments it prints; without one the build runs as before.
+
 ### Learning mode
 
 `POST /api/explain` with `{"kind": "...", "id": "...", "chat": false}` explains one decision of the current build (`agent/src/pai_agent/explain.py`).
@@ -355,6 +360,7 @@ A requirement counts as `user` only when its quote is really in a request of thi
 `met` is `true`, `false`, or `null`.
 `null` means the build does not know yet.
 For a product built from a spec, `id` is the spec requirement id, the quote is the user's request, and `detail` is the number its check found against the limit, such as `0.81 N, min. 0.75 N`; `detail` is absent or `null` before the check ran.
+The first `fem_check` adds the row `strength` (min `2x` safety factor of the printed parts, proposed by Mechanic) when no requirement judges strength yet; the drone gets it too, judged by the printed frame's FEM.
 
 ### metrics
 
@@ -487,6 +493,8 @@ A line falls back to the catalog when the search fails, finds nothing, or return
 Live results are cached in memory for 15 minutes (failed searches for one minute), so a rebuild only searches the changed parts, and later `metrics` keep using the cached live prices in `price_eur`.
 Older recordings have no `prices` or `price_source`; read them as `catalog`.
 `stl_path` is the STL path relative to the repository root, or an empty string before CAD.
+With the user's 3D printer set, printed lines are named `{part}, printed on your {printer} in {material}` with `price_source` `printer`: `bom_build` prices them from the part's mass at that filament's price per kg, and `print_prep` replaces that with the grams it plans to print (supports included) and adds the grams to the name.
+The drone's frame is then printed instead of bought: its line (`category` `frame`, shop `printed`) costs its filament, and `physics_calc` uses that price and the printed frame's mass.
 After `print_prep` the list ends with one filament line (`category: "filament"`, shop `printed`, `weight_g` 0, `unit_price_eur` 0) naming the material and grams of the print plan; it never changes `total_eur`, because printed parts already carry their filament cost and the drone's printed frame is an optional test print next to the bought carbon frame.
 
 ### mascot
@@ -568,6 +576,19 @@ The print plan for every printed part, published whole by `print_prep` after `bo
 `warnings` is a list of `{kind, text}` with `kind` `overhang` (faces past 45 degrees that are not on the bed), `thin_wall` (a designed thickness or the thinnest extent under 0.8 mm) or `bed_size` (over a 220 × 220 × 250 mm build volume).
 `totals` is `{parts, time_min, filament_g, cost_eur, warnings}` over every piece (`qty` counted).
 The drone prints its CAD frame as a PETG-CF test print; a spec product prints its printed parts, the gripper its body.
+
+With the user's 3D printer set, `printer` names it (else `null`) and the plan follows it: `profile` is that printer's bed, nozzle and `enclosure` with the maker's `source_url`, the estimate uses its typical flow, the slicer gets its bed and the filament's temperatures, and the default `orientation` is `auto`: per part, the pose (`flat`, `as_modeled`, `upright`) that fits the bed and needs the least support, reported as the pose it chose.
+Each part then adds `supports` (overhangs need support in that pose) and `support_g`, `totals` adds `support_g`, `bed_size` checks that printer's bed, and `warnings` may add `material` (the printer cannot print it, for example ABS without an enclosure, or it is not among the user's filaments) and `warp` (`Medium` or `High` warping risk from the material's shrink, an open or enclosed printer and the part's length on the bed).
+The drone frame is printed in the material `material_pick` chose for it.
+
+### fem
+
+FEM of one printed part on its real shape, from `fem_check`: gmsh meshes its STEP into quadratic tetrahedra and CalculiX solves each load case (both ship with FreeCAD).
+`part_id` and `part_name` name the part (`frame` for the drone), `material` its filament, `fill` the plastic share of the section (perimeters solid, the core at `infill_pct` with `walls` perimeters) that scales the data sheet `modulus_mpa`, `strength_mpa` (layer plane) and `z_strength_mpa` (across the layers).
+`cases` is a list of `{name, force_n, max_von_mises_mpa, max_across_layers_mpa, max_deflection_mm, safety, safety_in_plane, safety_across_layers, governs, hot_spot_mm}`; `safety` is the smaller of the layer-plane strength over the von Mises stress and the interlayer strength over the tension along the print direction, with the clamped and loaded nodes themselves left out of the maxima.
+`governing` is the case with the lowest safety, `safety`, `max_von_mises_mpa` and `hot_spot_mm` are its numbers, `max_deflection_mm` the largest over all cases, `limit` the strength requirement (2x unless the user set one) and `result` `pass` or `fail` against it.
+`loads` says in one line each where the part is held and what loads it; `glb_url` is the stress-coloured surface of the governing case (vertex colours from blue at 0 to red at `scale_mpa`, the printed strength), `nodes`, `elements` and `solver` describe the mesh, `printer` is the user's printer or `null`.
+The dashboard shows it in the Simulation tab's Stress pane.
 
 ### point
 
@@ -726,7 +747,10 @@ Closing buttons are tagged `{control}:close`, and `look:3d` is the 3D switch of 
 
 ## Tools
 
-`ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `simulate_mission`, `stress_test`, `cad_frame`, `cad_part`, `product_brief`, `product_spec`, `sketch_to_spec`, `reference_load`, `delegate`, `part_pick`, `assemble`, `cad_update`, `check_totals`, `check_tip_over`, `check_deflection`, `check_torque`, `check_runtime`, `check_power`, `check_thermal`, `check_rollover`, `simulate_assembly`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `blender_render`, `bom_build`, `print_prep`, `build_guide`, `firmware`, `electronics_plan`, `safety_check`, `ui_point_at`, `ui_draw`, `ui_control`, `mascot_say`, `train_in_browser`, `optimize_design`, `optimize_apply`.
+`ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `simulate_mission`, `stress_test`, `cad_frame`, `cad_part`, `product_brief`, `product_spec`, `sketch_to_spec`, `reference_load`, `delegate`, `part_pick`, `assemble`, `cad_update`, `check_totals`, `check_tip_over`, `check_deflection`, `check_torque`, `check_runtime`, `check_power`, `check_thermal`, `check_rollover`, `simulate_assembly`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `blender_render`, `bom_build`, `print_prep`, `build_guide`, `firmware`, `electronics_plan`, `safety_check`, `ui_point_at`, `ui_draw`, `ui_control`, `mascot_say`, `train_in_browser`, `optimize_design`, `optimize_apply`, `material_pick`, `fem_check`.
+
+`material_pick` takes `part_id` (none for the drone frame), `max_temp_c`, `outdoor`, `impact`, `flex` and optionally `material` and `reason`; it chooses among the filaments the user's printer prints (every material without a printer): heat and flex rule a material out (heat deflection temperature at least 5 °C over `max_temp_c`), then outdoor UV and impact toughness rank, then stiffness and strength, then the spool price. It returns `material`, a one-sentence `reason`, `meets_needs`, `rejected` with why, and the data sheet `properties` and `source`; the part's mass follows the density and every check runs again.
+`fem_check` takes `part_id` and optionally `cases` (`[{name, region, force_n}]`, newtons in the assembly frame), `fixed` (the held region), `infill_pct` and `walls`; a region is `{face: x_min ... z_max}`, `{near: [x, y, z], radius_mm}` or `{box: [x0, y0, z0, x1, y1, z1]}`. Without cases a spec part is held on its lowest face and loaded by each external load within 40 mm at twice its weight (else a 10 N press on its top); the drone frame is held at the stack, with all four motors at full thrust and a crash on one motor at 10 g. It emits the `fem` event, stores its result as a check (rerun by `cad_update`, by `cad_frame` for the drone and by `material_pick`) and judges the `strength` requirement.
 
 `optimize_design` (drone, after a build) takes `goals`, `keep` and `count` (4 to 8, default 6). With a key, `count` variant agents on the sub-agent model run in parallel (`agent` events with `role` `optimizer`, `label` "Variant agent A" ...), each proposing one battery, arm length and plate thickness; without one, fixed strategies propose them. A proposal that repeats the current build or another variant is replaced by the next strategy. Every variant runs the same checks and the result is the `optimize` event; `optimize_apply` takes `id` and `variant` (default the latest run and its recommendation) and builds it as `POST /api/optimize/apply` does.
 
@@ -747,7 +771,7 @@ A part has `id`, `name`, `kind` (`printed`, `bought` or `external`), `qty` and o
 A printed part needs `material`, a `description` of its shape and where it sits, `size_mm` (the envelope its build is checked against) and `params` (mm, they become sliders).
 A bought part has `category` and `query` for the catalog; with `size_mm` and `position_mm` (its centre) it shows as a block and counts for the centre of mass.
 An external part is a load that is not ordered, such as the phone on a stand: `mass_g`, `position_mm` and `size_mm`.
-A requirement has `text`, `check` and a limit: `mass` (max g, product without loads), `cost` (max eur), `size` (max mm, largest side), `tip_over` (min deg, or min N pushed at the top), `deflection` (max mm, optional `part_id`), `torque` (min x), `runtime` (min with `unit` `min`, `h` or `days`), `stability` (max deg after the push), `drop` (max g), `power` (min x supply headroom over the peak current), `thermal` (max `deg_c` inside the case), `rollover` (min `g` lateral, or min `deg` side slope) or `printable` (no limit).
+A requirement has `text`, `check` and a limit: `mass` (max g, product without loads), `strength` (min x, the FEM safety factor of the printed parts, optional `part_id`), `cost` (max eur), `size` (max mm, largest side), `tip_over` (min deg, or min N pushed at the top), `deflection` (max mm, optional `part_id`), `torque` (min x), `runtime` (min with `unit` `min`, `h` or `days`), `stability` (max deg after the push), `drop` (max g), `power` (min x supply headroom over the peak current), `thermal` (max `deg_c` inside the case), `rollover` (min `g` lateral, or min `deg` side slope) or `printable` (no limit).
 At most six printed parts and sixteen parts.
 A spec that keeps the name or a part id revises the product on the bench: a printed part with the same description and material keeps its script and is rebuilt from it when its params changed, a part that is still bought keeps its pick, and the result lists `kept`, `rebuilt_with_new_params`, `to_build` and `to_pick`.
 
@@ -798,7 +822,7 @@ CadQuery writes the same STL, STEP, and GLB when FreeCAD is missing or the scrip
 `blender_render` runs `blender -b -P` on the current drone GLB, or on the frame STL after a CadQuery fallback.
 `build_guide` is drone only, comes after `bom_build`, and takes `steps` as in the `build_guide` event, without `items`; a step number out of order, an unknown part, or a scene part no step installs is an error that names it.
 A step may add `bom_parts`, categories from the bill of materials that have no scene part (`camera`, `canopy`, `hardware`); they show up in `items`.
-`print_prep` comes after `bom_build`; `orientation` (`flat` by default, `upright`, `as_modeled`) applies to every part and `orientations` sets it per part id. It runs a slicer found on `PATH` or in `/Applications` (`PAI_SLICER` names an executable, `off` skips it) and emits one `print` event.
+`print_prep` comes after `bom_build`; `orientation` (`flat` by default, `auto` by default with a printer set, `upright`, `as_modeled`) applies to every part and `orientations` sets it per part id. It runs a slicer found on `PATH` or in `/Applications` (`PAI_SLICER` names an executable, `off` skips it) and emits one `print` event.
 
 ## Mock story
 
@@ -828,6 +852,10 @@ A prompt that asks for a phone stand (`phone`, `tablet` with `stand`, `holder`, 
 Mechanic deepens the base from 60 to 110 mm with `cad_update`, every check runs again and passes (0.81 N, the push only rocks it), then Blender renders it and the bill of materials comes to 3.32 € and 116 g.
 Once the drone is built, a prompt that asks for it lighter, cheaper, stronger or longer-running ("make the drone lighter but keep 8 minutes") runs `optimize_design` with goals and limits read from the sentence (`8 minutes` keeps the flight time, `under 50 g` the weight; without a number the flight-time requirement holds); before any build it builds v1 first.
 Six variants come back, each with its checks; "take variant C" or a click on its point builds it as the next version.
+With the user's 3D printer set, both stories add the printer beats (`agent/src/pai_agent/mock_printer.py`): `material_pick` for each printed part, then `fem_check` on its real shape.
+The phone stand's back rest (a charging phone warms it to about 40 °C) and base pick from the printer's filaments, and the back rest is checked with the phone set down and a 5 N press on its top edge.
+The drone's frame is printed: PETG on a printer with PLA and PETG (PLA softens at 55 °C next to 60 °C motors), and the 2 mm plate fails the crash on one motor at 1.7x against 2x; Mechanic thickens it to 2.5 mm with `cad_frame`, the FEM runs again and passes at 2.6x, and the bill of materials prices the frame as filament.
+Without a printer the stories play as above.
 
 ## Omniverse results
 

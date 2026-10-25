@@ -19,6 +19,7 @@ camera, canopy, hardware and video transmitter count for mass and price when cho
 
 from __future__ import annotations
 
+from pai_agent import printers
 from pai_agent.context import Ctx, de
 from pai_agent.flight import arm_length as arm_length_mm, bench, motor_power_w, performance
 from pai_agent.scene import PART_CATEGORIES
@@ -60,7 +61,9 @@ def compute(state: BuildState) -> dict:
         if category == "frame" and state.frame_mass_g is not None:
             mass = float(state.frame_mass_g)
         weight += mass * qty
-        price += unit_price_eur(part) * qty
+        printed = printers.printed_frame(state) if category == "frame" else None
+        # With the user's printer the frame is printed: it costs its filament, not the shop price.
+        price += (printed["price_eur"] if printed else unit_price_eur(part)) * qty
         if category == "motor":
             thrust += float(part["thrust_g"]) * qty
 

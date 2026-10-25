@@ -6,6 +6,14 @@ slicer the numbers come from the mesh: shell and infill volume at a default prof
 average volumetric flow and a per-layer overhead, labelled 'estimate', with no G-code.
 Printability warnings always come from the mesh itself: overhangs past 45 degrees, walls
 thinner than 0.8 mm, and parts that do not fit a 220 mm bed.
+
+With the user's 3D printer set (`pai_agent.printers`) everything follows that printer: its bed
+and nozzle in the slicer and the estimate, its typical flow, the bed-fit check against its own
+bed, an orientation chosen per part (`auto`: the fitting pose that needs the least support), the
+warping risk of the material on that printer (enclosed or open, part length on the bed), a
+warning for a material it cannot print, and the cost of each part from the grams and the price
+of that filament. The bill of materials then prices printed parts as filament on the user's own
+printer; the drone's frame is printed instead of bought.
 """
 
 from __future__ import annotations
@@ -20,6 +28,7 @@ from pathlib import Path
 
 import numpy as np
 
+from pai_agent import printers
 from pai_agent.context import Ctx
 
 BED_MM = (220.0, 220.0, 250.0)
@@ -42,10 +51,31 @@ FILAMENTS = {
 }
 FILAMENT_DIAMETER_MM = 1.75
 ORIENTATIONS = ("as_modeled", "flat", "upright")
+CHOICES = (*ORIENTATIONS, "auto")
 _SLICERS = (
     ("PrusaSlicer", ("prusa-slicer", "PrusaSlicer", "prusa-slicer-console"), "/Applications/PrusaSlicer.app/Contents/MacOS/PrusaSlicer"),
     ("OrcaSlicer", ("orca-slicer", "OrcaSlicer"), "/Applications/OrcaSlicer.app/Contents/MacOS/OrcaSlicer"),
 )
+
+
+def profile() -> dict:
+    """The print profile: the user's printer when one is set, else the generic 220 mm bed slinger."""
+
+    printer = printers.current()
+    if printer is None:
+        return {**PROFILE, "bed_mm": list(BED_MM), "flow_mm3_s": FLOW_MM3_S, "enclosure": None, "model": None}
+    return {
+        "printer": printer["name"],
+        "model": printer["model"],
+        "nozzle_mm": printer["nozzle_mm"],
+        "layer_height_mm": PROFILE["layer_height_mm"],
+        "infill_pct": printers.PRINT["infill_pct"],
+        "walls": printers.PRINT["walls"],
+        "bed_mm": list(printer["bed_mm"]),
+        "flow_mm3_s": printer["flow_mm3_s"],
+        "enclosure": printer["enclosure"],
+        "source_url": printer["source_url"],
+    }
 
 
 def find_slicer() -> tuple[str, str] | None:
@@ -124,28 +154,43 @@ def analyse(tris: np.ndarray) -> dict:
     }
 
 
-def estimate(mesh: dict, material: str) -> dict:
-    """Print time and filament from shell plus infill volume at the default profile."""
+def filament_price(material: str) -> tuple[float, float]:
+    """(g/cm³, €/g) of the material: the user's filament table with a printer set, else the generic spools."""
 
-    density, eur_per_g = FILAMENTS.get(material, FILAMENTS["PETG"])
-    wall = PROFILE["walls"] * PROFILE["nozzle_mm"] * 1.1
+    if printers.current() is not None and printers.normalise_material(material) in printers.MATERIALS:
+        return printers.density(material), printers.eur_per_g(material)
+    return FILAMENTS.get(material, FILAMENTS["PETG"])
+
+
+def estimate(mesh: dict, material: str, prof: dict | None = None) -> dict:
+    """Print time and filament from shell plus infill volume at the profile."""
+
+    prof = prof or profile()
+    density, eur_per_g = filament_price(material)
+    wall = prof["walls"] * prof["nozzle_mm"] * 1.1
     shell = min(mesh["volume_mm3"], mesh["area_mm2"] * wall)
-    extruded = shell + (mesh["volume_mm3"] - shell) * PROFILE["infill_pct"] / 100
+    extruded = shell + (mesh["volume_mm3"] - shell) * prof["infill_pct"] / 100
     # Supports under overhangs: a sparse column 0.15 of the area times half the part height.
     support = mesh["overhang_mm2"] * 0.15 * mesh["size_mm"][2] / 2
     extruded += support
-    layers = max(1, math.ceil(mesh["size_mm"][2] / PROFILE["layer_height_mm"]))
-    seconds = START_S + extruded / FLOW_MM3_S + layers * LAYER_OVERHEAD_S
+    layers = max(1, math.ceil(mesh["size_mm"][2] / prof["layer_height_mm"]))
+    seconds = START_S + extruded / prof["flow_mm3_s"] + layers * LAYER_OVERHEAD_S
     grams = extruded * density / 1000
     return {
         "time_min": round(seconds / 60, 0),
         "filament_g": round(grams, 1),
         "filament_m": round(extruded / (math.pi * (FILAMENT_DIAMETER_MM / 2) ** 2) / 1000, 2),
         "cost_eur": round(grams * eur_per_g, 2),
+        "support_g": round(support * density / 1000, 1),
     }
 
 
-def warnings_for(mesh: dict, min_wall_mm: float | None) -> list[dict]:
+def fits(mesh: dict, bed: list[float]) -> bool:
+    x, y, z = mesh["size_mm"]
+    return max(x, y) <= max(bed[0], bed[1]) and min(x, y) <= min(bed[0], bed[1]) and z <= bed[2]
+
+
+def warnings_for(mesh: dict, min_wall_mm: float | None, material: str | None = None, prof: dict | None = None) -> list[dict]:
     out = []
     if mesh["overhang_mm2"] > 1.0:
         out.append(
@@ -159,9 +204,22 @@ def warnings_for(mesh: dict, min_wall_mm: float | None) -> list[dict]:
     if wall is not None and wall < MIN_WALL_MM:
         out.append({"kind": "thin_wall", "text": f"Wall {wall:.2f} mm is thinner than {MIN_WALL_MM} mm: two 0.4 mm perimeters cannot print it"})
     x, y, z = mesh["size_mm"]
-    fits = (max(x, y) <= BED_MM[0] and min(x, y) <= BED_MM[1]) and z <= BED_MM[2]
-    if not fits:
-        out.append({"kind": "bed_size", "text": f"{x:.0f} × {y:.0f} × {z:.0f} mm does not fit a {BED_MM[0]:.0f} mm bed: split it or rotate it"})
+    prof = prof or profile()
+    bed = prof["bed_mm"]
+    if not fits(mesh, bed):
+        where = f"the {prof['printer']} bed ({bed[0]:g} × {bed[1]:g} × {bed[2]:g} mm)" if prof.get("model") else f"a {bed[0]:.0f} mm bed"
+        out.append({"kind": "bed_size", "text": f"{x:.0f} × {y:.0f} × {z:.0f} mm does not fit {where}: split it or rotate it"})
+    printer = printers.current()
+    key = printers.normalise_material(material) if material else None
+    if printer is not None and key in printers.MATERIALS:
+        if key not in printer["materials"]:
+            why = "it has no enclosure" if key in printers.NEEDS_ENCLOSURE and not printer["enclosure"] else "it is not on its material list"
+            out.append({"kind": "material", "text": f"The {printer['name']} cannot print {key}: {why}"})
+        elif key not in printer["filaments"]:
+            out.append({"kind": "material", "text": f"{key} is not among your filaments: load a spool before printing"})
+        risk = printers.warp_risk(key, printer, (x, y))
+        if risk["level"] != "low":
+            out.append({"kind": "warp", "text": f"{risk['level'].capitalize()} warping risk: {risk['text']}" + ("; use a brim" if risk["level"] == "medium" else "; use a brim and a draft shield, or split it")})
     return out
 
 
@@ -192,22 +250,29 @@ def parse_gcode(path: Path) -> dict:
     return out
 
 
-def _slice(slicer: tuple[str, str], stl: Path, gcode: Path, rotation: list[float], material: str) -> dict:
+def _slice(slicer: tuple[str, str], stl: Path, gcode: Path, rotation: list[float], material: str, prof: dict | None = None) -> dict:
     name, executable = slicer
+    prof = prof or profile()
+    bed = prof["bed_mm"]
     if name == "PrusaSlicer":
+        kind = {"TPU": "FLEX", "PETG-CF": "PETG"}.get(material, material)
         command = [
             executable,
             "--export-gcode",
-            "--layer-height", str(PROFILE["layer_height_mm"]),
-            "--fill-density", f"{PROFILE['infill_pct']}%",
-            "--perimeters", str(PROFILE["walls"]),
-            "--nozzle-diameter", str(PROFILE["nozzle_mm"]),
-            "--filament-type", material if material in {"PLA", "PETG", "ABS", "ASA", "FLEX", "NYLON"} else "PETG",
-            "--bed-shape", f"0x0,{BED_MM[0]:g}x0,{BED_MM[0]:g}x{BED_MM[1]:g},0x{BED_MM[1]:g}",
-            "--center", f"{BED_MM[0] / 2:g},{BED_MM[1] / 2:g}",
+            "--layer-height", str(prof["layer_height_mm"]),
+            "--fill-density", f"{prof['infill_pct']}%",
+            "--perimeters", str(prof["walls"]),
+            "--nozzle-diameter", str(prof["nozzle_mm"]),
+            "--filament-type", kind if kind in {"PLA", "PETG", "ABS", "ASA", "FLEX", "NYLON"} else "PETG",
+            "--bed-shape", f"0x0,{bed[0]:g}x0,{bed[0]:g}x{bed[1]:g},0x{bed[1]:g}",
+            "--max-print-height", f"{bed[2]:g}",
+            "--center", f"{bed[0] / 2:g},{bed[1] / 2:g}",
             "--support-material",
             "--support-material-threshold", f"{90 - OVERHANG_DEG:g}",
         ]
+        entry = printers.MATERIALS.get(printers.normalise_material(material))
+        if prof.get("model") and entry:
+            command += ["--temperature", str(entry["nozzle_c"]), "--bed-temperature", str(entry["bed_c"])]
         if rotation[0]:
             command += ["--rotate-x", f"{rotation[0]:g}"]
         if rotation[1]:
@@ -257,11 +322,12 @@ def printed_parts(ctx: Ctx) -> list[dict]:
         from pai_agent.paths import REPO_ROOT
 
         thickness = state.cad_params.get("thickness_mm")
+        chosen = state.print_materials.get("frame") if printers.current() else None
         parts.append(
             {
                 "id": "frame",
-                "name": "Frame prototype",
-                "material": "PETG-CF",
+                "name": "Frame" if chosen else "Frame prototype",
+                "material": chosen["material"] if chosen else "PETG-CF",
                 "qty": 1,
                 "stl": REPO_ROOT / state.stl_path,
                 "min_wall_mm": float(thickness) if thickness is not None else None,
@@ -270,9 +336,23 @@ def printed_parts(ctx: Ctx) -> list[dict]:
     return [p for p in parts if Path(p["stl"]).is_file()]
 
 
-def _plan_part(part: dict, orientation: str, slicer: tuple[str, str] | None, session_id: str) -> dict:
+def best_orientation(raw: np.ndarray, bed: list[float]) -> str:
+    """The pose that fits the bed and needs the least support; flat wins a tie (more bed contact, less warping)."""
+
+    scored = []
+    for rank, orientation in enumerate(("flat", "as_modeled", "upright")):
+        mesh = analyse(orient(raw, orientation)[0])
+        scored.append((not fits(mesh, bed), round(mesh["overhang_mm2"], -1), rank, orientation))
+    return min(scored)[3]
+
+
+def _plan_part(part: dict, orientation: str, slicer: tuple[str, str] | None, session_id: str, prof: dict | None = None) -> dict:
+    prof = prof or profile()
     stl = Path(part["stl"])
-    tris, rotation = orient(read_stl(stl), orientation)
+    raw = read_stl(stl)
+    if orientation == "auto":
+        orientation = best_orientation(raw, prof["bed_mm"])
+    tris, rotation = orient(raw, orientation)
     mesh = analyse(tris)
     row = {
         "id": part["id"],
@@ -282,17 +362,18 @@ def _plan_part(part: dict, orientation: str, slicer: tuple[str, str] | None, ses
         "orientation": orientation,
         "size_mm": mesh["size_mm"],
         "volume_cm3": round(mesh["volume_mm3"] / 1000, 2),
-        "warnings": warnings_for(mesh, part["min_wall_mm"]),
+        "warnings": warnings_for(mesh, part["min_wall_mm"], part["material"], prof),
+        "supports": mesh["overhang_mm2"] > 1.0,
         "stl_url": "/files/" + session_id + "/" + stl.name if stl.parent.name == session_id else "",
         "gcode_url": "",
         "source": "estimate",
-        **estimate(mesh, part["material"]),
+        **estimate(mesh, part["material"], prof),
     }
     if slicer is not None:
         gcode = stl.with_name("print-" + part["id"] + ".gcode")
         try:
-            sliced = _slice(slicer, stl, gcode, rotation, part["material"])
-            eur_per_g = FILAMENTS.get(part["material"], FILAMENTS["PETG"])[1]
+            sliced = _slice(slicer, stl, gcode, rotation, part["material"], prof)
+            eur_per_g = filament_price(part["material"])[1]
             row.update({k: v for k, v in sliced.items() if v})
             row["cost_eur"] = round(row["filament_g"] * eur_per_g, 2)
             row["gcode_url"] = "/files/" + session_id + "/" + gcode.name
@@ -321,9 +402,13 @@ def filament_line(plan: dict) -> dict:
 
 
 async def print_prep(ctx: Ctx, args: dict) -> dict:
-    orientation = str(args.get("orientation") or "flat")
-    if orientation not in ORIENTATIONS:
-        orientation = "flat"
+    prof = profile()
+    printer = printers.current()
+    # On the user's own printer each part gets the pose that fits and needs the least support.
+    fallback = "auto" if printer else "flat"
+    orientation = str(args.get("orientation") or fallback)
+    if orientation not in CHOICES:
+        orientation = fallback
     per_part = args.get("orientations") if isinstance(args.get("orientations"), dict) else {}
     parts = printed_parts(ctx)
     if not parts:
@@ -334,7 +419,7 @@ async def print_prep(ctx: Ctx, args: dict) -> dict:
     rows = []
     for part in parts:
         chosen = str(per_part.get(part["id"]) or orientation)
-        rows.append(await asyncio.to_thread(_plan_part, part, chosen if chosen in ORIENTATIONS else orientation, slicer, session_id))
+        rows.append(await asyncio.to_thread(_plan_part, part, chosen if chosen in CHOICES else orientation, slicer, session_id, prof))
     source = "slicer" if rows and all(row["source"] == "slicer" for row in rows) else "estimate"
     totals = {
         "parts": sum(row["qty"] for row in rows),
@@ -342,11 +427,13 @@ async def print_prep(ctx: Ctx, args: dict) -> dict:
         "filament_g": round(sum(row["filament_g"] * row["qty"] for row in rows), 1),
         "cost_eur": round(sum(row["cost_eur"] * row["qty"] for row in rows), 2),
         "warnings": sum(len(row["warnings"]) for row in rows),
+        "support_g": round(sum(row.get("support_g", 0.0) * row["qty"] for row in rows), 1),
     }
     plan = {
         "source": source,
         "slicer": slicer[0] if slicer and source == "slicer" else "",
-        "profile": {**PROFILE, "bed_mm": list(BED_MM)},
+        "profile": {k: v for k, v in prof.items() if k != "flow_mm3_s"},
+        "printer": printer["name"] if printer else None,
         "parts": rows,
         "totals": totals,
     }
@@ -356,6 +443,15 @@ async def print_prep(ctx: Ctx, args: dict) -> dict:
     if bom is not None:
         # The bill of materials gets one filament line, replaced on every new plan.
         items = [item for item in bom["items"] if item.get("category") != "filament"]
+        if printer:
+            # On the user's printer each printed line costs the grams this plan prints (supports included).
+            by_id = {row["id"]: row for row in rows}
+            for item in items:
+                row = by_id.get(item.get("category")) if item.get("shop") == "printed" else None
+                if row is not None:
+                    item["unit_price_eur"] = row["cost_eur"]
+                    item["name"] = printers.printed_line_name(row["name"], row["material"]) + f", {row['filament_g']:.0f} g"
+                    item["price_source"] = "printer"
         line = filament_line(plan)
         if any(item.get("shop") == "printed" for item in items):
             # Printed part lines already carry their material cost; this line only shows the grams.
@@ -368,7 +464,13 @@ async def print_prep(ctx: Ctx, args: dict) -> dict:
         bom["items"] = items
         bom["total_eur"] = round(sum(item["unit_price_eur"] * item["qty"] for item in items), 2)
         await ctx.emit({"type": "bom", **bom})
+        if printer:
+            from pai_agent.tools.bom import _sync_metrics
+
+            await _sync_metrics(ctx, bom["total_eur"])
     label = "slicer " + plan["slicer"] if source == "slicer" else "estimate, no slicer installed"
+    if printer:
+        label += ", " + printer["name"]
     detail = (
         f"{totals['parts']} printed part{'s' if totals['parts'] != 1 else ''}, {totals['time_min']:.0f} min, "
         f"{totals['filament_g']:.0f} g, {totals['cost_eur']:.2f} €, {totals['warnings']} warning{'s' if totals['warnings'] != 1 else ''} ({label})"

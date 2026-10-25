@@ -9,8 +9,8 @@ import { abandonTraining, resetTrainer, runBrowserTraining, useTrainer, watchEls
 
 export type BrowserTrainingEvent = TrainingEvent & BrowserTrainingFields & { at: number };
 
-/** Inside the Simulation tab: the hover test runs, the mission tests or the browser training. */
-export type SimPane = "hover" | "missions" | "training";
+/** Inside the Simulation tab: the hover test runs, the mission tests, the browser training or the FEM stress of printed parts. */
+export type SimPane = "hover" | "missions" | "training" | "stress";
 export const useSimPane = create<{ pane: SimPane; setPane: (pane: SimPane) => void }>((set) => ({
   pane: "hover",
   setPane: (pane) => set({ pane }),

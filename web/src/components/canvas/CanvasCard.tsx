@@ -22,6 +22,7 @@ import { AgentsView } from "../agents/AgentsView";
 import { BrowserTraining } from "../training/BrowserTraining";
 import { useBrowserTrainingEvent, useSimPane, type SimPane } from "../training/useBrowserTraining";
 import { MissionView } from "./MissionView";
+import { FemView } from "./FemView";
 
 const TABS: { value: CanvasTab; label: string; icon: typeof Box }[] = [
   { value: "modell", label: "Model", icon: Box },
@@ -93,6 +94,7 @@ export function CanvasCard() {
   const compare = useUi((s) => s.compare);
   const runs = useSession((s) => s.runs.length);
   const missions = useSession((s) => Object.keys(s.missionRuns).length);
+  const stresses = useSession((s) => s.femOrder.length);
   const cad = useSession((s) => s.cad);
   const renders = useSession((s) => s.renders.length);
   const product = useSession((s) => s.product);
@@ -100,7 +102,7 @@ export function CanvasCard() {
   const supportsOmniverse = product === "drone" && !cad?.script_url;
   const tabs = TABS.filter((t) => t.value !== "omniverse" || supportsOmniverse || tab === "omniverse");
   const agentsWorking = useSession((s) => Object.values(s.agents).some((a) => a.status === "running" || a.status === "queued"));
-  const badges: Partial<Record<CanvasTab, boolean>> = { cad: !!cad, simulation: runs > 0 || missions > 0, omniverse: !!omniverse, agents: agentsWorking };
+  const badges: Partial<Record<CanvasTab, boolean>> = { cad: !!cad, simulation: runs > 0 || missions > 0 || stresses > 0, omniverse: !!omniverse, agents: agentsWorking };
   const showRender = tab === "modell" && look === "render";
   const pane = useSimPane((s) => s.pane);
   const setPane = useSimPane((s) => s.setPane);
@@ -181,6 +183,7 @@ export function CanvasCard() {
             options={[
               { value: "hover", label: "Hover test", target: "sim:hover" },
               ...(missions > 0 || pane === "missions" ? [{ value: "missions" as const, label: "Missions", target: "sim:missions missions" }] : []),
+              ...(stresses > 0 || pane === "stress" ? [{ value: "stress" as const, label: "Stress", target: "sim:stress stress fem" }] : []),
               {
                 value: "training",
                 label: "Training",
@@ -218,10 +221,10 @@ export function CanvasCard() {
         {tab === "modell" && !compare && !showRender && <ApproximateModelsNote />}
         <PartCard />
         {tab === "cad" && <CadView />}
-        {tab === "simulation" && (showTraining ? <BrowserTraining /> : pane === "missions" ? <MissionView /> : <SimView />)}
+        {tab === "simulation" && (showTraining ? <BrowserTraining /> : pane === "missions" ? <MissionView /> : pane === "stress" ? <FemView /> : <SimView />)}
         {tab === "omniverse" && <OmniverseView />}
         {tab === "agents" && <AgentsView />}
-        {tab !== "cad" && tab !== "omniverse" && tab !== "agents" && !(tab === "modell" && compare) && <SpokenLine lifted={(tab === "simulation" && (runs > 0 || missions > 0 || showTraining)) || (showRender && renders > 1)} overSlider={tab === "modell" && !showRender} />}
+        {tab !== "cad" && tab !== "omniverse" && tab !== "agents" && !(tab === "modell" && compare) && <SpokenLine lifted={(tab === "simulation" && (runs > 0 || missions > 0 || stresses > 0 || showTraining)) || (showRender && renders > 1)} overSlider={tab === "modell" && !showRender} />}
         </div>
       </div>
     </div>

@@ -34,6 +34,7 @@ from pai_agent.tools.parts import parts_search
 from pai_agent.tools.parts_search import live_prices_enabled
 from pai_agent.tools.optimize import optimize_apply, optimize_design
 from pai_agent.tools.print_prep import print_prep
+from pai_agent.tools.fem import fem_check, material_pick
 from pai_agent.tools.physics import physics_calc
 from pai_agent.drone_geometry import publish_geometry
 from pai_agent.tools.mission import simulate_mission
@@ -79,6 +80,8 @@ TOOLS = {
     "blender_render": blender_render,
     "bom_build": bom_build,
     "print_prep": print_prep,
+    "material_pick": material_pick,
+    "fem_check": fem_check,
     "build_guide": build_guide,
     "firmware": firmware,
     "electronics_plan": electronics_plan,
@@ -128,6 +131,8 @@ _STEP = {
     "isaac_lab_status": "training",
     "bom_build": "stueckliste",
     "print_prep": "stueckliste",
+    "material_pick": "cad",
+    "fem_check": "simulation",
     "train_in_browser": "training",
 }
 
@@ -690,12 +695,58 @@ SCHEMAS = [
     },
     {
         "name": "print_prep",
-        "description": "Makes every printed part print-ready after bom_build: slices each STL headless with PrusaSlicer or OrcaSlicer when installed (G-code per part for download), else estimates time and filament from the mesh at a 0.2 mm, 20 % infill profile and says 'estimate'. Returns print time, filament grams and cost per part and in total, and printability warnings (overhangs past 45 degrees, walls under 0.8 mm, parts over a 220 mm bed). Adds a filament line to the bill of materials. orientation flat puts the smallest extent on the bed, upright the largest, as_modeled keeps the CAD pose; orientations sets it per part id.",
+        "description": "Makes every printed part print-ready after bom_build: slices each STL headless with PrusaSlicer or OrcaSlicer when installed (G-code per part for download), else estimates time and filament from the mesh and says 'estimate'. Returns print time, filament grams, support grams and cost per part and in total, and printability warnings (overhangs past 45 degrees and supports, walls under 0.8 mm, bed fit). With the user's 3D printer set it uses that printer's bed, nozzle and speed, picks each part's pose (auto: fits the bed, least support), warns about warping for the material on that printer (enclosure, part length) and materials it cannot print, and prices each printed part as filament on their printer. Adds a filament line to the bill of materials. orientation flat puts the smallest extent on the bed, upright the largest, as_modeled keeps the CAD pose, auto chooses; orientations sets it per part id. The pose sets the print direction fem_check judges the layers against.",
         "input_schema": {
             "type": "object",
             "properties": {
-                "orientation": {"type": "string", "enum": ["flat", "upright", "as_modeled"]},
-                "orientations": {"type": "object", "additionalProperties": {"type": "string", "enum": ["flat", "upright", "as_modeled"]}},
+                "orientation": {"type": "string", "enum": ["auto", "flat", "upright", "as_modeled"]},
+                "orientations": {"type": "object", "additionalProperties": {"type": "string", "enum": ["auto", "flat", "upright", "as_modeled"]}},
+            },
+        },
+    },
+    {
+        "name": "material_pick",
+        "description": (
+            "Chooses the material of one printed part (part_id; the drone's printed frame needs none) from what it must survive: max_temp_c (the heat it sits in: "
+            "next to motors, in a car, in the sun), outdoor (sun and rain), impact (crashes, drops), flex (bends on purpose: a clip, a bumper). "
+            "With the user's 3D printer set it chooses only among the filaments that printer prints; material forces one of those. "
+            "Returns the material, a one-sentence reason with the data sheet numbers (heat deflection, UV, impact), what was ruled out and why. "
+            "The part's mass follows the new density and every check runs again. Say the reason to the user in one sentence."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "part_id": {"type": "string"},
+                "max_temp_c": {"type": "number"},
+                "outdoor": {"type": "boolean"},
+                "impact": {"type": "boolean"},
+                "flex": {"type": "boolean"},
+                "material": {"type": "string", "enum": ["PLA", "PETG", "ABS", "ASA", "NYLON", "TPU"]},
+                "reason": {"type": "string"},
+            },
+        },
+    },
+    {
+        "name": "fem_check",
+        "description": (
+            "FEM stress simulation of one printed part on its real CAD shape: gmsh meshes the STEP into quadratic tetrahedra, CalculiX solves it under its loads. "
+            "The material is weakened for the print: modulus and strength scale with the plastic share of the section (walls solid, core at infill_pct, default 25 %), "
+            "and the tension across the layers is judged against the interlayer strength along the print direction from print_prep. "
+            "Without cases, the loads come from the spec: held on its lowest face, each external load near it pressing at its position with 2x its weight "
+            "(else a 10 N press on top); for the drone frame (part_id frame) held at the stack, full motor thrust on all four mounts, and a crash on one motor at 10 g. "
+            "cases overrides them: [{name, region, force_n: [fx, fy, fz]}] in N in the assembly frame (Z up, a weight is negative Z); region is {face: z_min...}, "
+            "{near: [x, y, z] mm, radius_mm} or {box: [x0, y0, z0, x1, y1, z1]}; fixed is the held region the same way. "
+            "Returns max von Mises stress, deflection, the safety factor (needs 2x unless the user set a strength requirement), which case governs and where. "
+            "Judges the strength requirement, reruns after cad_update, and shows the stress-coloured part on the Simulation tab. On a fail, follow the hint and run it again."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "part_id": {"type": "string"},
+                "cases": {"type": "array", "items": {"type": "object"}},
+                "fixed": {"type": "object"},
+                "infill_pct": {"type": "number", "minimum": 5, "maximum": 100},
+                "walls": {"type": "integer", "minimum": 1, "maximum": 10},
             },
         },
     },
@@ -839,7 +890,7 @@ def _running_detail(name: str, args: dict) -> str:
         return str(args.get("state", ""))
     if name == "ui_control":
         return str(args.get("control", ""))
-    if name in {"cad_part", "cad_update", "part_pick"}:
+    if name in {"cad_part", "cad_update", "part_pick", "material_pick", "fem_check"}:
         return str(args.get("part_id") or args.get("name") or "")
     if name == "product_spec":
         return str(args.get("name", ""))
@@ -878,7 +929,7 @@ async def _advance(ctx: Ctx, name: str, result: dict, started: bool) -> None:
         return
     if name in {"simulate_drone", "simulate_grip", "simulate_assembly", "simulate_mission"}:
         await ctx.step("simulation", "done" if result.get("result") == "pass" else "failed")
-    elif name in {"check_tip_over", "check_deflection", "check_torque", "check_runtime", "check_power", "check_thermal", "check_rollover"}:
+    elif name in {"check_tip_over", "check_deflection", "check_torque", "check_runtime", "check_power", "check_thermal", "check_rollover", "fem_check"}:
         await ctx.step("simulation", "done" if result.get("result") == "pass" else "failed")
     elif name == "check_totals":
         await ctx.step("teile", "done" if result.get("result") == "pass" else "failed")
@@ -895,7 +946,7 @@ async def _advance(ctx: Ctx, name: str, result: dict, started: bool) -> None:
         await ctx.step("training", "done")
     elif name == "isaac_lab_status" and result.get("training_status") == "done":
         await ctx.step("training", "done")
-    elif name in {"blender_render", "isaac_sim_render", "cad_frame", "cad_part", "cad_update", "assemble", "product_brief", "product_spec", "sketch_to_spec", "reference_load", "part_pick", "bom_build", "print_prep"}:
+    elif name in {"blender_render", "isaac_sim_render", "cad_frame", "cad_part", "cad_update", "assemble", "product_brief", "product_spec", "sketch_to_spec", "reference_load", "part_pick", "bom_build", "print_prep", "material_pick"}:
         await ctx.step(step, "done")
 
 

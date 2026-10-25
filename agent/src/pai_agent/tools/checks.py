@@ -75,6 +75,10 @@ def _value_for(state, requirement: dict) -> float | None:
     if check == "drop":
         sim = state.checks.get("drop")
         return None if not sim else sim["peak_g"]
+    if check == "strength":
+        from pai_agent.tools.fem import strength_value
+
+        return strength_value(state, requirement)
     return None
 
 
@@ -120,6 +124,7 @@ _CARD = {
     "power": ("Power headroom", "x"),
     "thermal": ("Thermal", "deg_c"),
     "rollover": ("Roll-over", "g"),
+    "strength": ("Strength safety", "x"),
 }
 
 

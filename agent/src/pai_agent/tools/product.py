@@ -137,6 +137,7 @@ async def product_spec(ctx: Ctx, args: dict) -> dict:
         state.built = {}
         state.picked = {}
         state.checks = {}
+        state.print_materials = {}
     rebuild: list[str] = []
     previous_checks: dict = {}
     if revision:
@@ -527,8 +528,9 @@ async def rerun_checks(ctx: Ctx) -> list[dict]:
 
     from pai_agent.tools.checks import CHECK_TOOLS as BASE
     from pai_agent.tools.checks_more import CHECK_TOOLS as MORE
+    from pai_agent.tools.fem import CHECK_TOOLS as FEM
 
-    CHECK_TOOLS = {**BASE, **MORE}
+    CHECK_TOOLS = {**BASE, **MORE, **FEM}
     await ensure_assembly(ctx)
     results = []
     for key, entry in list(ctx.state.checks.items()):

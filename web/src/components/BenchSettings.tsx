@@ -4,7 +4,8 @@
 // hands-free to push-to-talk. In live mode it also holds the bench's model settings:
 // where Claude runs (the API key or the local Claude Code subscription), which Claude
 // orchestrates, which runs the sub-agents, how hard each one thinks (effort), and
-// whether the orchestrator delegates. GET/POST /api/settings.
+// whether the orchestrator delegates. GET/POST /api/settings. The 3D printer section
+// sets the user's printer and filaments (lib/printer.ts).
 import { useEffect, useRef, useState } from "react";
 import { SlidersHorizontal } from "lucide-react";
 import { useSource } from "../events/source";
@@ -12,6 +13,7 @@ import { apiFetch } from "../lib/api";
 import { usePartners } from "../lib/partners";
 import { useUi, type Display } from "../lib/ui";
 import { useBenchResults } from "../views/BenchResults";
+import { PrinterPicker } from "./print/PrinterPicker";
 
 const DISPLAY: { key: keyof Display; label: string; hint: string; control?: string }[] = [
   { key: "agents", label: "Show agent steps and costs", hint: "Orchestrator and sub-agents in the chat", control: "setting:agents" },
@@ -166,6 +168,8 @@ export function BenchSettings() {
             onChange={(on) => setMicMode(on ? "ptt" : "handsfree")}
           />
           <p className="pt-1 text-[12px] text-muted">{SPEECH[stt]}</p>
+          <h3 className="eyebrow mt-3 mb-1 border-t border-line pt-3">3D printer</h3>
+          <PrinterPicker />
           <h3 className="eyebrow mt-3 mb-1 border-t border-line pt-3">Evaluation</h3>
           <button
             type="button"

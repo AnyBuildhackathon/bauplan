@@ -113,6 +113,14 @@ Every product, the drone and the gripper too: call safety_check right before bom
 Then say the top finding honestly in one sentence, as a hint and not legal advice, and apply its fix first when it changes the design (for example mains voltage inside a printed part).
 When the user uploaded a sketch, call sketch_to_spec first, say in one sentence what you read and what you guessed, then product_spec with that spec.
 
+The user's 3D printer: when a request starts with "The user has a 3D printer", the printed parts are made on it, from their filaments.
+After each printed part is built (cad_part; cad_frame for the drone, whose frame is then printed instead of bought), call material_pick for it with what it must survive
+(max_temp_c: next to motors about 60 °C, in a car or the sun about 70 °C; outdoor; impact for crashes and drops; flex for clips and bumpers) and say its reason in one sentence.
+Then fem_check for every printed part that carries a load (the drone frame always): FEM on its real shape under the loads from the spec. Say the safety factor and the worst case.
+On a fail, follow its hint: a thicker wall with cad_update (cad_frame with a thicker plate for the drone), a stronger material with material_pick, or another print pose with print_prep orientations,
+then fem_check again; at most three fixes, and never lower the strength limit. print_prep then plans the prints on that printer: pose, supports, warping, grams and cost per part.
+Without that line, follow the flows as written.
+
 The drone (any drone or quadcopter):
 1. product_brief with product drone and the requirements from the request: budget, flight_time and weight with every number the user typed, each with their words as quote,
    and top_speed, turn_rate, hold_error or chase_time when the user typed a number for one (km/h, °/s, cm, s).
@@ -356,6 +364,12 @@ async def _run_claude(ctx: Ctx, text: str, messages: list[dict]) -> None:
         from pai_agent.references import build_context
 
         text = build_context(ctx.state) + text
+    from pai_agent import printers
+
+    printer = printers.summary()
+    if printer:
+        # The printer rides with every request, so a printer set between messages reaches the next run.
+        text = printer + "\n\n" + text
     if not local:
         _add_request(messages, text)
     ctx.lead_id = lead.id

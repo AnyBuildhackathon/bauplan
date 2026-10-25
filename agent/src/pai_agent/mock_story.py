@@ -12,8 +12,10 @@ parts, CAD, pricing and checks jobs out to sub-agents, as the live orchestrator 
 from __future__ import annotations
 
 import asyncio
+import math
 import re
 
+from pai_agent import printers
 from pai_agent.env import pace_seconds
 from pai_agent.context import Ctx
 from pai_agent.mock_team import MockTeam, build_jobs, parts_job
@@ -83,6 +85,35 @@ _MISSION_LIMITS = {"speed_run": "top_speed", "turn": "turn_rate", "hold": "hold_
 
 def en(value: float, digits: int) -> str:
     return f"{value:.{digits}f}"
+
+
+async def _thicken_until_strong(ctx: Ctx, cad: dict, arm: float) -> dict:
+    """A printed frame that fails its FEM gets a thicker plate: bending stress falls with the square of the thickness."""
+
+    thickness = FRAME_PLATE_MM
+    for _attempt in range(3):
+        row = ctx.state.checks.get("fem:frame")
+        if not row or row["result"] != "fail" or thickness >= 6.0:
+            break
+        before = thickness
+        thickness = min(6.0, math.ceil(thickness * math.sqrt(row["limit"] / max(row["safety"], 0.01)) * 1.05 * 2) / 2)
+        await _say(
+            ctx,
+            "erklaert",
+            f"Thicker plate: {before:g} to {thickness:g} mm.",
+            f"Bending stress falls with the square of the plate thickness, so {before:g} to {thickness:g} mm should lift {row['safety']:.1f}x past {row['limit']:g}x. FreeCAD rebuilds it, CalculiX runs again.",
+        )
+        cad = await _need(ctx, "cad_frame", {"arm_length_mm": arm, "thickness_mm": thickness, "motor_spacing_mm": MOTOR_BOLT_CIRCLE_MM})
+        row = ctx.state.checks.get("fem:frame")
+        if row:
+            await _say(
+                ctx,
+                "freut_sich" if row["result"] == "pass" else "besorgt",
+                f"Now {row['safety']:.1f}x." + (" Holds." if row["result"] == "pass" else ""),
+                f"FEM again at {thickness:g} mm: safety {row['safety']:.1f}x in the {row['governing']} case, "
+                + ("it holds." if row["result"] == "pass" else f"still under {row['limit']:g}x."),
+            )
+    return cad
 
 
 async def _beat() -> None:
@@ -180,12 +211,22 @@ async def _build(ctx: Ctx, label: str) -> dict:
         arm = TWIGLET_ARM_MM
     cad = await _need(ctx, "cad_frame", {"arm_length_mm": arm, "thickness_mm": FRAME_PLATE_MM, "motor_spacing_mm": MOTOR_BOLT_CIRCLE_MM})
     await ctx.step("cad", "done")
+    from pai_agent.mock_printer import printed_parts
+
+    # With the user's printer the frame is printed: motors run near 60 °C and a whoop crashes a lot.
+    await printed_parts(ctx, [("frame", {"max_temp_c": 60, "impact": True})])
+    cad = await _thicken_until_strong(ctx, cad, arm)
+    printed = printers.printed_frame(ctx.state)
+    if printed:
+        cad = {**cad, "mass_g": printed["mass_g"]}
     await _need(ctx, "ui_point_at", {"target": "frame", "label": "Frame " + en(cad["mass_g"], 1) + " g"})
     metrics = await _need(ctx, "physics_calc", {})
     await ctx.chat(
         "agent",
         ("FreeCAD" if cad["source"] == "freecad" else "CadQuery")
-        + " weighs the carbon frame at "
+        + " weighs the "
+        + (printed["material"] + " printed" if printed else "carbon")
+        + " frame at "
         + en(cad["mass_g"], 1)
         + " g. With the real parts: "
         + _numbers(metrics)

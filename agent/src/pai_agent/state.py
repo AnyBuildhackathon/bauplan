@@ -66,6 +66,8 @@ class BuildState:
     remixed_from: dict | None = None
     # The last print plan from print_prep: per-part time, filament, cost, warnings and G-code.
     print_plan: dict | None = None
+    # With a 3D printer set: the material chosen per printed part id (material_pick), with its reason.
+    print_materials: dict[str, dict] = field(default_factory=dict)
     # Design optimizer runs by id: the `optimize` event with its variants, and which one was built.
     optimize: dict[str, dict] = field(default_factory=dict)
     # The Claude Code conversation the subscription provider continues on the next message, or None.
