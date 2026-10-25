@@ -63,9 +63,9 @@ def _num(value: float, digits: int = 1) -> float:
 
 
 def _catalog_part(part_id: str) -> dict:
-    from pai_agent.tools.parts import catalog
+    from pai_agent.tools.parts import find
 
-    return next((p for p in catalog()["parts"] if p["id"] == part_id), {})
+    return find(part_id) or {}
 
 
 def _chosen(events: list[dict], category: str) -> list[tuple[int, dict]]:

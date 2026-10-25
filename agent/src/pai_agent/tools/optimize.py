@@ -129,7 +129,7 @@ def evaluate(state, base: dict, config: dict, keep: dict) -> dict:
         raise ValueError("No battery " + config["battery"] + " in the catalog.")
     selected = {**state.selected, "battery": battery}
     frame_g = _frame_mass(config["arm_length_mm"], config["thickness_mm"], config["motor_spacing_mm"])
-    numbers = compute(types.SimpleNamespace(selected=selected, frame_mass_g=frame_g, metrics={}))
+    numbers = compute(types.SimpleNamespace(selected=selected, frame_mass_g=frame_g, metrics={}, cad_params={"arm_length_mm": config["arm_length_mm"]}))
     hover = run_hover(numbers["weight_g"], numbers["thrust_g"])
     # The arm is a cantilever: stiffness goes with thickness cubed over length cubed, relative to now.
     stiffness = (config["thickness_mm"] / base["thickness_mm"]) ** 3 * (base["arm_length_mm"] / config["arm_length_mm"]) ** 3
@@ -236,6 +236,9 @@ async def _propose_live(ctx: Ctx, goals: list[str], keep: dict, plans: list[dict
     batteries = [
         {"id": p["id"], "name": p["name"], "mass_g": p["mass_g"], "capacity_mah": p["capacity_mah"], "cells": p.get("cells"), "unit_price_eur": p.get("unit_price_eur")}
         for p in _batteries().values()
+        # Only packs the chosen motors are rated for; the library also holds 4S and 6S packs.
+        if int(p.get("cells") or 1) <= int(ctx.state.selected.get("motor", {}).get("cells_max") or 99)
+        or p["id"] == base["battery"]
     ]
     tool = {
         "name": "propose_variant",

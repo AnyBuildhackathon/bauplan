@@ -155,6 +155,22 @@ export function ResultsCard({
           ))}
         </div>
       )}
+      {item.performance && item.performance.length > 0 && (
+        <div className="mb-2.5" data-target="metrics performance">
+          <div className="mb-1 font-label text-[11px] text-muted">Flight performance · estimates from the part specs</div>
+          <div className="grid grid-cols-3 gap-x-2 gap-y-1.5">
+            {item.performance.map((n) => (
+              <div key={n.key} className="min-w-0" data-target={n.target}>
+                <div className="num truncate text-[14px] leading-tight font-semibold text-ink">
+                  {fmtNum(n.value, n.digits)}
+                  <span className="ml-0.5 text-[11px] font-medium text-muted">{n.unit}</span>
+                </div>
+                <div className="truncate font-label text-[10.5px] text-muted">{n.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <button
         type="button"
         onClick={() => setBomOpen(true)}

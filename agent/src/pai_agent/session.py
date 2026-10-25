@@ -51,6 +51,8 @@ class Session:
         self.bus = EventBus()
         self.state: BuildState = _new_state()
         self.messages: list[dict] = []
+        # Whether the last ask_user question got a person's answer, not its timeout default.
+        self.answered_by_user = False
         self.created_at = time.time()
         self.task: asyncio.Task | None = None
         self.question: dict | None = None
@@ -271,8 +273,10 @@ class Session:
         loop = asyncio.get_running_loop()
         self._answer = loop.create_future()
         await self.bus.publish(dict(self.question))
+        self.answered_by_user = False
         try:
             answer = await asyncio.wait_for(asyncio.shield(self._answer), timeout=timeout) if timeout else default
+            self.answered_by_user = bool(timeout)
         except TimeoutError:
             answer = default
         closed = {**self.question, "status": "answered", "answer_id": answer}

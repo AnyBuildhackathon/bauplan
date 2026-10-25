@@ -132,13 +132,29 @@ function resultNumbers(metrics: MetricsEvent | null, total: number): ResultNumbe
   ];
 }
 
+/** The drone's estimated flight performance at the time of a bill of materials, for the results card. */
+function performanceNumbers(metrics: MetricsEvent | null): ResultNumber[] {
+  if (!metrics || metrics.cards?.length || metrics.top_speed_kmh == null) return [];
+  const rows: [keyof MetricsEvent, string, string, number][] = [
+    ["top_speed_kmh", "Top speed", "km/h", 0],
+    ["accel_mps2", "Acceleration", "m/s²", 0],
+    ["turn_rate_dps", "Turn rate", "°/s", 0],
+    ["climb_rate_mps", "Climb", "m/s", 1],
+    ["flight_time_full_speed_min", "At full speed", "min", 1],
+    ["flip_time_s", "Flip", "s", 2],
+  ];
+  return rows
+    .filter(([key]) => typeof metrics[key] === "number")
+    .map(([key, label, unit, digits]) => ({ key, label, value: metrics[key] as number, unit, digits, target: `metric:${key} ${key}` }));
+}
+
 export type ChatItem =
   | { kind: "msg"; id: string; seq: number; at: number; role: "user" | "agent"; text: string; local?: boolean; voice?: boolean }
   | { kind: "tool"; id: string; seq: number; at: number; name: string; phase: Phase; detail: string; endedAt?: number; instant?: boolean }
   | { kind: "sim"; id: string; seq: number; at: number; run: number; result: "pass" | "fail"; summary: string }
   /** One card per simulate_mission batch; it lists the batch's runs and reads them from `missionRuns`. */
   | { kind: "missions"; id: string; seq: number; at: number; runs: number[] }
-  | { kind: "bom"; id: string; seq: number; at: number; count: number; total: number; numbers: ResultNumber[] }
+  | { kind: "bom"; id: string; seq: number; at: number; count: number; total: number; numbers: ResultNumber[]; performance?: ResultNumber[] }
   /** The one requirements card; it reads the live requirements from the store. */
   | { kind: "requirements"; id: string; seq: number; at: number }
   | { kind: "training"; id: string; seq: number; at: number; status: TrainingEvent["status"]; detail: string }
@@ -504,6 +520,7 @@ export const useSession = create<SessionState>((set, get) => ({
           count: ev.items.length,
           total: ev.total_eur,
           numbers: resultNumbers(s.metrics, ev.total_eur),
+          performance: performanceNumbers(s.metrics),
         };
         // Live prices replace the catalog list they were searched for, so the card updates instead of repeating.
         let open = s.bom?.prices === "searching" ? s.chat.length - 1 : -1;

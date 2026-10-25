@@ -1,24 +1,38 @@
-"""Mass, thrust-to-weight, endurance, and price for the selected parts.
+"""Mass, thrust-to-weight, endurance, price and flight performance for the selected parts.
 
 Flight time is an estimate, not a stopwatch. Peak watts come from the
 motor's published bench point (thrust grams divided by g/W). Hover splits
-the craft weight across the motors. Electrical power then scales with
-thrust to the 1.5, which is the induced-power exponent. The pack contributes
+the craft weight across the motors. Electrical power then comes from the
+motor's published load table, or, for a motor with only its 100 % row, scales
+with thrust to the 1.5, which is the induced-power exponent. The pack contributes
 80 percent of its capacity at the battery's nominal voltage. Below a
 thrust-to-weight of 1.05 the craft cannot hover, so the estimate is 0.
 A heavier pack never invents extra thrust: the bench figure stays the
 1S number printed for that motor.
+
+The flight performance (top speed, acceleration, climb rate, turn rate, roll, flight time at
+full speed and full throttle, the inertia of the parts as placed) comes from `pai_agent.flight`,
+from the same parts' published specs; every one of those numbers is an estimate with its
+assumptions listed. Motor, propeller, battery, flight controller and frame are required; the
+camera, canopy, hardware and video transmitter count for mass and price when chosen.
 """
 
 from __future__ import annotations
 
 from pai_agent.context import Ctx, de
+from pai_agent.flight import arm_length as arm_length_mm, bench, motor_power_w, performance
 from pai_agent.scene import PART_CATEGORIES
 from pai_agent.state import BuildState
 from pai_agent.tools.parts_search import unit_price_eur
 
 _HOVER_TWR = 1.05
 _USABLE = 0.8
+REQUIRED = ("motor", "propeller", "battery", "flight_controller", "frame")
+# The performance numbers physics_calc shows next to the four core metrics.
+PERFORMANCE_KEYS = (
+    "top_speed_mps", "top_speed_kmh", "accel_mps2", "climb_rate_mps", "turn_rate_dps", "turn_radius_m",
+    "flip_time_s", "flight_time_full_speed_min", "flight_time_full_throttle_min", "time_to_90pct_s",
+)
 
 
 class PhysicsError(Exception):
@@ -26,7 +40,7 @@ class PhysicsError(Exception):
 
 
 def compute(state: BuildState) -> dict:
-    missing = [category for category in PART_CATEGORIES if category not in state.selected]
+    missing = [category for category in REQUIRED if category not in state.selected]
     if missing:
         raise PhysicsError("Parts missing: " + ", ".join(missing))
 
@@ -39,7 +53,7 @@ def compute(state: BuildState) -> dict:
     battery = state.selected["battery"]
     controller = state.selected["flight_controller"]
 
-    for category in PART_CATEGORIES:
+    for category in [c for c in PART_CATEGORIES if c in state.selected]:
         part = state.selected[category]
         qty = int(part["bom_qty"])
         mass = float(part["mass_g"])
@@ -79,8 +93,12 @@ def compute(state: BuildState) -> dict:
     if state.frame_mass_g is None and state.selected["frame"].get("mass_is_estimate"):
         warnings.append("The frame mass is the estimate until cad_frame weighs the STL.")
 
+    flight = performance(state, weight)
+    # Below the motor's test voltage the thrust is scaled down; never up.
+    thrust = min(thrust, flight["thrust_g"])
     twr = thrust / weight
     minutes = _flight_minutes(weight, motor, battery, twr)
+    warnings += flight.get("warnings", [])
     metrics = {
         "weight_g": round(weight, 1),
         "thrust_g": round(thrust, 1),
@@ -88,6 +106,8 @@ def compute(state: BuildState) -> dict:
         "flight_time_min": round(minutes, 1),
         "price_eur": round(price, 2),
         "warnings": warnings,
+        **{key: flight.get(key) for key in PERFORMANCE_KEYS},
+        "performance": {key: value for key, value in flight.items() if key not in ("warnings",)},
     }
     state.metrics = metrics
     return metrics
@@ -98,14 +118,19 @@ def _flight_minutes(weight_g: float, motor: dict, battery: dict, twr: float) -> 
         return 0.0
     qty = int(motor["bom_qty"])
     peak_thrust = float(motor["thrust_g"])
-    efficiency = float(motor["efficiency_g_per_w"])
-    if peak_thrust <= 0 or efficiency <= 0 or qty <= 0:
+    if peak_thrust <= 0 or qty <= 0:
         return 0.0
     hover_each = weight_g / qty
     if hover_each > peak_thrust:
         return 0.0
-    peak_watts = peak_thrust / efficiency
-    hover_watts = peak_watts * (hover_each / peak_thrust) ** 1.5
+    if bench(motor).get("load_table"):
+        hover_watts, _source = motor_power_w(motor, hover_each)
+    else:
+        efficiency = float(motor["efficiency_g_per_w"])
+        if efficiency <= 0:
+            return 0.0
+        peak_watts = peak_thrust / efficiency
+        hover_watts = peak_watts * (hover_each / peak_thrust) ** 1.5
     volts = float(battery["voltage_v"])
     if volts <= 0:
         return 0.0
@@ -129,6 +154,8 @@ async def physics_calc(ctx: Ctx, args: dict) -> dict:
             "thrust_to_weight": metrics["thrust_to_weight"],
             "flight_time_min": metrics["flight_time_min"],
             "price_eur": metrics["price_eur"],
+            **{key: metrics[key] for key in PERFORMANCE_KEYS if metrics.get(key) is not None},
+            "estimate": True,
         }
     )
     detail = (
@@ -141,4 +168,6 @@ async def physics_calc(ctx: Ctx, args: dict) -> dict:
         + de(metrics["price_eur"], 2)
         + " €"
     )
+    if metrics.get("top_speed_kmh"):
+        detail += ", top speed about " + de(metrics["top_speed_kmh"], 0) + " km/h"
     return {"ok": True, "detail": detail, **metrics}

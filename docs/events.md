@@ -357,6 +357,9 @@ For a product built from a spec, `id` is the spec requirement id, the quote is t
 
 `weight_g`, `thrust_to_weight`, `flight_time_min`, `price_eur`.
 Numbers are already rounded.
+The drone's `physics_calc` adds its flight performance from the chosen parts' specs, every one an estimate (`estimate: true`): `top_speed_mps` and `top_speed_kmh` (drag and the propeller's pitch speed against the thrust), `accel_mps2` (horizontal, from a hover), `time_to_90pct_s`, `climb_rate_mps`, `turn_rate_dps` (90 degrees over the time to turn them at the hard-turn mission's 8 m/s, rolling in included) and `turn_radius_m`, `flip_time_s` (a 180 degree roll), `flight_time_full_speed_min` and `flight_time_full_throttle_min`.
+They use the airframe the MuJoCo missions fly (the same thrust, pitch speed, drag and 95 % thrust and 70 degree tilt limits), so `top_speed_kmh` and `turn_rate_dps` estimate what the speed run and the hard turn measure.
+A field is absent when the parts cannot give it; all are `0` when the build cannot hover.
 `price_eur` is a total to verify, not a checkout: catalog samples, or live shop prices once `bom_build` found them.
 After `bom_build` finds live prices, a second `metrics` event carries the live total in `price_eur`; the other numbers repeat.
 
@@ -507,7 +510,8 @@ The diff also covers changed CAD parameters (key `param:{name}`) and requirement
 ### part
 
 A part was chosen.
-`category`, `id`, `name`, `mass_g`, `size_mm` (`[length, width, height]` for batteries, else `null`), and `diameter_mm` (propellers).
+`category`, `id`, `name`, `mass_g`, `size_mm` (`[length, width, height]` when the part has all three, else `null`), and `diameter_mm` (propellers, motors).
+`provenance` is `curated` (the parts library with specs from product pages: `agent/data/parts.json`, `agent/data/catalogs/makers.json`), `web` (found on a shop page during a build, its specs validated), `catalog` (an older sample catalog part) or `estimate` (no part fits, mass and price estimated); `source_url` is the page its specs come from.
 `why` is the requirement quote behind the choice, `{text, speaker, time}`, or `null`.
 `reason` is the agent's own reason in one line.
 
@@ -610,7 +614,7 @@ The wiring diagram and power budget of the built product, from the `electronics_
 `wires` is a list of `{id, from, to, from_pin, to_pin, kind, voltage_v, current_a, color, label}`: `from` and `to` are block ids, `kind` is `power`, `phase` (motor phase wires from an ESC) or `signal`; `voltage_v` and `current_a` (the peak) are `null` on signal wires.
 `color` groups wires by voltage for the diagram: `3v3`, `1s` (3.6 to 4.4 V), `5v`, `high` (above 5.5 V), `phase`, `signal` or `power`. Grounds are common and not listed.
 `budget` is `analysis_more.power_budget` for the supply: `{supply, supply_voltage_v, supply_limit_a, average_a, peak_a, average_w, peak_w, headroom, rails, loads, runtime_h?}`; each load is `{name, voltage_v, power_w, duty, peak_w, average_w, current_a}`. `runtime_h` is there for a battery only, with 80 % of its energy usable.
-Duty cycles come from the build's stored `check_runtime` or `check_power` arguments; a controller with `sleep_power_w` adds an `asleep` row for the rest of the time. The drone's motors draw their hover power (the physics_calc model: full-throttle power times the hover share of thrust to the 1.5) on average and their full-throttle power at the peak.
+Duty cycles come from the build's stored `check_runtime` or `check_power` arguments; a controller with `sleep_power_w` adds an `asleep` row for the rest of the time. The drone's motors draw their hover power (the physics_calc model: full-throttle power times the hover share of thrust to the 1.5; physics_calc itself reads the motor's load table where the library has one) on average and their full-throttle power at the peak.
 `warnings` is a list of `{part, text, severity}`, `severity` `fail` (over a rating: more cells than the controller or motor takes, a part above its voltage, a bare LED on a higher rail, a resistor above its watts, a motor or pump on a controller pin, a driver, regulator or supply above its current) or `warn` (a part well under its voltage).
 `gaps` lists the ratings the catalog does not have and the default the plan used instead, such as `Regulator output limit assumed 1.0 A`.
 `wiring` is the drone's `firmware` wiring table (same rows), else empty.

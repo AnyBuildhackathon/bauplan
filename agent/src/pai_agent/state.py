@@ -42,6 +42,10 @@ class BuildState:
     finished: bool = False
     # What the user typed or said, oldest first: the only source a requirement may quote as theirs.
     requests: list[str] = field(default_factory=list)
+    # True after the user themselves answered an ask_user question (not its timeout default), until a
+    # revised brief uses it: only then may a limit the user typed get looser. `consent_quote` is that answer.
+    relax_consent: bool = False
+    consent_quote: str = ""
     versions: list[dict] = field(default_factory=list)
     # What restoring a version needs beyond its event (catalog ids, frame params, the saved build), by n.
     version_files: dict[int, dict] = field(default_factory=dict)

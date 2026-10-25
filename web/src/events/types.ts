@@ -66,6 +66,22 @@ export interface MetricsEvent {
   price_eur: number;
   /** When present, the panel shows these cards instead of the four drone numbers. */
   cards?: MetricCard[];
+  /** Drone flight performance from the parts' specs (physics_calc); all estimates. */
+  top_speed_mps?: number;
+  top_speed_kmh?: number;
+  accel_mps2?: number;
+  /** Seconds from a hover to 90 % of the top speed. */
+  time_to_90pct_s?: number;
+  climb_rate_mps?: number;
+  /** Sustained level turn at half the top speed. */
+  turn_rate_dps?: number;
+  turn_radius_m?: number;
+  /** A 180 degree roll from hover, two motors at full and two cut back. */
+  flip_time_s?: number;
+  flight_time_full_speed_min?: number;
+  flight_time_full_throttle_min?: number;
+  /** True: the performance numbers are model estimates, not measurements. */
+  estimate?: boolean;
 }
 /** One trajectory sample: [t, x, y, z] in seconds and metres, z is up. */
 export type TrajectorySample = [number, number, number, number];
@@ -457,6 +473,10 @@ export interface PartEvent {
   /** Length, width, height of a battery pack. */
   size_mm?: [number, number, number] | null;
   diameter_mm?: number | null;
+  /** curated: from the parts library; web: found and validated on the web during this build. */
+  provenance?: "curated" | "web" | "catalog" | "estimate";
+  /** The product page its specs come from. */
+  source_url?: string | null;
 }
 export interface QuestionEvent {
   type: "question";

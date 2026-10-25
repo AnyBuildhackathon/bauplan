@@ -9,7 +9,8 @@ The airframe (`airframe`) comes from the parts, nothing is a fixed constant of o
   arms. MuJoCo sums them into the body's mass, centre of mass and full inertia matrix, so the
   sim weighs exactly what physics_calc and the bill of materials list.
 - Thrust: each motor's peak static thrust is its catalog `thrust_g` (the bench figure at its
-  rated voltage; a higher-voltage pack never adds thrust). Thrust falls linearly with the air
+  rated voltage; a higher-voltage pack never adds thrust, a pack under 90 % of the test voltage
+  loses thrust with the voltage squared, `flight.thrust_per_motor_g`, as physics_calc counts it). Thrust falls linearly with the air
   speed through the disc, to zero at the propeller's pitch speed: pitch times loaded rpm, with
   loaded rpm = 75 % of kv times the pack's voltage (capped at 3.8 V per cell the motor is
   rated for). Without a pitch the propeller is taken as
@@ -39,6 +40,8 @@ import math
 import random
 
 import numpy as np
+
+from pai_agent.flight import thrust_per_motor_g
 
 GRAVITY = 9.80665
 RHO = 1.225
@@ -129,7 +132,8 @@ def airframe(geo: dict, selected: dict) -> dict:
     return {
         "geo": geo,
         "rotors": rotors,
-        "t0": thrust_g / 1000.0 * GRAVITY,
+        # Below the load table's voltage the motor makes less thrust, as physics_calc computes it.
+        "t0": thrust_per_motor_g(motor, float(battery["voltage_v"]))[0] / 1000.0 * GRAVITY if battery.get("voltage_v") else thrust_g / 1000.0 * GRAVITY,
         "pitch_speed": pitch_speed,
         "tip_speed": tip_speed,
         "tau": min(0.12, max(0.01, 0.015 * scale * scale)),

@@ -40,7 +40,9 @@ BUDGET_S = {
     "bom_build": 120.0,
     # A slicer takes seconds to a minute per part; its own subprocess timeout is 180 s.
     "print_prep": 300.0,
-    "part_pick": 90.0,
+    # A web part search reads shop pages for up to 120 s.
+    "part_pick": 150.0,
+    "parts_search": 150.0,
     "delegate": 240.0,
     # Pressing Rebuild runs FreeCAD and the test inside the call; the other controls return at once.
     "ui_control": 400.0,
@@ -76,6 +78,8 @@ LABELS = {
     "isaac_sim_render": "Isaac Sim",
     "isaac_lab_status": "Isaac Lab",
     "bom_build": "The price search",
+    "parts_search": "The parts search",
+    "part_pick": "The parts search",
     "delegate": "The sub-agent",
 }
 
