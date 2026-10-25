@@ -1,12 +1,14 @@
 import { useEffect } from "react";
 import { useSession, type LoggedEvent, type SessionState } from "../events/store";
 import { useUi, type CanvasTab, type ModelLook } from "./ui";
-import { useSimPane } from "../components/training/useBrowserTraining";
+import { useSimPane, type SimPane } from "../components/training/useBrowserTraining";
 
 interface Shot {
   tab: CanvasTab;
   look?: ModelLook;
   compare?: [number, number] | null;
+  /** The Simulation tab's pane; the hover test unless a mission is playing. */
+  pane?: SimPane;
 }
 
 function shotFor({ ev }: LoggedEvent, state: SessionState): Shot | null {
@@ -21,6 +23,7 @@ function shotFor({ ev }: LoggedEvent, state: SessionState): Shot | null {
   }
   if (ev.type === "cad") return { tab: "cad" };
   if (ev.type === "sim") return { tab: "simulation" };
+  if (ev.type === "mission") return { tab: "simulation", pane: "missions" };
   if (ev.type === "omniverse" && ev.source === "live") return { tab: "omniverse" };
   return null;
 }
@@ -40,13 +43,14 @@ export function useDirector() {
         timer = setTimeout(sync, remaining);
         return;
       }
-      if (pending.tab === "simulation") useSimPane.getState().setPane("hover");
+      if (pending.tab === "simulation") useSimPane.getState().setPane(pending.pane ?? "hover");
       useUi.setState({
         tab: pending.tab,
         ...(pending.look ? { look: pending.look } : {}),
         compare: pending.compare ?? null,
         selectedVersion: null,
         selectedRun: null,
+        selectedMission: null,
       });
     };
     const initial = useSession.getState();

@@ -402,6 +402,49 @@ export interface VersionEvent {
   at?: string;
 }
 export type VersionTrigger = "chat" | "library" | "check_failed" | "restore";
+/** One mission test (simulate_mission) of the drone built from its parts, with its replay. */
+export type MissionId = "speed_run" | "turn" | "hold" | "chase";
+export interface MissionEvent {
+  type: "mission";
+  run: number;
+  mission: MissionId;
+  label: string;
+  result: "pass" | "fail";
+  summary: string;
+  /** What limits the build in this mission, so a fix has a direction. */
+  why: string;
+  requirement_id: string;
+  limit: number;
+  limit_kind: "min" | "max";
+  unit: string;
+  /** The number judged against the limit; null when it never got one (no fly caught). */
+  value: number | null;
+  metrics: Record<string, number | number[] | (number | null)[] | boolean | null>;
+  /** [t, value] of the mission's own curve: speed m/s, heading degrees, error cm or distance cm. */
+  series: [number, number][];
+  /** [t, x, y, z, qw, qx, qy, qz] of the drone, metres, z up. */
+  poses: number[][];
+  /** chase: [t, x, y, z] of the fly. */
+  target?: number[][];
+  /** hold: [t, wx, wy, wz] of the air, m/s. */
+  wind?: number[][];
+  parts: Record<string, string | null>;
+  mass_g: number;
+}
+/** The drone's dimensioned parts (drone_geometry.py): what the model, the sim and the BOM share. */
+export interface GeometryEvent {
+  type: "geometry";
+  arm_length_mm: number;
+  thickness_mm: number;
+  motor: { id: string | null; bell_diameter_mm: number; height_mm: number; stator_diameter_mm: number; stator_height_mm: number; shaft_mm: number | null; size: string | null };
+  propeller: { id: string | null; diameter_mm: number; pitch_in: number | null; blades: number; z_mm: number };
+  battery: { id: string | null; size_mm: [number, number, number] };
+  flight_controller: { id: string | null; mount_mm: number; board_mm: number };
+  prop_clearance_mm: number;
+  total_mass_g: number;
+  /** Fields a part did not carry, filled from the reference build. */
+  assumed: string[];
+}
 export interface PartEvent {
   type: "part";
   category: string;
@@ -647,6 +690,8 @@ export type AgentEvent =
   | RequirementEvent
   | MetricsEvent
   | SimEvent
+  | MissionEvent
+  | GeometryEvent
   | DrawEvent
   | BomEvent
   | MascotEvent
@@ -682,6 +727,8 @@ const EVENT_TYPES = new Set<AgentEvent["type"]>([
   "requirement",
   "metrics",
   "sim",
+  "mission",
+  "geometry",
   "draw",
   "bom",
   "mascot",

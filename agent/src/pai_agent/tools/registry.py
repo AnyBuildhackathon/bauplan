@@ -34,6 +34,8 @@ from pai_agent.tools.parts import parts_search
 from pai_agent.tools.optimize import optimize_apply, optimize_design
 from pai_agent.tools.print_prep import print_prep
 from pai_agent.tools.physics import physics_calc
+from pai_agent.drone_geometry import publish_geometry
+from pai_agent.tools.mission import simulate_mission
 from pai_agent.tools.simulate import simulate_drone
 from pai_agent.tools.stress import stress_test
 from pai_agent.tools.ui import mascot_say, ui_control, ui_draw, ui_point_at
@@ -43,6 +45,7 @@ TOOLS = {
     "parts_search": parts_search,
     "physics_calc": physics_calc,
     "simulate_drone": simulate_drone,
+    "simulate_mission": simulate_mission,
     "stress_test": stress_test,
     "cad_frame": cad_frame,
     "cad_part": cad_part,
@@ -118,6 +121,7 @@ _STEP = {
     "blender_render": "render",
     "isaac_sim_render": "render",
     "simulate_drone": "simulation",
+    "simulate_mission": "simulation",
     "isaac_lab_train": "training",
     "isaac_train": "training",
     "isaac_lab_status": "training",
@@ -196,6 +200,39 @@ SCHEMAS = [
         "input_schema": {"type": "object", "properties": {}},
     },
     {
+        "name": "simulate_mission",
+        "description": (
+            "Mission tests in MuJoCo for the drone, built from the chosen parts: mass and inertia from every part at its place, thrust from the motors' thrust_g "
+            "falling to zero at the propeller's pitch speed, motor lag from the prop size, body and rotor drag. "
+            "speed_run: full throttle from a hover, top speed (km/h) and the time to reach it; judged on top_speed. "
+            "turn: a 90° course change at 29 km/h, turn rate (°/s) and overshoot; judged on turn_rate. "
+            "hold: hold a point at 1.5 m in 3 m/s gusting wind with a downdraft, worst drift (cm); judged on hold_error. "
+            "chase: chase five flies that dart off every 0.5 to 0.9 s, capture within 12 cm, median capture time (s); judged on chase_time. "
+            "Pick from the request: fast or racing means speed_run and turn, agile means turn, precise or steady means hold, hunting, catching or intercepting means chase (and speed_run and turn). "
+            "Each mission is a requirement check: pass limit with the user's number and quote when they typed one; without a limit the row already set by product_brief is used, else Mechanic proposes one. "
+            "Every result says why the build is limited, for the fix loop."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "missions": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "mission": {"type": "string", "enum": ["speed_run", "turn", "hold", "chase"]},
+                            "limit": {"type": "number", "description": "km/h for speed_run, °/s for turn, cm for hold, s for chase."},
+                            "quote": {"type": "string", "description": "The user's own words the limit comes from, copied exactly."},
+                            "proposed": {"type": "boolean"},
+                        },
+                        "required": ["mission"],
+                    },
+                },
+            },
+            "required": ["missions"],
+        },
+    },
+    {
         "name": "stress_test",
         "description": "Stress test: flies the best trained controller (default gains without a training result) in 50 randomized MuJoCo worlds in the open dashboard's browser, each with mass +-15 %, motor strength -25..0 %, a gust up to 6 m/s and sensor noise. Returns the robustness score (survived/total), the worst world and one sentence on the weakest point. Use it when someone asks to stress test the drone or how robust it is.",
         "input_schema": {
@@ -246,6 +283,7 @@ SCHEMAS = [
         "description": (
             "Starts a drone or gripper build and turns the user's request into requirement checks. "
             "Drone: requirements lists budget (max €), flight_time (min minutes) and weight (max g), each with limit and quote, "
+            "and for a mission test the user asked a number for: top_speed (min km/h), turn_rate (min °/s), hold_error (max cm), chase_time (max s). "
             "the user's own words copied exactly from their request (e.g. 'under 150 euros'). Take every number the user typed. "
             "When the user named no number for one you need, you may propose it with proposed true and your reason as quote; it shows as proposed by Mechanic. "
             "Hover and the printable frame are added automatically. Calling it again on a built drone revises the requirements and keeps the parts. "
@@ -260,7 +298,7 @@ SCHEMAS = [
                     "items": {
                         "type": "object",
                         "properties": {
-                            "id": {"type": "string", "enum": ["budget", "flight_time", "weight"]},
+                            "id": {"type": "string", "enum": ["budget", "flight_time", "weight", "top_speed", "turn_rate", "hold_error", "chase_time"]},
                             "limit": {"type": "number"},
                             "quote": {"type": "string"},
                             "proposed": {"type": "boolean"},
@@ -797,6 +835,9 @@ def _running_detail(name: str, args: dict) -> str:
         return "variant " + str(args.get("variant") or "")
     if name == "simulate_assembly":
         return str(args.get("mode") or "push") + " test"
+    if name == "simulate_mission":
+        missions = args.get("missions") or []
+        return ", ".join(str(m.get("mission") if isinstance(m, dict) else m) for m in missions if m)
     if name in {"catalog_search", "product_brief"}:
         return (str(args.get("category") or args.get("product") or "") + " " + str(args.get("query", ""))).strip()
     if name == "cad_frame":
@@ -817,7 +858,7 @@ async def _advance(ctx: Ctx, name: str, result: dict, started: bool) -> None:
     if result.get("ok") is False:
         await ctx.step(step, "failed")
         return
-    if name in {"simulate_drone", "simulate_grip", "simulate_assembly"}:
+    if name in {"simulate_drone", "simulate_grip", "simulate_assembly", "simulate_mission"}:
         await ctx.step("simulation", "done" if result.get("result") == "pass" else "failed")
     elif name in {"check_tip_over", "check_deflection", "check_torque", "check_runtime", "check_power", "check_thermal", "check_rollover"}:
         await ctx.step("simulation", "done" if result.get("result") == "pass" else "failed")
@@ -885,6 +926,7 @@ async def call_tool(ctx: Ctx, name: str, args: dict | None) -> dict:
     await _advance(ctx, name, result, started=False)
     if result.get("ok") is not False:
         await refresh_requirements(ctx)
+        await publish_geometry(ctx)
         if name in {"train_in_browser", "isaac_train", "isaac_lab_train"}:
             await refresh_after_training(ctx)
         if name == "bom_build":
@@ -911,6 +953,7 @@ async def emit_connections(publish) -> None:
     rows = (
         ("parts_search", "connected", "Catalog agent/data/parts.json"),
         ("simulate_drone", "connected", "MuJoCo on this machine"),
+        ("simulate_mission", "connected", "MuJoCo missions on this machine"),
         ("cad_frame", "connected", cad_detail),
         ("cad_part", "connected" if find_freecadcmd() else "offline", "Generated parts, headless and sandboxed" if find_freecadcmd() else "freecadcmd is missing"),
         ("blender_render", blender_status, blender_detail),

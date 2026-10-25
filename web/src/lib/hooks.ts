@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "../events/store";
-import type { MetricsEvent, VersionEvent } from "../events/types";
+import type { GeometryEvent, MetricsEvent, VersionEvent } from "../events/types";
 import { metricTargets, versions, type Version } from "./derived";
 import { partKey } from "./targets";
 import { useUi } from "./ui";
@@ -28,6 +28,24 @@ export interface Assembly {
   thickness: number;
   battery: [number, number, number];
   propDiameter: number;
+  /** The chosen parts' real sizes from the `geometry` event, or null before one (the model stays as built). */
+  sizes: PartSizes | null;
+}
+
+/** Millimetres: motor bell diameter and height, propeller diameter, flight controller mount. */
+export interface PartSizes {
+  motor: [number, number];
+  prop: number;
+  fcMount: number;
+}
+
+function sizesOf(geometry: GeometryEvent | null): PartSizes | null {
+  if (!geometry) return null;
+  return {
+    motor: [geometry.motor.bell_diameter_mm, geometry.motor.height_mm],
+    prop: geometry.propeller.diameter_mm,
+    fcMount: geometry.flight_controller.mount_mm,
+  };
 }
 
 /** The kickoff's pack, the Tattu R-Line 1S 550 of the reference build. */
@@ -44,6 +62,7 @@ const NO_LOG: ReturnType<typeof useSession.getState>["log"] = [];
 export function useAssembly(atSeq?: number | "latest"): Assembly {
   const cad = useSession((s) => s.cad);
   const parts = useSession((s) => s.parts);
+  const geometry = useSession((s) => s.geometry);
   const byName = useSession((s) => s.partsByName);
   // Only a build at a given event reads the log; the others would re-render on every event.
   const log = useSession((s) => (typeof atSeq === "number" ? s.log : NO_LOG));
@@ -51,14 +70,19 @@ export function useAssembly(atSeq?: number | "latest"): Assembly {
   const versionsList = useSession((s) => s.versions);
   return useMemo(() => {
     let battery = parts.battery;
+    let geo: GeometryEvent | null = geometry;
     if (typeof atSeq === "number") {
+      geo = null;
       for (const { seq, ev } of log) {
         if (seq > atSeq) break;
         if (ev.type === "part" && ev.category === "battery") battery = ev;
+        if (ev.type === "geometry") geo = ev;
       }
     } else if (atSeq === undefined && selected !== null) {
       const name = versionsList.find((v) => v.n === selected)?.parts.battery;
       if (name && byName[name]) battery = byName[name];
+      // An older version's model is drawn as it was built.
+      geo = null;
     }
     const size = battery?.size_mm ?? RLINE_550;
     return {
@@ -66,8 +90,9 @@ export function useAssembly(atSeq?: number | "latest"): Assembly {
       thickness: (cad?.params.thickness_mm?.value ?? 2) / 1000,
       battery: [size[0] / 1000, size[1] / 1000, size[2] / 1000],
       propDiameter: (parts.propeller?.diameter_mm ?? 51) / 1000,
+      sizes: sizesOf(geo),
     };
-  }, [cad, parts, byName, log, selected, versionsList, atSeq]);
+  }, [cad, parts, geometry, byName, log, selected, versionsList, atSeq]);
 }
 
 const HIGHLIGHT_MS = 7000;

@@ -1,15 +1,17 @@
 // The hero drone as FreeCAD built it (agent/freecad/frame_build.py): the GLB from the latest
 // `cad` event, or the recorded v1 build before the first one. Every scene target from
 // docs/events.md is a node in the file, so `point` and `draw` find the real part. Props spin
-// about their shafts, a part glows while the agent talks about it, and a battery the agent is
-// still weighing is scaled from the size baked into the file. Units are metres, y is up, the
-// nose is -z.
+// about their shafts, a part glows while the agent talks about it, and a part chosen after the
+// file was built (a battery, motor, propeller or flight controller) is scaled from the size baked
+// into the file to its real size, so the model always shows the parts on the bill of materials.
+// Units are metres, y is up, the nose is -z.
 import { useFrame, useLoader } from "@react-three/fiber";
 import { useEffect, useMemo } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { useSession } from "../../events/store";
 import { assetUrl } from "../../lib/api";
+import type { PartSizes } from "../../lib/hooks";
 import { useAnchor } from "./anchors";
 import { ExplodeLayer, useExplodeHover, type PieceSpec } from "./explode";
 
@@ -49,6 +51,8 @@ export interface HeroDroneProps {
   url: string;
   /** The battery to show, length, width, height in metres. */
   battery: [number, number, number];
+  /** The chosen motor, propeller and flight controller sizes; null keeps them as built. */
+  sizes?: PartSizes | null;
   /** Canonical part keys the agent is talking about right now. */
   highlight: Set<string>;
   /** Propeller speed in rad/s. */
@@ -86,8 +90,17 @@ export function HeroDrone(props: HeroDroneProps) {
   return <Drone {...props} source={gltf.scene} />;
 }
 
-function Drone({ source, battery, highlight, spin = 0, explodable = false }: HeroDroneProps & { source: THREE.Group }) {
-  const { root, parts, baked } = useMemo(() => {
+/** What the file was built with (the drone node's extras); the recorded build predates the motor fields. */
+interface Baked {
+  motor: [number, number];
+  prop: number;
+  fcMount: number;
+}
+
+const ratio = (want: number | undefined, had: number) => (want && had ? THREE.MathUtils.clamp(want / had, 0.3, 4) : 1);
+
+function Drone({ source, battery, sizes, highlight, spin = 0, explodable = false }: HeroDroneProps & { source: THREE.Group }) {
+  const { root, parts, baked, built } = useMemo(() => {
     const root = source.clone(true);
     const parts = new Map<string, Part>();
     for (const name of NODES) {
@@ -113,7 +126,13 @@ function Drone({ source, battery, highlight, spin = 0, explodable = false }: Her
     }
     const size = parts.get("battery")?.node.userData.size_mm as number[] | undefined;
     const baked: [number, number, number] = size?.length === 3 ? [size[0] / 1000, size[1] / 1000, size[2] / 1000] : [0.068, 0.0155, 0.0067];
-    return { root, parts, baked };
+    const extras = (root.getObjectByName("drone")?.userData ?? {}) as Record<string, number | undefined>;
+    const built: Baked = {
+      motor: [extras.motor_diameter_mm ?? 14, extras.motor_height_mm ?? 13.5],
+      prop: extras.prop_mm ?? 51,
+      fcMount: extras.fc_mount_mm ?? 26,
+    };
+    return { root, parts, baked, built };
   }, [source]);
 
   useEffect(
@@ -134,6 +153,24 @@ function Drone({ source, battery, highlight, spin = 0, explodable = false }: Her
     if (strap) strap.visible = fits;
   }, [parts, scale]);
 
+  // Motors, props and the board chosen after the file was built take their real size.
+  const bell = ratio(sizes?.motor[0], built.motor[0]);
+  const tall = ratio(sizes?.motor[1], built.motor[1]);
+  const prop = ratio(sizes?.prop, built.prop);
+  const board = ratio(sizes?.fcMount, built.fcMount);
+  useEffect(() => {
+    for (const c of CORNERS) {
+      const motor = parts.get(`motor_${c}`)?.node;
+      motor?.scale.set(bell, tall, bell);
+      const blades = parts.get(`propeller_${c}`)?.node;
+      if (!blades) continue;
+      // A prop hangs under its motor in the FreeCAD file: undo the motor's scale first.
+      const under = blades.parent?.name === `motor_${c}`;
+      blades.scale.set(prop / (under ? bell : 1), under ? 1 / tall : 1, prop / (under ? bell : 1));
+    }
+    parts.get("flight_controller")?.node.scale.set(board, 1, board);
+  }, [parts, bell, tall, prop, board]);
+
   const anchors = useMemo(() => {
     const out: { name: string; center: THREE.Vector3; radius: number }[] = [];
     for (const name of ["frame", "flight_controller", "battery", ...CORNERS.flatMap((c) => [`motor_${c}`, `propeller_${c}`])]) {
@@ -148,8 +185,8 @@ function Drone({ source, battery, highlight, spin = 0, explodable = false }: Her
     if (motor) out.push({ ...motor, name: "motors" });
     if (prop) out.push({ ...prop, name: "propellers" });
     return out;
-    // The battery anchor follows the scaled pack.
-  }, [root, parts, scale]);
+    // The battery anchor follows the scaled pack, the motor and prop anchors their parts.
+  }, [root, parts, scale, bell, tall, prop, board]);
 
   const specs = useMemo<PieceSpec[]>(
     () => [...parts].map(([key, part]) => ({ node: part.node, key, isBase: key === "frame", ...(PIECES[key] ?? { name: key, label: "" }) })),

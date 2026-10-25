@@ -87,6 +87,8 @@ DEFAULTS = {
     "battery_label": "#e8c21a",
     "camera_mm": 14.0,
     "prop_blades": 4,
+    # The flight controller's mounting pattern; the 26 mm AIO is the one this file was drawn for.
+    "fc_mount_mm": 26.0,
 }
 
 BAY = 14.5  # half width of the plate ring around the flight controller
@@ -94,6 +96,8 @@ BAY_HOLE = 13.4  # the lightening window under the flight controller
 ARM_ROOT = 4.8  # half width of an arm at the body
 ARM_TIP = 3.4  # half width of an arm at the motor pad
 STACK_R = 13.0 * math.sqrt(2.0)  # the 26 x 26 mm AIO mount, turned 45 degrees: holes on the axes
+FC_DRAWN_MM = 26.0  # the mount the board below was drawn for; other mounts scale it in plan
+STATOR_DRAWN_MM = 11.0  # the stator the motor below was drawn for (a 1103 in a 14 mm bell)
 STANDOFF_H = 3.5
 PCB_T = 1.2
 CANOPY_WALL = 1.3
@@ -118,6 +122,11 @@ def resolve(params: dict) -> dict:
     p["prop_blades"] = int(p["prop_blades"])
     size = str(p.get("motor_size") or "1103")
     p["stator_h_mm"] = float(size[2:4]) if len(size) == 4 and size.isdigit() else 3.0
+    # The stator's diameter from the code too (1103: 11 mm), kept inside the bell's magnets.
+    stator_d = float(size[:2]) if len(size) == 4 and size.isdigit() else STATOR_DRAWN_MM * float(p["motor_diameter_mm"]) / 14.0
+    k_bell = float(p["motor_diameter_mm"]) / 14.0
+    p["stator_k"] = min(stator_d / STATOR_DRAWN_MM, (float(p["motor_diameter_mm"]) / 2.0 - 1.3) / 5.6) / k_bell
+    p["fc_k"] = float(p["fc_mount_mm"]) / FC_DRAWN_MM
     p["motor_body_mm"] = float(p["motor_height_mm"]) - 3.3  # the shaft stands about 3.3 mm proud
     t = p["thickness_mm"]
     p["prop_z"] = t + p["motor_body_mm"] + 2.3  # blade plane: hub on the bell cap
@@ -233,10 +242,11 @@ def _try_fillet(shape, radius, edges):
     return shape
 
 
-def _stack_holes():
+def _stack_holes(p=None):
     """The four AIO standoffs: nose, tail and both sides, where the canopy's feet sit."""
 
-    return [(0.0, STACK_R), (STACK_R, 0.0), (0.0, -STACK_R), (-STACK_R, 0.0)]
+    r = STACK_R * (p["fc_k"] if p else 1.0)
+    return [(0.0, r), (r, 0.0), (0.0, -r), (-r, 0.0)]
 
 
 def _motor_centers(p):
@@ -258,7 +268,7 @@ def frame_plate(p):
     bolt = p["motor_spacing_mm"] / 2.0
     # An open bay: a rounded square ring with bosses for the standoffs.
     faces = [_rounded_rect(0, 0, 2 * BAY, 2 * BAY, 2.5)]
-    for x, y in _stack_holes():
+    for x, y in _stack_holes(p):
         faces.append(_stadium((x * 0.8, y * 0.8), (x, y), 4.2))
     for _name, angle, _spin, cx, cy in _motor_centers(p):
         a = math.radians(angle)
@@ -288,7 +298,7 @@ def frame_plate(p):
         for k in range(3):
             b = a + math.radians(30 + k * 120)
             holes.append(_disk(cx + bolt * math.cos(b), cy + bolt * math.sin(b), 0.8))
-    for x, y in _stack_holes():
+    for x, y in _stack_holes(p):
         holes.append(_disk(x, y, 1.05))
     solid = outline.extrude(_v(0, 0, t))
     cutter = _fused([h.extrude(_v(0, 0, t + 2)).translate(_v(0, 0, -1)) for h in holes])
@@ -354,6 +364,8 @@ def motor(p, cx, cy):
     parts.append(("steel", base))
 
     z0 = t + 1.6
+    # The stator from the motor code, the bell from its diameter: a 1104 grows the stator, not the bell.
+    k_bell, k = k, k * p["stator_k"]
     stator = _ring(3.4 * k, 1.6 * k, stator_h, cx, cy, z0)
     coils = []
     teeth = []
@@ -370,6 +382,7 @@ def motor(p, cx, cy):
         coils.append(coil)
     parts.append(("steel", _fused([stator] + teeth)))
     parts.append(("copper", _fused(coils)))
+    k = k_bell
 
     bell_z0 = t + 1.1
     # The bell's machined lower lip shows bare aluminium under the black anodizing.
@@ -458,7 +471,22 @@ def propeller(p, cx, cy, spin, phase):
 
 
 def flight_controller(p):
-    """The AIO board on four anodized standoffs, with MCU, gyro, FETs, plugs and nuts."""
+    """The AIO board on four anodized standoffs, scaled in plan to the chosen board's mount."""
+
+    import FreeCAD as App
+
+    parts = _flight_controller_drawn(p)
+    k = p["fc_k"]
+    if abs(k - 1.0) < 1e-6:
+        return parts
+    matrix = App.Matrix()
+    matrix.scale(k, k, 1.0)
+    # The battery leads run to the pack, which does not move with the board.
+    return [(material, shape if material.startswith("wire_") else shape.transformGeometry(matrix)) for material, shape in parts]
+
+
+def _flight_controller_drawn(p):
+    """The 26 mm AIO board on four anodized standoffs, with MCU, gyro, FETs, plugs and nuts."""
 
     import Part
 
@@ -1031,7 +1059,15 @@ def write_glb(p, bodies, path, tolerance=0.06):
         {
             "name": "drone",
             "children": [i for i in range(len(nodes)) if i not in children],
-            "extras": {"arm_length_mm": p["arm_length_mm"], "prop_mm": p["prop_mm"], "battery_mm": p["battery_mm"], "motor_kv": p["motor_kv"]},
+            "extras": {
+                "arm_length_mm": p["arm_length_mm"],
+                "prop_mm": p["prop_mm"],
+                "battery_mm": p["battery_mm"],
+                "motor_kv": p["motor_kv"],
+                "motor_diameter_mm": p["motor_diameter_mm"],
+                "motor_height_mm": p["motor_height_mm"],
+                "fc_mount_mm": p["fc_mount_mm"],
+            },
         }
     )
     gltf = {

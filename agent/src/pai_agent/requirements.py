@@ -4,7 +4,8 @@ The brief or the product spec owns the wording and the limits; this module owns 
 requirement is attributed to (`attribute`). `refresh_requirements` runs after every successful tool call (`tools/registry.py`), so a
 row only turns green when a tool produced a number that satisfies its limit. For a generic
 product the verdict comes from the check library (`tools/checks.judge`); the drone and gripper
-compare their metrics against fixed requirement ids.
+compare their metrics against fixed requirement ids, the drone's mission rows the latest
+`simulate_mission` result for that mission.
 """
 
 from __future__ import annotations
@@ -44,6 +45,9 @@ def attribute(state: BuildState, quote: str, proposed: bool, reason: str = "") -
     return {"source": "proposed", "source_quote": note, "speaker": "Mechanic", "time": stamp}
 
 
+_MISSION_REQUIREMENTS = {"top_speed", "turn_rate", "hold_error", "chase_time"}
+
+
 def met_for(state: BuildState, requirement: dict) -> bool | None:
     requirement_id = requirement["id"]
     metrics = state.metrics
@@ -74,6 +78,12 @@ def met_for(state: BuildState, requirement: dict) -> bool | None:
         if state.last_sim is None:
             return None
         return state.last_sim["result"] == "pass"
+    if requirement_id in _MISSION_REQUIREMENTS:
+        # Judged by simulate_mission against this row's limit; a changed limit waits for the next run.
+        run = next((m for m in state.missions.values() if m.get("requirement") == requirement_id), None)
+        if run is None or run.get("limit") != float(requirement.get("min", requirement.get("max", 0))):
+            return None
+        return run["result"] == "pass"
     if requirement_id == "printable":
         if not state.stl_path:
             return None

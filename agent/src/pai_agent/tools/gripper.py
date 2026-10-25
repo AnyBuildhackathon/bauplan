@@ -55,7 +55,13 @@ DRONE_LIMITS = {
     "budget": ("max", "Total price under €{n:g}"),
     "flight_time": ("min", "At least {n:g} minutes of flight time"),
     "weight": ("max", "Total mass under {n:g} g"),
+    # Mission tests (simulate_mission): the wording is shared with tools/mission.py.
+    "top_speed": ("min", "Top speed at least {n:g} km/h"),
+    "turn_rate": ("min", "Turns at least {n:g}°/s at 29 km/h"),
+    "hold_error": ("max", "Holds position within {n:g} cm in gusty wind"),
+    "chase_time": ("max", "Catches a dodging fly within {n:g} s"),
 }
+MISSION_IDS = ("top_speed", "turn_rate", "hold_error", "chase_time")
 
 
 def _reset_build(state) -> None:
@@ -63,6 +69,7 @@ def _reset_build(state) -> None:
     state.metrics = {}
     state.last_sim = None
     state.sim_run = 0
+    state.missions = {}
     state.stl_path = None
     state.part = None
     state.frame_mass_g = None
@@ -73,7 +80,7 @@ def _reset_build(state) -> None:
 
 
 def drone_requirements(state, entries: list) -> tuple[list[dict], list[str]]:
-    """Requirement rows from the request: budget, flight time and weight with their limits, then hover and the printable frame."""
+    """Requirement rows from the request: budget, flight time, weight and mission limits, then hover and the printable frame."""
 
     rows: list[dict] = []
     problems: list[str] = []
@@ -122,6 +129,10 @@ async def product_brief(ctx: Ctx, args: dict) -> dict:
                 old = before.get(row["id"])
                 if old and old["text"] != row["text"]:
                     row["changed_from"] = old["text"]
+            # A mission limit the revision does not mention stays as it was.
+            given = {row["id"] for row in requirements}
+            kept = [r for r in state.requirements if r["id"] in MISSION_IDS and r["id"] not in given]
+            requirements = requirements[:-2] + kept + requirements[-2:]
         state.product = product
         state.requirements = requirements
         await ctx.emit({"type": "product", "id": product, "label": PRODUCTS[product], "requirements": [r["id"] for r in requirements]})
@@ -130,7 +141,7 @@ async def product_brief(ctx: Ctx, args: dict) -> dict:
             "detail": "Micro drone, " + str(len(requirements)) + " requirements from the request",
             "product": product,
             "requirements": [{k: r[k] for k in ("id", "text", "source")} | {k: r[k] for k in ("min", "max") if k in r} for r in requirements],
-            "next": "parts_search for every category, physics_calc, simulate_drone, cad_frame, physics_calc, blender_render, safety_check, bom_build.",
+            "next": "parts_search for every category, physics_calc, simulate_drone, simulate_mission for what the drone is for, cad_frame, physics_calc, blender_render, safety_check, bom_build.",
         }
 
     state.product = product
