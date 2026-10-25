@@ -743,7 +743,7 @@
    "frame": "millimetres, Z up, centred on the part's footprint, bottom at z = 0, length along X",
    "source_url": "https://betafpv.com/products/snow-2306-brushless-motors",
    "checked": "2026-10-25",
-   "kind": "approximate",
+   "kind": "look-alike",
    "author": "AnyBuild look-alike generator",
    "license": "same as this repository",
    "dims": {
@@ -766,16 +766,20 @@
     "bolt_thread_mm": {
      "value": 3.0,
      "source": "https://betafpv.com/products/snow-2306-brushless-motors"
+    },
+    "bolt_circle_mm": {
+     "value": 16.0,
+     "source": "https://cdn.shopify.com/s/files/1/1778/6615/files/680a744dc6abc6349181243892ea1d32_34f11465-9439-4652-a3a7-6819abab1ed0.jpg",
+     "checked": "2026-10-25"
+    },
+    "bolts": {
+     "value": 4,
+     "source": "https://cdn.shopify.com/s/files/1/1778/6615/files/680a744dc6abc6349181243892ea1d32_34f11465-9439-4652-a3a7-6819abab1ed0.jpg",
+     "checked": "2026-10-25"
     }
    },
-   "missing": [
-    "bolt_circle_mm",
-    "bolts"
-   ],
-   "estimated": [
-    "bolt_circle_mm",
-    "bolts"
-   ],
+   "missing": [],
+   "estimated": [],
    "styled": [
     "base_color",
     "spokes",
@@ -819,17 +823,17 @@
       "mount_hole_"
      ],
      "count": 4,
-     "diameter": 22.63,
+     "diameter": 16.0,
      "tol": 0.1
     }
    ],
    "bbox_mm": [
-    45.52,
+    43.22,
     29.3,
     31.67
    ],
-   "bytes": 122116,
-   "note": "The page gives 3 x M3 screw sizes but not the pattern; 2306 motors commonly use 16 x 16 mm (a 22.6 mm circle). The catalog's 16 mm is not confirmed by the page."
+   "bytes": 108960,
+   "note": "Bolt circle 16 mm with 4 M3 bolts, shaft M5 x 12.3 mm, per the outline drawing on the product page."
   },
   "betafpv-snow-2306-2500kv": {
    "id": "betafpv-snow-2306-2500kv",
@@ -844,7 +848,7 @@
    "frame": "millimetres, Z up, centred on the part's footprint, bottom at z = 0, length along X",
    "source_url": "https://betafpv.com/products/snow-2306-brushless-motors",
    "checked": "2026-10-25",
-   "kind": "approximate",
+   "kind": "look-alike",
    "author": "AnyBuild look-alike generator",
    "license": "same as this repository",
    "dims": {
@@ -867,16 +871,20 @@
     "bolt_thread_mm": {
      "value": 3.0,
      "source": "https://betafpv.com/products/snow-2306-brushless-motors"
+    },
+    "bolt_circle_mm": {
+     "value": 16.0,
+     "source": "https://cdn.shopify.com/s/files/1/1778/6615/files/680a744dc6abc6349181243892ea1d32_38eb4667-24f3-461e-9dfb-8c6c68c52b53.jpg",
+     "checked": "2026-10-25"
+    },
+    "bolts": {
+     "value": 4,
+     "source": "https://cdn.shopify.com/s/files/1/1778/6615/files/680a744dc6abc6349181243892ea1d32_38eb4667-24f3-461e-9dfb-8c6c68c52b53.jpg",
+     "checked": "2026-10-25"
     }
    },
-   "missing": [
-    "bolt_circle_mm",
-    "bolts"
-   ],
-   "estimated": [
-    "bolt_circle_mm",
-    "bolts"
-   ],
+   "missing": [],
+   "estimated": [],
    "styled": [
     "base_color",
     "spokes",
@@ -920,17 +928,17 @@
       "mount_hole_"
      ],
      "count": 4,
-     "diameter": 22.63,
+     "diameter": 16.0,
      "tol": 0.1
     }
    ],
    "bbox_mm": [
-    45.52,
+    43.22,
     29.3,
     31.67
    ],
-   "bytes": 122116,
-   "note": "The page gives 3 x M3 screw sizes but not the pattern; 2306 motors commonly use 16 x 16 mm (a 22.6 mm circle). The catalog's 16 mm is not confirmed by the page."
+   "bytes": 108960,
+   "note": "Bolt circle 16 mm with 4 M3 bolts, shaft M5 x 12.3 mm, per the outline drawing on the product page."
   },
   "generic-1103-15000kv": {
    "id": "generic-1103-15000kv",
@@ -2729,17 +2737,22 @@
       ]
      ],
      "source": "https://betafpv.com/products/toothpick-f405-2-4s-aio-brushless-flight-controller-20a-blheli_32-v4"
+    },
+    "length_mm": {
+     "value": 33.0,
+     "source": "https://cdn.shopifycdn.net/s/files/1/1778/6615/files/1_beda66e3-25a4-4be8-8e54-6b7be4b4f2bf.png",
+     "checked": "2026-10-25"
+    },
+    "width_mm": {
+     "value": 33.0,
+     "source": "https://cdn.shopifycdn.net/s/files/1/1778/6615/files/1_beda66e3-25a4-4be8-8e54-6b7be4b4f2bf.png",
+     "checked": "2026-10-25"
     }
    },
    "missing": [
-    "length_mm",
-    "width_mm",
     "connector_positions"
    ],
-   "estimated": [
-    "length_mm",
-    "width_mm"
-   ],
+   "estimated": [],
    "styled": [
     "battery_connector",
     "corner_mm",
@@ -2755,10 +2768,10 @@
      ],
      "axes": "xy",
      "expect": [
-      30,
-      30
+      33.0,
+      33.0
      ],
-     "tol": 0.6
+     "tol": 0.66
     },
     {
      "check": "holes",
@@ -2787,12 +2800,12 @@
     }
    ],
    "bbox_mm": [
-    30.0,
-    30.54,
+    33.0,
+    33.0,
     4.23
    ],
    "bytes": 81424,
-   "note": " Chip and connector positions follow the product photos, not a drawing."
+   "note": "33 mm across the board and 26 mm between holes per the dimension image on the product page; chip and connector positions follow the product photos, not a drawing."
   },
   "betafpv-cube-2-4s-30a": {
    "id": "betafpv-cube-2-4s-30a",
@@ -2920,38 +2933,44 @@
     "holes": {
      "value": [
       [
-       13.0,
-       13.0,
+       12.9,
+       12.9,
        2.0
       ],
       [
-       -13.0,
-       13.0,
+       -12.9,
+       12.9,
        2.0
       ],
       [
-       -13.0,
-       -13.0,
+       -12.9,
+       -12.9,
        2.0
       ],
       [
-       13.0,
-       -13.0,
+       12.9,
+       -12.9,
        2.0
       ]
      ],
-     "source": "https://betafpv.com/products/toothpick-f722-2-6s-aio-brushless-flight-controller-35ablheli_s"
+     "source": "https://cdn.shopifycdn.net/s/files/1/1778/6615/files/1_81608652-b3e1-49e2-b3fe-e98daad36b34.jpg",
+     "checked": "2026-10-25"
+    },
+    "length_mm": {
+     "value": 33.0,
+     "source": "https://cdn.shopifycdn.net/s/files/1/1778/6615/files/1_81608652-b3e1-49e2-b3fe-e98daad36b34.jpg",
+     "checked": "2026-10-25"
+    },
+    "width_mm": {
+     "value": 33.0,
+     "source": "https://cdn.shopifycdn.net/s/files/1/1778/6615/files/1_81608652-b3e1-49e2-b3fe-e98daad36b34.jpg",
+     "checked": "2026-10-25"
     }
    },
    "missing": [
-    "length_mm",
-    "width_mm",
     "connector_positions"
    ],
-   "estimated": [
-    "length_mm",
-    "width_mm"
-   ],
+   "estimated": [],
    "styled": [
     "battery_connector",
     "corner_mm",
@@ -2967,10 +2986,10 @@
      ],
      "axes": "xy",
      "expect": [
-      32,
-      32
+      33.0,
+      33.0
      ],
-     "tol": 0.64
+     "tol": 0.66
     },
     {
      "check": "holes",
@@ -2979,32 +2998,32 @@
      ],
      "expect": [
       [
-       13.0,
-       13.0
+       12.9,
+       12.9
       ],
       [
-       -13.0,
-       13.0
+       -12.9,
+       12.9
       ],
       [
-       -13.0,
-       -13.0
+       -12.9,
+       -12.9
       ],
       [
-       13.0,
-       -13.0
+       12.9,
+       -12.9
       ]
      ],
      "tol": 0.15
     }
    ],
    "bbox_mm": [
-    32.0,
-    32.54,
+    33.0,
+    33.04,
     11.08
    ],
-   "bytes": 86980,
-   "note": " Chip and connector positions follow the product photos, not a drawing."
+   "bytes": 87032,
+   "note": "33 mm across the board and 25.8 mm between holes per the dimension image on the product page (the page text rounds the pattern to 26 x 26); chip and connector positions follow the product photos, not a drawing."
   },
   "betafpv-meteor65-pro-ii": {
    "id": "betafpv-meteor65-pro-ii",
@@ -3232,7 +3251,7 @@
    "frame": "millimetres, Z up, centred on the part's footprint, bottom at z = 0, length along X",
    "source_url": "https://betafpv.com/products/pavo20-pro-ii-brushless-whoop-frame",
    "checked": "2026-10-25",
-   "kind": "approximate",
+   "kind": "look-alike",
    "author": "AnyBuild look-alike generator",
    "license": "same as this repository",
    "dims": {
@@ -3247,14 +3266,23 @@
     "mount_diameter_mm": {
      "value": 9.0,
      "source": "https://betafpv.com/products/pavo20-pro-ii-brushless-whoop-frame"
+    },
+    "size_mm": {
+     "value": [
+      133.8,
+      133.8,
+      7.5
+     ],
+     "source": [
+      "https://cdn.shopify.com/s/files/1/1778/6615/files/Pavo20_Pro_II_Brushless_Whoop_Frame_dimensions.jpg",
+      "https://cdn.shopify.com/s/files/1/1778/6615/files/Pavo20_Pro_II_Brushless_Whoop_Frame_whoop_duct_dimensions.jpg"
+     ],
+     "checked": "2026-10-25",
+     "how": "133.8 mm across the ducts in both side views of the square frame; duct height 7.5 mm from the duct drawing"
     }
    },
-   "missing": [
-    "size_mm"
-   ],
-   "estimated": [
-    "size_mm"
-   ],
+   "missing": [],
+   "estimated": [],
    "styled": [],
    "checks": [
     {
@@ -3264,9 +3292,9 @@
      ],
      "axes": "xyz",
      "expect": [
-      128.4,
-      128.4,
-      24.0
+      133.8,
+      133.8,
+      7.5
      ],
      "tol": 0.6
     },
@@ -3280,11 +3308,11 @@
     }
    ],
    "bbox_mm": [
-    128.4,
-    128.26,
-    24.0
+    133.8,
+    133.8,
+    7.5
    ],
-   "bytes": 184240,
+   "bytes": 188464,
    "note": "The page gives wheelbase, FC and motor patterns but not the overall size; ducts are drawn for the 2.2 inch props it takes."
   },
   "betafpv-pavo25-v2": {
@@ -3300,7 +3328,7 @@
    "frame": "millimetres, Z up, centred on the part's footprint, bottom at z = 0, length along X",
    "source_url": "https://betafpv.com/products/pavo25-v2-brushless-whoop-frame",
    "checked": "2026-10-25",
-   "kind": "approximate",
+   "kind": "look-alike",
    "author": "AnyBuild look-alike generator",
    "license": "same as this repository",
    "dims": {
@@ -3319,14 +3347,20 @@
     "duct_id_mm": {
      "value": 65.5,
      "source": "https://betafpv.com/products/pavo25-v2-brushless-whoop-frame"
+    },
+    "size_mm": {
+     "value": [
+      155.9,
+      155.9,
+      8.0
+     ],
+     "source": "https://cdn.shopifycdn.net/s/files/1/1778/6615/files/f7d7c897f798fc44c391847188c3ac79_0a605e13-2c9c-40bf-a593-1698242552b2.jpg",
+     "checked": "2026-10-25",
+     "how": "155.9 mm across the ducts (the square frame's side view), duct height 8 mm; the 76.7 mm duct outside diameter on the 112 mm wheelbase gives the same 155.9"
     }
    },
-   "missing": [
-    "size_mm"
-   ],
-   "estimated": [
-    "size_mm"
-   ],
+   "missing": [],
+   "estimated": [],
    "styled": [],
    "checks": [
     {
@@ -3336,9 +3370,9 @@
      ],
      "axes": "xyz",
      "expect": [
-      148.7,
-      148.7,
-      30.0
+      155.9,
+      155.9,
+      8.0
      ],
      "tol": 0.6
     },
@@ -3352,11 +3386,11 @@
     }
    ],
    "bbox_mm": [
-    148.7,
-    148.7,
-    30.0
+    155.83,
+    155.86,
+    8.0
    ],
-   "bytes": 189540,
+   "bytes": 195592,
    "note": "Duct diameter 65.5 mm and wheelbase are from the page; overall size is computed from them, height is not given."
   },
   "betafpv-pavo35": {
@@ -3372,7 +3406,7 @@
    "frame": "millimetres, Z up, centred on the part's footprint, bottom at z = 0, length along X",
    "source_url": "https://betafpv.com/products/pavo35-brushless-whoop-frame",
    "checked": "2026-10-25",
-   "kind": "approximate",
+   "kind": "look-alike",
    "author": "AnyBuild look-alike generator",
    "license": "same as this repository",
    "dims": {
@@ -3391,14 +3425,20 @@
     "duct_id_mm": {
      "value": 92.0,
      "source": "https://betafpv.com/products/pavo35-brushless-whoop-frame"
+    },
+    "size_mm": {
+     "value": [
+      210.5,
+      210.5,
+      10.0
+     ],
+     "source": "https://cdn.shopify.com/s/files/1/1778/6615/files/f7d7c897f798fc44c391847188c3ac79_360a6c98-9fd2-4e7d-8036-4c0ec7652bb5.jpg",
+     "checked": "2026-10-25",
+     "how": "210.5 mm across the ducts (the square frame's side view), duct height 10 mm; the 106 mm duct outside diameter on the 148 mm wheelbase gives 210.7"
     }
    },
-   "missing": [
-    "size_mm"
-   ],
-   "estimated": [
-    "size_mm"
-   ],
+   "missing": [],
+   "estimated": [],
    "styled": [],
    "checks": [
     {
@@ -3408,9 +3448,9 @@
      ],
      "axes": "xyz",
      "expect": [
-      200.7,
-      200.7,
-      36.0
+      210.5,
+      210.5,
+      10.0
      ],
      "tol": 0.6
     },
@@ -3424,11 +3464,11 @@
     }
    ],
    "bbox_mm": [
-    200.63,
-    200.66,
-    36.0
+    210.5,
+    210.5,
+    10.0
    ],
-   "bytes": 213924,
+   "bytes": 222272,
    "note": "Duct diameter 92 mm and wheelbase are from the page; overall size is computed from them, height is not given."
   },
   "betafpv-aquila20": {
@@ -5421,32 +5461,65 @@
    "glb": "models/parts/pololu-2818-fs90.glb",
    "step": null,
    "frame": "millimetres, Z up, centred on the part's footprint, bottom at z = 0, length along X",
-   "source_url": "https://www.pololu.com/product/2818",
+   "source_url": "https://www.pololu.com/file/0J1435/FS90-specs.pdf",
    "checked": "2026-10-25",
-   "kind": "approximate",
+   "kind": "look-alike",
    "author": "AnyBuild look-alike generator",
    "license": "same as this repository",
    "dims": {
     "length_mm": {
      "value": 23.2,
-     "source": "https://www.pololu.com/product/2818"
+     "source": "https://www.pololu.com/file/0J1435/FS90-specs.pdf",
+     "checked": "2026-10-25"
     },
     "width_mm": {
      "value": 12.5,
-     "source": "https://www.pololu.com/product/2818"
+     "source": "https://www.pololu.com/file/0J1435/FS90-specs.pdf",
+     "checked": "2026-10-25"
+    },
+    "tab_span_mm": {
+     "value": 32.6,
+     "source": "https://www.pololu.com/file/0J1435/FS90-specs.pdf",
+     "checked": "2026-10-25"
+    },
+    "hole_spacing_mm": {
+     "value": 27.0,
+     "source": "https://www.pololu.com/file/0J1435/FS90-specs.pdf",
+     "checked": "2026-10-25"
+    },
+    "tab_bottom_mm": {
+     "value": 16.4,
+     "source": "https://www.pololu.com/file/0J1435/FS90-specs.pdf",
+     "checked": "2026-10-25"
+    },
+    "tab_t_mm": {
+     "value": 2.4,
+     "source": "https://www.pololu.com/file/0J1435/FS90-specs.pdf",
+     "checked": "2026-10-25"
+    },
+    "case_height_mm": {
+     "value": 23.0,
+     "source": "https://www.pololu.com/file/0J1435/FS90-specs.pdf",
+     "checked": "2026-10-25"
+    },
+    "spline_top_mm": {
+     "value": 27.3,
+     "source": "https://www.pololu.com/file/0J1435/FS90-specs.pdf",
+     "checked": "2026-10-25"
+    },
+    "hole_d_mm": {
+     "value": 2.0,
+     "source": "https://www.pololu.com/file/0J1435/FS90-specs.pdf",
+     "checked": "2026-10-25"
+    },
+    "spline_d_mm": {
+     "value": 4.8,
+     "source": "https://www.pololu.com/file/0J1435/FS90-specs.pdf",
+     "checked": "2026-10-25"
     }
    },
-   "missing": [
-    "overall_height_mm",
-    "tab_bottom_mm",
-    "tab_span_mm",
-    "hole_spacing_mm"
-   ],
-   "estimated": [
-    "overall_height_mm",
-    "tab_bottom_mm",
-    "tab_span_mm"
-   ],
+   "missing": [],
+   "estimated": [],
    "styled": [],
    "checks": [
     {
@@ -5469,12 +5542,24 @@
       "tabs",
       "body_top",
       "gear_tower",
-      "spline",
-      "horn"
+      "spline"
      ],
      "axes": "z",
      "expect": [
-      26.0
+      27.3
+     ],
+     "tol": 0.3
+    },
+    {
+     "check": "extent",
+     "nodes": [
+      "body",
+      "tabs",
+      "body_top"
+     ],
+     "axes": "z",
+     "expect": [
+      23.0
      ],
      "tol": 0.3
     },
@@ -5485,7 +5570,7 @@
      ],
      "axes": "x",
      "expect": [
-      32.0
+      32.6
      ],
      "tol": 0.3
     },
@@ -5494,16 +5579,34 @@
      "nodes": [
       "tabs"
      ],
-     "expect": 15.0,
+     "expect": 16.4,
      "tol": 0.2
+    },
+    {
+     "check": "holes",
+     "nodes": [
+      "mount_hole_"
+     ],
+     "expect": [
+      [
+       -13.5,
+       0
+      ],
+      [
+       13.5,
+       0
+      ]
+     ],
+     "tol": 0.15
     }
    ],
    "bbox_mm": [
-    36.69,
+    36.99,
     12.54,
-    26.0
+    27.94
    ],
-   "bytes": 71104
+   "bytes": 71116,
+   "note": "FEETECH FS90 drawing (spec sheet page 2): body 23.2 x 12.5, tabs 32.6 with holes 27 apart, tab underside 16.4, case top 23, spline top 27.3 (the horn is drawn on top)."
   },
   "adafruit-155-sg5010": {
    "id": "adafruit-155-sg5010",
@@ -5611,7 +5714,7 @@
    "glb": "models/parts/pololu-1057-hd1501mg.glb",
    "step": null,
    "frame": "millimetres, Z up, centred on the part's footprint, bottom at z = 0, length along X",
-   "source_url": "https://www.pololu.com/product/1057",
+   "source_url": "https://www.pololu.com/file/0J729/HD-1501MG.pdf",
    "checked": "2026-10-25",
    "kind": "approximate",
    "author": "AnyBuild look-alike generator",
@@ -5619,23 +5722,45 @@
    "dims": {
     "length_mm": {
      "value": 40.7,
-     "source": "https://www.pololu.com/product/1057"
+     "source": "https://www.pololu.com/file/0J729/HD-1501MG.pdf",
+     "checked": "2026-10-25"
     },
     "width_mm": {
      "value": 20.5,
-     "source": "https://www.pololu.com/product/1057"
+     "source": "https://www.pololu.com/file/0J729/HD-1501MG.pdf",
+     "checked": "2026-10-25"
+    },
+    "tab_span_mm": {
+     "value": 54.5,
+     "source": "https://www.pololu.com/file/0J729/HD-1501MG.pdf",
+     "checked": "2026-10-25"
+    },
+    "hole_spacing_mm": {
+     "value": 49.0,
+     "source": "https://www.pololu.com/file/0J729/HD-1501MG.pdf",
+     "checked": "2026-10-25"
+    },
+    "hole_pitch_y_mm": {
+     "value": 10.0,
+     "source": "https://www.pololu.com/file/0J729/HD-1501MG.pdf",
+     "checked": "2026-10-25"
+    },
+    "overall_height_mm": {
+     "value": 43.5,
+     "source": "https://www.pololu.com/file/0J729/HD-1501MG.pdf",
+     "checked": "2026-10-25"
+    },
+    "case_height_mm": {
+     "value": 39.5,
+     "source": "https://www.pololu.com/file/0J729/HD-1501MG.pdf",
+     "checked": "2026-10-25"
     }
    },
    "missing": [
-    "overall_height_mm",
-    "tab_bottom_mm",
-    "tab_span_mm",
-    "hole_spacing_mm"
+    "tab_bottom_mm"
    ],
    "estimated": [
-    "overall_height_mm",
-    "tab_bottom_mm",
-    "tab_span_mm"
+    "tab_bottom_mm"
    ],
    "styled": [
     "metal_spline"
@@ -5666,7 +5791,20 @@
      ],
      "axes": "z",
      "expect": [
-      46.0
+      43.5
+     ],
+     "tol": 0.3
+    },
+    {
+     "check": "extent",
+     "nodes": [
+      "body",
+      "tabs",
+      "body_top"
+     ],
+     "axes": "z",
+     "expect": [
+      39.5
      ],
      "tol": 0.3
     },
@@ -5677,7 +5815,7 @@
      ],
      "axes": "x",
      "expect": [
-      54.0
+      54.5
      ],
      "tol": 0.3
     },
@@ -5688,14 +5826,40 @@
      ],
      "expect": 27.0,
      "tol": 0.2
+    },
+    {
+     "check": "holes",
+     "nodes": [
+      "mount_hole_"
+     ],
+     "expect": [
+      [
+       -24.5,
+       -5.0
+      ],
+      [
+       -24.5,
+       5.0
+      ],
+      [
+       24.5,
+       -5.0
+      ],
+      [
+       24.5,
+       5.0
+      ]
+     ],
+     "tol": 0.15
     }
    ],
    "bbox_mm": [
-    56.44,
+    56.69,
     20.55,
-    46.0
+    43.5
    ],
-   "bytes": 71284
+   "bytes": 84100,
+   "note": "Power HD 1501MG drawing (datasheet page 3): 40.7 x 20.5, tabs 54.5 with two holes per tab 49.0 x 10.0 apart, case top 39.5, top of horn 43.5. The tab underside height is not dimensioned and the views are not to one scale, so it stays an estimate."
   },
   "pololu-2130-drv8833": {
    "id": "pololu-2130-drv8833",
@@ -6650,36 +6814,52 @@
    "glb": "models/parts/pololu-953-ball-caster.glb",
    "step": null,
    "frame": "millimetres, Z up, centred on the part's footprint, bottom at z = 0, length along X",
-   "source_url": "https://www.pololu.com/product/953",
+   "source_url": "https://www.pololu.com/file/0J1638/pololu-ball-caster-with-0-500in-ball.pdf",
    "checked": "2026-10-25",
-   "kind": "approximate",
+   "kind": "look-alike",
    "author": "AnyBuild look-alike generator",
    "license": "same as this repository",
    "dims": {
     "ball_mm": {
      "value": 12.7,
      "source": "https://www.pololu.com/product/953"
+    },
+    "height_mm": {
+     "value": 13.5,
+     "source": "https://www.pololu.com/file/0J1638/pololu-ball-caster-with-0-500in-ball.pdf",
+     "checked": "2026-10-25"
+    },
+    "hole_spacing_mm": {
+     "value": 14.7,
+     "source": "https://www.pololu.com/file/0J1638/pololu-ball-caster-with-0-500in-ball.pdf",
+     "checked": "2026-10-25"
+    },
+    "length_mm": {
+     "value": 20.3,
+     "source": "https://www.pololu.com/file/0J1638/pololu-ball-caster-with-0-500in-ball.pdf",
+     "checked": "2026-10-25"
+    },
+    "width_mm": {
+     "value": 15.2,
+     "source": "https://www.pololu.com/file/0J1638/pololu-ball-caster-with-0-500in-ball.pdf",
+     "checked": "2026-10-25"
+    },
+    "flange_t_mm": {
+     "value": 2.1,
+     "source": "https://www.pololu.com/file/0J1638/pololu-ball-caster-with-0-500in-ball.pdf",
+     "checked": "2026-10-25"
     }
    },
-   "missing": [
-    "height_mm",
-    "hole_spacing_mm"
-   ],
-   "estimated": [
-    "height_mm",
-    "hole_spacing_mm"
-   ],
-   "styled": [
-    "length_mm",
-    "width_mm"
-   ],
+   "missing": [],
+   "estimated": [],
+   "styled": [],
    "checks": [
     {
      "check": "extent",
      "nodes": null,
      "axes": "z",
      "expect": [
-      14.299999999999999
+      13.5
      ],
      "tol": 0.3
     },
@@ -6701,24 +6881,36 @@
      ],
      "expect": [
       [
-       -7.6,
+       -7.35,
        0
       ],
       [
-       7.6,
+       7.35,
        0
       ]
      ],
      "tol": 0.1
+    },
+    {
+     "check": "extent",
+     "nodes": [
+      "body"
+     ],
+     "axes": "xy",
+     "expect": [
+      20.3,
+      15.2
+     ],
+     "tol": 0.3
     }
    ],
    "bbox_mm": [
-    22.0,
-    13.0,
-    14.35
+    20.3,
+    15.2,
+    13.55
    ],
-   "bytes": 41672,
-   "note": "1/2 in metal ball; the assembled height is 0.5 to 0.8 in depending on spacers, per the page."
+   "bytes": 45876,
+   "note": "Pololu dimension diagram: 13.5 mm tall without spacers, flange 20.3 mm long and 2.1 mm thick, body 15.2 mm across, holes 14.7 mm apart, 1/2 in ball."
   },
   "solarbotics-608zz": {
    "id": "solarbotics-608zz",
@@ -6957,33 +7149,80 @@
    "glb": "models/parts/arduino-nano-a000005.glb",
    "step": null,
    "frame": "millimetres, Z up, centred on the part's footprint, bottom at z = 0, length along X",
-   "source_url": "https://store.arduino.cc/products/arduino-nano",
+   "source_url": "https://docs.arduino.cc/resources/datasheets/A000005-datasheet.pdf",
    "checked": "2026-10-25",
-   "kind": "approximate",
+   "kind": "look-alike",
    "author": "AnyBuild look-alike generator",
    "license": "same as this repository",
    "dims": {
     "length_mm": {
-     "value": 45.0,
-     "source": "https://store.arduino.cc/products/arduino-nano"
+     "value": 43.2,
+     "source": "https://docs.arduino.cc/resources/datasheets/A000005-datasheet.pdf",
+     "checked": "2026-10-25"
     },
     "width_mm": {
      "value": 18.0,
-     "source": "https://store.arduino.cc/products/arduino-nano"
+     "source": "https://docs.arduino.cc/resources/datasheets/A000005-datasheet.pdf",
+     "checked": "2026-10-25"
+    },
+    "pcb_mm": {
+     "value": 1.6,
+     "source": "https://docs.arduino.cc/resources/datasheets/A000005-datasheet.pdf",
+     "checked": "2026-10-25"
+    },
+    "holes": {
+     "value": [
+      [
+       -20.32,
+       -7.62,
+       1.8
+      ],
+      [
+       20.32,
+       -7.62,
+       1.8
+      ],
+      [
+       -20.32,
+       7.62,
+       1.8
+      ],
+      [
+       20.32,
+       7.62,
+       1.8
+      ]
+     ],
+     "source": "https://docs.arduino.cc/resources/datasheets/A000005-datasheet.pdf",
+     "checked": "2026-10-25",
+     "how": "1.8 mm holes 40.64 x 15.24 mm apart, centred on the 43.2 x 18 mm board"
+    },
+    "connector_positions": {
+     "value": {
+      "header_a": [
+       0.0,
+       7.62
+      ],
+      "header_b": [
+       0.0,
+       -7.62
+      ],
+      "usb": [
+       18.74,
+       0.0
+      ]
+     },
+     "source": "https://docs.arduino.cc/resources/datasheets/A000005-datasheet.pdf",
+     "checked": "2026-10-25",
+     "how": "read off the mechanical drawing (datasheet section 6) at its native 6.99 px/mm (43.2 mm = 302 px): header pins centred on the board on the 15.24 mm hole rows; mini-USB outline centred 18.74 mm from the board centre"
     }
    },
-   "missing": [
-    "holes",
-    "connector_positions"
-   ],
-   "estimated": [
-    "holes"
-   ],
+   "missing": [],
+   "estimated": [],
    "styled": [
     "corner_mm",
     "parts",
-    "pcb_color",
-    "pcb_mm"
+    "pcb_color"
    ],
    "checks": [
     {
@@ -6993,10 +7232,10 @@
      ],
      "axes": "xy",
      "expect": [
-      45.0,
+      43.2,
       18.0
      ],
-     "tol": 0.9
+     "tol": 0.864
     },
     {
      "check": "holes",
@@ -7005,32 +7244,65 @@
      ],
      "expect": [
       [
-       -20.3,
-       -7.6
+       -20.32,
+       -7.62
       ],
       [
-       20.3,
-       -7.6
+       20.32,
+       -7.62
       ],
       [
-       -20.3,
-       7.6
+       -20.32,
+       7.62
       ],
       [
-       20.3,
-       7.6
+       20.32,
+       7.62
       ]
      ],
      "tol": 0.15
+    },
+    {
+     "check": "centre",
+     "nodes": [
+      "header_a"
+     ],
+     "expect": [
+      0.0,
+      7.62
+     ],
+     "tol": 0.2
+    },
+    {
+     "check": "centre",
+     "nodes": [
+      "header_b"
+     ],
+     "expect": [
+      0.0,
+      -7.62
+     ],
+     "tol": 0.2
+    },
+    {
+     "check": "centre",
+     "nodes": [
+      "usb"
+     ],
+     "expect": [
+      18.74,
+      0.0
+     ],
+     "tol": 0.2
     }
    ],
    "bbox_mm": [
-    46.75,
-    18.06,
+    45.2,
+    18.1,
     16.1
    ],
-   "bytes": 68604,
-   "note": "18 x 45 mm per the Arduino store; the hole and connector positions are not on that page."
+   "bytes": 68596,
+   "note": "Arduino Nano datasheet drawing: board 43.2 x 18 x 1.6 mm (45 mm with the USB socket), four 1.8 mm holes 40.64 x 15.24 apart, two 15-pin headers on the hole rows, mini-USB at the end. Chip, button and ICSP positions are drawn in proportion."
   },
   "pololu-961-qtr-8rc": {
    "id": "pololu-961-qtr-8rc",
@@ -7043,19 +7315,21 @@
    "glb": "models/parts/pololu-961-qtr-8rc.glb",
    "step": null,
    "frame": "millimetres, Z up, centred on the part's footprint, bottom at z = 0, length along X",
-   "source_url": "https://www.pololu.com/product/961",
+   "source_url": "https://www.pololu.com/file/0J1288/qtr-8x-reflectance-sensor-array-dimensions.pdf",
    "checked": "2026-10-25",
-   "kind": "approximate",
+   "kind": "look-alike",
    "author": "AnyBuild look-alike generator",
    "license": "same as this repository",
    "dims": {
     "length_mm": {
-     "value": 74.93,
-     "source": "https://www.pololu.com/product/961"
+     "value": 74.9,
+     "source": "https://www.pololu.com/file/0J1288/qtr-8x-reflectance-sensor-array-dimensions.pdf",
+     "checked": "2026-10-25"
     },
     "width_mm": {
      "value": 12.7,
-     "source": "https://www.pololu.com/product/961"
+     "source": "https://www.pololu.com/file/0J1288/qtr-8x-reflectance-sensor-array-dimensions.pdf",
+     "checked": "2026-10-25"
     },
     "height_mm": {
      "value": 3.2,
@@ -7064,19 +7338,68 @@
     "sensor_pitch_mm": {
      "value": 9.525,
      "source": "https://www.pololu.com/product/961"
+    },
+    "pcb_mm": {
+     "value": 1.57,
+     "source": "https://www.pololu.com/file/0J1288/qtr-8x-reflectance-sensor-array-dimensions.pdf",
+     "checked": "2026-10-25"
+    },
+    "holes": {
+     "value": [
+      [
+       34.95,
+       -3.85,
+       2.18
+      ],
+      [
+       20.95,
+       -3.85,
+       2.18
+      ],
+      [
+       15.85,
+       -3.85,
+       2.18
+      ],
+      [
+       -34.95,
+       -3.85,
+       2.18
+      ]
+     ],
+     "source": "https://www.pololu.com/file/0J1288/qtr-8x-reflectance-sensor-array-dimensions.pdf",
+     "checked": "2026-10-25",
+     "how": "2.5 mm from the edge; 2.5, 16.5, 21.6 and 72.4 mm from the end (2.5 + 14.0, 72.4 - 50.8, 2.5 + 69.9)"
+    },
+    "connector_positions": {
+     "value": {
+      "pin_a01": [
+       -30.46,
+       -5.08
+      ],
+      "pin_b01": [
+       -16.49,
+       -2.54
+      ],
+      "pin_c01": [
+       19.92,
+       3.43
+      ],
+      "pin_a14": [
+       31.73,
+       -5.08
+      ]
+     },
+     "source": "https://www.pololu.com/file/0J1288/qtr-8x-reflectance-sensor-array-dimensions.pdf",
+     "checked": "2026-10-25",
+     "how": "27 x 1.02 mm pin holes from the connector callouts (bottom view, mirrored end to end): 1.27 and 3.81 mm from one edge, 2.92 and 5.46 from the other, 6.99 / 9.53 / 20.96 / 28.58 mm from the end then 2.54 mm pitch, 17.53 and 5.72 mm from the far end"
     }
    },
-   "missing": [
-    "holes",
-    "connector_positions"
-   ],
-   "estimated": [
-    "holes"
-   ],
+   "missing": [],
+   "estimated": [],
    "styled": [
     "parts",
-    "pcb_color",
-    "pcb_mm"
+    "pcb_color"
    ],
    "checks": [
     {
@@ -7086,10 +7409,10 @@
      ],
      "axes": "xy",
      "expect": [
-      74.93,
+      74.9,
       12.7
      ],
-     "tol": 1.499
+     "tol": 1.498
     },
     {
      "check": "holes",
@@ -7098,12 +7421,20 @@
      ],
      "expect": [
       [
-       -34.9,
-       0
+       34.95,
+       -3.85
       ],
       [
-       34.9,
-       0
+       20.95,
+       -3.85
+      ],
+      [
+       15.85,
+       -3.85
+      ],
+      [
+       -34.95,
+       -3.85
       ]
      ],
      "tol": 0.15
@@ -7116,15 +7447,59 @@
       3.2
      ],
      "tol": 0.5
+    },
+    {
+     "check": "centre",
+     "nodes": [
+      "pin_a01"
+     ],
+     "expect": [
+      -30.46,
+      -5.08
+     ],
+     "tol": 0.2
+    },
+    {
+     "check": "centre",
+     "nodes": [
+      "pin_b01"
+     ],
+     "expect": [
+      -16.49,
+      -2.54
+     ],
+     "tol": 0.2
+    },
+    {
+     "check": "centre",
+     "nodes": [
+      "pin_c01"
+     ],
+     "expect": [
+      19.92,
+      3.43
+     ],
+     "tol": 0.2
+    },
+    {
+     "check": "centre",
+     "nodes": [
+      "pin_a14"
+     ],
+     "expect": [
+      31.73,
+      -5.08
+     ],
+     "tol": 0.2
     }
    ],
    "bbox_mm": [
-    74.93,
+    74.9,
     12.7,
-    3.13
+    3.1
    ],
-   "bytes": 54604,
-   "note": "2.95 x 0.5 in board and eight sensors on a 0.375 in pitch per the page; holes and pin positions are not given there."
+   "bytes": 109304,
+   "note": "Pololu QTR-8x dimension drawing: board 74.9 x 12.7 x 1.57 mm, four 2.18 mm holes, eight sensors on a 9.525 mm pitch, 27 pin holes."
   },
   "pololu-1087-wheel-32x7": {
    "id": "pololu-1087-wheel-32x7",
@@ -7311,7 +7686,7 @@
    "frame": "millimetres, Z up, centred on the part's footprint, bottom at z = 0, length along X",
    "source_url": "https://static.rapidonline.com/pdf/37-1330t.pdf",
    "checked": "2026-10-25",
-   "kind": "approximate",
+   "kind": "look-alike",
    "author": "AnyBuild look-alike generator",
    "license": "same as this repository",
    "dims": {
@@ -7334,14 +7709,16 @@
     "tab_span_mm": {
      "value": 32.2,
      "source": "https://static.rapidonline.com/pdf/37-1330t.pdf"
+    },
+    "hole_spacing_mm": {
+     "value": 28.2,
+     "source": "https://static.rapidonline.com/pdf/37-1330t.pdf",
+     "checked": "2026-10-25",
+     "how": "read off the scaled drawing: the 32.2 and 22.2 mm extension lines give 35.7 px/mm at 400 dpi; the tab hole centrelines in the side view are 28.3 mm apart and the notch circle centres in the top view 28.1 mm; mean 28.2 mm"
     }
    },
-   "missing": [
-    "hole_spacing_mm"
-   ],
-   "estimated": [
-    "hole_spacing_mm"
-   ],
+   "missing": [],
+   "estimated": [],
    "styled": [],
    "checks": [
     {
@@ -7399,11 +7776,11 @@
      ],
      "expect": [
       [
-       -13.75,
+       -14.1,
        0
       ],
       [
-       13.75,
+       14.1,
        0
       ]
      ],
@@ -7430,7 +7807,7 @@
    "frame": "millimetres, Z up, centred on the part's footprint, bottom at z = 0, length along X",
    "source_url": "https://static.rapidonline.com/pdf/37-1330t.pdf",
    "checked": "2026-10-25",
-   "kind": "approximate",
+   "kind": "look-alike",
    "author": "AnyBuild look-alike generator",
    "license": "same as this repository",
    "dims": {
@@ -7453,14 +7830,16 @@
     "tab_span_mm": {
      "value": 32.2,
      "source": "https://static.rapidonline.com/pdf/37-1330t.pdf"
+    },
+    "hole_spacing_mm": {
+     "value": 28.2,
+     "source": "https://static.rapidonline.com/pdf/37-1330t.pdf",
+     "checked": "2026-10-25",
+     "how": "read off the scaled drawing: the 32.2 and 22.2 mm extension lines give 35.7 px/mm at 400 dpi; the tab hole centrelines in the side view are 28.3 mm apart and the notch circle centres in the top view 28.1 mm; mean 28.2 mm"
     }
    },
-   "missing": [
-    "hole_spacing_mm"
-   ],
-   "estimated": [
-    "hole_spacing_mm"
-   ],
+   "missing": [],
+   "estimated": [],
    "styled": [],
    "checks": [
     {
@@ -7518,11 +7897,11 @@
      ],
      "expect": [
       [
-       -13.75,
+       -14.1,
        0
       ],
       [
-       13.75,
+       14.1,
        0
       ]
      ],
@@ -7549,7 +7928,7 @@
    "frame": "millimetres, Z up, centred on the part's footprint, bottom at z = 0, length along X",
    "source_url": "https://static.rapidonline.com/pdf/37-1330t.pdf",
    "checked": "2026-10-25",
-   "kind": "approximate",
+   "kind": "look-alike",
    "author": "AnyBuild look-alike generator",
    "license": "same as this repository",
    "dims": {
@@ -7572,14 +7951,16 @@
     "tab_span_mm": {
      "value": 32.2,
      "source": "https://static.rapidonline.com/pdf/37-1330t.pdf"
+    },
+    "hole_spacing_mm": {
+     "value": 28.2,
+     "source": "https://static.rapidonline.com/pdf/37-1330t.pdf",
+     "checked": "2026-10-25",
+     "how": "read off the scaled drawing: the 32.2 and 22.2 mm extension lines give 35.7 px/mm at 400 dpi; the tab hole centrelines in the side view are 28.3 mm apart and the notch circle centres in the top view 28.1 mm; mean 28.2 mm"
     }
    },
-   "missing": [
-    "hole_spacing_mm"
-   ],
-   "estimated": [
-    "hole_spacing_mm"
-   ],
+   "missing": [],
+   "estimated": [],
    "styled": [],
    "checks": [
     {
@@ -7637,11 +8018,11 @@
      ],
      "expect": [
       [
-       -13.75,
+       -14.1,
        0
       ],
       [
-       13.75,
+       14.1,
        0
       ]
      ],
@@ -8032,10 +8413,19 @@
    "kind": "approximate",
    "author": "AnyBuild look-alike generator",
    "license": "same as this repository",
-   "dims": {},
+   "dims": {
+    "length_mm": {
+     "value": 22.8,
+     "source": "https://eckstein-shop.de/WaveShare-MG90S-Micro-Servo-Metal-Gear-Motor-180Grad-EN",
+     "checked": "2026-10-25"
+    },
+    "width_mm": {
+     "value": 12.2,
+     "source": "https://eckstein-shop.de/WaveShare-MG90S-Micro-Servo-Metal-Gear-Motor-180Grad-EN",
+     "checked": "2026-10-25"
+    }
+   },
    "missing": [
-    "length_mm",
-    "width_mm",
     "overall_height_mm",
     "tab_bottom_mm",
     "tab_span_mm",
@@ -8043,11 +8433,9 @@
    ],
    "estimated": [
     "hole_spacing_mm",
-    "length_mm",
     "overall_height_mm",
     "tab_bottom_mm",
-    "tab_span_mm",
-    "width_mm"
+    "tab_span_mm"
    ],
    "styled": [
     "metal_spline"
@@ -8125,7 +8513,7 @@
     31.0
    ],
    "bytes": 71240,
-   "note": "MG90S shares the SG90 case; no MG90S drawing was found, so the SG90 numbers are estimates here."
+   "note": "22.8 x 12.2 mm body per the shop page; no MG90S drawing with tabs, holes and heights was found, so those stay SG90-like estimates."
   },
   "dsservo-ds3218": {
    "id": "dsservo-ds3218",
@@ -8933,23 +9321,47 @@
    "glb": "models/parts/rpi5-active-cooler.glb",
    "step": null,
    "frame": "millimetres, Z up, centred on the part's footprint, bottom at z = 0, length along X",
-   "source_url": null,
+   "source_url": "https://pip-assets.raspberrypi.com/categories/993-raspberry-pi-active-cooler/documents/RP-008187-DS-1-raspberry-pi-active-cooler-mechanical-drawing.pdf",
    "checked": "2026-10-25",
-   "kind": "approximate",
+   "kind": "look-alike",
    "author": "AnyBuild look-alike generator",
    "license": "same as this repository",
-   "dims": {},
-   "missing": [
-    "length_mm",
-    "width_mm",
-    "holes",
-    "connector_positions"
-   ],
-   "estimated": [
-    "holes",
-    "length_mm",
-    "width_mm"
-   ],
+   "dims": {
+    "length_mm": {
+     "value": 63.5,
+     "source": "https://pip-assets.raspberrypi.com/categories/993-raspberry-pi-active-cooler/documents/RP-008187-DS-1-raspberry-pi-active-cooler-mechanical-drawing.pdf",
+     "checked": "2026-10-25"
+    },
+    "width_mm": {
+     "value": 42.5,
+     "source": "https://pip-assets.raspberrypi.com/categories/993-raspberry-pi-active-cooler/documents/RP-008187-DS-1-raspberry-pi-active-cooler-mechanical-drawing.pdf",
+     "checked": "2026-10-25"
+    },
+    "height_mm": {
+     "value": 13.7,
+     "source": "https://pip-assets.raspberrypi.com/categories/993-raspberry-pi-active-cooler/documents/RP-008187-DS-1-raspberry-pi-active-cooler-mechanical-drawing.pdf",
+     "checked": "2026-10-25"
+    },
+    "holes": {
+     "value": [
+      [
+       29.27,
+       18.72,
+       2.5
+      ],
+      [
+       -28.72,
+       -18.26,
+       2.5
+      ]
+     ],
+     "source": "https://pip-assets.raspberrypi.com/categories/993-raspberry-pi-active-cooler/documents/RP-008187-DS-1-raspberry-pi-active-cooler-mechanical-drawing.pdf",
+     "checked": "2026-10-25",
+     "how": "read off the 1:1 vector drawing rendered at 600 dpi (23.62 px/mm; the 63.5 mm dimension spans 1500 px): push-pin cap centres relative to the centre of the 63.5 x 42.5 mm outline; the hole diameter is drawn, not measured"
+    }
+   },
+   "missing": [],
+   "estimated": [],
    "styled": [
     "parts",
     "pcb_color",
@@ -8963,18 +9375,45 @@
      ],
      "axes": "xy",
      "expect": [
-      60.0,
-      40.0
+      63.5,
+      42.5
      ],
-     "tol": 1.2
+     "tol": 1.27
+    },
+    {
+     "check": "holes",
+     "nodes": [
+      "hole_"
+     ],
+     "expect": [
+      [
+       29.27,
+       18.72
+      ],
+      [
+       -28.72,
+       -18.26
+      ]
+     ],
+     "tol": 0.15
+    },
+    {
+     "check": "extent",
+     "nodes": null,
+     "axes": "z",
+     "expect": [
+      13.7
+     ],
+     "tol": 1.0959999999999999
     }
    ],
    "bbox_mm": [
-    64.0,
-    40.0,
-    11.0
+    63.5,
+    42.5,
+    13.73
    ],
-   "bytes": 23652
+   "bytes": 33852,
+   "note": "Raspberry Pi mechanical drawing RP-008187: 63.5 x 42.5 x 13.7 mm, 30 x 30 mm fan; fan and fin-block positions read off the 1:1 drawing. The fan lead ends in a plug on a cable, so the board has no connector of its own."
   },
   "motor-130-dc": {
    "id": "motor-130-dc",
@@ -9216,27 +9655,46 @@
    "glb": "models/parts/stepper-28byj48.glb",
    "step": null,
    "frame": "millimetres, Z up, centred on the part's footprint, bottom at z = 0, length along X",
-   "source_url": null,
+   "source_url": "https://wiki.52pi.com/images/3/3a/Stepper-Motor-28BJY-48-Datasheet.pdf",
    "checked": "2026-10-25",
-   "kind": "approximate",
+   "kind": "look-alike",
    "author": "AnyBuild look-alike generator",
    "license": "same as this repository",
-   "dims": {},
-   "missing": [
-    "diameter_mm",
-    "height_mm",
-    "ear_spacing_mm",
-    "shaft_mm"
-   ],
-   "estimated": [
-    "diameter_mm",
-    "ear_spacing_mm",
-    "height_mm",
-    "shaft_mm"
-   ],
-   "styled": [
-    "shaft_offset_mm"
-   ],
+   "dims": {
+    "diameter_mm": {
+     "value": 28.0,
+     "source": "https://wiki.52pi.com/images/3/3a/Stepper-Motor-28BJY-48-Datasheet.pdf",
+     "checked": "2026-10-25"
+    },
+    "height_mm": {
+     "value": 19.0,
+     "source": "https://wiki.52pi.com/images/3/3a/Stepper-Motor-28BJY-48-Datasheet.pdf",
+     "checked": "2026-10-25"
+    },
+    "ear_spacing_mm": {
+     "value": 35.0,
+     "source": "https://wiki.52pi.com/images/3/3a/Stepper-Motor-28BJY-48-Datasheet.pdf",
+     "checked": "2026-10-25"
+    },
+    "shaft_mm": {
+     "value": 5.0,
+     "source": "https://wiki.52pi.com/images/3/3a/Stepper-Motor-28BJY-48-Datasheet.pdf",
+     "checked": "2026-10-25"
+    },
+    "shaft_offset_mm": {
+     "value": 8.0,
+     "source": "https://wiki.52pi.com/images/3/3a/Stepper-Motor-28BJY-48-Datasheet.pdf",
+     "checked": "2026-10-25"
+    },
+    "shaft_len_mm": {
+     "value": 10.0,
+     "source": "https://wiki.52pi.com/images/3/3a/Stepper-Motor-28BJY-48-Datasheet.pdf",
+     "checked": "2026-10-25"
+    }
+   },
+   "missing": [],
+   "estimated": [],
+   "styled": [],
    "checks": [
     {
      "check": "extent",
@@ -9273,7 +9731,8 @@
     39.98,
     29.5
    ],
-   "bytes": 38308
+   "bytes": 38308,
+   "note": "Changzhou Fulling 28BYJ48 drawing (the 12 V datasheet; the 28BYJ-48 case is the same at 5 V): can 28 mm across and 19 mm deep, ears 35 mm apart with 4.2 mm holes, 5 mm flatted shaft 8 mm off centre and 10 mm long. The ULN2003 driver board is not modelled."
   },
   "nema17-17hs4417-bb": {
    "id": "nema17-17hs4417-bb",
@@ -9385,22 +9844,30 @@
     "shaft_mm": {
      "value": 6.0,
      "source": "https://www.berrybase.de/en/dfrobot-metal-dc-geared-motor-encoder-83rpm-131-1-45kgcm-16cpr-encoder-350ma-idle-12v"
+    },
+    "face_hole_circle_mm": {
+     "value": 31.0,
+     "source": "https://mm.digikey.com/Volume0/opasdata/d220001/medias/docus/2280/FIT0185_Web.pdf",
+     "checked": "2026-10-25",
+     "how": "six M3 holes on a regular hexagon whose neighbouring holes are 15.5 mm apart: a 31.0 mm circle"
+    },
+    "face_holes": {
+     "value": 6,
+     "source": "https://mm.digikey.com/Volume0/opasdata/d220001/medias/docus/2280/FIT0185_Web.pdf",
+     "checked": "2026-10-25"
     }
    },
    "missing": [
     "diameter_mm",
-    "length_mm",
-    "face_hole_circle_mm"
+    "length_mm"
    ],
    "estimated": [
     "diameter_mm",
-    "face_hole_circle_mm",
     "gearbox_mm",
     "length_mm"
    ],
    "styled": [
     "encoder_mm",
-    "face_holes",
     "shaft_len_mm",
     "shaft_offset_mm"
    ],
@@ -9446,7 +9913,7 @@
     90.5
    ],
    "bytes": 66060,
-   "note": "6 mm D output shaft (0.61 in) per the page; body is a 37D class gearmotor, length estimated."
+   "note": "DFRobot FIT0185 sheet: 6 mm D shaft 0.61 in long, six M3 face holes on a hexagon with 15.5 mm sides. Body diameter and length are not on DFRobot's sheet."
   },
   "pump-5v-mini": {
    "id": "pump-5v-mini",
@@ -9669,23 +10136,54 @@
    "glb": "models/parts/esp32-s3-devkit.glb",
    "step": null,
    "frame": "millimetres, Z up, centred on the part's footprint, bottom at z = 0, length along X",
-   "source_url": null,
+   "source_url": "https://dl.espressif.com/dl/DXF_ESP32-S3-DevKitC-1_V1_20210312CB.pdf",
    "checked": "2026-10-25",
-   "kind": "approximate",
+   "kind": "look-alike",
    "author": "AnyBuild look-alike generator",
    "license": "same as this repository",
-   "dims": {},
-   "missing": [
-    "length_mm",
-    "width_mm",
-    "holes",
-    "connector_positions"
-   ],
-   "estimated": [
-    "holes",
-    "length_mm",
-    "width_mm"
-   ],
+   "dims": {
+    "length_mm": {
+     "value": 62.74,
+     "source": "https://dl.espressif.com/dl/DXF_ESP32-S3-DevKitC-1_V1_20210312CB.pdf",
+     "checked": "2026-10-25"
+    },
+    "width_mm": {
+     "value": 25.4,
+     "source": "https://dl.espressif.com/dl/DXF_ESP32-S3-DevKitC-1_V1_20210312CB.pdf",
+     "checked": "2026-10-25"
+    },
+    "holes": {
+     "value": [],
+     "source": "https://dl.espressif.com/dl/DXF_ESP32-S3-DevKitC-1_V1_20210312CB.pdf",
+     "checked": "2026-10-25",
+     "how": "the drawing has no mounting holes"
+    },
+    "connector_positions": {
+     "value": {
+      "header_a": [
+       3.197,
+       11.43
+      ],
+      "header_b": [
+       3.197,
+       -11.43
+      ],
+      "usb_uart": [
+       -27.666,
+       6.7
+      ],
+      "usb_otg": [
+       -27.666,
+       -6.7
+      ]
+     },
+     "source": "https://dl.espressif.com/dl/DXF_ESP32-S3-DevKitC-1_V1_20210312CB.dxf",
+     "checked": "2026-10-25",
+     "how": "from the Espressif DXF: header placement outlines (x = +-11.43 mm, centred 3.197 mm toward the antenna end) and the J2/J4 USB-C placement outlines (8.65 x 5.5 mm)"
+    }
+   },
+   "missing": [],
+   "estimated": [],
    "styled": [
     "parts",
     "pcb_color"
@@ -9698,18 +10196,63 @@
      ],
      "axes": "xy",
      "expect": [
-      63.0,
-      26.0
+      62.74,
+      25.4
      ],
-     "tol": 1.26
+     "tol": 1.255
+    },
+    {
+     "check": "centre",
+     "nodes": [
+      "header_a"
+     ],
+     "expect": [
+      3.197,
+      11.43
+     ],
+     "tol": 0.2
+    },
+    {
+     "check": "centre",
+     "nodes": [
+      "header_b"
+     ],
+     "expect": [
+      3.197,
+      -11.43
+     ],
+     "tol": 0.2
+    },
+    {
+     "check": "centre",
+     "nodes": [
+      "usb_uart"
+     ],
+     "expect": [
+      -27.666,
+      6.7
+     ],
+     "tol": 0.2
+    },
+    {
+     "check": "centre",
+     "nodes": [
+      "usb_otg"
+     ],
+     "expect": [
+      -27.666,
+      -6.7
+     ],
+     "tol": 0.2
     }
    ],
    "bbox_mm": [
-    64.54,
-    26.0,
+    69.09,
+    25.4,
     13.3
    ],
-   "bytes": 59788
+   "bytes": 59832,
+   "note": "Espressif dimension drawing and DXF: 62.74 x 25.40 mm board without holes, two 22-pin rows 1.27 mm from the long edges, two USB-C sockets at one end; the module's antenna end overhangs the board edge as drawn."
   },
   "nano-ft-anano-bb": {
    "id": "nano-ft-anano-bb",
@@ -9971,20 +10514,27 @@
    "glb": "models/parts/battery-18650.glb",
    "step": null,
    "frame": "millimetres, Z up, centred on the part's footprint, bottom at z = 0, length along X",
-   "source_url": null,
+   "source_url": "https://en.wikipedia.org/wiki/18650_battery",
    "checked": "2026-10-25",
-   "kind": "approximate",
+   "kind": "look-alike",
    "author": "AnyBuild look-alike generator",
    "license": "same as this repository",
-   "dims": {},
-   "missing": [
-    "diameter_mm",
-    "length_mm"
-   ],
-   "estimated": [
-    "diameter_mm",
-    "length_mm"
-   ],
+   "dims": {
+    "diameter_mm": {
+     "value": 18.0,
+     "source": "https://en.wikipedia.org/wiki/18650_battery",
+     "checked": "2026-10-25",
+     "how": "the 18650 size: 18 mm across and 65.0 mm long"
+    },
+    "length_mm": {
+     "value": 65.0,
+     "source": "https://en.wikipedia.org/wiki/18650_battery",
+     "checked": "2026-10-25",
+     "how": "the 18650 size: 18 mm across and 65.0 mm long"
+    }
+   },
+   "missing": [],
+   "estimated": [],
    "styled": [
     "wrap_color"
    ],
@@ -10006,7 +10556,8 @@
     18.04,
     17.91
    ],
-   "bytes": 17888
+   "bytes": 17888,
+   "note": "A generic 18650 cell drawn at its size designation, 18 x 65.0 mm."
   },
   "battery-holder-18650": {
    "id": "battery-holder-18650",
@@ -10202,26 +10753,47 @@
    "glb": "models/parts/varta-aa-4pack-bb.glb",
    "step": null,
    "frame": "millimetres, Z up, centred on the part's footprint, bottom at z = 0, length along X",
-   "source_url": null,
+   "source_url": "https://www.akkuman.de/shop/mediafiles/PDF/Batterien/Varta%204906.pdf",
    "checked": "2026-10-25",
-   "kind": "approximate",
+   "kind": "look-alike",
    "author": "AnyBuild look-alike generator",
    "license": "same as this repository",
-   "dims": {},
-   "missing": [
-    "length_mm",
-    "width_mm",
-    "height_mm"
-   ],
-   "estimated": [
-    "height_mm",
-    "length_mm",
-    "width_mm"
-   ],
+   "dims": {
+    "cell_d_mm": {
+     "value": 14.5,
+     "source": "https://www.akkuman.de/shop/mediafiles/PDF/Batterien/Varta%204906.pdf",
+     "checked": "2026-10-25",
+     "how": "maximum diameter"
+    },
+    "cell_len_mm": {
+     "value": 50.5,
+     "source": "https://www.akkuman.de/shop/mediafiles/PDF/Batterien/Varta%204906.pdf",
+     "checked": "2026-10-25",
+     "how": "maximum overall length"
+    },
+    "length_mm": {
+     "value": 50.5,
+     "source": "https://www.akkuman.de/shop/mediafiles/PDF/Batterien/Varta%204906.pdf",
+     "checked": "2026-10-25",
+     "how": "four cells side by side: one cell long"
+    },
+    "width_mm": {
+     "value": 58.0,
+     "source": "https://www.akkuman.de/shop/mediafiles/PDF/Batterien/Varta%204906.pdf",
+     "checked": "2026-10-25",
+     "how": "four cells side by side: 4 x 14.5 mm"
+    },
+    "height_mm": {
+     "value": 14.5,
+     "source": "https://www.akkuman.de/shop/mediafiles/PDF/Batterien/Varta%204906.pdf",
+     "checked": "2026-10-25",
+     "how": "four cells side by side: one cell across"
+    }
+   },
+   "missing": [],
+   "estimated": [],
    "styled": [
     "band_color",
-    "cell_d_mm",
-    "cell_len_mm",
     "cells",
     "wrap_color"
    ],
@@ -10246,7 +10818,7 @@
     14.43
    ],
    "bytes": 69088,
-   "note": "Four loose AA cells side by side."
+   "note": "Four Varta 4906 High Energy AA cells side by side; the data sheet gives 14.5 mm maximum diameter and 50.5 mm maximum length."
   },
   "battery-holder-3x18650-bhea-bb": {
    "id": "battery-holder-3x18650-bhea-bb",
@@ -11362,28 +11934,62 @@
    "glb": "models/parts/usb-c-breakout-sol-333011.glb",
    "step": null,
    "frame": "millimetres, Z up, centred on the part's footprint, bottom at z = 0, length along X",
-   "source_url": null,
+   "source_url": "https://github.com/SolderedElectronics/USB-C-female-connector-breakout-hardware-design/blob/main/CAD/V1.2.0/USB-C%20female%20connector%20breakout.kicad_pcb",
    "checked": "2026-10-25",
-   "kind": "approximate",
+   "kind": "look-alike",
    "author": "AnyBuild look-alike generator",
    "license": "same as this repository",
    "dims": {
     "length_mm": {
      "value": 22.0,
-     "source": "https://www.berrybase.de/en/soldered-usb-c-buchse-breakout-board-tht-pins"
+     "source": "https://github.com/SolderedElectronics/USB-C-female-connector-breakout-hardware-design/blob/main/CAD/V1.2.0/USB-C%20female%20connector%20breakout.kicad_pcb",
+     "checked": "2026-10-25"
     },
     "width_mm": {
      "value": 22.0,
-     "source": "https://www.berrybase.de/en/soldered-usb-c-buchse-breakout-board-tht-pins"
+     "source": "https://github.com/SolderedElectronics/USB-C-female-connector-breakout-hardware-design/blob/main/CAD/V1.2.0/USB-C%20female%20connector%20breakout.kicad_pcb",
+     "checked": "2026-10-25"
+    },
+    "pcb_mm": {
+     "value": 1.6,
+     "source": "https://github.com/SolderedElectronics/USB-C-female-connector-breakout-hardware-design/blob/main/CAD/V1.2.0/USB-C%20female%20connector%20breakout.kicad_pcb",
+     "checked": "2026-10-25"
+    },
+    "holes": {
+     "value": [
+      [
+       -8.0,
+       -8.0,
+       3.2
+      ],
+      [
+       -8.0,
+       8.0,
+       3.2
+      ]
+     ],
+     "source": "https://github.com/SolderedElectronics/USB-C-female-connector-breakout-hardware-design/blob/main/CAD/V1.2.0/USB-C%20female%20connector%20breakout.kicad_pcb",
+     "checked": "2026-10-25",
+     "how": "from Soldered's KiCad board V1.2.0 (the newest with CAD files): Edge.Cuts outline 22 x 22 mm, HOLE_3.2mm footprints H1/H2, the 8 x 1 pin row K1 and the USB-C receptacle K2, whose silkscreen box (8.25 mm deep) puts the shell centre 6.875 mm from the board centre"
+    },
+    "connector_positions": {
+     "value": {
+      "usb_c": [
+       -6.875,
+       0.0
+      ],
+      "pins": [
+       9.5,
+       0.0
+      ]
+     },
+     "source": "https://github.com/SolderedElectronics/USB-C-female-connector-breakout-hardware-design/blob/main/CAD/V1.2.0/USB-C%20female%20connector%20breakout.kicad_pcb",
+     "checked": "2026-10-25",
+     "how": "from Soldered's KiCad board V1.2.0 (the newest with CAD files): Edge.Cuts outline 22 x 22 mm, HOLE_3.2mm footprints H1/H2, the 8 x 1 pin row K1 and the USB-C receptacle K2, whose silkscreen box (8.25 mm deep) puts the shell centre 6.875 mm from the board centre"
     }
    },
-   "missing": [
-    "holes",
-    "connector_positions"
-   ],
-   "estimated": [
-    "holes"
-   ],
+   "missing": [],
+   "estimated": [],
    "styled": [
     "parts",
     "pcb_color"
@@ -11400,14 +12006,54 @@
       22.0
      ],
      "tol": 0.44
+    },
+    {
+     "check": "holes",
+     "nodes": [
+      "hole_"
+     ],
+     "expect": [
+      [
+       -8.0,
+       -8.0
+      ],
+      [
+       -8.0,
+       8.0
+      ]
+     ],
+     "tol": 0.15
+    },
+    {
+     "check": "centre",
+     "nodes": [
+      "usb_c"
+     ],
+     "expect": [
+      -6.875,
+      0.0
+     ],
+     "tol": 0.2
+    },
+    {
+     "check": "centre",
+     "nodes": [
+      "pins"
+     ],
+     "expect": [
+      9.5,
+      0.0
+     ],
+     "tol": 0.2
     }
    ],
    "bbox_mm": [
     22.0,
     22.0,
-    4.8
+    4.83
    ],
-   "bytes": 34572
+   "bytes": 52808,
+   "note": "Soldered 333011 KiCad board: 22 x 22 mm, two 3.2 mm holes beside the USB-C receptacle, eight 2.54 mm pins along the opposite edge."
   },
   "usb-c-psu-5v3a": {
    "id": "usb-c-psu-5v3a",
@@ -11420,23 +12066,44 @@
    "glb": "models/parts/usb-c-psu-5v3a.glb",
    "step": null,
    "frame": "millimetres, Z up, centred on the part's footprint, bottom at z = 0, length along X",
-   "source_url": null,
+   "source_url": "https://pip-assets.raspberrypi.com/categories/898-raspberry-pi-27w-usb-c-power-supply/documents/RP-008245-DS-1-27w-usb-c-power-supply-product-brief.pdf",
    "checked": "2026-10-25",
-   "kind": "approximate",
+   "kind": "look-alike",
    "author": "AnyBuild look-alike generator",
    "license": "same as this repository",
-   "dims": {},
-   "missing": [
-    "length_mm",
-    "width_mm",
-    "height_mm"
+   "dims": {
+    "length_mm": {
+     "value": 36.0,
+     "source": "https://pip-assets.raspberrypi.com/categories/898-raspberry-pi-27w-usb-c-power-supply/documents/RP-008245-DS-1-27w-usb-c-power-supply-product-brief.pdf",
+     "checked": "2026-10-25"
+    },
+    "width_mm": {
+     "value": 52.0,
+     "source": "https://pip-assets.raspberrypi.com/categories/898-raspberry-pi-27w-usb-c-power-supply/documents/RP-008245-DS-1-27w-usb-c-power-supply-product-brief.pdf",
+     "checked": "2026-10-25"
+    },
+    "height_mm": {
+     "value": 52.0,
+     "source": "https://pip-assets.raspberrypi.com/categories/898-raspberry-pi-27w-usb-c-power-supply/documents/RP-008245-DS-1-27w-usb-c-power-supply-product-brief.pdf",
+     "checked": "2026-10-25"
+    },
+    "plug_base_h_mm": {
+     "value": 18.5,
+     "source": "https://pip-assets.raspberrypi.com/categories/898-raspberry-pi-27w-usb-c-power-supply/documents/RP-008245-DS-1-27w-usb-c-power-supply-product-brief.pdf",
+     "checked": "2026-10-25"
+    },
+    "pin_spacing_mm": {
+     "value": 17.5,
+     "source": "https://pip-assets.raspberrypi.com/categories/898-raspberry-pi-27w-usb-c-power-supply/documents/RP-008245-DS-1-27w-usb-c-power-supply-product-brief.pdf",
+     "checked": "2026-10-25"
+    }
+   },
+   "missing": [],
+   "estimated": [],
+   "styled": [
+    "plug_base_l_mm",
+    "plug_base_w_mm"
    ],
-   "estimated": [
-    "height_mm",
-    "length_mm",
-    "width_mm"
-   ],
-   "styled": [],
    "checks": [
     {
      "check": "extent",
@@ -11445,19 +12112,33 @@
      ],
      "axes": "xyz",
      "expect": [
-      60.0,
-      45.0,
-      30.0
+      36.0,
+      52.0,
+      52.0
      ],
-     "tol": 1.2
+     "tol": 1.04
+    },
+    {
+     "check": "extent",
+     "nodes": [
+      "body",
+      "plug_base",
+      "plug_pin_"
+     ],
+     "axes": "z",
+     "expect": [
+      89.5
+     ],
+     "tol": 0.3
     }
    ],
    "bbox_mm": [
-    60.0,
-    64.0,
-    49.0
+    36.0,
+    71.0,
+    89.5
    ],
-   "bytes": 21448
+   "bytes": 32392,
+   "note": "The shop link searches for the Raspberry Pi 27 W USB-C supply; its product brief (Type C, Europlug) gives the body 52 x 52 x 36 mm, the plug housing 18.5 mm, pins 19 mm long and 17.5 mm apart. The housing's footprint is drawn in proportion."
   },
   "rpi-psu-5v1-3a-bb": {
    "id": "rpi-psu-5v1-3a-bb",
@@ -11470,23 +12151,39 @@
    "glb": "models/parts/rpi-psu-5v1-3a-bb.glb",
    "step": null,
    "frame": "millimetres, Z up, centred on the part's footprint, bottom at z = 0, length along X",
-   "source_url": null,
+   "source_url": "https://pip-assets.raspberrypi.com/categories/501-raspberry-pi-15w-usb-c-power-supply/documents/RP-008244-DS-1-15w-usb-c-power-supply-product-brief.pdf",
    "checked": "2026-10-25",
-   "kind": "approximate",
+   "kind": "look-alike",
    "author": "AnyBuild look-alike generator",
    "license": "same as this repository",
-   "dims": {},
-   "missing": [
-    "length_mm",
-    "width_mm",
-    "height_mm"
+   "dims": {
+    "length_mm": {
+     "value": 45.0,
+     "source": "https://pip-assets.raspberrypi.com/categories/501-raspberry-pi-15w-usb-c-power-supply/documents/RP-008244-DS-1-15w-usb-c-power-supply-product-brief.pdf",
+     "checked": "2026-10-25"
+    },
+    "width_mm": {
+     "value": 45.0,
+     "source": "https://pip-assets.raspberrypi.com/categories/501-raspberry-pi-15w-usb-c-power-supply/documents/RP-008244-DS-1-15w-usb-c-power-supply-product-brief.pdf",
+     "checked": "2026-10-25"
+    },
+    "height_mm": {
+     "value": 27.0,
+     "source": "https://pip-assets.raspberrypi.com/categories/501-raspberry-pi-15w-usb-c-power-supply/documents/RP-008244-DS-1-15w-usb-c-power-supply-product-brief.pdf",
+     "checked": "2026-10-25"
+    },
+    "plug_base_h_mm": {
+     "value": 18.0,
+     "source": "https://pip-assets.raspberrypi.com/categories/501-raspberry-pi-15w-usb-c-power-supply/documents/RP-008244-DS-1-15w-usb-c-power-supply-product-brief.pdf",
+     "checked": "2026-10-25"
+    }
+   },
+   "missing": [],
+   "estimated": [],
+   "styled": [
+    "plug_base_l_mm",
+    "plug_base_w_mm"
    ],
-   "estimated": [
-    "height_mm",
-    "length_mm",
-    "width_mm"
-   ],
-   "styled": [],
    "checks": [
     {
      "check": "extent",
@@ -11495,19 +12192,33 @@
      ],
      "axes": "xyz",
      "expect": [
-      60.0,
-      40.0,
-      30.0
+      45.0,
+      45.0,
+      27.0
      ],
-     "tol": 1.2
+     "tol": 0.9
+    },
+    {
+     "check": "extent",
+     "nodes": [
+      "body",
+      "plug_base",
+      "plug_pin_"
+     ],
+     "axes": "z",
+     "expect": [
+      64.0
+     ],
+     "tol": 0.3
     }
    ],
    "bbox_mm": [
-    60.0,
-    59.0,
-    49.0
+    45.0,
+    64.0,
+    64.0
    ],
-   "bytes": 21448
+   "bytes": 32388,
+   "note": "Raspberry Pi 15 W USB-C supply, EU model KSA-15E-051300HE (product brief page 5): body 45 x 45 x 27 mm, plug housing 18 mm, pins 19 mm. The housing's footprint is drawn in proportion."
   },
   "psu-12v5a-gfd-a9-eck": {
    "id": "psu-12v5a-gfd-a9-eck",
@@ -11520,22 +12231,30 @@
    "glb": "models/parts/psu-12v5a-gfd-a9-eck.glb",
    "step": null,
    "frame": "millimetres, Z up, centred on the part's footprint, bottom at z = 0, length along X",
-   "source_url": null,
+   "source_url": "https://eckstein-shop.de/gaofande-12v5a-eu-wandnetzteil-gfd-a9-ce_1",
    "checked": "2026-10-25",
-   "kind": "approximate",
+   "kind": "look-alike",
    "author": "AnyBuild look-alike generator",
    "license": "same as this repository",
-   "dims": {},
-   "missing": [
-    "length_mm",
-    "width_mm",
-    "height_mm"
-   ],
-   "estimated": [
-    "height_mm",
-    "length_mm",
-    "width_mm"
-   ],
+   "dims": {
+    "length_mm": {
+     "value": 92.5,
+     "source": "https://eckstein-shop.de/gaofande-12v5a-eu-wandnetzteil-gfd-a9-ce_1",
+     "checked": "2026-10-25"
+    },
+    "width_mm": {
+     "value": 51.0,
+     "source": "https://eckstein-shop.de/gaofande-12v5a-eu-wandnetzteil-gfd-a9-ce_1",
+     "checked": "2026-10-25"
+    },
+    "height_mm": {
+     "value": 35.5,
+     "source": "https://eckstein-shop.de/gaofande-12v5a-eu-wandnetzteil-gfd-a9-ce_1",
+     "checked": "2026-10-25"
+    }
+   },
+   "missing": [],
+   "estimated": [],
    "styled": [],
    "checks": [
     {
@@ -11545,19 +12264,20 @@
      ],
      "axes": "xyz",
      "expect": [
-      110.0,
-      50.0,
-      32.0
+      92.5,
+      51.0,
+      35.5
      ],
-     "tol": 2.2
+     "tol": 1.85
     }
    ],
    "bbox_mm": [
-    110.0,
-    69.0,
-    51.0
+    92.5,
+    70.0,
+    54.5
    ],
-   "bytes": 21448
+   "bytes": 21448,
+   "note": "Gaofande GFD-A9, 92.5 x 51 x 35.5 mm per the shop's specification; which face carries the Europlug is drawn, not stated."
   },
   "usb-c-socket-panel": {
    "id": "usb-c-socket-panel",
@@ -11906,32 +12626,73 @@
    "glb": "models/parts/rpi-ai-camera-bb.glb",
    "step": null,
    "frame": "millimetres, Z up, centred on the part's footprint, bottom at z = 0, length along X",
-   "source_url": null,
+   "source_url": "https://pip-assets.raspberrypi.com/categories/1044-raspberry-pi-ai-camera/documents/RP-008147-DS-1-ai-camera-product-brief.pdf",
    "checked": "2026-10-25",
-   "kind": "approximate",
+   "kind": "look-alike",
    "author": "AnyBuild look-alike generator",
    "license": "same as this repository",
    "dims": {
     "length_mm": {
      "value": 25.0,
-     "source": "https://www.berrybase.de/en/raspberry-pi-ai-camera"
+     "source": "https://pip-assets.raspberrypi.com/categories/1044-raspberry-pi-ai-camera/documents/RP-008147-DS-1-ai-camera-product-brief.pdf",
+     "checked": "2026-10-25"
     },
     "width_mm": {
-     "value": 24.0,
-     "source": "https://www.berrybase.de/en/raspberry-pi-ai-camera"
+     "value": 23.862,
+     "source": "https://pip-assets.raspberrypi.com/categories/1044-raspberry-pi-ai-camera/documents/RP-008147-DS-1-ai-camera-product-brief.pdf",
+     "checked": "2026-10-25"
     },
     "height_mm": {
      "value": 11.9,
-     "source": "https://www.berrybase.de/en/raspberry-pi-ai-camera"
+     "source": "https://pip-assets.raspberrypi.com/categories/1044-raspberry-pi-ai-camera/documents/RP-008147-DS-1-ai-camera-product-brief.pdf",
+     "checked": "2026-10-25"
+    },
+    "holes": {
+     "value": [
+      [
+       -10.5,
+       9.931,
+       2.2
+      ],
+      [
+       10.5,
+       9.931,
+       2.2
+      ],
+      [
+       -10.5,
+       -2.569,
+       2.2
+      ],
+      [
+       10.5,
+       -2.569,
+       2.2
+      ]
+     ],
+     "source": "https://pip-assets.raspberrypi.com/categories/1044-raspberry-pi-ai-camera/documents/RP-008147-DS-1-ai-camera-product-brief.pdf",
+     "checked": "2026-10-25",
+     "how": "2.0 mm from the side edges, 2.0 and 14.5 mm below the top edge, per the product brief drawing"
+    },
+    "pcb_mm": {
+     "value": 1.0,
+     "source": "https://pip-assets.raspberrypi.com/categories/1044-raspberry-pi-ai-camera/documents/RP-008147-DS-1-ai-camera-product-brief.pdf",
+     "checked": "2026-10-25"
+    },
+    "connector_positions": {
+     "value": {
+      "fpc_connector": [
+       0.0,
+       -9.076
+      ]
+     },
+     "source": "https://pip-assets.raspberrypi.com/categories/1044-raspberry-pi-ai-camera/documents/RP-008147-DS-1-ai-camera-product-brief.pdf",
+     "checked": "2026-10-25",
+     "how": "19.61 mm wide (bottom view) and 5.71 mm up from the bottom edge (side view); its 2.8 mm depth is the 11.9 mm overall less the 6.98 + 1.12 + 1.0 mm stack"
     }
    },
-   "missing": [
-    "holes",
-    "connector_positions"
-   ],
-   "estimated": [
-    "holes"
-   ],
+   "missing": [],
+   "estimated": [],
    "styled": [
     "parts",
     "pcb_color"
@@ -11945,7 +12706,7 @@
      "axes": "xy",
      "expect": [
       25.0,
-      24.0
+      23.862
      ],
      "tol": 0.5
     },
@@ -11957,19 +12718,19 @@
      "expect": [
       [
        -10.5,
-       -10.0
+       9.931
       ],
       [
        10.5,
-       -10.0
+       9.931
       ],
       [
        -10.5,
-       2.5
+       -2.569
       ],
       [
        10.5,
-       2.5
+       -2.569
       ]
      ],
      "tol": 0.15
@@ -11982,15 +12743,26 @@
       11.9
      ],
      "tol": 0.9520000000000001
+    },
+    {
+     "check": "centre",
+     "nodes": [
+      "fpc_connector"
+     ],
+     "expect": [
+      0.0,
+      -9.076
+     ],
+     "tol": 0.2
     }
    ],
    "bbox_mm": [
     25.0,
-    24.0,
-    12.03
+    23.86,
+    12.0
    ],
-   "bytes": 36508,
-   "note": "25 x 24 x 11.9 mm per the shop page."
+   "bytes": 38812,
+   "note": "Raspberry Pi AI Camera product brief drawing: board 25 x 23.862, four 2.2 mm holes, lens on the lower hole row, FPC connector on the back."
   },
   "m5stack-timer-camera-u082x": {
    "id": "m5stack-timer-camera-u082x",
@@ -12062,23 +12834,83 @@
    "glb": "models/parts/bus-servo-board-ws25514-eck.glb",
    "step": null,
    "frame": "millimetres, Z up, centred on the part's footprint, bottom at z = 0, length along X",
-   "source_url": null,
+   "source_url": "https://www.waveshare.com/bus-servo-adapter-a.htm",
    "checked": "2026-10-25",
-   "kind": "approximate",
+   "kind": "look-alike",
    "author": "AnyBuild look-alike generator",
    "license": "same as this repository",
-   "dims": {},
-   "missing": [
-    "length_mm",
-    "width_mm",
-    "holes",
-    "connector_positions"
-   ],
-   "estimated": [
-    "holes",
-    "length_mm",
-    "width_mm"
-   ],
+   "dims": {
+    "length_mm": {
+     "value": 42.0,
+     "source": "https://www.waveshare.com/bus-servo-adapter-a.htm",
+     "checked": "2026-10-25"
+    },
+    "width_mm": {
+     "value": 33.0,
+     "source": "https://www.waveshare.com/bus-servo-adapter-a.htm",
+     "checked": "2026-10-25"
+    },
+    "holes": {
+     "value": [
+      [
+       -18.5,
+       -14.0,
+       2.5
+      ],
+      [
+       18.5,
+       -14.0,
+       2.5
+      ],
+      [
+       -18.5,
+       14.0,
+       2.5
+      ],
+      [
+       18.5,
+       14.0,
+       2.5
+      ]
+     ],
+     "source": "https://www.waveshare.com/bus-servo-adapter-a.htm",
+     "checked": "2026-10-25",
+     "how": "2.5 mm holes 37.00 x 28.00 mm apart per the specification table"
+    },
+    "connector_positions": {
+     "value": {
+      "servo_port_1": [
+       -10.38,
+       13.81
+      ],
+      "servo_port_2": [
+       1.67,
+       13.81
+      ],
+      "uart": [
+       11.93,
+       14.81
+      ],
+      "usb": [
+       10.87,
+       -14.44
+      ],
+      "dc_jack": [
+       -11.18,
+       -10.08
+      ],
+      "dc_terminal": [
+       0.09,
+       -13.5
+      ]
+     },
+     "source": "https://www.waveshare.com/img/devkit/accBoard/Bus-Servo-Adapter-A/Bus-Servo-Adapter-A-details-size.jpg",
+     "checked": "2026-10-25",
+     "how": "read off Waveshare's dimensioned top-view photo, scaled by its own 37.00 x 28.00 mm hole spacing (16.1 px/mm); connector body centres, good to about 0.5 mm"
+    }
+   },
+   "missing": [],
+   "estimated": [],
    "styled": [
     "parts",
     "pcb_color"
@@ -12103,31 +12935,98 @@
      ],
      "expect": [
       [
-       -18,
-       -13.5
+       -18.5,
+       -14.0
       ],
       [
-       18,
-       -13.5
+       18.5,
+       -14.0
       ],
       [
-       -18,
-       13.5
+       -18.5,
+       14.0
       ],
       [
-       18,
-       13.5
+       18.5,
+       14.0
       ]
      ],
      "tol": 0.15
+    },
+    {
+     "check": "centre",
+     "nodes": [
+      "servo_port_1"
+     ],
+     "expect": [
+      -10.38,
+      13.81
+     ],
+     "tol": 0.2
+    },
+    {
+     "check": "centre",
+     "nodes": [
+      "servo_port_2"
+     ],
+     "expect": [
+      1.67,
+      13.81
+     ],
+     "tol": 0.2
+    },
+    {
+     "check": "centre",
+     "nodes": [
+      "uart"
+     ],
+     "expect": [
+      11.93,
+      14.81
+     ],
+     "tol": 0.2
+    },
+    {
+     "check": "centre",
+     "nodes": [
+      "usb"
+     ],
+     "expect": [
+      10.87,
+      -14.44
+     ],
+     "tol": 0.2
+    },
+    {
+     "check": "centre",
+     "nodes": [
+      "dc_jack"
+     ],
+     "expect": [
+      -11.18,
+      -10.08
+     ],
+     "tol": 0.2
+    },
+    {
+     "check": "centre",
+     "nodes": [
+      "dc_terminal"
+     ],
+     "expect": [
+      0.09,
+      -13.5
+     ],
+     "tol": 0.2
     }
    ],
    "bbox_mm": [
-    45.04,
-    33.0,
+    42.0,
+    35.16,
     12.63
    ],
-   "bytes": 56036
+   "bytes": 70596,
+   "note": "Waveshare Bus Servo Adapter (A), SKU 25514: 42 x 33 mm, 2.5 mm holes 37 x 28 apart (specification table); connector positions read off the dimensioned photo."
   },
   "pca9685-grove-se108020102-bb": {
    "id": "pca9685-grove-se108020102-bb",
@@ -12145,17 +13044,24 @@
    "kind": "approximate",
    "author": "AnyBuild look-alike generator",
    "license": "same as this repository",
-   "dims": {},
+   "dims": {
+    "length_mm": {
+     "value": 60.0,
+     "source": "https://wiki.seeedstudio.com/Grove-16-Channel_PWM_Driver-PCA9685/",
+     "checked": "2026-10-25"
+    },
+    "width_mm": {
+     "value": 40.0,
+     "source": "https://wiki.seeedstudio.com/Grove-16-Channel_PWM_Driver-PCA9685/",
+     "checked": "2026-10-25"
+    }
+   },
    "missing": [
-    "length_mm",
-    "width_mm",
     "holes",
     "connector_positions"
    ],
    "estimated": [
-    "holes",
-    "length_mm",
-    "width_mm"
+    "holes"
    ],
    "styled": [
     "parts",
@@ -12205,7 +13111,8 @@
     40.0,
     7.63
    ],
-   "bytes": 82364
+   "bytes": 82364,
+   "note": "60 x 40 mm per the Seeed wiki (its 18 mm height does not say what it includes); the hole and connector positions are not published there."
   },
   "pca9685-driver": {
    "id": "pca9685-driver",
@@ -12588,22 +13495,36 @@
    "glb": "models/parts/rplidar-c1-mybotshop.glb",
    "step": null,
    "frame": "millimetres, Z up, centred on the part's footprint, bottom at z = 0, length along X",
-   "source_url": null,
+   "source_url": "https://cdn.shopify.com/s/files/1/0058/3145/8904/files/SLAMTEC_rplidar_datasheet_C1_v1.1_en.pdf",
    "checked": "2026-10-25",
-   "kind": "approximate",
+   "kind": "look-alike",
    "author": "AnyBuild look-alike generator",
    "license": "same as this repository",
-   "dims": {},
-   "missing": [
-    "length_mm",
-    "width_mm",
-    "height_mm"
-   ],
-   "estimated": [
-    "height_mm",
-    "length_mm",
-    "width_mm"
-   ],
+   "dims": {
+    "length_mm": {
+     "value": 55.6,
+     "source": "https://cdn.shopify.com/s/files/1/0058/3145/8904/files/SLAMTEC_rplidar_datasheet_C1_v1.1_en.pdf",
+     "checked": "2026-10-25"
+    },
+    "width_mm": {
+     "value": 55.6,
+     "source": "https://cdn.shopify.com/s/files/1/0058/3145/8904/files/SLAMTEC_rplidar_datasheet_C1_v1.1_en.pdf",
+     "checked": "2026-10-25"
+    },
+    "height_mm": {
+     "value": 23.1,
+     "source": "https://cdn.shopify.com/s/files/1/0058/3145/8904/files/SLAMTEC_rplidar_datasheet_C1_v1.1_en.pdf",
+     "checked": "2026-10-25",
+     "how": "the square base; the optical enclosure adds 18.2 mm to the 41.3 mm overall height"
+    },
+    "overall_height_mm": {
+     "value": 41.3,
+     "source": "https://cdn.shopify.com/s/files/1/0058/3145/8904/files/SLAMTEC_rplidar_datasheet_C1_v1.1_en.pdf",
+     "checked": "2026-10-25"
+    }
+   },
+   "missing": [],
+   "estimated": [],
    "styled": [
     "fillet_mm",
     "parts",
@@ -12619,9 +13540,18 @@
      "expect": [
       55.6,
       55.6,
-      23.3
+      23.1
      ],
      "tol": 1.112
+    },
+    {
+     "check": "extent",
+     "nodes": null,
+     "axes": "z",
+     "expect": [
+      41.3
+     ],
+     "tol": 0.3
     }
    ],
    "bbox_mm": [
@@ -12629,7 +13559,8 @@
     55.6,
     41.3
    ],
-   "bytes": 15124
+   "bytes": 15124,
+   "note": "SLAMTEC RPLIDAR C1 datasheet (figure 4-1): base 55.6 x 55.6 x 23.1 mm, 41.3 mm overall with the optical enclosure, 4 x M2.5 holes 43 x 43 mm apart underneath. The enclosure's diameter is drawn in proportion."
   },
   "ball-caster": {
    "id": "ball-caster",
@@ -12719,36 +13650,52 @@
    "glb": "models/parts/ball-caster-po953-eck.glb",
    "step": null,
    "frame": "millimetres, Z up, centred on the part's footprint, bottom at z = 0, length along X",
-   "source_url": null,
+   "source_url": "https://www.pololu.com/file/0J1638/pololu-ball-caster-with-0-500in-ball.pdf",
    "checked": "2026-10-25",
-   "kind": "approximate",
+   "kind": "look-alike",
    "author": "AnyBuild look-alike generator",
    "license": "same as this repository",
    "dims": {
     "ball_mm": {
      "value": 12.7,
      "source": "https://www.pololu.com/product/953"
+    },
+    "height_mm": {
+     "value": 13.5,
+     "source": "https://www.pololu.com/file/0J1638/pololu-ball-caster-with-0-500in-ball.pdf",
+     "checked": "2026-10-25"
+    },
+    "hole_spacing_mm": {
+     "value": 14.7,
+     "source": "https://www.pololu.com/file/0J1638/pololu-ball-caster-with-0-500in-ball.pdf",
+     "checked": "2026-10-25"
+    },
+    "length_mm": {
+     "value": 20.3,
+     "source": "https://www.pololu.com/file/0J1638/pololu-ball-caster-with-0-500in-ball.pdf",
+     "checked": "2026-10-25"
+    },
+    "width_mm": {
+     "value": 15.2,
+     "source": "https://www.pololu.com/file/0J1638/pololu-ball-caster-with-0-500in-ball.pdf",
+     "checked": "2026-10-25"
+    },
+    "flange_t_mm": {
+     "value": 2.1,
+     "source": "https://www.pololu.com/file/0J1638/pololu-ball-caster-with-0-500in-ball.pdf",
+     "checked": "2026-10-25"
     }
    },
-   "missing": [
-    "height_mm",
-    "hole_spacing_mm"
-   ],
-   "estimated": [
-    "height_mm",
-    "hole_spacing_mm"
-   ],
-   "styled": [
-    "length_mm",
-    "width_mm"
-   ],
+   "missing": [],
+   "estimated": [],
+   "styled": [],
    "checks": [
     {
      "check": "extent",
      "nodes": null,
      "axes": "z",
      "expect": [
-      14.3
+      13.5
      ],
      "tol": 0.3
     },
@@ -12770,24 +13717,36 @@
      ],
      "expect": [
       [
-       -7.6,
+       -7.35,
        0
       ],
       [
-       7.6,
+       7.35,
        0
       ]
      ],
      "tol": 0.1
+    },
+    {
+     "check": "extent",
+     "nodes": [
+      "body"
+     ],
+     "axes": "xy",
+     "expect": [
+      20.3,
+      15.2
+     ],
+     "tol": 0.3
     }
    ],
    "bbox_mm": [
-    22.0,
-    13.0,
-    14.35
+    20.3,
+    15.2,
+    13.55
    ],
-   "bytes": 41696,
-   "note": "Pololu ball caster with 1/2 in ball (same part as pololu-953-ball-caster)."
+   "bytes": 45876,
+   "note": "Pololu ball caster with 1/2 in ball (same part as pololu-953-ball-caster); numbers from the Pololu dimension diagram."
   },
   "wheels-65mm-pair": {
    "id": "wheels-65mm-pair",
@@ -12951,8 +13910,8 @@
  "frame": "millimetres, Z up, centred on the part's footprint, bottom at z = 0, length along X",
  "note": "One entry per library part. kind is official (a manufacturer or library model, license given), look-alike (built from the measured numbers in dims, each with its source) or approximate (built, but the numbers in missing were not found in any real source).",
  "counts": {
-  "look-alike": 69,
-  "approximate": 96,
+  "look-alike": 94,
+  "approximate": 71,
   "official": 11
  }
 }

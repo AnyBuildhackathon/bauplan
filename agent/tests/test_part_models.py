@@ -2,7 +2,7 @@
 
 The numbers come from agent/data/models/manifest.json, where each one carries its source. The
 checks measure the GLB itself: bounding boxes of named pieces, the motor bolt circle, the propeller
-diameter and blade count, board hole patterns, frame motor spacing and bearing bores.
+diameter and blade count, board hole patterns, connector positions, frame motor spacing and bearing bores.
 """
 
 from __future__ import annotations
@@ -101,6 +101,12 @@ def _run(check: dict, nodes: dict) -> None:
         assert len(centres) == 4
         diagonal = max(math.hypot(a[0] - b[0], a[1] - b[1]) for a in centres for b in centres)
         assert abs(diagonal - check["wheelbase"]) <= tol, f"motor diagonal {diagonal:.2f} mm, expected {check['wheelbase']} mm"
+    elif kind == "centre":
+        points = _pick(nodes, check["nodes"])
+        assert points, f"no pieces named {check['nodes']}"
+        for i, expect in enumerate(check["expect"]):
+            mid = (max(p[i] for p in points) + min(p[i] for p in points)) / 2
+            assert abs(mid - expect) <= tol, f"{check['nodes'][0]} centre {'xy'[i]} {mid:.2f} mm, expected {expect} mm"
     elif kind == "bore":
         points = _pick(nodes, check["nodes"])
         cx = (max(p[0] for p in points) + min(p[0] for p in points)) / 2

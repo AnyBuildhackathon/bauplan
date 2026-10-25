@@ -235,27 +235,33 @@ def servo(p: dict) -> Model:
 
     m = Model(p["id"])
     length, width = p["length_mm"], p["width_mm"]
-    overall = p["overall_height_mm"]
+    horn_t = 1.6 if length < 30 else 2.4
+    # A drawing without a horn gives the height to the spline top; the horn sits on the spline.
+    overall = p["overall_height_mm"] if "overall_height_mm" in p else p["spline_top_mm"] + horn_t * 0.4
     tab_bottom = p["tab_bottom_mm"]
     tab_span = p["tab_span_mm"]
     tab_t = p.get("tab_t_mm", 2.5 if length > 30 else 1.6)
     case_h = p.get("case_height_mm", tab_bottom + tab_t + (overall - tab_bottom) * 0.35)
     hole_spacing = p.get("hole_spacing_mm", (length + tab_span) / 2)
     hole_d = p.get("hole_d_mm", 2.0 if length < 30 else 4.5)
+    # Standard-size servos have two holes per tab, `hole_pitch_y_mm` apart across the tab.
+    pitch_y = p.get("hole_pitch_y_mm", 0.0)
+    hole_ys = (-pitch_y / 2, pitch_y / 2) if pitch_y else (0.0,)
     shaft_x = length / 2 - p.get("shaft_offset_mm", width / 2)
-    horn_t = 1.6 if length < 30 else 2.4
     spline_d = p.get("spline_d_mm", 4.8 if length < 30 else 5.9)
     tower_h = (overall - case_h - horn_t) * 0.55
     colour = finish(p.get("color", "#2457b5"), 0.0, 0.45)
     m.add("body", box(length, width, tab_bottom, fillet=0.4), colour)
     tabs = box(tab_span, width, tab_t, (0, 0, tab_bottom))
     for sx in (-1, 1):
-        tabs = tabs.cut(cyl(hole_d / 2, tab_t + 0.4, (sx * hole_spacing / 2, 0, tab_bottom - 0.2)))
-        slot_len = tab_span / 2 - hole_spacing / 2 + 0.1
-        tabs = tabs.cut(box(slot_len, max(0.8, hole_d * 0.45), tab_t + 0.4, (sx * (hole_spacing / 2 + slot_len / 2), 0, tab_bottom - 0.2)))
+        for hy in hole_ys:
+            tabs = tabs.cut(cyl(hole_d / 2, tab_t + 0.4, (sx * hole_spacing / 2, hy, tab_bottom - 0.2)))
+            slot_len = tab_span / 2 - hole_spacing / 2 + 0.1
+            tabs = tabs.cut(box(slot_len, max(0.8, hole_d * 0.45), tab_t + 0.4, (sx * (hole_spacing / 2 + slot_len / 2), hy, tab_bottom - 0.2)))
     m.add("tabs", tabs, colour)
-    for i, sx in enumerate((-1, 1), 1):
-        m.add(f"mount_hole_{i}", tube(hole_d / 2, hole_d / 2 - 0.15, tab_t, (sx * hole_spacing / 2, 0, tab_bottom)), colour)
+    holes = [(sx * hole_spacing / 2, hy) for sx in (-1, 1) for hy in hole_ys]
+    for i, (hx, hy) in enumerate(holes, 1):
+        m.add(f"mount_hole_{i}", tube(hole_d / 2, hole_d / 2 - 0.15, tab_t, (hx, hy, tab_bottom)), colour)
     m.add("body_top", box(length, width, case_h - tab_bottom - tab_t, (0, 0, tab_bottom + tab_t), fillet=0.4), colour)
     if p.get("label", True):
         m.add("label", box(length * 0.7, 0.05, tab_bottom * 0.6, (0, -width / 2 - 0.02, tab_bottom * 0.2)), finish(p.get("label_color", "#e8e8e8"), 0.0, 0.5))
@@ -514,7 +520,8 @@ def ball_caster(p: dict) -> Model:
     height = p["height_mm"]
     length = p.get("length_mm", ball * 2.0)
     width = p.get("width_mm", ball * 1.5)
-    housing = box(length, width, max(2.0, height - ball * 0.75), (0, 0, height - max(2.0, height - ball * 0.75)), fillet=1.0)
+    flange = p.get("flange_t_mm", max(2.0, height - ball * 0.75))
+    housing = box(length, width, flange, (0, 0, height - flange), fillet=min(1.0, flange * 0.4))
     housing = housing.union(cyl(min(ball * 0.62, width / 2), height - ball * 0.45, (0, 0, ball * 0.45)))
     housing = housing.cut(cq.Workplane("XY").sphere(ball / 2 + 0.2).translate((0, 0, ball / 2)))
     spacing = p.get("hole_spacing_mm", length - 5.0)
@@ -672,20 +679,26 @@ def enclosure(p: dict) -> Model:
     return m
 
 
-def europlug(m: Model, x: float, y: float, z: float, axis: str = "Z") -> None:
-    """Two Europlug pins (EN 50075: 4.0 mm across, 19 mm apart, 19 mm long) along +axis from (x, y, z)."""
+def europlug(m: Model, x: float, y: float, z: float, axis: str = "Z", spacing: float = 19.0) -> None:
+    """Two Europlug pins (EN 50075: 4.0 mm across, 19 mm long) `spacing` apart along +axis from (x, y, z)."""
 
     for i, s in enumerate((-1, 1), 1):
         if axis == "Z":
-            m.add(f"plug_pin_{i}", cyl(2.0, 19.0, (x + s * 9.5, y, z)), FINISH["steel"])
+            m.add(f"plug_pin_{i}", cyl(2.0, 19.0, (x + s * spacing / 2, y, z)), FINISH["steel"])
         else:
-            m.add(f"plug_pin_{i}", cyl(2.0, 19.0, (x, y + s * 9.5, z), axis="X"), FINISH["steel"])
+            m.add(f"plug_pin_{i}", cyl(2.0, 19.0, (x, y + s * spacing / 2, z), axis="X"), FINISH["steel"])
 
 
 def wall_adapter(p: dict) -> Model:
     m = enclosure(p)
+    top = p["height_mm"]
+    if p.get("plug_base_h_mm"):
+        # The plug's own housing between the body and the pins (its height from the drawing).
+        base_h = p["plug_base_h_mm"]
+        m.add("plug_base", box(p.get("plug_base_l_mm", p["length_mm"] * 0.8), p.get("plug_base_w_mm", p["width_mm"] * 0.4), base_h, (0, 0, top), fillet=1.0), finish(p.get("color", "#1f1f21"), 0.0, p.get("rough", 0.5)))
+        top += base_h
     if p.get("plug", "europlug") == "europlug":
-        europlug(m, 0, 0, p["height_mm"])
+        europlug(m, 0, 0, top, spacing=p.get("pin_spacing_mm", 19.0))
     if p.get("cable", True):
         m.add("cable", wire_path([(0, -p["width_mm"] / 2 + 2, 4), (0, -p["width_mm"] / 2 - 8, 4), (8, -p["width_mm"] / 2 - 18, 4)], 1.6), FINISH["wire_black" if p.get("color", "#1f1f21") != "#f2f2f0" else "wire_white"])
     return m
