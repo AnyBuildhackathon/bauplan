@@ -389,3 +389,14 @@ def test_a_history_flattens_into_one_user_turn():
 def test_a_hit_limit_is_named_with_its_reset():
     info = SimpleNamespace(rate_limit_type="five_hour", resets_at=None)
     assert subscription.limit_note(info) == "The Claude subscription hit its 5-hour limit."
+
+
+def test_frames_of_one_message_count_once_at_their_largest():
+    from claude_agent_sdk import AssistantMessage, TextBlock
+
+    stream = subscription.Stream(None, "x")
+    for output in (3, 180, 40):
+        stream.take(AssistantMessage(content=[TextBlock(text="a")], model="m", message_id="m1", usage={"output_tokens": output, "input_tokens": 2}))
+    stream.take(AssistantMessage(content=[], model="m", message_id="m2", usage={"output_tokens": 5}))
+    assert stream.rounds == 2
+    assert stream.total()["output_tokens"] == 185 and stream.total()["input_tokens"] == 2

@@ -182,10 +182,10 @@ class Stream:
                 log.warning("Claude subscription near its limit: %s", message.rate_limit_info.utilization)
         elif isinstance(message, AssistantMessage) and message.parent_tool_use_id is None:
             key = message.message_id or str(len(self.usage))
-            if message.usage:
-                self.usage[key] = usage_of(message.usage)
-            else:
-                self.usage.setdefault(key, usage_of(None))
+            # One model message arrives as several frames; each carries its usage so far, so the largest counts.
+            seen = self.usage.setdefault(key, usage_of(None))
+            for name, value in usage_of(message.usage).items():
+                seen[name] = max(seen[name], value)
             if message.error:
                 self.error = str(message.error)
             texts = []
