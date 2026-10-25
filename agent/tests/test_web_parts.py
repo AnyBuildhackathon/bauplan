@@ -115,6 +115,14 @@ def test_battery_voltage_per_cell_and_energy_density():
     assert any("Energy density" in p for p in problems)
 
 
+def test_a_unit_named_after_its_kind_is_accepted():
+    answer = json.loads(json.dumps(MOTOR))
+    answer["specs"]["cells_max"] = ["4", "count"]
+    answer["specs"]["kv"] = [3800, "kv"]
+    part, problems = web_parts.validate("motor", answer)
+    assert problems == [] and part["cells_max"] == 4
+
+
 def test_no_url_no_price_no_part():
     part, problems = web_parts.validate("motor", {**MOTOR, "url": "not a page", "price": 0})
     assert part is None

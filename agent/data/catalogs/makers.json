@@ -604,7 +604,7 @@
       ]
     },
     {
-      "id": "arduino-nano",
+      "id": "arduino-nano-a000005",
       "name": "Arduino Nano (A000005)",
       "category": "controller",
       "mass_g": 7.0,
@@ -828,6 +828,40 @@
       "price_checked": "2026-10-25",
       "provenance": "curated",
       "source_url": "https://www.pololu.com/product/3415",
+      "checked": "2026-10-25",
+      "estimated": []
+    },
+    {
+      "id": "pololu-961-qtr-8rc",
+      "name": "Pololu QTR-8RC reflectance sensor array",
+      "category": "sensor",
+      "mass_g": 3.09,
+      "size_mm": [
+        74.9,
+        12.7,
+        3.2
+      ],
+      "voltage_v": 5.0,
+      "power_w": 0.5,
+      "note": "2.95 x 0.5 x 0.125 in, 3.09 g without header pins, eight IR emitter and phototransistor pairs, 3.3-5.0 V, 100 mA, best at 3 mm above the line per the page. Out of stock at Pololu on 2026-10-25.",
+      "aliases": [
+        "qtr-8rc",
+        "line sensor",
+        "ir line sensor array",
+        "reflectance sensor",
+        "line follower"
+      ],
+      "unit_price_eur": 11.57,
+      "price_is_sample": false,
+      "shop": "Pololu",
+      "url": "https://www.pololu.com/product/961",
+      "shop_price": 12.95,
+      "shop_currency": "USD",
+      "shop_pack_qty": 1,
+      "in_stock": false,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://www.pololu.com/product/961",
       "checked": "2026-10-25",
       "estimated": []
     },
@@ -1160,6 +1194,40 @@
       "source_url": "https://www.pololu.com/product/2850",
       "checked": "2026-10-25",
       "estimated": []
+    },
+    {
+      "id": "pololu-1087-wheel-32x7",
+      "name": "Pololu wheel 32 x 7 mm (black)",
+      "category": "wheel",
+      "mass_g": 3.1,
+      "size_mm": [
+        32,
+        32,
+        7
+      ],
+      "diameter_mm": 32,
+      "note": "32 x 7 mm, 3 mm D shaft for micro metal gearmotors, 0.11 oz per the specs page; sold as a pair, unit price is per wheel. Whether 0.11 oz is per wheel is not stated.",
+      "aliases": [
+        "wheel",
+        "32mm wheel",
+        "n20 wheel",
+        "small robot wheel"
+      ],
+      "unit_price_eur": 1.99,
+      "price_is_sample": false,
+      "shop": "Pololu",
+      "url": "https://www.pololu.com/product/1087",
+      "shop_price": 4.45,
+      "shop_currency": "USD",
+      "shop_pack_qty": 2,
+      "in_stock": true,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://www.pololu.com/product/1087",
+      "checked": "2026-10-25",
+      "estimated": [
+        "mass_g"
+      ]
     },
     {
       "id": "pololu-1420-wheel-60x8",

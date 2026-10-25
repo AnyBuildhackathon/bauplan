@@ -510,7 +510,7 @@ The diff also covers changed CAD parameters (key `param:{name}`) and requirement
 
 A part was chosen.
 `category`, `id`, `name`, `mass_g`, `size_mm` (`[length, width, height]` when the part has all three, else `null`), and `diameter_mm` (propellers, motors).
-`provenance` is `curated` (the parts library, `agent/data/parts.json` and `agent/data/catalogs/`) or `web` (found on a shop page during this build, its specs validated); `source_url` is the page its specs come from.
+`provenance` is `curated` (the parts library with specs from product pages: `agent/data/parts.json`, `agent/data/catalogs/makers.json`), `web` (found on a shop page during a build, its specs validated), `catalog` (an older sample catalog part) or `estimate` (no part fits, mass and price estimated); `source_url` is the page its specs come from.
 `why` is the requirement quote behind the choice, `{text, speaker, time}`, or `null`.
 `reason` is the agent's own reason in one line.
 

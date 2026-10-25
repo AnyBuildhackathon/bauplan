@@ -297,6 +297,8 @@ async def part_pick(ctx: Ctx, args: dict) -> dict:
             "why": _quote(ctx.state),
             "reason": reason,
             "warnings": [],
+            "provenance": item.get("provenance") or ("estimate" if item.get("price_source") == "estimated" else "catalog"),
+            "source_url": item.get("source_url") or item.get("url") or None,
         }
     )
     result = {

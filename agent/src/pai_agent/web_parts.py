@@ -198,7 +198,8 @@ def _convert(raw, kind: str) -> float | None:
         return value * lookup[unit]
     if unit.replace(" ", "") in {k.replace(" ", "") for k in lookup}:
         return value * next(v for k, v in lookup.items() if k.replace(" ", "") == unit.replace(" ", ""))
-    if kind in {"count", "C"} and unit in {"", "c", "s", "x"}:
+    if unit in {kind.lower(), ""} or (kind in {"count", "C"} and unit in {"c", "s", "x", "count", "pieces", "piece"}):
+        # The model named the field's own unit kind ("count", "KV", "rpm") or gave none.
         return value
     return None
 

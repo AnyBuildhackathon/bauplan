@@ -474,7 +474,7 @@ export interface PartEvent {
   size_mm?: [number, number, number] | null;
   diameter_mm?: number | null;
   /** curated: from the parts library; web: found and validated on the web during this build. */
-  provenance?: "curated" | "web";
+  provenance?: "curated" | "web" | "catalog" | "estimate";
   /** The product page its specs come from. */
   source_url?: string | null;
 }
