@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import time
 
+from pai_agent import distributors
 from pai_agent.context import Ctx
 from pai_agent.timeouts import limit, timed_out
 from pai_agent.requirements import refresh_requirements
@@ -190,8 +191,11 @@ SCHEMAS = [
             "propellers with diameter and pitch; packs 1S to 6S with voltage, capacity, C rating and size; flight controllers with mount and ESC rating; frames with wheelbase; cameras; video transmitters), "
             "the page the specs come from (source_url), the date checked and which fields are estimates. It spans 65 mm whoops to 5-inch racers. "
             "select_id chooses the part; because names the requirement it serves; reason is your one-sentence reason. "
-            "web true with need (what the part must do, e.g. '2S 1103 motor, 140 g thrust') searches shops on the web when the library has nothing that fits: "
-            "the specs are copied from the product page and validated (units, plausible ranges); the find is added to the library, then select it with select_id."
+            "web true with need (what the part must do, e.g. '2S 1103 motor, 140 g thrust') finds a real part when the library has nothing that fits: first the learned library "
+            "(parts earlier builds found), then the distributor APIs for electronics (Digi-Key, Nexar/Octopart, Mouser, when set up; query is their search words), then the web, "
+            "combining the shop page, the maker page and the datasheet of the same part number. Its numbers are validated (identity, units, plausible ranges); require lists the extra fields "
+            "this build needs beyond the category's critical ones (a chase camera: fov_deg, resolution_px, fps). Each part and field says sourced, derived or estimated "
+            "(estimates only in exploration mode, labelled). The find joins the library; select it with select_id."
         ),
         "input_schema": {
             "type": "object",
@@ -203,6 +207,11 @@ SCHEMAS = [
                 "reason": {"type": "string"},
                 "web": {"type": "boolean", "description": "Search shops on the web for a real part with real specs. Use it only when no library part fits."},
                 "need": {"type": "string", "description": "With web: what the part must do and fit, with numbers."},
+                "require": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "With web: fields this build needs stated on the part's pages, beyond the category's critical ones, e.g. [\"fov_deg\", \"resolution_px\", \"fps\"] for a camera that must see a fly.",
+                },
             },
             "required": ["category"],
         },
@@ -459,8 +468,9 @@ SCHEMAS = [
         "description": (
             "Chooses the bought part for a spec part. With query (and no select_id) it searches every catalog (hobby electronics, motors, fans, pumps, batteries, servos, hardware, "
             "and the maker library of real product pages: gearmotors, steppers, servos, motor and stepper drivers, ESP32, RP2040 and Arduino boards, IMU, distance and lidar sensors, "
-            "LiPo and 18650 cells, chargers, regulators, wheels, casters, bearings, screws). web true with query searches shops on the web for a real part and validates its specs; "
-            "then select it with select_id. "
+            "LiPo and 18650 cells, chargers, regulators, wheels, casters, bearings, screws). web true with query (the need) finds a real part: the learned library first, then the distributor APIs "
+            "for electronics (keywords are their search words, e.g. a part number), then the web (shop page, maker page and datasheet of the same part number), and validates its specs; "
+            "require lists the fields this part must have stated (e.g. fov_deg, resolution_px, fps for a vision sensor). Then select it with select_id. "
             "select_id binds a catalog part (prices are samples to verify). When nothing fits, pass estimate {name, mass_g, unit_price_eur, and specs such as power_w, capacity_mah, voltage_v, stall_torque_nm} "
             "and it is marked as an estimated price. reason is your one-line reason. A swap after checks reruns them."
         ),
@@ -474,6 +484,8 @@ SCHEMAS = [
                 "estimate": {"type": "object"},
                 "reason": {"type": "string"},
                 "web": {"type": "boolean", "description": "Search shops on the web for a real part with real specs when no catalog part fits."},
+                "keywords": {"type": "string", "description": "With web: short distributor search words, e.g. a part number or 'OV9281 camera module'."},
+                "require": {"type": "array", "items": {"type": "string"}, "description": "With web: fields that must be stated on the part's pages beyond mass_g, e.g. [\"fov_deg\", \"fps\"]."},
             },
             "required": ["part_id"],
         },
@@ -1042,7 +1054,7 @@ async def emit_connections(publish) -> None:
     else:
         cad_detail = "CadQuery on this machine. freecadcmd is missing."
     rows = (
-        ("parts_search", "connected", "Parts library with specs from shop pages" + (", web search on" if live_prices_enabled() else "")),
+        ("parts_search", "connected", "Parts library with specs from shop pages" + (", web search on" if live_prices_enabled() else "") + "".join(", " + name for name in distributors.configured())),
         ("simulate_drone", "connected", "MuJoCo on this machine"),
         ("simulate_mission", "connected", "MuJoCo missions on this machine"),
         ("cad_frame", "connected", cad_detail),

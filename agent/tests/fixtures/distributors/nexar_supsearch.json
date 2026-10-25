@@ -1,0 +1,32 @@
+{
+  "data": {
+    "supSearch": {
+      "results": [
+        {
+          "part": {
+            "mpn": "B0165",
+            "manufacturer": {"name": "Arducam"},
+            "shortDescription": "1MP OV9281 global shutter camera module",
+            "octopartUrl": "https://octopart.com/b0165-arducam-12345678",
+            "bestDatasheet": {"url": "https://www.arducam.com/downloads/datasheet/B0165.pdf"},
+            "totalAvail": 340,
+            "specs": [
+              {"attribute": {"name": "Frame Rate", "shortname": "framerate"}, "displayValue": "120 fps", "value": "120", "units": "fps"},
+              {"attribute": {"name": "Resolution", "shortname": "resolution"}, "displayValue": "1280 x 800", "value": "1280 x 800", "units": ""},
+              {"attribute": {"name": "Weight", "shortname": "weight"}, "displayValue": "3 g", "value": "3", "units": "g"}
+            ],
+            "sellers": [
+              {
+                "company": {"name": "Mouser"},
+                "offers": [
+                  {"clickUrl": "https://octopart.com/click/track?ct=offers&ai=1", "inventoryLevel": 228, "moq": 1,
+                   "prices": [{"quantity": 1, "price": 45.95, "currency": "USD", "convertedPrice": 41.05, "convertedCurrency": "EUR"}]}
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

@@ -5,7 +5,7 @@ import { useState } from "react";
 import { ArrowRight, Check, X } from "lucide-react";
 import { useSession, type ChatItem } from "../../events/store";
 import type { RequirementEvent } from "../../events/types";
-import { fmtEur, fmtNum } from "../../lib/format";
+import { estimatedNote, fmtEur, fmtNum } from "../../lib/format";
 import { useUi } from "../../lib/ui";
 import { WhyButton } from "../learn/Explain";
 
@@ -170,6 +170,11 @@ export function ResultsCard({
             ))}
           </div>
         </div>
+      )}
+      {item.estimatedInputs && item.estimatedInputs.length > 0 && (
+        <p className="mb-2.5 text-[12px] leading-snug text-agent-ink" data-target="metrics estimated" title={item.estimatedInputs.join("\n")}>
+          {estimatedNote(item.estimatedInputs)}
+        </p>
       )}
       <button
         type="button"

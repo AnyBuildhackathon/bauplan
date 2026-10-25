@@ -82,6 +82,8 @@ export interface MetricsEvent {
   flight_time_full_throttle_min?: number;
   /** True: the performance numbers are model estimates, not measurements. */
   estimate?: boolean;
+  /** Chosen parts whose numbers are estimates, not stated on their pages: "Part: field, field". */
+  estimated_inputs?: string[];
 }
 /** One trajectory sample: [t, x, y, z] in seconds and metres, z is up. */
 export type TrajectorySample = [number, number, number, number];
@@ -462,6 +464,8 @@ export interface MissionEvent {
   controller?: "reference" | "trained";
   /** A trained run: the reference controller's result on the same build, for the comparison. */
   reference?: { value: number | null; result: "pass" | "fail"; summary: string } | null;
+  /** Estimated part numbers this result rests on, and the camera defaults a chase used. */
+  estimated_inputs?: string[];
 }
 /** The drone's dimensioned parts (drone_geometry.py): what the model, the sim and the BOM share. */
 export interface GeometryEvent {
@@ -493,7 +497,17 @@ export interface PartEvent {
   provenance?: "curated" | "web" | "catalog" | "estimate";
   /** The product page its specs come from. */
   source_url?: string | null;
+  /** How its numbers are known: stated on its pages (sourced), read off a drawing or computed (derived),
+   * estimated (exploration mode only), or a catalog sample. */
+  confidence?: Confidence;
+  /** The fields that are estimates. */
+  estimated?: string[];
+  /** Per field: its confidence, the page it came from, or the basis of an estimate. */
+  fields?: Record<string, { confidence: Confidence; source?: string; basis?: string }>;
+  /** Every page the part's numbers come from: shop, maker page, datasheet, distributor listing. */
+  sources?: { url: string; kind?: string; distributor?: string }[];
 }
+export type Confidence = "sourced" | "derived" | "estimated" | "catalog";
 export interface QuestionEvent {
   type: "question";
   id: string;

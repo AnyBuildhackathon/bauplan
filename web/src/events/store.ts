@@ -155,7 +155,7 @@ export type ChatItem =
   | { kind: "sim"; id: string; seq: number; at: number; run: number; result: "pass" | "fail"; summary: string }
   /** One card per simulate_mission batch; it lists the batch's runs and reads them from `missionRuns`. */
   | { kind: "missions"; id: string; seq: number; at: number; runs: number[] }
-  | { kind: "bom"; id: string; seq: number; at: number; count: number; total: number; numbers: ResultNumber[]; performance?: ResultNumber[] }
+  | { kind: "bom"; id: string; seq: number; at: number; count: number; total: number; numbers: ResultNumber[]; performance?: ResultNumber[]; estimatedInputs?: string[] }
   /** The one requirements card; it reads the live requirements from the store. */
   | { kind: "requirements"; id: string; seq: number; at: number }
   | { kind: "training"; id: string; seq: number; at: number; status: TrainingEvent["status"]; detail: string; source?: "backend" }
@@ -527,6 +527,7 @@ export const useSession = create<SessionState>((set, get) => ({
           total: ev.total_eur,
           numbers: resultNumbers(s.metrics, ev.total_eur),
           performance: performanceNumbers(s.metrics),
+          estimatedInputs: s.metrics?.estimated_inputs,
         };
         // Live prices replace the catalog list they were searched for, so the card updates instead of repeating.
         let open = s.bom?.prices === "searching" ? s.chat.length - 1 : -1;

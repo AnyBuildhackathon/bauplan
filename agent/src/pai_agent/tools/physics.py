@@ -19,7 +19,7 @@ camera, canopy, hardware and video transmitter count for mass and price when cho
 
 from __future__ import annotations
 
-from pai_agent import printers
+from pai_agent import printers, web_parts
 from pai_agent.context import Ctx, de
 from pai_agent.flight import arm_length as arm_length_mm, bench, motor_power_w, performance
 from pai_agent.scene import PART_CATEGORIES
@@ -111,6 +111,8 @@ def compute(state: BuildState) -> dict:
         "warnings": warnings,
         **{key: flight.get(key) for key in PERFORMANCE_KEYS},
         "performance": {key: value for key, value in flight.items() if key not in ("warnings",)},
+        # The chosen parts' numbers that are estimates, not stated on their pages.
+        "estimated_inputs": web_parts.estimated_inputs(state.selected),
     }
     state.metrics = metrics
     return metrics
@@ -159,6 +161,7 @@ async def physics_calc(ctx: Ctx, args: dict) -> dict:
             "price_eur": metrics["price_eur"],
             **{key: metrics[key] for key in PERFORMANCE_KEYS if metrics.get(key) is not None},
             "estimate": True,
+            **({"estimated_inputs": metrics["estimated_inputs"]} if metrics["estimated_inputs"] else {}),
         }
     )
     detail = (

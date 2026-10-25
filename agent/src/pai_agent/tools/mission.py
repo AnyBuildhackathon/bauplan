@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 
+from pai_agent import web_parts
 from pai_agent.context import Ctx
 from pai_agent.drone_geometry import geometry
 from pai_agent.mission_sim import MISSIONS, AirframeError, airframe, passes, run, value_of
@@ -172,6 +173,9 @@ async def fly_missions(ctx: Ctx, entries: list[dict], metrics: dict, geo: dict, 
     state = ctx.state
     key = build_key(frame)
     controller = "reference" if gains is None else "trained"
+    # A result that rests on estimated part numbers says so (exploration-mode parts, catalog estimates).
+    estimated = web_parts.estimated_inputs(state.selected)
+    camera_defaults = [k for k in (frame.get("camera") or {}).get("assumed") or [] if k != "camera"]
     results = []
     for entry in entries:
         mission = entry["mission"]
@@ -216,12 +220,15 @@ async def fly_missions(ctx: Ctx, entries: list[dict], metrics: dict, geo: dict, 
             "controller": controller,
             "reference": compare,
         }
+        depends = estimated + (["camera defaults: " + ", ".join(camera_defaults)] if mission == "chase" and camera_defaults else [])
+        if depends:
+            event["estimated_inputs"] = depends
         if outcome.get("target"):
             event["target"] = outcome["target"]
         if outcome.get("wind"):
             event["wind"] = outcome["wind"]
         await ctx.emit(event)
-        results.append({"mission": mission, "result": event["result"], "value": value, "unit": spec["unit"], "limit": limit, "requirement": row["id"], "source": row.get("source"), "summary": summary, "why": why, "controller": controller, **({"reference": compare} if compare else {}), **numbers})
+        results.append({"mission": mission, "result": event["result"], "value": value, "unit": spec["unit"], "limit": limit, "requirement": row["id"], "source": row.get("source"), "summary": summary, "why": why, "controller": controller, **({"reference": compare} if compare else {}), **({"estimated_inputs": depends} if depends else {}), **numbers})
     return results
 
 

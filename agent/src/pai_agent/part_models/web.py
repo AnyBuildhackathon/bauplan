@@ -1,4 +1,4 @@
-"""A 3D model for a part found on the web during a build (web_parts.py), which the library has none for.
+"""A 3D model for a part found on the web during a build (web_parts.py, kept in the learned library), which the library has none for.
 
 First the official model: an Adafruit product's STEP from Adafruit's MIT-licensed CAD repository,
 found by the product number in the part's shop link. Other makers' published models are not
@@ -78,7 +78,12 @@ def spec_for(part: dict) -> dict:
 
     category = str(part.get("category") or "")
     source = part.get("source_url") or part.get("url")
+    fields = part.get("fields") or {}
     estimated = set(part.get("estimated") or [])
+
+    def origin(field: str):
+        # Each number cites the page it came from (the maker page, the datasheet) when the part says so.
+        return (fields.get(field) or {}).get("source") or source
     size = part.get("size_mm") if isinstance(part.get("size_mm"), list) and len(part["size_mm"]) == 3 else None
 
     def take(*pairs):
@@ -86,13 +91,13 @@ def spec_for(part: dict) -> dict:
         for field, name in pairs:
             value = _num(part, field)
             if value is not None and field not in estimated:
-                out[name] = {"value": value, "source": source}
+                out[name] = {"value": value, "source": origin(field)}
         return out
 
     def size_dims():
         if not size or "size_mm" in estimated:
             return {}
-        return {name: {"value": float(v), "source": source} for name, v in zip(("length_mm", "width_mm", "height_mm"), size)}
+        return {name: {"value": float(v), "source": origin(name)} for name, v in zip(("length_mm", "width_mm", "height_mm"), size) if name not in estimated}
 
     estimate: dict = {}
     style: dict = {}

@@ -36,7 +36,8 @@ ROLES = {
         "tools": ("part_pick",),
         "prompt": (
             "You pick the bought parts of a product spec. For every bought part in your task: search with part_pick and query, "
-            "then bind the best fit with select_id and a one-line reason, or pass an honest estimate when no catalog part fits. "
+            "then bind the best fit with select_id and a one-line reason. When no catalog part fits, part_pick with web true, keywords and require "
+            "(the fields the requirements need stated) finds a real one; only when that fails, pass an honest estimate. "
             "Match the specs the requirements need (voltage, torque, capacity, size). Do not touch anything else."
         ),
     },

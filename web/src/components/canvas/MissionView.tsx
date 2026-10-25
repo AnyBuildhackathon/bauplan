@@ -8,7 +8,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { useSession, type MissionRun } from "../../events/store";
 import type { MissionId } from "../../events/types";
-import { fmtNum } from "../../lib/format";
+import { estimatedNote, fmtNum } from "../../lib/format";
 import { useAssembly, useHighlight } from "../../lib/hooks";
 import { useUi } from "../../lib/ui";
 import { TrendChart } from "../ui/TrendChart";
@@ -299,6 +299,11 @@ export function MissionView() {
           </p>
           <p className="mt-0.5 text-[13px] leading-snug text-ink-2">{run.summary}</p>
           <p className="mt-0.5 text-[12px] leading-snug text-muted">{run.why}</p>
+          {run.estimated_inputs && run.estimated_inputs.length > 0 && (
+            <p className="mt-0.5 text-[12px] leading-snug text-agent-ink" title={run.estimated_inputs.join("\n")}>
+              {estimatedNote(run.estimated_inputs)}
+            </p>
+          )}
         </div>
       </div>
 

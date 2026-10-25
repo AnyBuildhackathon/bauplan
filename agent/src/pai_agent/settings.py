@@ -2,7 +2,10 @@
 
 Defaults come from the environment and can be changed at runtime through POST /api/settings
 (the settings control in the dashboard), including `llm_provider`: the API key, the local Claude
-Code subscription or auto (`provider.py`), and the user's 3D printer (`printers.py`). Never holds or logs a key.
+Code subscription or auto (`provider.py`), the user's 3D printer (`printers.py`) and the parts
+exploration switch `allow_estimated` (`PAI_ALLOW_ESTIMATED`, off by default): when on, a part found
+on the web may carry clearly labelled estimates for its non-critical numbers so a test build goes
+on; when off, every part number is sourced (`web_parts.py`). Never holds or logs a key.
 """
 
 from __future__ import annotations
@@ -38,6 +41,7 @@ def current() -> dict:
         "subagent_model": _env("PAI_SUBAGENT_MODEL", "claude-sonnet-5-5"),
         "subagent_effort": _env("PAI_SUBAGENT_EFFORT", "medium"),
         "delegation": _env("PAI_DELEGATION", "1").lower() not in {"0", "false", "no", "off"},
+        "allow_estimated": _env("PAI_ALLOW_ESTIMATED", "0").lower() in {"1", "true", "yes", "on"},
     }
     values.update(_overrides)
     return values
@@ -61,6 +65,8 @@ def update(body: dict) -> dict:
             changes[key] = value
     if "delegation" in body:
         changes["delegation"] = bool(body["delegation"])
+    if "allow_estimated" in body:
+        changes["allow_estimated"] = bool(body["allow_estimated"])
     if "printer" in body:
         # Validated before any other change lands, so a bad printer leaves the models as they were.
         printers.set_printer(body["printer"])

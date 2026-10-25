@@ -48,10 +48,11 @@ BUDGET_S = {
     # FEM meshes and solves each load case in CalculiX (150 s each at most); a material change reruns it.
     "fem_check": 420.0,
     "material_pick": 420.0,
-    # A web part search reads shop pages for up to 120 s.
-    "part_pick": 150.0,
-    "parts_search": 150.0,
-    "delegate": 240.0,
+    # A web part search asks the distributors, then reads shop pages and datasheets for up to 180 s.
+    "part_pick": 210.0,
+    "parts_search": 210.0,
+    # A delegated parts job may run more than one web part search.
+    "delegate": 480.0,
     # Pressing Rebuild runs FreeCAD and the test inside the call; the other controls return at once.
     "ui_control": 400.0,
     "ui_point_at": 10.0,
