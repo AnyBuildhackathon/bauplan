@@ -4539,11 +4539,121 @@
    "note": "M3 x 8 mm pan head Phillips per the page; head 5.6 x 2.4 mm per ISO 7045."
   },
   "arduino-nano": {
+   "name": "Arduino Nano compatible board",
+   "category": "controller",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "board",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 45.0,
+     "source": "https://store.arduino.cc/products/arduino-nano"
+    },
+    "width_mm": {
+     "value": 18.0,
+     "source": "https://store.arduino.cc/products/arduino-nano"
+    }
+   },
+   "style": {
+    "pcb_color": "#1d6fa5",
+    "pcb_mm": 1.6,
+    "corner_mm": 0.5,
+    "parts": [
+     {
+      "k": "header",
+      "n": 15,
+      "x": 0,
+      "y": -7.62,
+      "side": "bottom"
+     },
+     {
+      "k": "header",
+      "n": 15,
+      "x": 0,
+      "y": 7.62,
+      "side": "bottom"
+     },
+     {
+      "k": "chip",
+      "x": 3,
+      "y": 0,
+      "w": 7,
+      "l": 7,
+      "h": 1.0,
+      "rot": 45,
+      "name": "atmega328p"
+     },
+     {
+      "k": "micro_usb",
+      "x": -20.5,
+      "y": 0,
+      "rot": 90,
+      "name": "usb"
+     },
+     {
+      "k": "button",
+      "x": -6,
+      "y": 0,
+      "w": 3,
+      "l": 6,
+      "h": 2.5
+     },
+     {
+      "k": "header",
+      "n": 3,
+      "rows": 2,
+      "x": 19.5,
+      "y": 0,
+      "along": "y",
+      "pin_up": 6.0
+     },
+     {
+      "k": "crystal",
+      "x": -11,
+      "y": 3,
+      "w": 3.2,
+      "l": 2.5,
+      "h": 0.8
+     }
+    ]
+   },
+   "estimate": {
+    "holes": [
+     [
+      -20.3,
+      -7.6,
+      1.8
+     ],
+     [
+      20.3,
+      -7.6,
+      1.8
+     ],
+     [
+      -20.3,
+      7.6,
+      1.8
+     ],
+     [
+      20.3,
+      7.6,
+      1.8
+     ]
+    ]
+   },
+   "missing": [
+    "holes"
+   ],
+   "note": "18 x 45 mm per the Arduino store; the hole and connector positions are not on that page."
+  },
+  "arduino-nano-a000005": {
    "name": "Arduino Nano (A000005)",
    "category": "controller",
    "catalogs": [
-    "makers.json",
-    "generic.json"
+    "makers.json"
    ],
    "type": "board",
    "source": "https://store.arduino.cc/products/arduino-nano",
@@ -4649,6 +4759,177 @@
     "holes"
    ],
    "note": "18 x 45 mm per the Arduino store; the hole and connector positions are not on that page."
+  },
+  "pololu-961-qtr-8rc": {
+   "name": "Pololu QTR-8RC reflectance sensor array",
+   "category": "sensor",
+   "catalogs": [
+    "makers.json"
+   ],
+   "type": "board",
+   "source": "https://www.pololu.com/product/961",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 74.93,
+     "source": "https://www.pololu.com/product/961"
+    },
+    "width_mm": {
+     "value": 12.7,
+     "source": "https://www.pololu.com/product/961"
+    },
+    "height_mm": {
+     "value": 3.2,
+     "source": "https://www.pololu.com/product/961"
+    },
+    "sensor_pitch_mm": {
+     "value": 9.525,
+     "source": "https://www.pololu.com/product/961"
+    }
+   },
+   "style": {
+    "pcb_color": "#1d4fa3",
+    "pcb_mm": 1.6,
+    "parts": [
+     {
+      "k": "box",
+      "x": -33.337,
+      "y": 2.0,
+      "w": 3.2,
+      "l": 2.6,
+      "h": 1.5,
+      "color": "#1d1d1f",
+      "name": "ir_sensor_1"
+     },
+     {
+      "k": "box",
+      "x": -23.812,
+      "y": 2.0,
+      "w": 3.2,
+      "l": 2.6,
+      "h": 1.5,
+      "color": "#1d1d1f",
+      "name": "ir_sensor_2"
+     },
+     {
+      "k": "box",
+      "x": -14.288,
+      "y": 2.0,
+      "w": 3.2,
+      "l": 2.6,
+      "h": 1.5,
+      "color": "#1d1d1f",
+      "name": "ir_sensor_3"
+     },
+     {
+      "k": "box",
+      "x": -4.763,
+      "y": 2.0,
+      "w": 3.2,
+      "l": 2.6,
+      "h": 1.5,
+      "color": "#1d1d1f",
+      "name": "ir_sensor_4"
+     },
+     {
+      "k": "box",
+      "x": 4.763,
+      "y": 2.0,
+      "w": 3.2,
+      "l": 2.6,
+      "h": 1.5,
+      "color": "#1d1d1f",
+      "name": "ir_sensor_5"
+     },
+     {
+      "k": "box",
+      "x": 14.288,
+      "y": 2.0,
+      "w": 3.2,
+      "l": 2.6,
+      "h": 1.5,
+      "color": "#1d1d1f",
+      "name": "ir_sensor_6"
+     },
+     {
+      "k": "box",
+      "x": 23.812,
+      "y": 2.0,
+      "w": 3.2,
+      "l": 2.6,
+      "h": 1.5,
+      "color": "#1d1d1f",
+      "name": "ir_sensor_7"
+     },
+     {
+      "k": "box",
+      "x": 33.337,
+      "y": 2.0,
+      "w": 3.2,
+      "l": 2.6,
+      "h": 1.5,
+      "color": "#1d1d1f",
+      "name": "ir_sensor_8"
+     },
+     {
+      "k": "pads",
+      "n": 11,
+      "x": 0,
+      "y": -4.4,
+      "pitch": 2.54,
+      "d": 1.6
+     }
+    ]
+   },
+   "estimate": {
+    "holes": [
+     [
+      -34.9,
+      0,
+      2.2
+     ],
+     [
+      34.9,
+      0,
+      2.2
+     ]
+    ]
+   },
+   "missing": [
+    "holes",
+    "connector_positions"
+   ],
+   "note": "2.95 x 0.5 in board and eight sensors on a 0.375 in pitch per the page; holes and pin positions are not given there."
+  },
+  "pololu-1087-wheel-32x7": {
+   "name": "Pololu wheel 32 x 7 mm (black)",
+   "category": "wheel",
+   "catalogs": [
+    "makers.json"
+   ],
+   "type": "wheel",
+   "source": "https://www.pololu.com/product/1087",
+   "checked": "2026-10-25",
+   "dims": {
+    "diameter_mm": {
+     "value": 32.0,
+     "source": "https://www.pololu.com/product/1087"
+    },
+    "width_mm": {
+     "value": 7.0,
+     "source": "https://www.pololu.com/product/1087"
+    },
+    "bore_mm": {
+     "value": 3.0,
+     "source": "https://www.pololu.com/product/1087"
+    }
+   },
+   "style": {
+    "rim_color": "#1d1d1f",
+    "tyre_color": "#1b1b1b",
+    "spokes": 5
+   },
+   "note": "32 x 7 mm wheel for 3 mm D shafts per the page."
   },
   "samsung-35e-18650": {
    "name": "Samsung INR18650-35E 3500 mAh cell",

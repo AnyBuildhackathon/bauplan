@@ -6862,14 +6862,99 @@
   },
   "arduino-nano": {
    "id": "arduino-nano",
-   "name": "Arduino Nano (A000005)",
+   "name": "Arduino Nano compatible board",
    "catalogs": [
-    "makers.json",
     "generic.json"
    ],
    "category": "controller",
    "generator": "board",
    "glb": "models/parts/arduino-nano.glb",
+   "step": null,
+   "frame": "millimetres, Z up, centred on the part's footprint, bottom at z = 0, length along X",
+   "source_url": null,
+   "checked": "2026-10-25",
+   "kind": "approximate",
+   "author": "AnyBuild look-alike generator",
+   "license": "same as this repository",
+   "dims": {
+    "length_mm": {
+     "value": 45.0,
+     "source": "https://store.arduino.cc/products/arduino-nano"
+    },
+    "width_mm": {
+     "value": 18.0,
+     "source": "https://store.arduino.cc/products/arduino-nano"
+    }
+   },
+   "missing": [
+    "holes",
+    "connector_positions"
+   ],
+   "estimated": [
+    "holes"
+   ],
+   "styled": [
+    "corner_mm",
+    "parts",
+    "pcb_color",
+    "pcb_mm"
+   ],
+   "checks": [
+    {
+     "check": "extent",
+     "nodes": [
+      "board"
+     ],
+     "axes": "xy",
+     "expect": [
+      45.0,
+      18.0
+     ],
+     "tol": 0.9
+    },
+    {
+     "check": "holes",
+     "nodes": [
+      "hole_"
+     ],
+     "expect": [
+      [
+       -20.3,
+       -7.6
+      ],
+      [
+       20.3,
+       -7.6
+      ],
+      [
+       -20.3,
+       7.6
+      ],
+      [
+       20.3,
+       7.6
+      ]
+     ],
+     "tol": 0.15
+    }
+   ],
+   "bbox_mm": [
+    46.75,
+    18.06,
+    16.1
+   ],
+   "bytes": 68604,
+   "note": "18 x 45 mm per the Arduino store; the hole and connector positions are not on that page."
+  },
+  "arduino-nano-a000005": {
+   "id": "arduino-nano-a000005",
+   "name": "Arduino Nano (A000005)",
+   "catalogs": [
+    "makers.json"
+   ],
+   "category": "controller",
+   "generator": "board",
+   "glb": "models/parts/arduino-nano-a000005.glb",
    "step": null,
    "frame": "millimetres, Z up, centred on the part's footprint, bottom at z = 0, length along X",
    "source_url": "https://store.arduino.cc/products/arduino-nano",
@@ -6946,6 +7031,160 @@
    ],
    "bytes": 68604,
    "note": "18 x 45 mm per the Arduino store; the hole and connector positions are not on that page."
+  },
+  "pololu-961-qtr-8rc": {
+   "id": "pololu-961-qtr-8rc",
+   "name": "Pololu QTR-8RC reflectance sensor array",
+   "catalogs": [
+    "makers.json"
+   ],
+   "category": "sensor",
+   "generator": "board",
+   "glb": "models/parts/pololu-961-qtr-8rc.glb",
+   "step": null,
+   "frame": "millimetres, Z up, centred on the part's footprint, bottom at z = 0, length along X",
+   "source_url": "https://www.pololu.com/product/961",
+   "checked": "2026-10-25",
+   "kind": "approximate",
+   "author": "AnyBuild look-alike generator",
+   "license": "same as this repository",
+   "dims": {
+    "length_mm": {
+     "value": 74.93,
+     "source": "https://www.pololu.com/product/961"
+    },
+    "width_mm": {
+     "value": 12.7,
+     "source": "https://www.pololu.com/product/961"
+    },
+    "height_mm": {
+     "value": 3.2,
+     "source": "https://www.pololu.com/product/961"
+    },
+    "sensor_pitch_mm": {
+     "value": 9.525,
+     "source": "https://www.pololu.com/product/961"
+    }
+   },
+   "missing": [
+    "holes",
+    "connector_positions"
+   ],
+   "estimated": [
+    "holes"
+   ],
+   "styled": [
+    "parts",
+    "pcb_color",
+    "pcb_mm"
+   ],
+   "checks": [
+    {
+     "check": "extent",
+     "nodes": [
+      "board"
+     ],
+     "axes": "xy",
+     "expect": [
+      74.93,
+      12.7
+     ],
+     "tol": 1.499
+    },
+    {
+     "check": "holes",
+     "nodes": [
+      "hole_"
+     ],
+     "expect": [
+      [
+       -34.9,
+       0
+      ],
+      [
+       34.9,
+       0
+      ]
+     ],
+     "tol": 0.15
+    },
+    {
+     "check": "extent",
+     "nodes": null,
+     "axes": "z",
+     "expect": [
+      3.2
+     ],
+     "tol": 0.5
+    }
+   ],
+   "bbox_mm": [
+    74.93,
+    12.7,
+    3.13
+   ],
+   "bytes": 54604,
+   "note": "2.95 x 0.5 in board and eight sensors on a 0.375 in pitch per the page; holes and pin positions are not given there."
+  },
+  "pololu-1087-wheel-32x7": {
+   "id": "pololu-1087-wheel-32x7",
+   "name": "Pololu wheel 32 x 7 mm (black)",
+   "catalogs": [
+    "makers.json"
+   ],
+   "category": "wheel",
+   "generator": "wheel",
+   "glb": "models/parts/pololu-1087-wheel-32x7.glb",
+   "step": null,
+   "frame": "millimetres, Z up, centred on the part's footprint, bottom at z = 0, length along X",
+   "source_url": "https://www.pololu.com/product/1087",
+   "checked": "2026-10-25",
+   "kind": "look-alike",
+   "author": "AnyBuild look-alike generator",
+   "license": "same as this repository",
+   "dims": {
+    "diameter_mm": {
+     "value": 32.0,
+     "source": "https://www.pololu.com/product/1087"
+    },
+    "width_mm": {
+     "value": 7.0,
+     "source": "https://www.pololu.com/product/1087"
+    },
+    "bore_mm": {
+     "value": 3.0,
+     "source": "https://www.pololu.com/product/1087"
+    }
+   },
+   "missing": [],
+   "estimated": [],
+   "styled": [
+    "rim_color",
+    "spokes",
+    "tyre_color"
+   ],
+   "checks": [
+    {
+     "check": "extent",
+     "nodes": [
+      "tyre"
+     ],
+     "axes": "xyz",
+     "expect": [
+      32.0,
+      32.0,
+      7.0
+     ],
+     "tol": 0.64
+    }
+   ],
+   "bbox_mm": [
+    32.0,
+    32.0,
+    7.0
+   ],
+   "bytes": 47756,
+   "note": "32 x 7 mm wheel for 3 mm D shafts per the page."
   },
   "samsung-35e-18650": {
    "id": "samsung-35e-18650",
@@ -12712,8 +12951,8 @@
  "frame": "millimetres, Z up, centred on the part's footprint, bottom at z = 0, length along X",
  "note": "One entry per library part. kind is official (a manufacturer or library model, license given), look-alike (built from the measured numbers in dims, each with its source) or approximate (built, but the numbers in missing were not found in any real source).",
  "counts": {
-  "look-alike": 68,
-  "approximate": 94,
+  "look-alike": 69,
+  "approximate": 96,
   "official": 11
  }
 }
