@@ -3,7 +3,8 @@
     cd agent && uv run python -m pai_agent.part_models.build [--only id,id] [--step]
 
 sources.json holds, per part id: the generator type (or an official STEP), the measured numbers with
-the page or drawing each comes from, styled numbers (drawn in proportion, not measured) and notes.
+the page or drawing each comes from (with the date it was checked, and `how` when a number was read
+off a scaled drawing), styled numbers (drawn in proportion, not measured) and notes.
 A part whose type needs a number that no real source gives is built anyway, marked `approximate`,
 and lists what is missing. GLBs go to web/public/models/parts/, official STEPs (when small) to
 agent/data/models/step/, and manifest.json records files, kind, source, license and bounding boxes.
@@ -97,6 +98,9 @@ KEY_DIMS = {
     "pad": ["length_mm", "width_mm", "height_mm"],
 }
 
+# A key number a drawing may give in another form: the servo height to the spline top (no horn drawn).
+ALTERNATIVES = {"servo": {"overall_height_mm": "spline_top_mm"}}
+
 FRAME = "millimetres, Z up, centred on the part's footprint, bottom at z = 0, length along X"
 
 
@@ -122,14 +126,24 @@ def _checks(kind: str, d: dict) -> list[dict]:
             out.append({"check": "holes", "nodes": ["hole_"], "expect": [[h[0], h[1]] for h in d["holes"]], "tol": 0.15})
         if d.get("height_mm"):
             out.append({"check": "extent", "nodes": None, "axes": "z", "expect": [d["height_mm"]], "tol": max(0.5, 0.08 * d["height_mm"])})
+        if isinstance(d.get("connector_positions"), dict):
+            # Each connector or pad named in the drawing sits where the drawing puts it.
+            for name, (x, y) in d["connector_positions"].items():
+                out.append({"check": "centre", "nodes": [name], "expect": [x, y], "tol": 0.2})
     elif kind == "servo":
         out.append({"check": "extent", "nodes": ["body", "body_top"], "axes": "xy", "expect": [d["length_mm"], d["width_mm"]], "tol": 0.3})
-        out.append({"check": "extent", "nodes": ["body", "tabs", "body_top", "gear_tower", "spline", "horn"], "axes": "z", "expect": [d["overall_height_mm"]], "tol": 0.3})
+        if "overall_height_mm" in d:
+            out.append({"check": "extent", "nodes": ["body", "tabs", "body_top", "gear_tower", "spline", "horn"], "axes": "z", "expect": [d["overall_height_mm"]], "tol": 0.3})
+        else:
+            out.append({"check": "extent", "nodes": ["body", "tabs", "body_top", "gear_tower", "spline"], "axes": "z", "expect": [d["spline_top_mm"]], "tol": 0.3})
+        if "case_height_mm" in d:
+            out.append({"check": "extent", "nodes": ["body", "tabs", "body_top"], "axes": "z", "expect": [d["case_height_mm"]], "tol": 0.3})
         out.append({"check": "extent", "nodes": ["tabs"], "axes": "x", "expect": [d["tab_span_mm"]], "tol": 0.3})
         out.append({"check": "min_z", "nodes": ["tabs"], "expect": d["tab_bottom_mm"], "tol": 0.2})
         if "hole_spacing_mm" in d:
             s = d["hole_spacing_mm"] / 2
-            out.append({"check": "holes", "nodes": ["mount_hole_"], "expect": [[-s, 0], [s, 0]], "tol": 0.15})
+            ys = [-d["hole_pitch_y_mm"] / 2, d["hole_pitch_y_mm"] / 2] if d.get("hole_pitch_y_mm") else [0]
+            out.append({"check": "holes", "nodes": ["mount_hole_"], "expect": [[sx * s, y] for sx in (-1, 1) for y in ys], "tol": 0.15})
     elif kind == "vtx":
         out.append({"check": "extent", "nodes": ["board"], "axes": "xy", "expect": [d["length_mm"], d["width_mm"]], "tol": tol(d["length_mm"])})
         out.append({"check": "extent", "nodes": ["board", "rf_shield", "ufl", "led", "pad", "mount_hole"], "axes": "z", "expect": [d["height_mm"]], "tol": 0.3})
@@ -143,6 +157,8 @@ def _checks(kind: str, d: dict) -> list[dict]:
         out.append({"check": "extent", "nodes": ["ball"], "axes": "z", "expect": [d["ball_mm"]], "tol": 0.2})
         s = d["hole_spacing_mm"] / 2
         out.append({"check": "holes", "nodes": ["mount_hole_"], "expect": [[-s, 0], [s, 0]], "tol": 0.1})
+        if "length_mm" in d and "width_mm" in d:
+            out.append({"check": "extent", "nodes": ["body"], "axes": "xy", "expect": [d["length_mm"], d["width_mm"]], "tol": 0.3})
     elif kind == "tt_motor":
         out.append({"check": "extent", "nodes": ["body", "motor_can"], "axes": "xyz", "expect": [d["length_mm"], d["width_mm"], d["height_mm"]], "tol": 1.0})
     elif kind == "insert":
@@ -194,6 +210,11 @@ def _checks(kind: str, d: dict) -> list[dict]:
         out.append({"check": "holes", "nodes": ["mount_hole_"], "expect": [[-d["ear_spacing_mm"] / 2, 0], [d["ear_spacing_mm"] / 2, 0]], "tol": 0.1})
     elif all(k in d for k in ("length_mm", "width_mm", "height_mm")):
         out.append({"check": "extent", "nodes": ["body"], "axes": "xyz", "expect": [d["length_mm"], d["width_mm"], d["height_mm"]], "tol": tol(max(d["length_mm"], d["width_mm"]))})
+        if kind == "enclosure" and "overall_height_mm" in d:
+            out.append({"check": "extent", "nodes": None, "axes": "z", "expect": [d["overall_height_mm"]], "tol": 0.3})
+        if kind == "wall_adapter" and d.get("plug_base_h_mm"):
+            # Body, the plug's housing and the 19 mm Europlug pins, end to end.
+            out.append({"check": "extent", "nodes": ["body", "plug_base", "plug_pin_"], "axes": "z", "expect": [d["height_mm"] + d["plug_base_h_mm"] + 19.0], "tol": 0.3})
     return out
 
 
@@ -253,11 +274,16 @@ def build_part(part_id: str, spec: dict, write_step: bool = False, glb_path: Pat
         if step_path is not None:
             entry["step"] = str(step_path.relative_to(REPO_ROOT))
         required = KEY_DIMS.get(kind, [])
-        missing = [name for name in required if name not in dims and name not in spec.get("not_applicable", [])]
+        alternative = ALTERNATIVES.get(kind, {})
+        missing = [name for name in required if name not in dims and alternative.get(name) not in dims and name not in spec.get("not_applicable", [])]
         missing += [name for name in spec.get("missing", []) if name not in missing]
         entry.update(kind="approximate" if missing else "look-alike", author="AnyBuild look-alike generator", license="same as this repository")
     entry["dims"] = {
-        name: ({"value": _value(v), "source": v.get("source", spec.get("source"))} if isinstance(v, dict) else {"value": v, "source": spec.get("source")})
+        name: (
+            {"value": _value(v), "source": v.get("source", spec.get("source")), **{k: v[k] for k in ("checked", "how") if k in v}}
+            if isinstance(v, dict)
+            else {"value": v, "source": spec.get("source")}
+        )
         for name, v in spec.get("dims", {}).items()
     }
     entry["missing"] = missing
