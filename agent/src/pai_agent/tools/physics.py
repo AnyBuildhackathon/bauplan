@@ -20,7 +20,7 @@ camera, canopy, hardware and video transmitter count for mass and price when cho
 from __future__ import annotations
 
 from pai_agent.context import Ctx, de
-from pai_agent.flight import bench, motor_power_w, performance
+from pai_agent.flight import arm_length as arm_length_mm, bench, motor_power_w, performance
 from pai_agent.scene import PART_CATEGORIES
 from pai_agent.state import BuildState
 from pai_agent.tools.parts_search import unit_price_eur
@@ -93,9 +93,7 @@ def compute(state: BuildState) -> dict:
     if state.frame_mass_g is None and state.selected["frame"].get("mass_is_estimate"):
         warnings.append("The frame mass is the estimate until cad_frame weighs the STL.")
 
-    frame = state.selected["frame"]
-    frame_mass = float(state.frame_mass_g if state.frame_mass_g is not None else frame["mass_g"])
-    flight = performance(state.selected, frame_mass, arm_length_mm(state), weight)
+    flight = performance(state, weight)
     # Below the motor's test voltage the thrust is scaled down; never up.
     thrust = min(thrust, flight["thrust_g"])
     twr = thrust / weight
@@ -113,21 +111,6 @@ def compute(state: BuildState) -> dict:
     }
     state.metrics = metrics
     return metrics
-
-
-def arm_length_mm(state: BuildState) -> float:
-    """Centre to motor shaft: the built CAD frame, else the frame's wheelbase, else what the props need."""
-
-    built = (getattr(state, "cad_params", None) or {}).get("arm_length_mm")
-    if built:
-        return float(built)
-    frame = state.selected.get("frame") or {}
-    if frame.get("arm_length_mm"):
-        return float(frame["arm_length_mm"])
-    if frame.get("wheelbase_mm"):
-        return float(frame["wheelbase_mm"]) / 2.0
-    propeller = state.selected.get("propeller") or {}
-    return (float(propeller.get("diameter_mm") or 51.0) + 4.0) / 2.0 ** 0.5
 
 
 def _flight_minutes(weight_g: float, motor: dict, battery: dict, twr: float) -> float:

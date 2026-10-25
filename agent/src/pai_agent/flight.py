@@ -2,29 +2,33 @@
 
 Every input is a catalog field (the motor's load-table row in `bench`, the propeller's diameter
 and pitch, the pack's voltage, capacity and C rating, part sizes and masses); every output is an
-estimate and `assumptions` says what was assumed. The model, in order:
+estimate and `assumptions` says what was assumed. It reads the same airframe the MuJoCo missions
+fly (`mission_sim.airframe` on `drone_geometry.geometry`), so the card's top speed and turn rate and
+the speed run and hard turn describe one machine with one thrust, pitch-speed and drag model:
 
 - Thrust. Each motor gives its load-table thrust at 100 % throttle. Below the test voltage the
   thrust falls with the square of the voltage (rpm follows volts, thrust follows rpm squared); above
   it the bench figure stays, a higher voltage never invents thrust.
-- Dynamic thrust. Thrust falls linearly with the airflow through the disc and reaches zero at the
-  pitch speed, rpm times pitch (the rpm from the load table, else KV x volts x 0.8). Without a
-  published pitch there is no pitch-speed limit and the result says so.
-- Drag. Quadratic, 1/2 rho Cd A v^2, with the area seen by the wind interpolated between the
-  front view (level) and the plan view (tilted 90 degrees) by the pitch angle; both areas are
-  boxes around the frame, the motors, the pack and the stack sized from the part dimensions.
-- Top speed. The fastest level flight where the drag balances m g tan(pitch) and the thrust left
-  at that airflow still carries the weight: T(v sin pitch) cos pitch >= m g.
-- Acceleration. From a hover at full throttle, holding altitude, a = g sqrt(TWR^2 - 1); the time
-  to 90 % of top speed integrates the best feasible pitch at every speed.
-- Climb. Full thrust straight up against weight, inflow loss and the plan-view drag.
-- Turn. A level coordinated turn at half the top speed: the bank where thrust still carries the
-  weight and the drag, turn rate = lateral acceleration / speed. Roll: from hover two motors go to
-  full and two drop as much, about the inertia of the parts as placed.
+- Dynamic thrust. Thrust falls linearly with the airflow through the disc to zero at the pitch
+  speed, pitch times loaded rpm (75 % of KV x volts, volts capped at the motor's rating; a prop
+  without a published pitch counts as pitch = 0.8 diameter).
+- Drag. Body drag 1/2 rho Cd A v^2 on the parts' outlines, Cd 1.0 edgewise and 1.2 through the disc
+  plane, plus the rotors' H force (thrust x in-plane air speed / tip speed).
+- Top speed. The fastest level flight where some pitch up to 70 degrees holds altitude on at most
+  95 % of the thrust left at that airflow and still pushes forward, as the missions' controller flies.
+- Acceleration. From a hover on 95 % thrust, tilt capped at 70 degrees; the time to 90 % of top speed
+  integrates the best feasible pitch at every speed.
+- Climb. 95 % thrust straight up against weight, inflow loss and the plan-view drag.
+- Turn. A level turn at the hard-turn mission's 8 m/s (or 90 % of top speed when slower): the
+  lateral acceleration left after weight and drag gives the steady rate (lateral acceleration /
+  speed); like the mission, the turn rate is 90 degrees over the time to turn them, the roll-in
+  included (bank and stop the roll at full differential thrust, plus 1.5 motor lags). Roll: from
+  hover two motors go to full and two drop as much, about the inertia of the parts as placed.
 - Endurance. The power for a thrust is read off the motor's published load table (log-log
   between its rows); a motor with only the 100 % row scales power with thrust^1.5 from it, the
   induced-power exponent. 80 % of the pack counts. Hover carries the weight, top speed carries
-  m g / cos(pitch), full throttle is the 100 % row. The pack's C rating and the ESC rating are checked against the current.
+  the thrust that holds it there, full throttle is the 100 % row. The pack's C rating and the ESC
+  rating are checked against the current.
 """
 
 from __future__ import annotations
@@ -35,10 +39,13 @@ G = 9.80665
 RHO = 1.225  # sea-level air, kg/m3
 USABLE = 0.8  # share of the pack's capacity used, as the hover estimate always assumed
 HOVER_TWR = 1.05
-CD_FRONT = 1.05  # a bluff box
-CD_TOP = 1.2  # a flat plate broadside
-LOADED_RPM = 0.8  # loaded rpm as a share of KV x volts when the load table gives no rpm
-PROP_PITCH_SPEED_MARGIN = 1.0
+# The missions' airframe and controller (mission_sim): the same numbers on both sides.
+CD_SIDE = 1.0
+CD_TOP = 1.2
+LOADED_RPM = 0.75
+TILT_MAX = math.radians(70.0)
+THRUST_USE = 0.95
+TURN_SPEED = 8.0
 
 
 def _num(part: dict, key: str, default: float | None = None) -> float | None:
@@ -53,7 +60,8 @@ def bench(motor: dict) -> dict:
     """The motor's 100 % load-table row; older catalog motors only have thrust_g and g/W."""
 
     row = dict(motor.get("bench") or {})
-    row.setdefault("thrust_g", _num(motor, "thrust_g", 0.0))
+    # thrust_g is the catalog's 100 % figure and the load table's last row; it wins if they differ.
+    row["thrust_g"] = _num(motor, "thrust_g", row.get("thrust_g") or 0.0)
     if not row.get("power_w") and _num(motor, "efficiency_g_per_w"):
         row["power_w"] = float(row["thrust_g"]) / float(motor["efficiency_g_per_w"])
     return row
@@ -97,24 +105,26 @@ def thrust_per_motor_g(motor: dict, pack_v: float) -> tuple[float, str | None]:
     return thrust, None
 
 
-def pitch_speed_ms(motor: dict, propeller: dict, pack_v: float) -> tuple[float | None, str]:
-    """Air speed at which the propeller stops making thrust: rpm x pitch. None without a pitch."""
+def pitch_speed_ms(motor: dict, propeller: dict, pack_v: float) -> tuple[float, float, str]:
+    """(pitch speed, tip speed) in m/s as the missions take them, and where they come from."""
 
+    diameter = _num(propeller, "diameter_mm") or 51.0
     pitch_in = _num(propeller, "pitch_in")
+    note = ""
     if not pitch_in:
-        return None, "The propeller has no published pitch, so the top speed has no prop-speed limit (an upper bound)."
-    row = bench(motor)
-    rpm = _num(row, "rpm")
-    test_v = _num(row, "voltage_v")
-    if rpm and test_v and pack_v:
-        rpm *= min(1.0, pack_v / test_v)
-        source = "the load table's " + f"{rpm:.0f}" + " rpm"
-    else:
-        kv = _num(motor, "kv", 0.0) or 0.0
-        rpm = kv * pack_v * LOADED_RPM
-        source = f"{rpm:.0f}" + " rpm, estimated as KV x volts x " + f"{LOADED_RPM:g}"
-    speed = rpm / 60.0 * pitch_in * 0.0254 * PROP_PITCH_SPEED_MARGIN
-    return speed, "Pitch speed " + f"{speed:.1f}" + " m/s from " + source + " and the " + f"{pitch_in:g}" + " in pitch."
+        pitch_in = diameter * 0.8 / 25.4
+        note = " The propeller has no published pitch; 0.8 x its diameter is assumed."
+    kv = _num(motor, "kv")
+    cells_max = _num(motor, "cells_max")
+    volts = min(pack_v, cells_max * 3.8) if cells_max and pack_v else pack_v
+    if not kv or not volts:
+        return 35.0, 110.0, "No KV or pack voltage: pitch speed 35 m/s assumed." + note
+    rpm = kv * volts * LOADED_RPM
+    pitch_speed = pitch_in * 0.0254 * rpm / 60.0
+    tip_speed = rpm / 60.0 * 2 * math.pi * diameter / 2000.0
+    return pitch_speed, tip_speed, (
+        "Pitch speed " + f"{pitch_speed:.1f}" + " m/s: " + f"{pitch_in:.2g}" + " in pitch at " + f"{rpm:.0f}" + " rpm (KV x volts x " + f"{LOADED_RPM:g}" + ")." + note
+    )
 
 
 def _box(part: dict, keys=("length_mm", "width_mm", "height_mm")) -> list[float] | None:
@@ -193,70 +203,82 @@ def inertia(selected: dict, frame_mass_g: float, arm_m: float, pack_mm: list[flo
 
 
 class Model:
-    """Thrust at an airflow, drag at an attitude: the two curves every result below is read from."""
+    """The missions' forces in steady flight: thrust that fades with inflow, rotor H force, body drag."""
 
-    def __init__(self, mass_kg: float, thrust_n: float, pitch_speed: float | None, front_m2: float, top_m2: float) -> None:
+    def __init__(self, mass_kg: float, thrust_n: float, pitch_speed: float, tip_speed: float, cda_side: float, cda_top: float) -> None:
         self.m = mass_kg
         self.t0 = thrust_n
         self.vp = pitch_speed
-        self.front = front_m2
-        self.top = top_m2
+        self.tip = tip_speed
+        self.cda_side = cda_side
+        self.cda_top = cda_top
 
-    def thrust(self, inflow: float) -> float:
-        if self.vp is None:
-            return self.t0
-        return self.t0 * max(0.0, 1.0 - max(0.0, inflow) / self.vp)
+    def t_max(self, axial: float) -> float:
+        return self.t0 * min(1.2, max(0.0, 1.0 - axial / self.vp))
 
-    def drag_area(self, tilt: float) -> float:
-        return CD_FRONT * self.front * math.cos(tilt) + CD_TOP * self.top * math.sin(tilt)
+    def level(self, speed: float, tilt: float) -> float | None:
+        """Forward force in level flight at this pitch, or None when the thrust cannot hold altitude."""
 
-    def drag(self, speed: float, tilt: float) -> float:
-        return 0.5 * RHO * self.drag_area(tilt) * speed * speed
+        cos, sin = math.cos(tilt), math.sin(tilt)
+        drag_x = 0.5 * RHO * self.cda_side * speed * speed * cos  # along the body x axis, backwards
+        drag_z = 0.5 * RHO * self.cda_top * speed * speed * sin  # along the body z axis, downwards
+        lift = cos + speed * cos * sin / self.tip
+        thrust = (self.m * G + drag_z * cos - drag_x * sin) / lift
+        if thrust < 0 or thrust > THRUST_USE * self.t_max(speed * sin):
+            return None
+        rotor_h = thrust * speed * cos / self.tip
+        return thrust * sin - (rotor_h + drag_x) * cos - drag_z * sin
 
-    def level_speed(self, tilt: float) -> float:
-        """The speed where drag balances the horizontal thrust at this pitch, holding altitude."""
+    def push(self, speed: float) -> float | None:
+        """The best forward force at this speed over every pitch up to the tilt limit."""
 
-        return math.sqrt(2.0 * self.m * G * math.tan(tilt) / (RHO * self.drag_area(tilt)))
-
-    def feasible(self, speed: float, tilt: float) -> bool:
-        return self.thrust(speed * math.sin(tilt)) * math.cos(tilt) >= self.m * G
-
-    def top_speed(self) -> tuple[float, float]:
-        best = (0.0, 0.0)
-        for step in range(1, 890):
-            tilt = math.radians(step / 10.0)
-            speed = self.level_speed(tilt)
-            if self.feasible(speed, tilt) and speed > best[0]:
-                best = (speed, tilt)
+        best = None
+        for step in range(0, 701, 5):
+            forward = self.level(speed, math.radians(step / 10.0))
+            if forward is not None and (best is None or forward > best):
+                best = forward
         return best
 
-    def accel_at(self, speed: float) -> float:
-        """Best horizontal acceleration at this speed while holding altitude."""
+    def top_speed(self) -> float:
+        low, high = 0.0, max(5.0, self.vp * 1.2)
+        if (self.push(0.0) or -1.0) < 0:
+            return 0.0
+        for _ in range(40):
+            mid = (low + high) / 2.0
+            push = self.push(mid)
+            if push is not None and push >= 0:
+                low = mid
+            else:
+                high = mid
+        return low
 
-        best = 0.0
-        for step in range(1, 890, 2):
+    def tilt_at(self, speed: float) -> float:
+        """The pitch that holds this speed in level flight (forward force zero)."""
+
+        best, err = 0.0, math.inf
+        for step in range(0, 701, 2):
             tilt = math.radians(step / 10.0)
-            if not self.feasible(speed, tilt):
-                continue
-            best = max(best, G * math.tan(tilt) - self.drag(speed, tilt) / self.m)
+            forward = self.level(speed, tilt)
+            if forward is not None and abs(forward) < err:
+                best, err = tilt, abs(forward)
         return best
 
     def time_to(self, target: float) -> float:
         elapsed = 0.0
-        steps = 60
+        steps = 40
         dv = target / steps
         for index in range(steps):
-            a = self.accel_at((index + 0.5) * dv)
-            if a <= 1e-6:
+            push = self.push((index + 0.5) * dv)
+            if not push or push <= 1e-9:
                 return math.inf
-            elapsed += dv / a
+            elapsed += dv / (push / self.m)
         return elapsed
 
     def climb_rate(self) -> float:
         low, high = 0.0, 200.0
         for _ in range(60):
             mid = (low + high) / 2.0
-            surplus = self.thrust(mid) - self.m * G - 0.5 * RHO * CD_TOP * self.top * mid * mid
+            surplus = THRUST_USE * self.t_max(mid) - self.m * G - 0.5 * RHO * self.cda_top * mid * mid
             if surplus > 0:
                 low = mid
             else:
@@ -264,75 +286,136 @@ class Model:
         return low
 
     def turn(self, speed: float) -> tuple[float, float]:
-        """Sustained level turn at `speed`: (turn rate rad/s, radius m), bank limited by the thrust
-        left after the drag and the weight."""
+        """Sustained level turn at `speed`: (turn rate rad/s, radius m)."""
 
-        best = 0.0
-        # The disc leans forward just enough to hold the speed against the drag.
-        lean = math.atan2(self.drag(speed, 0.3), self.m * G)
-        drag = self.drag(speed, lean)
-        available = self.thrust(speed * math.sin(lean))
-        for step in range(1, 890, 2):
-            bank = math.radians(step / 10.0)
-            if math.hypot(self.m * G / math.cos(bank), drag) <= available:
-                best = bank
-        lateral = G * math.tan(best)
+        tilt = self.tilt_at(speed)
+        available = THRUST_USE * self.t_max(speed * math.sin(tilt))
+        drag = 0.5 * RHO * self.cda_side * speed * speed
+        weight = self.m * G
+        side = math.sqrt(max(0.0, available * available - weight * weight - drag * drag))
+        side = min(side, weight * math.tan(TILT_MAX))
+        lateral = side / self.m
         if speed <= 0 or lateral <= 0:
             return 0.0, math.inf
         return lateral / speed, speed * speed / lateral
 
 
-def performance(selected: dict, frame_mass_g: float, arm_mm: float, weight_g: float) -> dict:
+def _airframe(state, selected: dict, weight_g: float) -> tuple[dict, list[str]]:
+    """The missions' airframe for these parts; the same rules on the part outlines when the CAD
+    geometry cannot be built (a part without the dimensions it needs)."""
+
+    battery = selected["battery"]
+    motor = selected["motor"]
+    pack_v = float(battery["voltage_v"])
+    try:
+        from pai_agent.drone_geometry import geometry as drone_geometry
+        from pai_agent.mission_sim import airframe
+
+        frame = airframe(drone_geometry(state), selected)
+        return {
+            "t0": frame["t0"] * int(motor.get("bom_qty", 4)),
+            "pitch_speed": frame["pitch_speed"],
+            "tip_speed": frame["tip_speed"],
+            "cda_side": frame["cda_side"],
+            "cda_top": frame["cda_top"],
+            "tau": frame["tau"],
+            "source": "the airframe the MuJoCo missions fly",
+        }, []
+    except Exception as exc:  # the geometry lacks a dimension; the outline estimate takes over
+        shape, notes = geometry(selected, arm_length(state))
+        per_motor, _note = thrust_per_motor_g(motor, pack_v)
+        vp, tip, _ = pitch_speed_ms(motor, selected["propeller"], pack_v)
+        return {
+            "t0": per_motor * int(motor.get("bom_qty", 4)) * G / 1000.0,
+            "pitch_speed": vp,
+            "tip_speed": tip,
+            "cda_side": CD_SIDE * shape["front_m2"],
+            "cda_top": CD_TOP * shape["top_m2"],
+            "tau": min(0.12, max(0.01, 0.015 * (shape["prop_d_mm"] / 51.0) ** 2)),
+            "source": "part outlines (" + str(exc)[:80] + ")",
+        }, notes
+
+
+def arm_length(state) -> float:
+    """Centre to motor shaft: the built CAD frame, else the frame's wheelbase, else what the props need."""
+
+    built = (getattr(state, "cad_params", None) or {}).get("arm_length_mm")
+    if built:
+        return float(built)
+    frame = state.selected.get("frame") or {}
+    if frame.get("arm_length_mm"):
+        return float(frame["arm_length_mm"])
+    if frame.get("wheelbase_mm"):
+        return float(frame["wheelbase_mm"]) / 2.0
+    propeller = state.selected.get("propeller") or {}
+    return (float(propeller.get("diameter_mm") or 51.0) + 4.0) / 2.0 ** 0.5
+
+
+def performance(state, weight_g: float) -> dict:
     """Every performance number for the chosen parts, with the assumptions behind them."""
 
+    selected = state.selected
     motor = selected["motor"]
     propeller = selected["propeller"]
     battery = selected["battery"]
     controller = selected["flight_controller"]
+    frame_part = selected["frame"]
     qty = int(motor.get("bom_qty", 4))
     pack_v = float(battery["voltage_v"])
     per_motor_g, scaled = thrust_per_motor_g(motor, pack_v)
     total_g = per_motor_g * qty
+    air, notes = _airframe(state, selected, weight_g)
+    _vp, _tip, vp_note = pitch_speed_ms(motor, propeller, pack_v)
     assumptions = [
-        "Sea-level air, " + f"{RHO:g}" + " kg/m3; drag coefficients " + f"{CD_FRONT:g}" + " level and " + f"{CD_TOP:g}" + " broadside on boxes sized from the parts.",
-        "Thrust falls linearly with the airflow through the disc to zero at the pitch speed.",
+        "Same model as the MuJoCo missions, from " + air["source"] + ": sea-level air, body drag Cd " + f"{CD_SIDE:g}" + " edgewise and " + f"{CD_TOP:g}"
+        + " through the disc on the parts' outlines, rotor H force, thrust fading linearly to zero at the pitch speed, 95 % thrust and 70 degrees tilt at most.",
+        vp_note,
     ]
     if scaled:
         assumptions.append(scaled)
-    vp, vp_note = pitch_speed_ms(motor, propeller, pack_v)
-    assumptions.append(vp_note)
-    shape, notes = geometry(selected, arm_mm)
     assumptions += notes
+    arm_mm = arm_length(state)
+    pack_mm = _box(battery) or [60.0, 18.0, 8.0]
+    frame_mass_g = float(state.frame_mass_g if getattr(state, "frame_mass_g", None) is not None else frame_part["mass_g"])
     mass = weight_g / 1000.0
-    model = Model(mass, total_g * G / 1000.0, vp, shape["front_m2"], shape["top_m2"])
+    model = Model(mass, air["t0"], air["pitch_speed"], air["tip_speed"], air["cda_side"], air["cda_top"])
     twr = total_g / weight_g if weight_g > 0 else 0.0
     out = {
         "thrust_g": round(total_g, 1),
-        "frontal_area_cm2": round(shape["front_m2"] * 1e4, 1),
-        "plan_area_cm2": round(shape["top_m2"] * 1e4, 1),
-        "pitch_speed_mps": round(vp, 1) if vp else None,
-        "inertia_kg_m2": inertia(selected, frame_mass_g, shape["arm_m"], shape["pack_mm"]),
+        "drag_area_side_cm2": round(air["cda_side"] * 1e4, 1),
+        "drag_area_top_cm2": round(air["cda_top"] * 1e4, 1),
+        "pitch_speed_mps": round(air["pitch_speed"], 1),
+        "inertia_kg_m2": inertia(selected, frame_mass_g, arm_mm / 1000.0, pack_mm),
         "arm_length_mm": round(arm_mm, 1),
         "estimate": True,
     }
-    if twr < HOVER_TWR:
+    if twr * THRUST_USE < 1.0:
         out.update({"top_speed_mps": 0.0, "top_speed_kmh": 0.0, "accel_mps2": 0.0, "climb_rate_mps": 0.0, "turn_rate_dps": 0.0,
                     "flight_time_full_speed_min": 0.0, "flight_time_full_throttle_min": 0.0})
-        out["assumptions"] = assumptions + ["Thrust-to-weight under " + f"{HOVER_TWR:g}" + ": it cannot hover, so it cannot fly anywhere."]
+        out["assumptions"] = assumptions + ["Thrust-to-weight under " + f"{1.0 / THRUST_USE:.2f}" + ": on 95 % thrust it cannot hold a hover, so it cannot fly anywhere."]
+        out["warnings"] = []
         return out
 
-    top, tilt = model.top_speed()
-    accel = G * math.sqrt(max(0.0, twr * twr - 1.0))
-    climb_accel = G * (twr - 1.0)
+    top = model.top_speed()
+    tilt = model.tilt_at(top)
+    hover_g = THRUST_USE * twr
+    accel = min(G * math.sqrt(max(0.0, hover_g * hover_g - 1.0)), G * math.tan(TILT_MAX))
     time_90 = model.time_to(0.9 * top) if top > 0 else math.inf
-    cruise = 0.5 * top
-    turn_rate, radius = model.turn(cruise)
+    turn_speed = min(TURN_SPEED, 0.9 * top)
+    turn_rate, radius = model.turn(turn_speed)
     hover_each = weight_g / qty
     delta = min(per_motor_g - hover_each, hover_each) * G / 1000.0
-    roll_torque = 2.0 * math.sqrt(2.0) * delta * shape["arm_m"]
+    roll_torque = 2.0 * math.sqrt(2.0) * delta * arm_mm / 1000.0
     ixx = out["inertia_kg_m2"][0]
     roll_accel = roll_torque / ixx if ixx > 0 else 0.0
     flip_s = 2.0 * math.sqrt(math.pi / roll_accel) if roll_accel > 0 else math.inf
+    # The hard-turn mission times a 90 degree heading change, rolling in included: the steady rate
+    # plus the time to bank (accelerate and stop the roll) and the motors' lag.
+    steady_rate = turn_rate
+    if turn_rate > 0 and roll_accel > 0:
+        bank = math.atan2(turn_rate * turn_speed, G)
+        roll_in = 2.0 * math.sqrt(bank / roll_accel) + 1.5 * air["tau"]
+        turn_rate = (math.pi / 2.0) / ((math.pi / 2.0) / turn_rate + roll_in)
 
     row = bench(motor)
     full_w_each = float(row.get("power_w") or 0.0)
@@ -342,7 +425,12 @@ def performance(selected: dict, frame_mass_g: float, arm_mm: float, weight_g: fl
     usable_ah = float(battery["capacity_mah"]) / 1000.0 * USABLE
     full_a = full_w_each * qty / pack_v if pack_v > 0 else 0.0
     full_min = usable_ah / full_a * 60.0 if full_a > 0 else 0.0
-    cruise_each_g = min(per_motor_g, weight_g / math.cos(tilt) / qty) if tilt < math.pi / 2 else per_motor_g
+    # At top speed the motors make the thrust that holds altitude at that pitch.
+    cos, sin = math.cos(tilt), math.sin(tilt)
+    drag_x = 0.5 * RHO * air["cda_side"] * top * top * cos
+    drag_z = 0.5 * RHO * air["cda_top"] * top * top * sin
+    held_n = (mass * G + drag_z * cos - drag_x * sin) / (cos + top * cos * sin / air["tip_speed"]) if top > 0 else mass * G
+    cruise_each_g = min(per_motor_g, max(hover_each, held_n / G * 1000.0 / qty))
     cruise_w, source = motor_power_w(motor, cruise_each_g)
     cruise_a = cruise_w * qty / pack_v if pack_v > 0 else 0.0
     cruise_min = usable_ah / cruise_a * 60.0 if cruise_a > 0 else 0.0
@@ -373,10 +461,10 @@ def performance(selected: dict, frame_mass_g: float, arm_mm: float, weight_g: fl
             "accel_mps2": round(accel, 1),
             "accel_g": round(accel / G, 2),
             "time_to_90pct_s": round(time_90, 2) if math.isfinite(time_90) else None,
-            "climb_accel_mps2": round(climb_accel, 1),
             "climb_rate_mps": round(model.climb_rate(), 1),
-            "turn_speed_mps": round(cruise, 1),
+            "turn_speed_mps": round(turn_speed, 1),
             "turn_rate_dps": round(math.degrees(turn_rate), 0),
+            "turn_rate_steady_dps": round(math.degrees(steady_rate), 0),
             "turn_radius_m": round(radius, 2) if math.isfinite(radius) else None,
             "roll_accel_dps2": round(math.degrees(roll_accel), 0),
             "flip_time_s": round(flip_s, 3) if math.isfinite(flip_s) else None,

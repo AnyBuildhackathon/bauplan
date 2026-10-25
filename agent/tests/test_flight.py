@@ -6,7 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from pai_agent.flight import G, Model, motor_power_w, performance, pitch_speed_ms, thrust_per_motor_g
+from pai_agent.drone_geometry import geometry
+from pai_agent.flight import G, TILT_MAX, Model, inertia, motor_power_w, pitch_speed_ms, thrust_per_motor_g
+from pai_agent.mission_sim import airframe, run
 from pai_agent.state import BuildState
 from pai_agent.tools.parts import catalog
 from pai_agent.tools.physics import PhysicsError, compute
@@ -44,42 +46,36 @@ def test_performance_numbers_are_present_and_labelled_estimates():
     assert metrics["top_speed_kmh"] == pytest.approx(metrics["top_speed_mps"] * 3.6, abs=0.2)
 
 
-def test_acceleration_is_g_times_root_of_twr_squared_minus_one():
+def test_acceleration_is_the_missions_95_percent_thrust_and_tilt_limit():
     metrics = compute(_state(WHOOP))
-    twr = metrics["thrust_g"] / metrics["weight_g"]
-    assert metrics["accel_mps2"] == pytest.approx(G * math.sqrt(twr * twr - 1), rel=0.01)
+    twr = 0.95 * metrics["thrust_g"] / metrics["weight_g"]
+    expected = min(G * math.sqrt(twr * twr - 1), G * math.tan(TILT_MAX))
+    assert metrics["accel_mps2"] == pytest.approx(expected, rel=0.01)
 
 
-def test_top_speed_never_beats_the_pitch_speed():
-    for ids in (REFERENCE, WHOOP, FIVE_INCH):
-        metrics = compute(_state(ids))
-        vp = metrics["performance"]["pitch_speed_mps"]
-        assert 0 < metrics["top_speed_mps"] < vp
+def test_top_speed_is_where_the_forward_push_runs_out():
+    model = Model(0.4, 15.0, 40.0, 150.0, 0.005, 0.012)
+    top = model.top_speed()
+    assert 0 < top < 40.0
+    assert model.push(top * 0.98) is not None and model.push(top * 0.98) >= 0
+    after = model.push(top * 1.02)
+    assert after is None or after < 0
 
 
-def test_top_speed_balances_drag_and_weight():
-    model = Model(0.4, 15.0, 40.0, 0.005, 0.012)
-    speed, tilt = model.top_speed()
-    assert model.feasible(speed, tilt)
-    # Drag at top speed equals the horizontal thrust component m g tan(pitch).
-    assert model.drag(speed, tilt) == pytest.approx(model.m * G * math.tan(tilt), rel=1e-6)
-    # A little faster at the same pitch is not sustainable.
-    assert not model.feasible(speed * 1.05, tilt + math.radians(1))
-
-
-def test_without_a_pitch_the_top_speed_is_drag_limited_and_says_so():
+def test_without_a_pitch_the_missions_rule_applies_and_says_so():
     state = _state(WHOOP, propeller={"pitch_in": None})
     state.selected["propeller"].pop("pitch_in")
     metrics = compute(state)
-    assert metrics["performance"]["pitch_speed_mps"] is None
+    motor, prop, pack = state.selected["motor"], state.selected["propeller"], state.selected["battery"]
+    rpm = motor["kv"] * min(pack["voltage_v"], motor["cells_max"] * 3.8) * 0.75
+    assert metrics["performance"]["pitch_speed_mps"] == pytest.approx(prop["diameter_mm"] * 0.8 / 1000 * rpm / 60, abs=0.1)
     assert any("no published pitch" in line for line in metrics["performance"]["assumptions"])
 
 
-def test_lighter_build_accelerates_harder_and_hovers_longer():
+def test_lighter_build_climbs_harder_and_hovers_longer():
     light = compute(_state(WHOOP))
     heavy = compute(_state(WHOOP, battery={"mass_g": 30.0}))
-    assert light["accel_mps2"] > heavy["accel_mps2"]
-    assert light["turn_rate_dps"] >= heavy["turn_rate_dps"]
+    assert light["climb_rate_mps"] > heavy["climb_rate_mps"]  # both whoops hit the 70 degree tilt cap in acceleration
     assert light["flight_time_min"] > heavy["flight_time_min"]
 
 
@@ -109,11 +105,12 @@ def test_lower_voltage_loses_thrust_higher_voltage_adds_none():
     assert on_8s == 1534 and note is None
 
 
-def test_pitch_speed_from_the_load_table_rpm():
-    speed, note = pitch_speed_ms(PARTS["betafpv-snow-2306-1860kv"], PARTS["gemfan-51466-v2"], 22.2)
-    rpm = 30363 * 22.2 / 24.0
+def test_pitch_speed_is_the_missions_loaded_rpm_times_pitch():
+    speed, tip, note = pitch_speed_ms(PARTS["betafpv-snow-2306-1860kv"], PARTS["gemfan-51466-v2"], 22.2)
+    rpm = 1860 * 22.2 * 0.75
     assert speed == pytest.approx(rpm / 60 * 3.6 * 0.0254, rel=1e-6)
-    assert "load table" in note
+    assert tip == pytest.approx(rpm / 60 * 2 * math.pi * 0.0659, rel=1e-3)
+    assert "KV x volts" in note
 
 
 def test_c_rating_and_esc_warnings():
@@ -124,9 +121,23 @@ def test_c_rating_and_esc_warnings():
 
 
 def test_inertia_grows_with_the_arm():
-    near = performance(_state(WHOOP).selected, 4.0, 30.0, 26.6)["inertia_kg_m2"]
-    far = performance(_state(WHOOP).selected, 4.0, 60.0, 26.6)["inertia_kg_m2"]
+    selected = _state(WHOOP).selected
+    near = inertia(selected, 4.0, 0.030, [63.5, 11, 6.4])
+    far = inertia(selected, 4.0, 0.060, [63.5, 11, 6.4])
     assert all(b > a for a, b in zip(near, far))
+
+
+@pytest.mark.parametrize("ids", [REFERENCE, WHOOP], ids=["reference", "whoop"])
+def test_card_and_missions_agree(ids):
+    """The metrics card and the MuJoCo speed run and hard turn describe one machine."""
+
+    state = _state(ids)
+    metrics = compute(state)
+    frame = airframe(geometry(state), state.selected)
+    speed = run(frame, "speed_run")
+    turn = run(frame, "turn")
+    assert metrics["top_speed_kmh"] == pytest.approx(speed["top_speed_kmh"], abs=3.0)
+    assert metrics["turn_rate_dps"] == pytest.approx(turn["turn_rate_dps"], rel=0.08)
 
 
 def test_cannot_hover_gives_zero_performance():

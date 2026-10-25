@@ -357,7 +357,8 @@ For a product built from a spec, `id` is the spec requirement id, the quote is t
 
 `weight_g`, `thrust_to_weight`, `flight_time_min`, `price_eur`.
 Numbers are already rounded.
-The drone's `physics_calc` adds its flight performance from the chosen parts' specs, every one an estimate (`estimate: true`): `top_speed_mps` and `top_speed_kmh` (drag and the propeller's pitch speed against the thrust), `accel_mps2` (horizontal, from a hover at full throttle), `time_to_90pct_s`, `climb_rate_mps`, `turn_rate_dps` and `turn_radius_m` (a level turn at half the top speed), `flip_time_s` (a 180 degree roll), `flight_time_full_speed_min` and `flight_time_full_throttle_min`.
+The drone's `physics_calc` adds its flight performance from the chosen parts' specs, every one an estimate (`estimate: true`): `top_speed_mps` and `top_speed_kmh` (drag and the propeller's pitch speed against the thrust), `accel_mps2` (horizontal, from a hover), `time_to_90pct_s`, `climb_rate_mps`, `turn_rate_dps` (90 degrees over the time to turn them at the hard-turn mission's 8 m/s, rolling in included) and `turn_radius_m`, `flip_time_s` (a 180 degree roll), `flight_time_full_speed_min` and `flight_time_full_throttle_min`.
+They use the airframe the MuJoCo missions fly (the same thrust, pitch speed, drag and 95 % thrust and 70 degree tilt limits), so `top_speed_kmh` and `turn_rate_dps` estimate what the speed run and the hard turn measure.
 A field is absent when the parts cannot give it; all are `0` when the build cannot hover.
 `price_eur` is a total to verify, not a checkout: catalog samples, or live shop prices once `bom_build` found them.
 After `bom_build` finds live prices, a second `metrics` event carries the live total in `price_eur`; the other numbers repeat.
