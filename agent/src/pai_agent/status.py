@@ -59,21 +59,19 @@ def partner_statuses(events: list[dict]) -> list[dict]:
 
     api_hint = " Credentials configured; authentication and quota are checked on use."
     claude = claude_enabled()
-    jamie = configured("JAMIE_MCP_TOKEN")
     reson8 = configured("RESON8_API_KEY")
     gemini = gemini_available()
     freecad = bool(find_freecadcmd()) or (gui_mode() != "off" and rpc_available())
     blender = bool(find_blender())
     rows = [
         partner("claude", "Claude", "live" if claude else "mock", "Engineering orchestration." + api_hint if claude else "Scripted build: Claude is disabled or its API key is absent."),
-        partner("jamie", "Jamie", "live" if jamie else "mock", "Meeting transcripts, notes and tasks." + api_hint if jamie else "Fixture meetings and a local task outbox; Jamie is not connected."),
         partner("reson8", "Reson8", "live" if reson8 else "offline", "Realtime speech recognition." + api_hint if reson8 else "No Reson8 key; browser speech recognition is the fallback."),
         partner("gemini", "Gemini Live", "live" if gemini else "offline", "Mechanic's realtime voice." + api_hint if gemini else "Gemini Live is not configured; Mechanic replies with text."),
         partner("freecad", "FreeCAD", "live" if freecad else "offline", "Local FreeCAD is available for CAD generation." if freecad else "FreeCAD is unavailable; CadQuery is the fallback."),
         partner("blender", "Blender", "live" if blender else "offline", "Local Blender is available for studio rendering." if blender else "Blender is unavailable; a recorded still is the fallback."),
     ]
     # Runtime fallbacks take precedence over configured credentials / installed tools.
-    names = {"jamie_requirements": "jamie", "jamie_search": "jamie", "jamie_meeting": "jamie", "jamie_create_tasks": "jamie", "jamie_note": "jamie", "cad_frame": "freecad", "cad_part": "freecad", "blender_render": "blender"}
+    names = {"cad_frame": "freecad", "cad_part": "freecad", "blender_render": "blender"}
     latest: dict[str, dict] = {}
     cad_source = None
     for event in events:
@@ -81,8 +79,6 @@ def partner_statuses(events: list[dict]) -> list[dict]:
             latest[names[event["name"]]] = event
         if event.get("type") == "cad":
             cad_source = event.get("source")
-        if event.get("type") == "jamie" and event.get("status") == "error":
-            latest["jamie"] = {"status": "error"}
     if cad_source == "cadquery":
         latest["freecad"] = {"status": "offline"}
     for row in rows:

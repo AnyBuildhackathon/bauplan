@@ -1,11 +1,10 @@
 // Adapted from core-oss (github.com/10xapp/core-oss, Apache-2.0),
 // core-web/src/components/Chat/ContentPartsRenderer.tsx. Modified: renders our SSE
-// chat items (tool, Jamie, simulation, bill of materials, training) as Bevel tool
+// chat items (tool, simulation, bill of materials, training) as Bevel tool
 // cards instead of core.so's message content parts; markdown, display cards and
 // actions were removed.
 import { memo, useEffect, useState } from "react";
 import {
-  AlertTriangle,
   ArrowRight,
   CircleCheck,
   CircleX,
@@ -15,7 +14,6 @@ import {
   GitCompareArrows,
   MessageCircleQuestion,
   Network,
-  NotebookPen,
   Package,
   Receipt,
   Sparkles,
@@ -40,25 +38,8 @@ const TOOL_LABELS: Record<string, { running: string; done: string }> = {
   "Isaac Sim": { running: "Isaac Sim is starting", done: "Isaac Sim" },
   "Isaac Lab": { running: "Isaac Lab is training", done: "Isaac Lab" },
   RunPod: { running: "RunPod is starting the GPU", done: "RunPod" },
-  Jamie: { running: "Asking Jamie", done: "Jamie" },
   Parts: { running: "Picking parts", done: "Parts" },
   Reson8: { running: "Reson8 is listening", done: "Reson8" },
-};
-
-const JAMIE_ACTIONS: Record<string, string> = {
-  requirements: "Requirements read",
-  search: "Meetings searched",
-  search_meetings: "Meetings searched",
-  get_meeting: "Meeting read",
-  get_meeting_transcript: "Transcript read",
-  create_tasks: "Tasks created",
-  update_tasks: "Task updated",
-  create_tag: "Tag created",
-  add_tag_to_meetings: "Meeting tagged",
-  upsert_template: "Template saved",
-  note: "Note written",
-  meeting_ended: "Meeting ended",
-  summary: "Summary read",
 };
 
 function getToolLabel(name: string, phase: string): string {
@@ -97,21 +78,6 @@ function ToolCallPartRenderer({ item }: { item: Extract<ChatItem, { kind: "tool"
         {item.detail && <div className="truncate font-label text-[12px] text-muted">{enText(item.detail)}</div>}
       </div>
       {duration != null && duration > 0 && <span className="num shrink-0 font-label text-[12px] text-faint">{fmtDuration(duration)}</span>}
-    </div>
-  );
-}
-
-function JamiePartRenderer({ item }: { item: Extract<ChatItem, { kind: "jamie" }> }) {
-  return (
-    <div className="flex items-center gap-2.5 rounded-[14px] bg-page-2 px-3 py-2.5 ring-1 ring-line">
-      <PhaseIcon phase={item.phase} />
-      <div className="min-w-0 flex-1">
-        <div className="text-[14px] font-semibold text-ink-2">
-          <span className="text-jamie">Jamie</span> · {JAMIE_ACTIONS[item.action] ?? item.action.replace(/_/g, " ")}
-        </div>
-        {item.detail && <div className="truncate font-label text-[12px] text-muted">{enText(item.detail)}</div>}
-      </div>
-      <NotebookPen className="h-4 w-4 shrink-0 text-jamie" />
     </div>
   );
 }
@@ -159,21 +125,6 @@ function TrainingPartRenderer({ item }: { item: Extract<ChatItem, { kind: "train
   );
 }
 
-function WarningPartRenderer({ item }: { item: Extract<ChatItem, { kind: "warning" }> }) {
-  const w = item.warning;
-  return (
-    <div className="rounded-[14px] bg-agent-soft px-3 py-2.5">
-      <div className="flex items-center gap-2 text-[14px] font-bold text-agent-ink">
-        <AlertTriangle className="h-4.5 w-4.5 shrink-0" /> Warning from {w.meeting_title}
-      </div>
-      <p className="mt-1 font-read text-[14px] leading-[1.5] text-ink">“{w.text}”</p>
-      <p className="mt-0.5 font-label text-[12px] font-semibold text-muted">
-        {w.speaker} · {w.time} · {item.part}
-      </p>
-    </div>
-  );
-}
-
 function QuestionPartRenderer({ item }: { item: Extract<ChatItem, { kind: "question" }> }) {
   const q = useSession((s) => s.questions[item.questionId]);
   const answer = useSource((s) => s.answerQuestion);
@@ -197,7 +148,7 @@ function QuestionPartRenderer({ item }: { item: Extract<ChatItem, { kind: "quest
       data-target="question rueckfrage"
     >
       <div className="flex items-center gap-1.5 text-[12px] font-semibold text-muted">
-        <MessageCircleQuestion className="h-3.5 w-3.5 text-jamie" /> Question before building
+        <MessageCircleQuestion className="h-3.5 w-3.5 text-violet" /> Question before building
       </div>
       {lines.length > 0 && (
         <div className="mt-2 space-y-1 border-l-2 border-line pl-2.5">
@@ -256,7 +207,7 @@ function VersionPartRenderer({ item }: { item: Extract<ChatItem, { kind: "versio
   return (
     <button type="button" onClick={() => selectVersion(null)} className="w-full rounded-[14px] bg-card p-3 text-left ring-1 ring-line">
       <div className="flex items-center gap-2 text-[14px] font-bold text-ok-ink">
-        <GitCompareArrows className="h-4.5 w-4.5" /> Version {v.n} · from {v.meeting_title}
+        <GitCompareArrows className="h-4.5 w-4.5" /> Version {v.n}{v.label ? ` · ${v.label}` : ""}
       </div>
       {v.diff.length > 0 ? (
         <ul className="num mt-1.5 space-y-0.5">
@@ -319,28 +270,6 @@ export function ProgressLineRenderer({ items }: { items: Extract<ChatItem, { kin
   );
 }
 
-/** Several Jamie writes in a row (tags, note, tasks) as one card. */
-export function JamieGroupRenderer({ items }: { items: Extract<ChatItem, { kind: "jamie" }>[] }) {
-  const local = items.some((item) => /lokale Outbox|local outbox/.test(item.detail));
-  return (
-    <div className="rounded-[14px] bg-page-2 px-3 py-2.5 ring-1 ring-line">
-      <div className="mb-1 flex items-center gap-2 text-[14px] font-bold text-jamie">
-        <NotebookPen className="h-4 w-4" /> Jamie
-        {local && <span className="ml-auto rounded-full bg-white/70 px-2 py-0.5 text-[12px] font-semibold text-muted">local outbox</span>}
-      </div>
-      <ul className="space-y-0.5">
-        {items.map((item) => (
-          <li key={item.id} className="flex min-w-0 items-center gap-2">
-            <PhaseIcon phase={item.phase} />
-            <span className="shrink-0 text-[14px] font-semibold text-ink-2">{JAMIE_ACTIONS[item.action] ?? item.action.replace(/_/g, " ")}</span>
-            <span className="truncate font-label text-[12px] text-muted">{enText(item.detail).replace(/ · local outbox$/, "")}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
 const AGENT_ICON = { orchestrator: Network, cad: DraftingCompass, parts: Package, checks: Gauge, pricing: Receipt, optimizer: Sparkles } as const;
 
 const fmtTokens = (n: number) => (n >= 1000 ? `${fmtNum(n / 1000, n >= 10000 ? 0 : 1)}k` : fmtNum(n));
@@ -379,8 +308,6 @@ function ContentPartsRenderer({ item }: { item: Exclude<ChatItem, { kind: "msg" 
   switch (item.kind) {
     case "tool":
       return <ToolCallPartRenderer item={item} />;
-    case "jamie":
-      return <JamiePartRenderer item={item} />;
     case "sim":
       return <SimPartRenderer item={item} />;
     case "bom":
@@ -389,8 +316,6 @@ function ContentPartsRenderer({ item }: { item: Exclude<ChatItem, { kind: "msg" 
       return <RequirementsCard />;
     case "training":
       return <TrainingPartRenderer item={item} />;
-    case "warning":
-      return <WarningPartRenderer item={item} />;
     case "question":
       return <QuestionPartRenderer item={item} />;
     case "version":

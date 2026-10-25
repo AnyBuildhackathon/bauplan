@@ -35,11 +35,12 @@ export interface RequirementEvent {
   text: string;
   source_quote: string;
   met: boolean | null;
-  /** Who said it, when, and in which meeting (absent in older recordings). */
+  /** Who it comes from and when: "You" with the words from the request, or "Mechanic" for a proposal. */
   speaker?: string;
   time?: string;
-  meeting_title?: string;
-  /** The earlier wording when a later meeting changed this requirement. */
+  /** user: the limit is in what the user typed; proposed: Mechanic proposed it (absent in older recordings). */
+  source?: "user" | "proposed";
+  /** The earlier wording when a later message changed this requirement. */
   changed_from?: string | null;
   /** The number the check found against the limit, e.g. "0.81 N, min. 0.75 N" (any product). */
   detail?: string | null;
@@ -176,12 +177,6 @@ export interface MascotEvent {
   say: string;
   /** Optional pre-rendered audio of `say`. */
   voice?: string;
-}
-export interface JamieEvent {
-  type: "jamie";
-  action: string;
-  status: string;
-  detail: string;
 }
 export interface PointEvent {
   type: "point";
@@ -339,28 +334,11 @@ export interface RenderEvent {
   label: string;
 }
 
-/** One sentence from a Jamie meeting: who said it, when, and where. */
+/** The words a choice rests on: the user's request, or Mechanic's proposal. */
 export interface Quote {
   text: string;
   speaker: string;
   time: string;
-  meeting_id: string;
-  meeting_title: string;
-}
-export interface MeetingEvent {
-  type: "meeting";
-  id: string;
-  title: string;
-  kind: "kickoff" | "review" | "archive";
-  date: string;
-  time: string;
-  /** done: recorded and read; live: running right now; next: planned. */
-  status: "done" | "live" | "next";
-  /** The drone version built from this meeting, or null. */
-  version: number | null;
-  tags: string[];
-  /** A live Jamie meeting that took over a planned timeline station names that station here. */
-  replaces?: string;
 }
 /** The bench holds a remix of a community project; publishing it links back to that original. */
 export interface RemixEvent {
@@ -396,8 +374,6 @@ export interface VersionDiff {
 export interface VersionEvent {
   type: "version";
   n: number;
-  meeting_id: string;
-  meeting_title: string;
   weight_g: number;
   thrust_to_weight: number;
   flight_time_min: number;
@@ -407,12 +383,10 @@ export interface VersionEvent {
   parts: Record<string, string>;
   diff: VersionDiff[];
   summary: string;
-  /** The note AnyBuild wrote back to the meeting in Jamie. */
-  note?: string;
-  /** What started the rebuild; older recordings have none (read them as "meeting"). */
+  /** What started the rebuild. */
   trigger?: VersionTrigger;
   product?: "drone" | "gripper" | "generic";
-  /** One line naming the trigger: the meeting title, the chat request, the restored version. */
+  /** One line naming the trigger: the chat request, the library item, the restored version. */
   label?: string;
   /** The metric cards of a non-drone product as the panel showed them. */
   cards?: MetricCard[];
@@ -427,10 +401,7 @@ export interface VersionEvent {
   /** ISO time the version was committed. */
   at?: string;
 }
-export type VersionTrigger = "meeting" | "chat" | "library" | "check_failed" | "restore";
-export interface PartWarning extends Quote {
-  note: string;
-}
+export type VersionTrigger = "chat" | "library" | "check_failed" | "restore";
 export interface PartEvent {
   type: "part";
   category: string;
@@ -439,9 +410,6 @@ export interface PartEvent {
   why: Quote | null;
   /** The agent's own reason in one line. */
   reason: string;
-  warnings: PartWarning[];
-  /** A candidate that was weighed but not chosen; it only brings its warnings. */
-  considered?: boolean;
   mass_g?: number;
   /** Length, width, height of a battery pack. */
   size_mm?: [number, number, number] | null;
@@ -458,14 +426,6 @@ export interface QuestionEvent {
   answer_id: string | null;
   /** Optional pre-rendered audio of the question's last sentence. */
   voice?: string;
-}
-export interface TaskItem {
-  id: string;
-  title: string;
-  assignee: string;
-  due: string;
-  done: boolean;
-  part_category: string;
 }
 /** One agent on the bench: the orchestrator, or a sub-agent it delegated a bounded job to. */
 export interface AgentRunEvent {
@@ -504,13 +464,6 @@ export interface AgentToolCall {
   tool: string;
   ok: boolean;
   detail: string;
-}
-export interface TasksEvent {
-  type: "tasks";
-  meeting_id: string;
-  items: TaskItem[];
-  /** true when the tasks live in Jamie, false for the local outbox. */
-  live: boolean;
 }
 
 export interface BuildGuideStep {
@@ -697,18 +650,15 @@ export type AgentEvent =
   | DrawEvent
   | BomEvent
   | MascotEvent
-  | JamieEvent
   | PointEvent
   | TrainingEvent
   | OmniverseEvent
   | StressEvent
   | CadEvent
   | RenderEvent
-  | MeetingEvent
   | VersionEvent
   | PartEvent
   | QuestionEvent
-  | TasksEvent
   | ProductEvent
   | SketchEvent
   | RemixEvent
@@ -735,18 +685,15 @@ const EVENT_TYPES = new Set<AgentEvent["type"]>([
   "draw",
   "bom",
   "mascot",
-  "jamie",
   "point",
   "training",
   "omniverse",
   "stress",
   "cad",
   "render",
-  "meeting",
   "version",
   "part",
   "question",
-  "tasks",
   "product",
   "sketch",
   "remix",

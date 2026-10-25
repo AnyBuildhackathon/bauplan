@@ -8,7 +8,7 @@ from pai_agent import orchestrator
 
 class Ctx:
     def __init__(self):
-        self.state = type("State", (), {"finished": True, "started": True})()
+        self.state = type("State", (), {"finished": True, "started": True, "requests": []})()
         self.chat = AsyncMock()
 
 
@@ -39,7 +39,6 @@ class RoutingTest(unittest.IsolatedAsyncioTestCase):
             patch.object(orchestrator, "claude_enabled", return_value=False),
             patch.object(orchestrator, "_first", AsyncMock(return_value=False)),
             patch.object(orchestrator, "_mock_omniverse", AsyncMock(return_value=False)),
-            patch.object(orchestrator, "_next_review", return_value=None),
             patch.object(orchestrator, "run_mock_training", train),
             patch.object(orchestrator, "run_stress_mock", stress),
         ):

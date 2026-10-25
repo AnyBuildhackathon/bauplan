@@ -202,28 +202,6 @@ def test_upstream_errors_are_redacted_and_fallback_releases_session(tmp_path):
         assert not c.app.state.session.live_voice
 
 
-def test_note_uses_existing_jamie_adapter(tmp_path):
-    with client(tmp_path) as c:
-        c.app.state.session.state.meetings["review"] = {"id": "review"}
-        c.app.state.session._ctx = lambda **kw: "ctx"
-        with patch(
-            "pai_agent.tools.jamie._write", AsyncMock(return_value={"ok": True})
-        ) as write:
-            response = c.post(
-                "/api/voice/note",
-                json={"meeting_id": "review", "text": "You: Make it lighter"},
-            )
-            assert response.status_code == 200
-            assert write.call_args.args[1] == "note"
-            assert write.call_args.args[2]["meeting_id"] == "review"
-        assert (
-            c.post(
-                "/api/voice/note", json={"meeting_id": "missing", "text": "Hi"}
-            ).status_code
-            == 400
-        )
-
-
 class FakeUpstream:
     def __init__(self):
         self.queue = asyncio.Queue()

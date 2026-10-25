@@ -55,10 +55,6 @@ class AnswerIn(BaseModel):
     answer_id: str
 
 
-class TaskIn(BaseModel):
-    done: bool
-
-
 class ExplainIn(BaseModel):
     kind: str
     id: str
@@ -283,31 +279,12 @@ def _require_json(request: Request) -> None:
         raise HTTPException(status_code=415, detail="Content-Type application/json required")
 
 
-def _check_webhook_secret(request: Request) -> None:
-    """With JAMIE_WEBHOOK_SECRET set, the webhook needs it in X-Jamie-Secret or ?secret=, for tunnels to this port."""
-
-    import hmac
-
-    secret = os.environ.get("JAMIE_WEBHOOK_SECRET", "").strip()
-    if not secret or getattr(request.state, "access_session", None):
-        return
-    given = request.headers.get("x-jamie-secret") or request.query_params.get("secret") or ""
-    if not hmac.compare_digest(given.encode("utf-8"), secret.encode("utf-8")):
-        raise HTTPException(status_code=401, detail="Webhook secret fehlt oder stimmt nicht")
-
-
 def _under(path: Path, root: Path) -> bool:
     try:
         path.relative_to(root.resolve())
     except ValueError:
         return False
     return True
-
-
-def _meeting_event(body: dict) -> str:
-    raw = str(body.get("event") or body.get("type") or "")
-    folded = raw.strip().lower().replace("_", " ").replace(".", " ")
-    return " ".join(folded.split())
 
 
 def _media(name: str) -> str:
@@ -328,41 +305,10 @@ def _media(name: str) -> str:
     }.get(Path(name).suffix.lower(), "application/octet-stream")
 
 
-@app.post("/api/webhooks/jamie")
-async def jamie_webhook(request: Request) -> dict:
-    _check_webhook_secret(request)
-    _require_json(request)
-    try:
-        body = await request.json()
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail="JSON object required") from exc
-    if not isinstance(body, dict):
-        return {"ok": True, "status": "ignored"}
-    event = _meeting_event(body)
-    meeting = body.get("meeting") if isinstance(body.get("meeting"), dict) else {}
-    meeting_id = str(body.get("meeting_id") or meeting.get("id") or "")
-    title = str(body.get("title") or meeting.get("title") or "")
-    session = request.app.state.session
-    if event == "meeting started":
-        return await session.meeting_started(meeting_id, title)
-    if event != "meeting ended":
-        return {"ok": True, "status": "ignored"}
-    result = await session.start_from_meeting(meeting_id, title)
-    return {"ok": True, "trigger": "webhook", **result}
-
-
 @app.post("/api/answer")
 async def answer(body: AnswerIn, request: Request) -> dict:
     if not await request.app.state.session.answer(body.id, body.answer_id):
         raise HTTPException(status_code=409, detail="Keine offene Frage mit dieser Antwort.")
-    return {"ok": True}
-
-
-@app.post("/api/tasks/{task_id}")
-async def task_done(task_id: str, body: TaskIn, request: Request) -> dict:
-    result = await request.app.state.session.toggle_task(task_id, body.done)
-    if result.get("ok") is False:
-        raise HTTPException(status_code=404, detail=str(result.get("error")))
     return {"ok": True}
 
 

@@ -119,7 +119,7 @@ export function useAutoExplain() {
     for (const { ev } of useSession.getState().log) remember(ev);
 
     function remember(ev: AgentEvent) {
-      if (ev.type === "part" && !ev.considered) parts[ev.category] = ev.id;
+      if (ev.type === "part") parts[ev.category] = ev.id;
       if (ev.type === "cad") for (const [k, p] of Object.entries(ev.params ?? {})) params[k] = p.value;
     }
     function ask(kind: ExplainKind, id: string) {
@@ -147,7 +147,7 @@ export function useAutoExplain() {
         }
         switch (ev.type) {
           case "part":
-            if (!ev.considered && parts[ev.category] && parts[ev.category] !== ev.id) swap = ev.category;
+            if (parts[ev.category] && parts[ev.category] !== ev.id) swap = ev.category;
             break;
           case "metrics":
             if (swap) ask("swap", swap);

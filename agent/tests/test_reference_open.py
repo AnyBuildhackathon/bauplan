@@ -12,7 +12,7 @@ from pai_agent.tools.reference import reference_load
 
 class _Ctx:
     def __init__(self) -> None:
-        self.state = SimpleNamespace(started=False)
+        self.state = SimpleNamespace(started=False, requests=[])
         self.lines: list[tuple[str, str]] = []
 
     async def step(self, *_args) -> None:

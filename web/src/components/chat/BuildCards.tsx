@@ -31,12 +31,17 @@ function CheckDot({ state }: { state: "ok" | "fail" | "open" }) {
   );
 }
 
-/** Who asked for it: the Jamie speaker and time, or "you" for the chat request. */
-function source(r: RequirementEvent): { label: string; jamie: boolean } {
+/** Where a requirement comes from: the user's own words, or a limit Mechanic proposed because the request named none. */
+function source(r: RequirementEvent): { label: string; proposed: boolean; title: string } {
+  if (r.source === "proposed") return { label: "Mechanic", proposed: true, title: "Proposed by Mechanic: your request named no limit for this" };
   const you = !r.speaker || r.speaker === "You";
-  return you
-    ? { label: "you", jamie: false }
-    : { label: [r.speaker, r.time].filter(Boolean).join(" "), jamie: true };
+  return { label: you ? "you" : r.speaker ?? "", proposed: false, title: "From your request" };
+}
+
+/** The words behind a requirement: the user's quote, or Mechanic's reason, never put in someone's mouth. */
+function sourceText(r: RequirementEvent): string {
+  if (r.source !== "proposed") return `“${r.source_quote}”`;
+  return /^proposed by mechanic/i.test(r.source_quote) ? r.source_quote : `Proposed by Mechanic: ${r.source_quote}`;
 }
 
 function RequirementLine({ r }: { r: RequirementEvent }) {
@@ -60,12 +65,8 @@ function RequirementLine({ r }: { r: RequirementEvent }) {
               {r.text}
             </span>
             <span
-              className={`shrink-0 rounded-full px-1.5 font-label text-[10.5px] leading-[18px] ${from.jamie ? "bg-lavender text-jamie" : "bg-white text-muted"}`}
-              title={
-                from.jamie
-                  ? `${r.speaker} in ${r.meeting_title ?? "a Jamie meeting"}${r.time ? ` at ${r.time}` : ""}`
-                  : "From your request"
-              }
+              className={`shrink-0 rounded-full px-1.5 font-label text-[10.5px] leading-[18px] ${from.proposed ? "bg-agent-soft text-agent-ink" : "bg-white text-muted"}`}
+              title={from.title}
             >
               {from.label}
             </span>
@@ -84,7 +85,7 @@ function RequirementLine({ r }: { r: RequirementEvent }) {
           )}
           {open && r.source_quote && (
             <span className="mt-1 block animate-rise font-read text-[13px] leading-normal text-ink-2">
-              “{r.source_quote}”
+              {sourceText(r)}
             </span>
           )}
         </span>
@@ -99,7 +100,7 @@ export function RequirementsCard() {
   if (requirements.length === 0) return null;
   const met = requirements.filter((r) => r.met === true).length;
   const failed = requirements.filter((r) => r.met === false).length;
-  const jamie = requirements.some((r) => source(r).jamie);
+  const proposed = requirements.filter((r) => source(r).proposed).length;
   return (
     <div
       className="rounded-[14px] bg-page-2 px-2 pt-2.5 pb-1.5"
@@ -108,7 +109,7 @@ export function RequirementsCard() {
       <div className="mb-1 flex items-center gap-2 px-1.5">
         <span className="text-[14px] font-semibold text-ink">Requirements</span>
         <span className="font-label text-[11px] text-muted">
-          {jamie ? "from Jamie" : "from your request"}
+          {proposed ? `from your request · ${proposed} proposed` : "from your request"}
         </span>
         <span
           className={`ml-auto font-label text-[11px] ${failed ? "text-fail-ink" : met === requirements.length ? "text-ok-ink" : "text-muted"}`}

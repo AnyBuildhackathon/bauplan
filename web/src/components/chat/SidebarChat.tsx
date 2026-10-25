@@ -13,7 +13,7 @@ import { keyFact, STARTER_PROMPTS, starterCards } from "./starterCards";
 import { useUi, type Display } from "../../lib/ui";
 import { MASCOT_LABEL, MascotFull } from "../mascot/Mascot";
 import type { ChatItem } from "../../events/store";
-import ContentPartsRenderer, { JamieGroupRenderer, ProgressLineRenderer, ToolGroupRenderer } from "./ContentPartsRenderer";
+import ContentPartsRenderer, { ProgressLineRenderer, ToolGroupRenderer } from "./ContentPartsRenderer";
 import ChatMessage from "./SidebarChatMessage";
 import SidebarChatInput from "./SidebarChatInput";
 import RunControls from "./RunControls";
@@ -22,21 +22,18 @@ import { ConfirmDesign } from "./ConfirmDesign";
 
 const FRESH_MS = 2500;
 
-type JamieItem = Extract<ChatItem, { kind: "jamie" }>;
 type ToolItem = Extract<ChatItem, { kind: "tool" }>;
 type Row =
   | ChatItem
-  | { kind: "jamieGroup"; id: string; at: number; items: JamieItem[] }
   | { kind: "toolGroup"; id: string; at: number; items: ToolItem[] }
   | { kind: "progress"; id: string; at: number; items: ToolItem[] };
 
-/** Consecutive Jamie actions, and consecutive finished calls of one tool (five part choices), collapse into one card.
+/** Consecutive finished calls of one tool (five part choices) collapse into one card.
  * With tool details hidden, every run of tool calls folds into one quiet progress line. */
 function group(chat: ChatItem[], display: Display): Row[] {
   const rows: Row[] = [];
   for (const item of chat) {
     if (item.kind === "agent" && !display.agents) continue;
-    if (item.kind === "jamie" && !display.jamie) continue;
     if (item.kind === "explain" && !display.learning) continue;
     const last = rows.at(-1);
     if (item.kind === "tool" && !display.tools) {
@@ -44,10 +41,7 @@ function group(chat: ChatItem[], display: Display): Row[] {
       else rows.push({ kind: "progress", id: item.id, at: item.at, items: [item] });
       continue;
     }
-    if (item.kind === "jamie" && last && (last.kind === "jamie" || last.kind === "jamieGroup")) {
-      const items = last.kind === "jamie" ? [last, item] : [...last.items, item];
-      rows[rows.length - 1] = { kind: "jamieGroup", id: items[0].id, at: items[0].at, items };
-    } else if (
+    if (
       item.kind === "tool" &&
       item.phase === "ok" &&
       last &&
@@ -74,15 +68,7 @@ function fillComposer(prompt: string, setInput: (value: string) => void) {
 }
 
 export default function SidebarChat() {
-  const allChat = useSession((s) => s.chat);
-  // A Jamie tool call and its Jamie action card describe the same thing; keep the action card.
-  const chat = useMemo(
-    () =>
-      allChat.filter(
-        (c) => !(c.kind === "tool" && c.name === "Jamie" && allChat.some((j) => j.kind === "jamie" && Math.abs(j.seq - c.seq) <= 2)),
-      ),
-    [allChat],
-  );
+  const chat = useSession((s) => s.chat);
   const display = useUi((s) => s.display);
   const rows = useMemo(() => group(chat, display), [chat, display]);
   const mascot = useSession((s) => s.mascot);
@@ -310,10 +296,6 @@ export default function SidebarChat() {
                   >
                     {item.kind === "progress" ? (
                       <ProgressLineRenderer items={item.items} />
-                    ) : item.kind === "jamieGroup" ? (
-                      <div className="py-0.5">
-                        <JamieGroupRenderer items={item.items} />
-                      </div>
                     ) : item.kind === "toolGroup" ? (
                       <div className="py-0.5">
                         <ToolGroupRenderer items={item.items} />

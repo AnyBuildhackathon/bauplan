@@ -2,7 +2,7 @@
 
 The voice agent is Gemini Live only: it listens, transcribes, speaks and handles interruptions.
 Claude remains the engineering brain: Gemini calls the existing orchestrator to build, change and test products, then speaks about the returned measurements.
-Gemini's own input and output transcription feeds chat, the logbook and the conversation note offered by **Send to Jamie**.
+Gemini's own input and output transcription feeds the chat and the logbook.
 Reson8 is not part of the voice conversation; it only powers push-to-talk dictation.
 
 ## Configuration
@@ -55,7 +55,6 @@ Gemini's input transcription records the person's turn, shown live in the chat i
 Neither starts a second engineering prompt; only Gemini's `engineer` tool call does.
 Both sides enter the existing `chat` SSE stream and logbook archive.
 The backend also appends completed turns to the session's `voice_conversation.jsonl` file.
-The logbook lets the user choose a timeline meeting and send the displayed conversation through the existing Jamie adapter, which retains its offline outbox fallback.
 
 If Gemini is not configured, fails, times out, or closes the session, the voice conversation ends with a notice and nothing else listens or speaks; Mechanic answers typed messages in text.
 An engineering task already started by Claude continues if the voice connection ends or Gemini cancels its pending tool response.
@@ -92,9 +91,6 @@ Gemini can invoke three server-owned tools:
 - `engineer(request)` starts the existing Claude orchestrator and returns the completed action, current product snapshot and recent engineering results.
 - `control_app(control, value?)` opens the Model, CAD or Simulation tab, the workbench/library/training/logbook view, the BOM, adjusts explosion from 0 to 100, or starts a test.
 - `product_state()` reads actual metrics, simulation results, checks, build status and any open engineering question.
-
-`POST /api/voice/note` accepts `{"meeting_id":"...","text":"..."}` and uses the existing Jamie note writer.
-The meeting must exist on the timeline, and note text is limited to 24,000 characters.
 
 ## Validation and latency
 

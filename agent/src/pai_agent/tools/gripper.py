@@ -14,10 +14,10 @@ from __future__ import annotations
 
 import asyncio
 import json
-import time
 
 from pai_agent.context import Ctx
 from pai_agent.paths import DATA_DIR
+from pai_agent.requirements import attribute
 from pai_agent.tools.parts_search import unit_price_eur
 
 GRAVITY = 9.80665
@@ -50,6 +50,54 @@ def _num(args: dict, key: str, default: float | None = None) -> float | None:
         return default
 
 
+# The drone's requirements a request can set: id, limit key, wording.
+DRONE_LIMITS = {
+    "budget": ("max", "Total price under €{n:g}"),
+    "flight_time": ("min", "At least {n:g} minutes of flight time"),
+    "weight": ("max", "Total mass under {n:g} g"),
+}
+
+
+def _reset_build(state) -> None:
+    state.selected = {}
+    state.metrics = {}
+    state.last_sim = None
+    state.sim_run = 0
+    state.stl_path = None
+    state.part = None
+    state.frame_mass_g = None
+    state.bom = None
+    state.cad_params = {}
+    state.reasons = {}
+    state.spec = None
+
+
+def drone_requirements(state, entries: list) -> tuple[list[dict], list[str]]:
+    """Requirement rows from the request: budget, flight time and weight with their limits, then hover and the printable frame."""
+
+    rows: list[dict] = []
+    problems: list[str] = []
+    for index, entry in enumerate(entries if isinstance(entries, list) else []):
+        if not isinstance(entry, dict):
+            problems.append("requirements[" + str(index) + "] must be an object.")
+            continue
+        rid = str(entry.get("id") or "").strip()
+        if rid not in DRONE_LIMITS:
+            problems.append("requirements[" + str(index) + "].id must be one of " + ", ".join(DRONE_LIMITS) + ".")
+            continue
+        limit = _num(entry, "limit")
+        if limit is None or limit <= 0:
+            problems.append(rid + " needs a positive limit.")
+            continue
+        key, wording = DRONE_LIMITS[rid]
+        said = attribute(state, str(entry.get("quote") or ""), bool(entry.get("proposed")))
+        rows = [row for row in rows if row["id"] != rid]
+        rows.append({"id": rid, "text": wording.format(n=limit), key: limit, **said, "changed_from": None})
+    rows.append({"id": "hover", "text": "Must lift off and hover steadily", **attribute(state, "", True, "Proposed by Mechanic: every drone has to hold a hover in the gust test."), "changed_from": None})
+    rows.append({"id": "printable", "text": "Frame as STL and STEP", **attribute(state, "", True, "Proposed by Mechanic: the frame is built in CAD, so it can be printed or cut."), "changed_from": None})
+    return rows, problems
+
+
 async def product_brief(ctx: Ctx, args: dict) -> dict:
     """Picks the product for this session and turns the request into requirement checks."""
 
@@ -61,28 +109,42 @@ async def product_brief(ctx: Ctx, args: dict) -> dict:
         state.omniverse_result = None
         state.isaac_job_id = None
         state.training_video = None
+    if product == "drone":
+        requirements, problems = drone_requirements(state, args.get("requirements") or [])
+        if problems:
+            return _fail("Fix the requirements and call product_brief again: " + " | ".join(problems))
+        revision = state.product == "drone" and bool(state.selected)
+        if not revision:
+            _reset_build(state)
+        else:
+            before = {r["id"]: r for r in state.requirements}
+            for row in requirements:
+                old = before.get(row["id"])
+                if old and old["text"] != row["text"]:
+                    row["changed_from"] = old["text"]
+        state.product = product
+        state.requirements = requirements
+        await ctx.emit({"type": "product", "id": product, "label": PRODUCTS[product], "requirements": [r["id"] for r in requirements]})
+        return {
+            "ok": True,
+            "detail": "Micro drone, " + str(len(requirements)) + " requirements from the request",
+            "product": product,
+            "requirements": [{k: r[k] for k in ("id", "text", "source")} | {k: r[k] for k in ("min", "max") if k in r} for r in requirements],
+            "next": "parts_search for every category, physics_calc, simulate_drone, cad_frame, physics_calc, blender_render, safety_check, bom_build.",
+        }
+
     state.product = product
     await ctx.emit({"type": "product", "id": product, "label": PRODUCTS[product]})
-    if product == "drone":
-        return {"ok": True, "detail": "Product: micro drone, requirements come from the Jamie kickoff", "product": product}
-
     mass = _num(args, "object_mass_g", 200.0)
     width = _num(args, "object_width_mm", 66.0)
     max_weight = _num(args, "max_weight_g")
     budget = _num(args, "budget_eur")
-    quote = str(args.get("quote") or "").strip() or "Build a gripper that picks up the object."
+    quote = str(args.get("quote") or "").strip()
     if not mass or mass <= 0 or not width or width <= 0:
         return _fail("object_mass_g and object_width_mm must be positive numbers.")
-    state.selected = {}
-    state.metrics = {}
-    state.last_sim = None
-    state.sim_run = 0
-    state.stl_path = None
-    state.part = None
-    state.frame_mass_g = None
-    state.bom = None
+    _reset_build(state)
     state.brief = {"object_mass_g": mass, "object_width_mm": width, "max_weight_g": max_weight, "budget_eur": budget}
-    said = {"source_quote": quote, "speaker": "You", "time": time.strftime("%H:%M"), "meeting_title": "Chat brief", "changed_from": None}
+    said = {**attribute(state, quote, False), "changed_from": None}
     requirements = [
         {"id": "payload", "text": f"Holds {mass:g} g while the arm moves", **said},
         {"id": "opening", "text": f"Opens wider than {width:g} mm", **said},
@@ -91,7 +153,7 @@ async def product_brief(ctx: Ctx, args: dict) -> dict:
         requirements.append({"id": "weight", "text": f"Gripper under {max_weight:g} g", "max": max_weight, **said})
     if budget:
         requirements.append({"id": "budget", "text": f"Parts under {budget:g} €", "max": budget, **said})
-    requirements.append({"id": "printable", "text": "Printable body with STL and STEP", **said})
+    requirements.append({"id": "printable", "text": "Printable body with STL and STEP", **attribute(state, "", True, "Proposed by Mechanic: the body is printed, so it needs STL and STEP."), "changed_from": None})
     state.requirements = requirements
     return {
         "ok": True,
@@ -137,13 +199,7 @@ async def catalog_search(ctx: Ctx, args: dict) -> dict:
         brief_quote = ctx.state.requirements[0] if ctx.state.requirements else None
         why = None
         if brief_quote:
-            why = {
-                "text": brief_quote["source_quote"],
-                "speaker": brief_quote["speaker"],
-                "time": brief_quote["time"],
-                "meeting_id": "",
-                "meeting_title": brief_quote["meeting_title"],
-            }
+            why = {"text": brief_quote["source_quote"], "speaker": brief_quote["speaker"], "time": brief_quote["time"]}
         await ctx.emit(
             {
                 "type": "part",
@@ -155,7 +211,6 @@ async def catalog_search(ctx: Ctx, args: dict) -> dict:
                 "diameter_mm": None,
                 "why": why,
                 "reason": str(args.get("reason") or "").strip(),
-                "warnings": [],
             }
         )
     detail = ("Chose " + selected["name"]) if selected else (category + ": " + str(len(matches)) + " found")

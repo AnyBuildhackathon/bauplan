@@ -1,21 +1,17 @@
-// Logbuch: one column with a timeline of the versions. Each entry says what triggered
-// it (a Jamie meeting or a chat request), the three key numbers and what changed in one
-// line; it opens to the full difference and the note written back to Jamie. Saved
-// chats fold away below, the learned concepts show only in learning mode, and Export
-// downloads the whole logbook as Markdown.
+// Logbook: one column with a timeline of the versions. Each entry says what triggered
+// it (a chat request, a library item, a restore), the three key numbers and what changed
+// in one line; it opens to the full difference. Saved chats fold away below, the learned
+// concepts show only in learning mode, and Export downloads the whole logbook as Markdown.
 import { useEffect, useState } from "react";
-import { ChevronDown, Download, MessageSquareText, NotebookPen } from "lucide-react";
+import { ChevronDown, Download, MessageSquareText } from "lucide-react";
 import { MascotHead } from "../components/mascot/Mascot";
 import { Chip, PillButton } from "../components/ui/primitives";
-import { MeetingTimeline } from "../components/timeline/MeetingTimeline";
-import { STEP_IDS, type MeetingEvent, type VersionDiff, type VersionEvent } from "../events/types";
+import { STEP_IDS, type VersionDiff, type VersionEvent } from "../events/types";
 import { useSession } from "../events/store";
 import { loadHistory, loadTranscript, whenText, type SavedChat, type Transcript } from "../lib/history";
 import { fmtClock, fmtEur, fmtGram, fmtNum, stripMarkdown } from "../lib/format";
 import { enLabel, enText } from "../lib/copy";
 import { LESSONS } from "../lib/lessons";
-import { apiFetch } from "../lib/api";
-import { useSource } from "../events/source";
 import { useUi } from "../lib/ui";
 
 type Session = ReturnType<typeof useSession.getState>;
@@ -44,16 +40,16 @@ function keyNumbers(v: VersionEvent): { label: string; value: string }[] {
   ].filter((n) => n.value);
 }
 
-function useTrigger(v: VersionEvent): { meeting: MeetingEvent | undefined; label: string } {
-  const meeting = useSession((s) => s.meetings.find((m) => m.id === v.meeting_id && m.kind !== "archive"));
-  return { meeting, label: meeting?.title ?? (v.meeting_title && v.meeting_title !== "Meeting" ? v.meeting_title : "Chat request") };
+/** What started a version, in a few words: the request, the library item or the restore. */
+function triggerLabel(v: VersionEvent): string {
+  return v.label || "Chat request";
 }
 
 function VersionEntry({ v, last }: { v: VersionEvent; last: boolean }) {
   const [open, setOpen] = useState(false);
   const selectVersion = useUi((s) => s.selectVersion);
   const setView = useUi((s) => s.setView);
-  const { meeting, label } = useTrigger(v);
+  const label = triggerLabel(v);
   const tested = v.sim !== null;
   const pass = v.sim !== "fail";
   return (
@@ -67,9 +63,8 @@ function VersionEntry({ v, last }: { v: VersionEvent; last: boolean }) {
       <div className={`min-w-0 flex-1 ${last ? "" : "pb-6"}`}>
         <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="group block w-full text-left">
           <div className="flex items-center gap-2 text-[13px] font-medium text-muted">
-            {meeting ? <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-jamie" /> : <MessageSquareText className="h-3.5 w-3.5 shrink-0" />}
+            <MessageSquareText className="h-3.5 w-3.5 shrink-0" />
             <span className="truncate">
-              {meeting && "Jamie meeting · "}
               <span className="text-ink-2">{label}</span>
               {tested && <span className={pass ? "text-ok-ink" : "text-fail-ink"}> · {pass ? "test passed" : "test failed"}</span>}
             </span>
@@ -97,15 +92,6 @@ function VersionEntry({ v, last }: { v: VersionEvent; last: boolean }) {
                   </li>
                 ))}
               </ul>
-            )}
-            {v.note && (
-              <div className="flex gap-2.5 rounded-[14px] bg-lavender/50 px-3.5 py-3">
-                <NotebookPen className="mt-0.5 h-4 w-4 shrink-0 text-jamie" />
-                <div className="min-w-0">
-                  <p className="text-[12px] font-semibold text-jamie">Note in Jamie{meeting ? ` · ${meeting.title}` : ""}</p>
-                  <p className="font-read text-[13px] leading-normal whitespace-pre-line text-ink-2">{enText(v.note)}</p>
-                </div>
-              </div>
             )}
             <button
               type="button"
@@ -157,28 +143,6 @@ function Chats() {
   }, [open]);
   const earlier = transcript && transcript.id === open ? transcript.chat.map((m) => ({ ...m, text: stripMarkdown(m.text) })) : [];
   const shown = open === "current" ? current : earlier;
-  const meetings = useSession((s) => s.meetings);
-  const live = useSource((s) => s.mode) === "live";
-  const [meetingId, setMeetingId] = useState("");
-  const [noteStatus, setNoteStatus] = useState("");
-  const [sending, setSending] = useState(false);
-  const targetMeeting = meetingId || meetings.find((m) => m.status === "live")?.id
-    || [...meetings].reverse().find((m) => m.status === "done")?.id
-    || meetings.find((m) => m.kind !== "archive")?.id || "";
-  const sendToJamie = async () => {
-    setSending(true);
-    setNoteStatus("");
-    try {
-      const response = await apiFetch("/api/voice/note", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ meeting_id: targetMeeting, text: shown.map((m) => `${m.role === "user" ? "You" : "Mechanic"}: ${m.text}`).join("\n\n").slice(0, 24000) }),
-      });
-      const result = await response.json();
-      if (!response.ok || result.ok === false) throw new Error("Could not send the note.");
-      setNoteStatus(result.live ? "Sent to Jamie." : "Saved to the Jamie outbox.");
-    } catch { setNoteStatus("Could not send the note. Try again."); }
-    finally { setSending(false); }
-  };
   return (
     <Section title="Chats" meta={`${current.length} messages${saved.length ? ` · ${saved.length} earlier` : ""}`}>
       <div className="flex flex-wrap gap-1.5">
@@ -201,13 +165,6 @@ function Chats() {
           </button>
         ))}
       </div>
-      {live && shown.length > 0 && meetings.length > 0 && <div className="mt-3 flex flex-wrap items-center gap-2">
-        <select name="conversation-meeting" aria-label="Jamie meeting for conversation note" value={targetMeeting} onChange={(e) => setMeetingId(e.target.value)} className="min-w-0 max-w-full rounded-full bg-tile px-3 py-1 text-[12px] text-ink">
-          {meetings.map((m) => <option key={m.id} value={m.id}>{m.title}</option>)}
-        </select>
-        <PillButton variant="secondary" size="sm" disabled={sending || !targetMeeting} onClick={() => void sendToJamie()}>{sending ? "Sending…" : "Send to Jamie"}</PillButton>
-        {noteStatus && <p role="status" className="w-full text-[12px] text-muted">{noteStatus}</p>}
-      </div>}
       <div className="scroll-soft mt-3 max-h-[420px] space-y-2 overflow-y-auto pr-1">
         {shown.length === 0 && <p className="text-[14px] text-muted">No chat yet. Start on the workbench.</p>}
         {shown.map((m, i) =>
@@ -257,27 +214,24 @@ function Learned() {
   );
 }
 
-function logbookMarkdown(s: Pick<Session, "meetings" | "versions" | "requirements" | "bom" | "productLabel">, concepts: Record<string, string>): string {
+function logbookMarkdown(s: Pick<Session, "versions" | "requirements" | "bom" | "productLabel">, concepts: Record<string, string>): string {
   const lines: string[] = [];
   lines.push(`# ${s.productLabel || "Build"} · Logbook`, "");
-  const stations = s.meetings.filter((m) => m.kind !== "archive" && m.status === "done").map((m) => m.title);
-  lines.push(`${stations.join(" → ") || "No meeting yet"} · as of ${fmtClock(Date.now())}`, "");
+  lines.push(`${s.versions.length} ${s.versions.length === 1 ? "version" : "versions"} · as of ${fmtClock(Date.now())}`, "");
   if (s.versions.length) {
     lines.push("## Versions", "");
     for (const v of [...s.versions].reverse()) {
-      const meeting = s.meetings.find((m) => m.id === v.meeting_id && m.kind !== "archive");
-      lines.push(`### v${v.n} · ${meeting ? `Jamie meeting ${meeting.title}` : v.meeting_title || "Chat request"}`, "");
+      lines.push(`### v${v.n} · ${triggerLabel(v)}`, "");
       lines.push(`${keyNumbers(v).map((n) => `${n.label} ${n.value}`).join(" · ")}${v.sim ? ` · test ${v.sim === "pass" ? "passed" : "failed"}` : ""}`, "");
       for (const d of v.diff) lines.push(`- ${diffText(d)}`);
       if (v.diff.length) lines.push("");
-      if (v.note) lines.push(...enText(v.note).split("\n").map((l) => `> ${l}`), "");
     }
   }
   if (s.requirements.length) {
     lines.push("## Requirements", "");
     for (const r of s.requirements) {
       const mark = r.met === true ? "✓" : r.met === false ? "✕" : "○";
-      const who = [r.speaker, r.time, r.meeting_title].filter(Boolean).join(", ");
+      const who = r.source === "proposed" ? "proposed by Mechanic" : [r.speaker, r.time].filter(Boolean).join(", ");
       lines.push(`- ${mark} **${r.text}**: "${r.source_quote}"${who ? ` (${who})` : ""}`);
     }
     lines.push("");
@@ -322,9 +276,8 @@ export function LogbookView() {
             <Download className="h-4 w-4" /> Export
           </PillButton>
         </div>
-        <div className="mb-5"><MeetingTimeline /></div>
         {versions.length === 0 ? (
-          <p className="pb-6 text-[14px] text-muted">No version yet. v1 comes out of the kickoff or your first request.</p>
+          <p className="pb-6 text-[14px] text-muted">No version yet. v1 comes out of your first request.</p>
         ) : (
           <ol className="pb-6">
             {[...versions].reverse().map((v, i) => (

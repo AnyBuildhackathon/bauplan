@@ -12,7 +12,6 @@ export type MicMode = "handsfree" | "ptt";
 export interface Display {
   agents: boolean;
   tools: boolean;
-  jamie: boolean;
   allMetrics: boolean;
   /** Learning mode: Mechanic explains every decision ("Why?" links, a glossary), and the logbook shows what was learned. */
   learning: boolean;
@@ -105,7 +104,7 @@ const TABS: CanvasTab[] = ["modell", "cad", "simulation", "omniverse", "agents"]
 const params = () => new URLSearchParams(window.location.search);
 const VOICE_KEY = "bauplan.voice";
 const DISPLAY_KEY = "anybuild.display";
-const DISPLAY_DEFAULT: Display = { agents: false, tools: false, jamie: false, allMetrics: false, learning: false, mascot: true };
+const DISPLAY_DEFAULT: Display = { agents: false, tools: false, allMetrics: false, learning: false, mascot: true };
 
 function storedDisplay(): Display {
   // `?learning` turns learning mode on for this page, for a demo link.

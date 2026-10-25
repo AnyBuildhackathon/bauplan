@@ -254,6 +254,10 @@ async def cad_part(ctx: Ctx, args: dict) -> dict:
     block_source = None
     agent = None
     for attempt in range(1, MAX_ATTEMPTS + 1):
+        if freecad_unavailable(None):
+            # No FreeCAD on this machine: no script can build, so no CAD agent is paid to write one; the envelope stands in below.
+            error = error or "freecadcmd is not installed, so generated parts cannot be built on this machine."
+            break
         if script is None or attempt > 1:
             if not claude_enabled():
                 break

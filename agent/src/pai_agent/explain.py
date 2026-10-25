@@ -137,7 +137,6 @@ def _swap_facts(state: BuildState, events: list[dict], category: str) -> dict:
         "reason": nxt.get("reason", ""),
         "quote": (nxt.get("why") or {}).get("text"),
         "speaker": (nxt.get("why") or {}).get("speaker"),
-        "meeting": (nxt.get("why") or {}).get("meeting_title"),
     }
     if sim is not None:
         facts.update({"run_before": sim[1]["run"], "result_before": sim[1]["result"], "summary_before": sim[1]["summary"]})
@@ -448,7 +447,7 @@ def formula_for(kind: str, facts: dict) -> dict:
 def _quote(f: dict) -> str:
     if not f.get("quote"):
         return ""
-    who = " in ".join(x for x in (f.get("speaker"), f.get("meeting")) if x)
+    who = f.get("speaker") or ""
     return f"{who}: “{f['quote']}”" if who else f"“{f['quote']}”"
 
 

@@ -24,11 +24,11 @@ A client that connects late receives the events already published, then the live
 `POST /api/reset` clears the session, the chat memory, and the event buffer, then publishes a `reset` event, a fresh tool snapshot, pending steps, and the timeline.
 Every stream starts with a `reset` event, so a client that reconnects replays onto an empty state.
 
-State-changing calls without a typed body (`/api/reset`, `/api/run/*`, `/api/webhooks/jamie`, `/api/cad/params`, `/api/cad/open`, `/api/versions/{n}/restore`, `/api/history/{id}/open`) need `Content-Type: application/json`, else HTTP 415, so a web page cannot fire them as a plain cross-site form post.
+State-changing calls without a typed body (`/api/reset`, `/api/run/*`, `/api/cad/params`, `/api/cad/open`, `/api/versions/{n}/restore`, `/api/history/{id}/open`) need `Content-Type: application/json`, else HTTP 415, so a web page cannot fire them as a plain cross-site form post.
 
 ### Pause and stop
 
-`POST /api/run/pause`, `POST /api/run/resume` and `POST /api/run/stop` (each with `Content-Type: application/json`, body `{}`) control the build that runs now, whatever started it: a message, a meeting, a library item, Run test or Rebuild.
+`POST /api/run/pause`, `POST /api/run/resume` and `POST /api/run/stop` (each with `Content-Type: application/json`, body `{}`) control the build that runs now, whatever started it: a message, a library item, Run test or Rebuild.
 They answer `{"ok": true, "status": "..."}` with the new [run](#run) status, or HTTP 409 when nothing runs (pause, stop) or nothing is paused (resume).
 A run only ever holds or ends at a checkpoint: before each tool call and before each orchestrator or sub-agent model round.
 A tool that is running finishes first, so no file, version or chat card is left half written.
@@ -41,27 +41,14 @@ The web shows Pause, Resume and Stop in a bar above the chat composer while a ru
 
 A prompt that only asks to see or operate something in the dashboard ("show me the CAD", "open the library", "pull it apart", "compare v1 and v2", "focus on the battery", "mute") is answered with `status: "ui"` and `controls`: it becomes `ui_control` calls at once, also while a build runs, and never reaches the orchestrator.
 `agent/src/pai_agent/app_control.py` matches these short commands; anything that changes the design goes to the orchestrator, which has the same tool.
-"Rebuild" with a planned or live review on the timeline ends that review, like its End button; a test or a rebuild requested during a build answers `already_running`.
+A test or a rebuild requested during a build answers `already_running`.
 
 `POST /api/control` with `{"control": "run:test"}` or `{"control": "run:rebuild"}` is a person pressing Run test (Simulation tab) or Rebuild and recheck (CAD tab): the product's MuJoCo test, or the CAD built again from the current numbers with the numbers and the test rerun.
 It answers `{"ok": true, "status": "started"}`, or `ok: false` with `error` while a build runs or before anything is built.
 
-`POST /api/webhooks/jamie` accepts a JSON body with `event` (or `type`), `meeting_id`, and `title`.
-`meeting.started` marks that meeting `live` on the timeline and builds nothing.
-`meeting.ended` (also `meeting_ended` or `meeting ended`) starts a build from that meeting.
-A kickoff starts a fresh session and builds v1.
-A review rebuilds from the current version and writes the difference back to Jamie; without a v1 it builds the kickoff first.
-An unknown meeting id takes the next timeline slot of its kind, a review when the title contains "Review"; without an id the title alone picks that slot.
-A meeting that already has its version answers `status: already_built` and builds nothing, so a retried webhook is harmless; reset first to build it again.
-With `JAMIE_WEBHOOK_SECRET` set, the webhook needs that value in `X-Jamie-Secret` or `?secret=`, else HTTP 401.
-Any other event returns `{"ok": true, "status": "ignored"}`.
-Sample bodies are `agent/data/webhooks/meeting-ended.json` (kickoff) and `agent/data/webhooks/review-ended.json`.
-
 `POST /api/answer` with `{"id": "...", "answer_id": "..."}` answers the open `question`.
 It is HTTP 409 when no such question is open.
 A `POST /api/prompt` while a question is open answers it when the text names an option's number ("fifteen", "15", "fünfzehn") or agrees ("yes", "ok", "agreed", "ja", "passt"), and returns `status: answered`.
-
-`POST /api/tasks/{id}` with `{"done": true}` ticks an order task as ordered and mirrors it to Jamie (`update_tasks`), then emits `tasks`.
 
 `POST /api/cad/params` recomputes the current frame and emits a new `cad` event.
 The body is either `{"name": "arm_length_mm", "value": 30}` or a flat object `{"arm_length_mm": 30, "thickness_mm": 2, "motor_spacing_mm": 6.6}`.
@@ -136,7 +123,7 @@ A reset (the logo, or `POST /api/reset`) ends the chat, so the next one is a new
 The history belongs to the backend, like the bench: every access session sees the same bench, so it sees the same history.
 
 `GET /api/history` answers `{"ok": true, "current": "<id>", "items": [...]}`, newest first, at most 100.
-Each item is `{"id", "title", "product", "created_at", "updated_at", "messages", "versions"}`: the title is the first user message (cut to 60 characters), else the meeting or product name; `product` is the product label or empty; times are Unix seconds; `messages` counts chat lines.
+Each item is `{"id", "title", "product", "created_at", "updated_at", "messages", "versions"}`: the title is the first user message (cut to 60 characters), else the product name; `product` is the product label or empty; times are Unix seconds; `messages` counts chat lines.
 `GET /api/history/{id}` answers `{"ok": true, "item": {...}}`, the list entry plus `chat`, the chat lines as `{"role", "text"}`, for reading a chat without opening it; HTTP 404 for an unknown id.
 `POST /api/history/{id}/open` reopens a saved chat on the bench: the current chat is saved, the saved build state and Claude's memory come back, so the next prompt builds on that product, and every client receives the saved event log as a backlog: `{"type": "reset", "replay": true}`, the events, then `replayed`, followed by a fresh tool snapshot.
 A question still open when the chat was saved comes back answered with its default.
@@ -191,7 +178,7 @@ Each entry is:
 `remixed_from` is `{"id", "title", "author"}` of the original or `null`.
 `remixes` is a seed's starting count plus the number of entries published as remixes of it.
 `metrics` always has `mass_g`, `cost_eur`, `parts` (bill of materials lines), `requirements_passed` and `requirements`; the drone adds `thrust_to_weight` and `flight_time_min`, the gripper `grip_force_n`, a spec product `printed`.
-`bom` is the bill of materials, `versions` the Jamie versions in the `version` event shape, `files` the studio renders and CAD files (STEP, STL) the entry keeps.
+`bom` is the bill of materials, `versions` the versions in the `version` event shape, `files` the studio renders and CAD files (STEP, STL) the entry keeps.
 
 `GET /api/community/{id}` answers `{"ok": true, "item": entry}`, HTTP 404 for an unknown id.
 `GET /api/community/{id}/thumbnail` returns the PNG (the entry's latest render, else its base library item's), HTTP 404 without one.
@@ -246,11 +233,11 @@ The dashboard calls it on start: when the backend answers it opens with an empty
 
 `GET /api/status` returns `{"partners": [{"id", "label", "state", "detail"}], "isaac": {"host", "gpu", "state", "detail", "last_run"}}`.
 It requires the same access session as other API routes and never returns keys, tokens or private-key paths.
-Partner ids are `claude`, `jamie`, `reson8`, `gemini`, `freecad`, `blender` and `isaac`.
+Partner ids are `claude`, `reson8`, `gemini`, `freecad`, `blender` and `isaac`.
 `state` is `live`, `offline` or `mock`; `detail` explains the provider and its fallback in English.
 For remote APIs, `live` means credentials are configured and the integration is enabled, not that authentication or quota has been verified.
 Status checks make no billable API calls.
-Claude is `mock` when disabled or forced into mock mode; Jamie is `mock` without its MCP token.
+Claude is `mock` when disabled or forced into mock mode.
 Missing speech keys are `offline`, with browser recognition or text replies as the fallback.
 FreeCAD and Blender report local availability; observed tool errors and CAD fallback to CadQuery override availability until a later successful result or session reset.
 Gemini Live is Mechanic's only voice; without it Mechanic replies with text.
@@ -272,7 +259,7 @@ A `version` event selects the 3D Model and compares it with the previous version
 Manual canvas tab clicks pause Director for 30 seconds, then apply the latest pending activity even if no additional event arrives.
 A `tab` URL parameter gets the same initial grace period.
 Director preserves browsing in other main views and uses a short canvas fade that respects reduced-motion preferences.
-The top bar contains partner status and Settings; Jamie meetings and their controls remain in the Logbook.
+The top bar contains partner status and Settings; the versions are in the Logbook.
 
 ### Access
 
@@ -281,9 +268,8 @@ With `ANYBUILD_ACCESS_CODE` set on the backend, every route except `GET /api/hea
 A wrong code is HTTP 401; ten wrong codes from one IP in 15 minutes (or 200 from all IPs) are HTTP 429 until the window passes.
 Clients send the token as `Authorization: Bearer <token>`, as the cookie, or as `?access_token=<token>` on URLs the browser loads itself (EventSource, images, models, videos).
 `GET /api/access` is HTTP 200 while the session is valid, and always 200 without an access code.
-`POST /api/webhooks/jamie` also accepts Jamie's own calls without a session when `JAMIE_WEBHOOK_SECRET` is set; signed-in users skip that secret.
 
-With an access code, these calls are rate limited per session and, at three times the limit, per IP, in a sliding hour: builds (`POST /api/prompt`, `POST /api/sketch`, `POST /api/library/{id}/open`, `POST /api/versions/{n}/restore`, `POST /api/control`, `POST /api/webhooks/jamie`; `ANYBUILD_LIMIT_BUILDS`, default 20), `POST /api/voice/speak` (`ANYBUILD_LIMIT_SPEECH`, 300), `POST /api/voice/token` (`ANYBUILD_LIMIT_STT`, 60), `POST /api/cad/params` (`ANYBUILD_LIMIT_CAD`, 120), and `POST /api/explain` (`ANYBUILD_LIMIT_EXPLAIN`, 120).
+With an access code, these calls are rate limited per session and, at three times the limit, per IP, in a sliding hour: builds (`POST /api/prompt`, `POST /api/sketch`, `POST /api/library/{id}/open`, `POST /api/versions/{n}/restore`, `POST /api/control`; `ANYBUILD_LIMIT_BUILDS`, default 20), `POST /api/voice/speak` (`ANYBUILD_LIMIT_SPEECH`, 300), `POST /api/voice/token` (`ANYBUILD_LIMIT_STT`, 60), `POST /api/cad/params` (`ANYBUILD_LIMIT_CAD`, 120), and `POST /api/explain` (`ANYBUILD_LIMIT_EXPLAIN`, 120).
 Over the limit, the answer is HTTP 429 with `{"detail": "Hourly limit of 20 builds reached. Try again in 12 minutes.", "limit": "build"}` and a `Retry-After` header; the dashboard shows `detail` as a notice.
 
 Browsers may call the backend from localhost, the Mac app, `https://anybuild-demo.vercel.app` and its preview deployments, and origins in `ANYBUILD_CORS_ORIGINS`, with credentials.
@@ -330,7 +316,7 @@ Sent when a run starts and ends and on every change through [pause and stop](#pa
 `id` is `meeting`, `teile`, `cad`, `render`, `simulation`, `training`, or `stueckliste`.
 The mock story does not use `training`; a "train it" prompt does.
 `status` is `pending`, `running`, `done`, or `failed`.
-`label` is `Meeting`, `Parts`, `CAD`, `Render`, `Simulation`, `Training`, or `BOM`.
+`label` is `Spec`, `Parts`, `CAD`, `Render`, `Simulation`, `Training`, or `BOM`; the `meeting` id is the spec step, its name kept for older recordings.
 
 A step can be `done` while a tool on that step is `offline`.
 In the mock story, render is done after Blender and Isaac Sim have both been asked.
@@ -355,13 +341,13 @@ A `cad` event's `source` is `cadquery` when FreeCAD was missing or stuck and Cad
 
 ### requirement
 
-For the drone, `id` is `budget`, `flight_time`, `weight`, `hover`, or `printable`.
-`budget`, `flight_time`, and `weight` come from the Jamie template `Hardware-Anforderungen` when that template is on the meeting.
-`hover` and `printable` stay extra lines from the transcript.
-Without the template, the requirements array is used, and only then sentences in the transcript.
+Requirements come from what the user typed or said, never from a template or a recording.
+For the drone, `id` is `budget`, `flight_time`, `weight`, `hover`, or `printable`; `product_brief` sets `budget`, `flight_time`, and `weight` from the numbers in the request, and adds `hover` and `printable`.
 `text` is the requirement.
-`source_quote` is the sentence it came from; `speaker`, `time`, and `meeting_title` say who said it, when, and where.
-`changed_from` is the earlier text when a later meeting changed it, else `null`.
+`source` is `user` when the limit is in the user's words, or `proposed` when Mechanic proposed it because the request named no number.
+A requirement counts as `user` only when its quote is really in a request of this session; any other quote turns it into `proposed`.
+`source_quote` is the user's words (`speaker` `You`), or Mechanic's reason for a proposal (`speaker` `Mechanic`); `time` is when it was set.
+`changed_from` is the earlier text when a later message changed it, else `null`.
 `met` is `true`, `false`, or `null`.
 `null` means the build does not know yet.
 For a product built from a spec, `id` is the spec requirement id, the quote is the user's request, and `detail` is the number its check found against the limit, such as `0.81 N, min. 0.75 N`; `detail` is absent or `null` before the check ran.
@@ -382,7 +368,7 @@ The gripper sends `weight_g`, `price_eur`, `grip_force_n`, `safety_factor`, and 
 
 `id` is `drone`, `gripper`, or the slug of a product spec such as `phone-stand`; `label` is the display name.
 `kind` is `generic` for a product built from a spec.
-Sent by `product_brief` and `product_spec`; a revised spec that keeps the name or any part id keeps the same `id` (only the `label` changes), and its `requirements` lists the requirement ids it still has, so the client drops the others.
+Sent by `product_brief` and `product_spec`; a revised spec that keeps the name or any part id keeps the same `id` (only the `label` changes). `requirements` lists the requirement ids the product has now (a spec, or a drone brief), so the client drops the others.
 When the product changes, the client drops the other product's requirements, numbers, parts, runs, CAD, renders and bill of materials.
 Without this event a fresh bench has no product; the first drone event (drone metrics, a drone part, a hover run, the frame CAD, a version) makes it the drone.
 
@@ -484,40 +470,19 @@ After `print_prep` the list ends with one filament line (`category: "filament"`,
 `state` is `ruhig`, `denkt`, `erklaert`, `freut_sich`, or `besorgt`.
 `say` is the short line in the speech bubble.
 
-### jamie
-
-`action` is `meeting_ended`, `upsert_template`, `requirements`, `search`, `get_meeting`, `create_tasks`, `update_tasks`, `create_tag`, `add_tag_to_meetings`, or `note`.
-`status` is `ok` or `error`.
-`detail` is a short English line; it ends in `· local outbox` when no live call was made. A leftover German phrase is shown in English by the dashboard.
-With `JAMIE_MCP_TOKEN` set, writes go to `https://mcp.meetjamie.ai/mcp` and are also logged to the session's `jamie_outbox.json`.
-Without the token, or when a live call fails, they only land in that outbox.
-A live call times out after 5 seconds; after a failure the server is skipped for 60 seconds, so a dead network costs one timeout, not one per call.
-Jamie documents no note tool, so `note` uses one when the server lists it and is otherwise written as a task on the meeting.
-
-### meeting
-
-One meeting on the Jamie timeline.
-`id`, `title`, `date` (`YYYY-MM-DD`), and `time` (`HH:MM`).
-`kind` is `kickoff`, `review`, or `archive`; archive meetings hold earlier warnings and are not timeline stations.
-`status` is `done`, `live`, or `next`.
-`version` is the drone version built from this meeting, or `null`.
-`tags` are the Jamie tags AnyBuild put on it, such as `drohne` and `drohne-v1`.
-`replaces` is set when a live Jamie meeting took over a planned station; drop the station with that id.
-The whole timeline is published at startup and after reset.
-
 ### version
 
-A finished build, attached to the meeting it came from.
-`n`, `meeting_id`, `meeting_title`, `weight_g`, `thrust_to_weight`, `flight_time_min`, `price_eur` (the same numbers as the last `metrics`), and `sim` (`pass`, `fail`, or `null`).
+A finished build.
+`n`, `weight_g`, `thrust_to_weight`, `flight_time_min`, `price_eur` (the same numbers as the last `metrics`), and `sim` (`pass`, `fail`, or `null`).
 `parts` maps each category to the part name.
 `diff` lists what changed against the previous version: `{key, label, before, after, unit}`.
 Number rows have a `unit`; part rows have `key` `part:{category}`, names in `before` and `after`, and an empty `unit`.
 `summary` is one line such as `48.4 g · 10.4 min · 117.60 €`.
-Every rebuild is a version: the drone's come from `version_commit`, every other product commits one after its `bom_build`.
+Every rebuild is a version: every product, the drone included, commits one after its `bom_build`.
 Each version is published once, with the fields below.
-`trigger` is `meeting`, `chat`, `library`, `check_failed` (a chat rebuild that makes a requirement pass that the last version failed) or `restore`; older recordings have none, read them as `meeting`.
-`product` is `drone`, `gripper` or `generic`; `label` names the trigger in one line (the meeting title, the chat request, `Restored v1`).
-For a non-drone product `meeting_id` is empty, `meeting_title` is the label, `weight_g` and `price_eur` are set, `thrust_to_weight` and `flight_time_min` are `null`, and `cards` are its metric cards as the last `metrics` event had them.
+`trigger` is `chat`, `library`, `check_failed` (a chat rebuild that makes a requirement pass that the last version failed) or `restore`.
+`product` is `drone`, `gripper` or `generic`; `label` names the trigger in one line (the chat request, the library item, `Restored v1`).
+For a non-drone product `weight_g` and `price_eur` are set, `thrust_to_weight` and `flight_time_min` are `null`, and `cards` are its metric cards as the last `metrics` event had them.
 `requirements` is `[{id, text, met, detail}]` at commit time, `params` the CAD parameters (`arm_length_mm` for the drone frame, `{part_id}.{param}` for a product), and `nodes` maps a product's part ids to the body names in its GLB.
 `files` is `{glb_url, render_url}`: a copy of the model made for this version (`/files/{session}/v{n}-frame.glb`, `v{n}-assembly.glb`, `v{n}-part-….glb`) and its studio render; either is `null` when there was none.
 `restored_from` is the version a restore rebuilt, else `null`; `at` is the local commit time.
@@ -527,14 +492,12 @@ The diff also covers changed CAD parameters (key `param:{name}`) and requirement
 
 A part was chosen.
 `category`, `id`, `name`, `mass_g`, `size_mm` (`[length, width, height]` for batteries, else `null`), and `diameter_mm` (propellers).
-`why` is the Jamie sentence behind the choice, `{text, speaker, time, meeting_id, meeting_title}`, or `null`.
+`why` is the requirement quote behind the choice, `{text, speaker, time}`, or `null`.
 `reason` is the agent's own reason in one line.
-`warnings` are sentences from earlier meetings that warn about this part, each a quote plus `note` (usually the meeting date).
-`considered: true` marks a candidate that was weighed but not chosen; it only brings its warnings.
 
 ### question
 
-Mechanic asks before building, for example when two meetings disagree.
+Mechanic asks before deciding for the user, for example when a requirement cannot be met.
 `id`, `text`, `options` (`[{id, label}]`), `default_id`, and `timeout_s`.
 `status` is `open`, then `answered` with `answer_id`.
 Without an answer the default applies after `timeout_s` (`PAI_ASK_TIMEOUT_S`, default 20).
@@ -560,13 +523,6 @@ The design optimizer explored variants of the built drone. Sent with `status` `r
 `baseline` is the current build through the same checks plus `label` (`v2`), or `null` while running. `recommended` is the Pareto variant best on the first goal, or `null`.
 Each of `variants` has `id` (a letter), `label`, `reason`, `agent` (the variant agent that proposed it), `battery`, `battery_id`, `params` (`arm_length_mm`, `thickness_mm`), `frame_g` (the CadQuery frame model's mass), `weight_g`, `thrust_to_weight`, `flight_time_min`, `price_eur` (physics_calc's numbers), `arm_stiffness` (relative to now: thickness cubed over arm length cubed), `warnings`, `checks` (`id`, `label`, `pass`, `detail`: the MuJoCo gust test, the prop clearance, one per `keep` limit), `feasible` (every check passes) and `pareto` (feasible and no feasible variant is at least as good on every goal and both chart axes and better on one).
 `applied` is the letter built as a version and `version` its number, else `null`.
-
-### tasks
-
-The order tasks, one per part, published whole after every change.
-`meeting_id` is the meeting they hang on, `live` is `true` only when every task was created in Jamie, not in the outbox.
-Each item is `{id, title, assignee, due, done, part_category}`; `due` reads like `27 Oct`.
-A rebuild keeps the tasks of unchanged parts with their `done` state and closes the tasks of replaced parts.
 
 ### build_guide
 
@@ -600,7 +556,6 @@ It does not guess from a screenshot.
 Mechanic operates a dashboard control: `{id, control, say}` plus, depending on the control, `open` (panels, `true` opens and `false` closes), `value` (`explode` 0 to 100, `setting:*` true or false), `part` (`focus`) and `versions` (`panel:compare`, two version numbers).
 The dashboard flies the pointer to the element with that `data-control`, presses it with `say` in the bubble, then acts; a control behind another one (a setting inside the settings panel, the build guide inside the bill of materials, a tab while the library is open) is pressed open on the way.
 `run:test` and `run:rebuild` only show the button; the backend runs them right after.
-`run:review` points at the timeline's End button while a "rebuild" ends that review.
 With HeyClicky off (the pointer button in the chat composer, on by default) the action happens without the pointer, and `point` events are not shown either.
 Only fresh events act; a replayed backlog changes nothing.
 
@@ -735,7 +690,7 @@ The `control` values of `ui_control` and the `ui` event, each the `data-control`
 - `tab:model`, `tab:cad`, `tab:simulation`, `tab:omniverse` (drone only)
 - `view:workbench`, `view:library`, `view:training`, `view:logbook`
 - `panel:bom`, `panel:guide`, `panel:compare`, `panel:settings`
-- `setting:agents`, `setting:tools`, `setting:jamie`, `setting:all_metrics`, `setting:push_to_talk`, `setting:voice`
+- `setting:agents`, `setting:tools`, `setting:all_metrics`, `setting:push_to_talk`, `setting:voice`
 - `explode`, the slider in the corner of the Model tab
 - `focus`, the 3D camera turns to `part` (a scene target, or a spec part's id or name)
 - `run:test`, `run:rebuild`
@@ -746,7 +701,7 @@ Closing buttons are tagged `{control}:close`, and `look:3d` is the 3D switch of 
 
 ## Tools
 
-`jamie_templates`, `jamie_requirements`, `jamie_search`, `jamie_meeting`, `requirements_accept`, `ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `stress_test`, `cad_frame`, `cad_part`, `product_brief`, `product_spec`, `sketch_to_spec`, `reference_load`, `delegate`, `part_pick`, `assemble`, `cad_update`, `check_totals`, `check_tip_over`, `check_deflection`, `check_torque`, `check_runtime`, `check_power`, `check_thermal`, `check_rollover`, `simulate_assembly`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `blender_render`, `bom_build`, `print_prep`, `build_guide`, `firmware`, `electronics_plan`, `safety_check`, `jamie_create_tasks`, `version_commit`, `ui_point_at`, `ui_draw`, `ui_control`, `mascot_say`, `train_in_browser`, `optimize_design`, `optimize_apply`.
+`ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `stress_test`, `cad_frame`, `cad_part`, `product_brief`, `product_spec`, `sketch_to_spec`, `reference_load`, `delegate`, `part_pick`, `assemble`, `cad_update`, `check_totals`, `check_tip_over`, `check_deflection`, `check_torque`, `check_runtime`, `check_power`, `check_thermal`, `check_rollover`, `simulate_assembly`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `blender_render`, `bom_build`, `print_prep`, `build_guide`, `firmware`, `electronics_plan`, `safety_check`, `ui_point_at`, `ui_draw`, `ui_control`, `mascot_say`, `train_in_browser`, `optimize_design`, `optimize_apply`.
 
 `optimize_design` (drone, after a build) takes `goals`, `keep` and `count` (4 to 8, default 6). With a key, `count` variant agents on the sub-agent model run in parallel (`agent` events with `role` `optimizer`, `label` "Variant agent A" ...), each proposing one battery, arm length and plate thickness; without one, fixed strategies propose them. A proposal that repeats the current build or another variant is replaced by the next strategy. Every variant runs the same checks and the result is the `optimize` event; `optimize_apply` takes `id` and `variant` (default the latest run and its recommendation) and builds it as `POST /api/optimize/apply` does.
 
@@ -814,26 +769,24 @@ With a propeller chosen, an arm whose neighbouring motors stand closer than the 
 The open FreeCAD window builds first when its RPC answers; on an error or a step over 12 seconds, `freecadcmd` builds headless.
 CadQuery writes the same STL, STEP, and GLB when FreeCAD is missing or the script fails.
 `blender_render` runs `blender -b -P` on the current drone GLB, or on the frame STL after a CadQuery fallback.
-`jamie_requirements` reads the `Hardware-Anforderungen` fields first.
 `build_guide` is drone only, comes after `bom_build`, and takes `steps` as in the `build_guide` event, without `items`; a step number out of order, an unknown part, or a scene part no step installs is an error that names it.
 A step may add `bom_parts`, categories from the bill of materials that have no scene part (`camera`, `canopy`, `hardware`); they show up in `items`.
 `print_prep` comes after `bom_build`; `orientation` (`flat` by default, `upright`, `as_modeled`) applies to every part and `orientations` sets it per part id. It runs a slicer found on `PATH` or in `/Applications` (`PAI_SLICER` names an executable, `off` skips it) and emits one `print` event.
 
 ## Mock story
 
-Without a key, the kickoff (webhook or first prompt) plays v1 through those tools.
+Without a key, the first drone prompt plays v1 through those tools, with the limits from that prompt (`limits_from_text`: a price in euros, minutes of flight time, a maximum weight in grams).
 The story arrives at the reference micro build from Mediocre Nerd's "Build a Micro FPV Drone for $59" video: Twiglet 2" carbon frame, 1103 15000KV motors, Gemfan 2020 four-blade props, Caddx Ant camera, BetaFPV Matrix 1S 5in1 V2 AIO, canopy with battery holder, M1.4 bolts and a 1S pack (`agent/data/parts.json`, prices are samples).
-The agent reads the kickoff (under 120 €, at least 8 minutes, under 50 g, hover, frame as STL and STEP), finds the 1103 15000KV from last week's flight test and Lea's warning about the FunFly 4S.
-It tries the FunFly anyway: the MuJoCo gust pushes it to the floor, the swap to the Tattu R-Line 1S 550 passes.
+For "Build a micro drone under 120 euros with at least 8 minutes of flight time, under 50 g." the requirements are under 120 €, at least 8 minutes and under 50 g from the prompt, plus hover and frame as STL and STEP proposed by Mechanic.
+It tries the FunFly 4S first: the MuJoCo gust pushes it to the floor, the swap to the Tattu R-Line 1S 550 passes.
 A 34 mm arm lets the 51 mm propellers touch, so the frame becomes the Twiglet's 42.5 mm.
-v1 is 47.2 g, 8.5 min, 117.38 €.
+v1 is 48.3 g, 8.2 min, 117.38 €.
 Each build writes a `print` plan for the frame (an estimate without a slicer) and a `build_guide` from the same step template with the parts it chose: frame, motors, flight controller, wiring, camera and canopy, battery, motor test, propellers.
-The review "Review 1" asks for 10 minutes.
-Mechanic asks which flight time counts and swaps to the BetaFPV LAVA II 1S 680, the other pack from the video.
-v2 is 48.4 g, 10.4 min, 117.60 €, and the difference goes back to the review as a note.
-A later prompt in the same session does not rebuild.
-A prompt with the word "stress" ("stress test it") runs `stress_test` on the current build instead; without a build Mechanic asks for the kickoff first.
-Once a build has finished, "robust" asks for it too ("how robust is it?"); a prompt that ends a review still runs the review first.
+A typed change with a new limit ("Make it fly 10 minutes.") revises that requirement, keeps the others, and swaps to the BetaFPV LAVA II 1S 680, the other pack from the video.
+v2 is 49.5 g, 10.1 min, 117.60 €, with its difference to v1.
+A later prompt without a new limit does not rebuild; Mechanic asks for a number.
+A prompt with the word "stress" ("stress test it") runs `stress_test` on the current build instead; without a build Mechanic asks for the drone first.
+Once a build has finished, "robust" asks for it too ("how robust is it?").
 Reset starts the story over.
 A prompt that asks for a gripper (`gripper`, `claw`, `end effector`) plays the gripper story instead.
 Mechanic turns the request into checks, tries the 2.49 € SG90 first: 1.1 N per finger is a safety of 0.9×, and in MuJoCo the can slides out when the arm lifts.

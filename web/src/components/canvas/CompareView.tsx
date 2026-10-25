@@ -270,7 +270,7 @@ function Pane({ version, side, glow, shared, drone }: { version: VersionEvent; s
     <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden rounded-[16px] bg-white/60 ring-1 ring-line">
       <div className="absolute top-3 left-3 z-10 flex max-w-[85%] items-center gap-2 rounded-full bg-white/90 py-1 pr-3 pl-1 shadow-[var(--shadow-pill)] backdrop-blur">
         <span className={`num rounded-full px-2 py-0.5 text-[13px] font-bold text-white ${version.sim === "fail" ? "bg-fail" : "bg-ok"}`}>v{version.n}</span>
-        <span className="truncate text-[14px] font-semibold text-ink">{version.label || version.meeting_title}</span>
+        <span className="truncate text-[14px] font-semibold text-ink">{version.label || `v${version.n}`}</span>
         <span className="sr-only">version {side}</span>
       </div>
       <LoadBoundary fallback={<NoModel />}>

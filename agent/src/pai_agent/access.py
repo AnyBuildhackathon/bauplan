@@ -74,7 +74,7 @@ def bucket_of(method: str, path: str) -> str | None:
     if method != "POST":
         return None
     # /api/control presses the app's test and rebuild buttons.
-    if path in ("/api/prompt", "/api/sketch", "/api/control", "/api/webhooks/jamie"):
+    if path in ("/api/prompt", "/api/sketch", "/api/control"):
         return "build"
     # Starting a reference and restoring a version both rebuild with the tools.
     if (path.startswith("/api/library/") and path.endswith("/open")) or (path.startswith("/api/versions/") and path.endswith("/restore")):
@@ -188,13 +188,9 @@ class AccessGate:
 
         sid = verify_token(access_code(), self._token(scope), self.clock())
         if sid is None:
-            # Jamie's own webhook has no session; the route checks JAMIE_WEBHOOK_SECRET instead.
-            if not (path == "/api/webhooks/jamie" and os.environ.get("JAMIE_WEBHOOK_SECRET", "").strip()):
-                return await _json(send, 401, {"detail": "Enter the access code to use AnyBuild.", "access": "required"})
-            sid = "jamie-webhook"
-        else:
-            # Routes can see the caller is a signed-in user (the meeting buttons stand in for Jamie's webhook).
-            scope.setdefault("state", {})["access_session"] = sid
+            return await _json(send, 401, {"detail": "Enter the access code to use AnyBuild.", "access": "required"})
+        # Routes can see the caller is a signed-in user.
+        scope.setdefault("state", {})["access_session"] = sid
         if path == "/api/access":
             # GET: is this session still good? The client asks before it shows the app.
             return await _json(send, 200, {"ok": True, "access": "granted"})

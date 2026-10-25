@@ -5,8 +5,9 @@ One dataclass for all three flows: the drone (`selected` parts by category, `fra
 printed parts, `picked` bought parts, `assembly`, `checks`). Tools write their results here
 and the requirement rows are recomputed from it after every successful tool call
 (`requirements.py`), so the pass or fail the dashboard shows is always derived from measured
-values, never from what the model said. The Jamie timeline, versions and order tasks hang
-on the same state so a rebuild can diff against the previous version.
+values, never from what the model said. The versions hang on the same state so a rebuild can
+diff against the previous version. `requests` keeps what the user typed, so a requirement is only
+attributed to the user when its words are really in a request (`requirements.attribute`).
 """
 
 from __future__ import annotations
@@ -34,18 +35,12 @@ class BuildState:
     omniverse_result: dict | None = None
     started: bool = False
     finished: bool = False
-    # Jamie: the meetings on the timeline, the versions built from them, and the order tasks.
-    meetings: dict[str, dict] = field(default_factory=dict)
-    meeting_cache: dict[str, dict] = field(default_factory=dict)
+    # What the user typed or said, oldest first: the only source a requirement may quote as theirs.
+    requests: list[str] = field(default_factory=list)
     versions: list[dict] = field(default_factory=list)
     # What restoring a version needs beyond its event (catalog ids, frame params, the saved build), by n.
     version_files: dict[int, dict] = field(default_factory=dict)
     reasons: dict[str, dict] = field(default_factory=dict)
-    tasks: list[dict] = field(default_factory=list)
-    tags: set[str] = field(default_factory=set)
-    templates_ready: bool = False
-    last_read_live: bool = False
-    complaints: list[dict] = field(default_factory=list)
     # Which product this session builds (drone, gripper or generic), and the last generated CAD part.
     product: str = "drone"
     part: dict | None = None

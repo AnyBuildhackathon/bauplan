@@ -26,7 +26,6 @@ from pai_agent.paths import SESSIONS_DIR
 from pai_agent.references import build_reference, list_references
 from pai_agent.spec import SpecError, validate_spec
 from pai_agent.state import BuildState
-from pai_agent.tools.jamie import init_timeline
 
 
 def check(condition: bool, message: str) -> None:
@@ -101,7 +100,6 @@ async def main() -> None:
         shutil.rmtree(folder, ignore_errors=True)
         folder.mkdir(parents=True)
         ref_state = BuildState(session_id=folder.name, directory=folder)
-        init_timeline(ref_state)
         result = await build_reference(Ctx(EventBus(), ref_state, auto_steps=False), row["id"])
         check(
             result["requirements_passed"] == result["requirements"],

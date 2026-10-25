@@ -43,15 +43,6 @@ export function meets(target: MetricTarget, value: number): boolean {
   return target.direction === "max" ? value <= target.value : value >= target.value;
 }
 
-/** The meeting name the requirements came from, taken from Jamie's transcript call. */
-export function meetingTitle(log: LoggedEvent[]): string {
-  for (let i = log.length - 1; i >= 0; i--) {
-    const ev = log[i].ev;
-    if (ev.type === "jamie" && /transcript/i.test(ev.action) && ev.detail) return ev.detail.split("·")[0].trim();
-  }
-  return "Jamie-Meeting";
-}
-
 export interface Version {
   n: number;
   run: Run;

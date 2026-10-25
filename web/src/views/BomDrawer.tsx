@@ -1,13 +1,11 @@
-// Stückliste as a drawer over the Werkbank: every part with price, weight and shop
-// link, a "Warum?" with the Jamie quote behind it, warnings from earlier meetings,
-// and the order tasks per person that live in Jamie (ticking "bestellt" ticks them there).
+// The bill of materials as a drawer over the workbench: every part with price, weight and
+// shop link, a "Why?" with the reason and the words from the request behind it, and the
+// order grouped by shop.
 import { useEffect, useState } from "react";
-import { AlertTriangle, ArrowUpRight, Battery, Box, Cable, Camera, Check, CircuitBoard, Cog, Download, Fan, Shield, Wrench, X } from "lucide-react";
+import { ArrowUpRight, Battery, Box, Cable, Camera, Check, CircuitBoard, Cog, Download, Fan, Shield, Wrench, X } from "lucide-react";
 import { useSession } from "../events/store";
-import { useSource } from "../events/source";
-import type { BomEvent, BomItem, PartEvent, TaskItem } from "../events/types";
-import { JamieMark, QuoteBubble } from "../components/panels/Panels";
-import { enText } from "../lib/copy";
+import type { BomEvent, BomItem, PartEvent } from "../events/types";
+import { QuoteBubble } from "../components/panels/Panels";
 import { FirmwareSection } from "./FirmwareSection";
 import { ElectronicsSection } from "./ElectronicsSection";
 import { meets } from "../lib/derived";
@@ -57,7 +55,6 @@ const href = (u: string) => (/^(https?:)?\/\//.test(u) || u.startsWith("/") ? as
 function PartRow({ item, part, searching }: { item: BomItem; part: PartEvent | undefined; searching: boolean }) {
   const [why, setWhy] = useState(false);
   const Icon = iconFor(item.name);
-  const warnings = part?.warnings ?? [];
   return (
     <li className="rounded-[22px] bg-page-2 px-4 py-3" data-target={`part:${part?.category ?? item.name}`}>
       <div className="flex items-center gap-3">
@@ -85,7 +82,7 @@ function PartRow({ item, part, searching }: { item: BomItem; part: PartEvent | u
           <button
             type="button"
             onClick={() => setWhy(!why)}
-            className={`h-9 shrink-0 rounded-full px-3.5 text-[14px] font-bold transition ${why ? "bg-jamie text-white" : "bg-lavender text-jamie hover:brightness-95"}`}
+            className={`h-9 shrink-0 rounded-full px-3.5 text-[14px] font-bold transition ${why ? "bg-violet text-white" : "bg-lavender text-violet hover:brightness-95"}`}
           >
             Why?
           </button>
@@ -98,44 +95,6 @@ function PartRow({ item, part, searching }: { item: BomItem; part: PartEvent | u
           <WhyButton kind="part" id={part.category} label="Explain the physics" />
         </div>
       )}
-      {warnings.map((w, i) => (
-        <div key={i} className="mt-2.5 ml-14 flex gap-2.5 rounded-2xl bg-agent-soft px-3.5 py-2.5">
-          <AlertTriangle className="mt-0.5 h-4.5 w-4.5 shrink-0 text-agent-ink" />
-          <div>
-            <p className="text-[15px] leading-snug text-ink">“{w.text}”</p>
-            <p className="mt-0.5 text-[13px] font-semibold text-agent-ink">
-              {[w.speaker, w.time, w.meeting_title].filter(Boolean).join(" · ")}
-              {w.note ? ` · ${w.note}` : ""}
-            </p>
-          </div>
-        </div>
-      ))}
-    </li>
-  );
-}
-
-function TaskRow({ task }: { task: TaskItem }) {
-  const toggleTask = useSource((s) => s.toggleTask);
-  return (
-    <li>
-      <label className="flex cursor-pointer items-center gap-3 rounded-2xl px-2 py-2 hover:bg-page-2">
-        <input
-          type="checkbox"
-          checked={task.done}
-          onChange={(e) => void toggleTask(task.id, e.target.checked)}
-          className="h-6 w-6 shrink-0 cursor-pointer accent-[#0b9677]"
-          aria-label={`${enText(task.title)} ordered`}
-        />
-        <span className="min-w-0 flex-1">
-          <span className={`block truncate text-[16px] font-semibold ${task.done ? "text-muted line-through" : "text-ink"}`}>{enText(task.title)}</span>
-          <span className="num block text-[13px] font-semibold text-muted">
-            {task.assignee} · by {task.due}
-          </span>
-        </span>
-        <span className={`shrink-0 rounded-full px-2.5 py-1 text-[12px] font-bold ${task.done ? "bg-ok-soft text-ok-ink" : "bg-tile text-muted"}`}>
-          {task.done ? "ordered" : "open"}
-        </span>
-      </label>
     </li>
   );
 }
@@ -175,7 +134,6 @@ export function BomDrawer() {
   const setOpen = useUi((s) => s.setBomOpen);
   const bom = useSession((s) => s.bom);
   const parts = useSession((s) => s.parts);
-  const tasks = useSession((s) => s.tasks);
   const cadStl = useSession((s) => s.cad?.stl_url ?? null);
   const product = useSession((s) => s.product);
   const targets = useTargets();
@@ -201,7 +159,6 @@ export function BomDrawer() {
   const byName = new Map(Object.values(parts).map((p) => [p.name, p]));
   const drone = product === "drone";
   const stlHref = cadStl ? assetUrl(cadStl) ?? cadStl : href(bom.stl_path);
-  const ordered = tasks?.items.filter((t) => t.done).length ?? 0;
   const liveCount = bom.items.filter((i) => i.price_source === "live").length;
 
   return (
@@ -265,22 +222,6 @@ export function BomDrawer() {
           <p className="text-[13px] text-faint">{priceNote(bom.prices, liveCount, bom.items.length)}</p>
           <FirmwareSection />
           <ElectronicsSection />
-          {tasks && tasks.items.length > 0 && (
-            <section className="card px-4 pt-4 pb-3" data-target="tasks bestellen">
-              <div className="mb-1 flex items-center gap-2 px-2">
-                <h2 className="text-[18px] font-bold">Order</h2>
-                <JamieMark />
-                <span className="num ml-auto text-[14px] font-semibold text-muted">
-                  {ordered} / {tasks.items.length} · {tasks.live ? "in Jamie" : "local outbox"}
-                </span>
-              </div>
-              <ul>
-                {tasks.items.map((t) => (
-                  <TaskRow key={t.id} task={t} />
-                ))}
-              </ul>
-            </section>
-          )}
         </div>
       </div>
     </div>

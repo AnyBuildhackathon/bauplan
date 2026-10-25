@@ -9,7 +9,6 @@ import { fmtEur, fmtMin, fmtNum } from "../lib/format";
 import { useUi } from "../lib/ui";
 
 const TRIGGER_LABEL: Record<VersionTrigger, string> = {
-  meeting: "Meeting",
   chat: "Chat",
   library: "Library",
   check_failed: "Failed check",
@@ -46,14 +45,14 @@ function VersionRow({ v, newest, selected, canRestore, building }: { v: VersionE
         <span className={`num mt-0.5 flex h-6 min-w-8 shrink-0 items-center justify-center rounded-full px-1.5 text-[13px] font-semibold text-white ${tone}`}>v{v.n}</span>
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="rounded-full bg-tile px-2.5 py-0.5 text-[12px] font-bold text-muted">{TRIGGER_LABEL[v.trigger ?? "meeting"]}</span>
+            <span className="rounded-full bg-tile px-2.5 py-0.5 text-[12px] font-bold text-muted">{TRIGGER_LABEL[v.trigger ?? "chat"] ?? "Chat"}</span>
             {newest && <span className="rounded-full bg-ok-soft px-2.5 py-0.5 text-[12px] font-bold text-ok-ink">current</span>}
             {v.sim && (
               <span className={`text-[13px] font-bold ${v.sim === "fail" ? "text-fail-ink" : "text-ok-ink"}`}>{v.sim === "fail" ? "Test failed" : "Test passed"}</span>
             )}
             {time && <span className="num ml-auto text-[13px] font-semibold text-muted">{time}</span>}
           </span>
-          <span className="mt-1 block text-[16px] leading-snug font-bold text-ink">{v.label ?? v.meeting_title}</span>
+          <span className="mt-1 block text-[16px] leading-snug font-bold text-ink">{v.label || "Chat request"}</span>
           {numbers.length > 0 && <span className="num mt-0.5 block text-[14px] text-muted">{numbers.join(" · ")}</span>}
         </span>
       </button>

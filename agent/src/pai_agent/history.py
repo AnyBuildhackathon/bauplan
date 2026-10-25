@@ -49,8 +49,7 @@ def worth_saving(events: list[dict]) -> bool:
 def title_of(events: list[dict], state: BuildState) -> str:
     text = _first_user_text(events)
     if not text:
-        meeting = next((ev for ev in events if ev.get("type") == "meeting" and ev.get("status") == "done"), None)
-        text = str((meeting or {}).get("title") or "") or _product_label(events) or "Untitled build"
+        text = _product_label(events) or "Untitled build"
     return text if len(text) <= TITLE_MAX else text[: TITLE_MAX - 1].rstrip() + "…"
 
 

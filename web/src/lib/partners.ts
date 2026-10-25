@@ -22,7 +22,7 @@ export interface IntegrationStatus {
 }
 
 const ROSTER = [
-  ["claude", "Claude"], ["jamie", "Jamie"], ["reson8", "Reson8"],
+  ["claude", "Claude"], ["reson8", "Reson8"],
   ["gemini", "Gemini Live"], ["freecad", "FreeCAD"], ["blender", "Blender"], ["isaac", "NVIDIA Isaac"],
 ];
 

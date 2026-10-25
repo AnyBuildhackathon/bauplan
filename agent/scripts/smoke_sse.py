@@ -1,4 +1,4 @@
-"""One pass of the mock story over the SSE stream: kickoff builds v1, the review builds v2. Not a suite."""
+"""One pass of the mock story over the SSE stream: a typed request builds v1, a typed change builds v2. Not a suite."""
 
 from __future__ import annotations
 
@@ -16,6 +16,8 @@ ROOT = Path(__file__).resolve().parents[1]
 PORT = os.environ.get("SMOKE_PORT", "8101")
 BASE = "http://127.0.0.1:" + PORT
 STEPS = ("meeting", "teile", "cad", "render", "simulation", "stueckliste")
+REQUEST = "Build a micro drone under 120 euros with at least 8 minutes of flight time, under 50 g."
+CHANGE = "Make it fly 10 minutes."
 
 
 def main() -> None:
@@ -27,7 +29,7 @@ def main() -> None:
     env["PAI_ASK_TIMEOUT_S"] = "0"
     env["PORT"] = PORT
     for key in list(env):
-        if key.startswith("RUNPOD_") or key in {"ANTHROPIC_API_KEY", "JAMIE_MCP_TOKEN"}:
+        if key.startswith("RUNPOD_") or key in {"ANTHROPIC_API_KEY"}:
             env.pop(key, None)
     log_path = Path(os.environ.get("TMPDIR", "/tmp")) / "pai-agent-smoke.log"
     log_file = log_path.open("w", encoding="utf-8")
@@ -64,20 +66,12 @@ def main() -> None:
         thread = Thread(target=consume, daemon=True)
         thread.start()
         time.sleep(0.2)
-        ignored = _post_json("/api/webhooks/jamie", {"event": "recording.uploaded"})
-        if ignored.get("status") != "ignored":
-            raise SystemExit("Fremdes Ereignis wurde nicht ignoriert: " + str(ignored))
-        kickoff = json.loads((ROOT / "data" / "webhooks" / "meeting-ended.json").read_text(encoding="utf-8"))
-        review = json.loads((ROOT / "data" / "webhooks" / "review-ended.json").read_text(encoding="utf-8"))
-        _post("/api/webhooks/jamie", kickoff)
+        _post("/api/prompt", {"text": REQUEST})
         deadline = time.time() + 300
         while time.time() < deadline and not any(e.get("type") == "version" for e in events):
             time.sleep(0.2)
-        live = _post_json("/api/webhooks/jamie", {"event": "meeting.started", "meeting_id": review["meeting_id"], "title": review["title"]})
-        if live.get("status") != "live":
-            raise SystemExit("Review wurde nicht live: " + str(live))
         while time.time() < deadline:
-            state = _post_json("/api/webhooks/jamie", review)
+            state = _post_json("/api/prompt", {"text": CHANGE})
             if state.get("status") == "started":
                 break
             time.sleep(0.2)
@@ -124,19 +118,24 @@ def _assert_story(events: list[dict]) -> None:
     if not all(item["met"] is True for item in requirements.values()):
         raise SystemExit("Nicht alle Vorgaben sind grün: " + str({k: v["met"] for k, v in requirements.items()}))
     flight = requirements["flight_time"]
-    if "10" not in flight["text"] or not flight.get("changed_from") or flight.get("meeting_title") != "Review 1":
-        raise SystemExit("Die Flugzeit aus dem Review fehlt: " + str(flight))
+    if "10" not in flight["text"] or not flight.get("changed_from") or flight.get("speaker") != "You" or "10 minutes" not in flight["source_quote"]:
+        raise SystemExit("The typed flight time is missing: " + str(flight))
+    for rid in ("budget", "weight"):
+        if requirements[rid]["source"] != "user" or requirements[rid]["source_quote"] not in REQUEST:
+            raise SystemExit("A requirement does not quote the typed request: " + str(requirements[rid]))
+    for rid in ("hover", "printable"):
+        if requirements[rid]["source"] != "proposed" or requirements[rid]["speaker"] != "Mechanic":
+            raise SystemExit("A requirement nobody typed is not marked as proposed by Mechanic: " + str(requirements[rid]))
     if not all(item.get("speaker") and item.get("time") for item in requirements.values()):
         raise SystemExit("Zitate ohne Person oder Uhrzeit.")
-    questions = [event for event in events if event.get("type") == "question"]
-    if not questions or questions[-1]["status"] != "answered" or questions[-1]["answer_id"] != "new":
-        raise SystemExit("Die Rückfrage zum Widerspruch fehlt: " + str(questions[-1:]))
+    if any(event.get("type") in {"jamie", "meeting", "tasks"} for event in events):
+        raise SystemExit("Jamie events are still emitted.")
     versions = [event for event in events if event.get("type") == "version"]
     first, second = versions[0], versions[1]
     if first["weight_g"] > 50 or first["price_eur"] > 120 or first["flight_time_min"] < 8:
-        raise SystemExit("v1 verfehlt das Kickoff: " + str(first))
+        raise SystemExit("v1 misses the typed request: " + str(first))
     if second["weight_g"] > 50 or second["price_eur"] > 120 or second["flight_time_min"] < 10:
-        raise SystemExit("v2 verfehlt das Review: " + str(second))
+        raise SystemExit("v2 misses the typed change: " + str(second))
     keys = {item["key"] for item in second["diff"]}
     if not {"weight_g", "flight_time_min", "price_eur", "part:battery"} <= keys:
         raise SystemExit("Differenz unvollständig: " + str(sorted(keys)))
@@ -169,31 +168,13 @@ def _assert_story(events: list[dict]) -> None:
     if not all(name in wired for name in electrical):
         raise SystemExit("Wiring does not match the parts: " + str(electrical))
     parts = {}
-    warnings = 0
     for event in events:
         if event.get("type") == "part":
-            warnings += len(event["warnings"])
-            if not event.get("considered"):
-                parts[event["category"]] = event
+            parts[event["category"]] = event
     if any(not item.get("why") for item in parts.values()):
         raise SystemExit("Teil ohne Warum: " + str([k for k, v in parts.items() if not v.get("why")]))
-    if parts["battery"]["why"]["meeting_title"] != "Review 1":
-        raise SystemExit("Der Akkutausch zitiert nicht das Review.")
-    if warnings < 2:
-        raise SystemExit("Warnungen aus früheren Meetings fehlen.")
-    tasks = [event for event in events if event.get("type") == "tasks"][-1]
-    if len(tasks["items"]) != 8 or not all(task["assignee"] and task["due"] for task in tasks["items"]):
-        raise SystemExit("Aufgaben pro Person fehlen: " + str(tasks))
-    jamie = {event.get("action") for event in events if event.get("type") == "jamie"}
-    needed = {"upsert_template", "requirements", "search", "get_meeting", "create_tasks", "update_tasks", "create_tag", "add_tag_to_meetings", "note"}
-    if not needed <= jamie:
-        raise SystemExit("Jamie-Aktionen fehlen: " + str(sorted(needed - jamie)))
-    meetings = {}
-    for event in events:
-        if event.get("type") == "meeting":
-            meetings[event["id"]] = event
-    if meetings["kickoff-drohne-2026-10-24"]["version"] != 1 or meetings["review-drohne-2026-10-24"]["version"] != 2:
-        raise SystemExit("Versionen hängen nicht an ihren Meetings.")
+    if parts["battery"]["why"]["speaker"] != "You" or "10 minutes" not in parts["battery"]["why"]["text"]:
+        raise SystemExit("The battery swap does not quote the typed change: " + str(parts["battery"]["why"]))
     cad = [event for event in events if event.get("type") == "cad"][-1]
     if cad.get("source") not in {"freecad", "cadquery"} or not cad.get("tree") or not cad.get("params"):
         raise SystemExit("CAD unvollständig.")

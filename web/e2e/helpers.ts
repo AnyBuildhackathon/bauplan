@@ -25,4 +25,3 @@ export async function idle(page: Page, timeout = 60_000) {
 
 export const requirement = (page: Page, id: string) => page.locator(`[data-target~="requirement:${id}"]`);
 export const bomButton = (page: Page) => page.locator('[data-target~="bom"]');
-export const timeline = (page: Page) => page.locator('[data-target~="timeline"]');

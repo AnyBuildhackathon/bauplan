@@ -61,11 +61,7 @@ interface SourceState {
   resetSession: () => Promise<void>;
   /** Reopens a saved chat on the bench; resolves to false when it did not open. */
   openChat: (id: string) => Promise<boolean>;
-  /** Ticks or unticks "bestellt" on an order task; the backend mirrors it to Jamie. */
-  toggleTask: (id: string, done: boolean) => Promise<void>;
-  /** Stands in for Jamie's webhook: marks a meeting as running, or as ended (which rebuilds). */
-  meetingWebhook: (event: "started" | "ended", meeting: { id: string; title: string }) => Promise<void>;
-  /** Answers Mechanic's question (a contradiction between meetings) with one of its options. */
+  /** Answers Mechanic's question with one of its options. */
   answerQuestion: (id: string, answerId: string) => Promise<void>;
   /** Pauses, resumes or stops the build that runs now; it takes effect between tool calls. */
   controlRun: (action: "pause" | "resume" | "stop") => Promise<void>;
@@ -100,8 +96,24 @@ function watchStalls() {
  * up for good after an HTTP error (for example 502 from the proxy while the backend
  * is still starting), so a closed stream is reopened here until it connects.
  */
+let liveStatus: ((s: LiveStatus) => void) | null = null;
+
+// The backend echoes every sent message on the stream at once. When nothing at all arrives, the
+// stream is dead without an error (a proxy keeps it open across a backend restart), so it is
+// reopened: its backlog then shows the message and the run, instead of a screen that looks frozen.
+const ECHO_MS = 4000;
+
+function expectEcho() {
+  const sentAt = Date.now();
+  setTimeout(() => {
+    if (lastEventAt >= sentAt || !eventSource || !liveStatus) return;
+    openLive(liveStatus);
+  }, ECHO_MS);
+}
+
 function openLive(onStatus: (s: LiveStatus) => void) {
   closeLive();
+  liveStatus = onStatus;
   onStatus("connecting");
   const es = new EventSource(apiStreamUrl("/api/events"));
   eventSource = es;
@@ -227,6 +239,7 @@ export const useSource = create<SourceState>((set, get) => {
           body: JSON.stringify({ text: trimmed, voice }),
         });
         await ensureOk(res);
+        expectEcho();
       } catch (err) {
         notify(failure("Your message did not reach AnyBuild", err));
       }
@@ -382,35 +395,6 @@ export const useSource = create<SourceState>((set, get) => {
       } catch (err) {
         notify(failure("The chat did not open", err));
         return false;
-      }
-    },
-
-    toggleTask: async (id, done) => {
-      const session = useSession.getState();
-      const tasks = session.tasks;
-      if (!tasks) return;
-      try {
-        const res = await apiFetch(`/api/tasks/${encodeURIComponent(id)}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ done }),
-        });
-        await ensureOk(res);
-      } catch (err) {
-        notify(failure("Task was not saved", err));
-      }
-    },
-
-    meetingWebhook: async (event, meeting) => {
-      try {
-        const res = await apiFetch("/api/webhooks/jamie", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ event: `meeting.${event}`, meeting_id: meeting.id, title: meeting.title }),
-        });
-        await ensureOk(res);
-      } catch (err) {
-        notify(failure("Jamie event did not arrive", err));
       }
     },
 

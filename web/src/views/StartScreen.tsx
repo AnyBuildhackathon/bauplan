@@ -1,6 +1,6 @@
 // The bench before anything has started: one big box asking what to build, with reference
 // cards, a large prompt field and a few ghost prompts, and Mechanic peeking over its top edge.
-// The first prompt, card, spoken sentence, sketch, meeting or agent event fills the
+// The first prompt, card, spoken sentence, sketch or agent event fills the
 // chat, and App swaps this for the normal bench.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { ImagePlus } from "lucide-react";

@@ -30,7 +30,7 @@ def main() -> None:
     env = os.environ.copy()
     env.update({"PAI_FORCE_MOCK": "1", "DEMO_PACE_S": "0", "PORT": PORT, "PAI_TRAIN_CLAIM_TIMEOUT_S": "2", "PAI_TRAIN_STALL_S": "2"})
     for key in list(env):
-        if key.startswith("RUNPOD_") or key in {"ANTHROPIC_API_KEY", "JAMIE_MCP_TOKEN"}:
+        if key.startswith("RUNPOD_") or key in {"ANTHROPIC_API_KEY"}:
             env.pop(key, None)
     log_path = Path(os.environ.get("TMPDIR", "/tmp")) / "pai-agent-smoke-train.log"
     with log_path.open("w", encoding="utf-8") as log_file:

@@ -54,7 +54,7 @@ export function useAssembly(atSeq?: number | "latest"): Assembly {
     if (typeof atSeq === "number") {
       for (const { seq, ev } of log) {
         if (seq > atSeq) break;
-        if (ev.type === "part" && ev.category === "battery" && !ev.considered) battery = ev;
+        if (ev.type === "part" && ev.category === "battery") battery = ev;
       }
     } else if (atSeq === undefined && selected !== null) {
       const name = versionsList.find((v) => v.n === selected)?.parts.battery;
@@ -105,7 +105,7 @@ const same = (a: Numbers, b: Numbers) =>
   a.weight_g === b.weight_g && a.thrust_to_weight === b.thrust_to_weight && a.flight_time_min === b.flight_time_min && a.price_eur === b.price_eur;
 
 /**
- * The numbers the panel shows: the version picked on the meeting timeline, else the
+ * The numbers the panel shows: the version picked in the version history, else the
  * live build. `previous` is the version before it, so a rebuild reads "vorher …".
  */
 export function useShownBuild(): { metrics: Numbers | null; previous: Numbers | null; version: VersionEvent | null; pinned: boolean } {

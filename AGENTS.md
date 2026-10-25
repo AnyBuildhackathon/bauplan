@@ -1,7 +1,7 @@
 # AnyBuild
 
 AnyBuild is a general physical-AI engineering agent for developing physical products.
-It turns team meetings, requirements, and constraints into validated CAD models, physics simulations, and bills of materials.
+It turns a typed or spoken request, with its requirements and constraints, into validated CAD models, physics simulations, and bills of materials.
 The project was originally named Bauplan and code references still reflect that name in places.
 It is built for the {Tech: Europe} Agentic AI Hack Berlin on 2026-10-24.
 Partners include Jamie, Reson8, and Anthropic.
@@ -11,14 +11,13 @@ The team hackathon roadmap, timeline, and workstreams are documented in docs/PLA
 ## Product Concept
 
 AnyBuild is designed as a universal physical-AI engineer for diverse hardware domains.
-In the general workflow, teams discuss any physical product in recorded meetings and the agent autonomously specs, designs, simulates, and sources it.
-Jamie serves as the sensory and conversational backbone across meetings.
-The agent extracts engineering requirements, tracks design revisions over time, and catches contradictions between past and present discussions.
+In the general workflow, the user describes any physical product in the chat and the agent autonomously specs, designs, simulates, and sources it.
+The agent takes the requirements from the user's own words, labels any limit it proposes itself as proposed by Mechanic, and tracks design revisions over time.
 Claude plans the engineering steps and invokes real domain software tools.
 Parametric CAD tools build 3D components with exact geometric dimensions.
 Physics and aerodynamic simulators validate real-world performance against environmental forces.
 Rendering tools produce photorealistic studio visualizations for team review.
-Bill of materials calculators price orderable parts and sync purchasing tasks back into Jamie.
+Bill of materials calculators price orderable parts and group the order by shop.
 The voice agent is Gemini Live only: it listens, transcribes and speaks as mascot Mechanic inside a voice conversation the user starts, and without it Mechanic stays silent, showing text.
 Reson8 speech-to-text powers push-to-talk dictation.
 Offline fallbacks run the complete workflow when API keys are absent.
@@ -27,37 +26,28 @@ Offline fallbacks run the complete workflow when API keys are absent.
 
 For the hackathon stage demonstration, AnyBuild implements a complete end-to-end worked example for racing drone design.
 The current codebase implements drone-specific part catalogs, aerodynamic wind testing in MuJoCo, and a parametric quadcopter frame in FreeCAD.
-The stage demo begins with a kickoff meeting recording that builds drone version 1.
-During kickoff, the agent catches warnings about the FunFly 4S battery, fails an initial downdraft test in MuJoCo, and switches to the Tattu R-Line 1S 550 pack.
+The stage demo begins with a typed drone request that builds drone version 1 to the user's limits.
+In the offline demo the agent first tries the FunFly 4S battery, fails an initial downdraft test in MuJoCo, and switches to the Tattu R-Line 1S 550 pack.
 FreeCAD builds the frame visibly in an open window, with headless FreeCAD and CadQuery fallbacks.
 Blender renders the assembled drone in a virtual studio environment.
 MuJoCo simulates drone flight stability against wind gusts.
 AnyBuild extracts real measurements: CAD weight, thrust-to-weight ratio, flight time, stability pass/fail, and bill of materials cost.
-The meeting timeline attaches every drone version to its originating meeting.
-Every part links to a specific quote naming the speaker, timestamp, and meeting title.
-Earlier meeting notes surface as warnings before part selection.
-Contradictions between meetings trigger user questions from mascot Mechanic before building.
-The agent creates the Jamie templates "Hardware-Anforderungen" and "Drohnen-Review" automatically.
-A live review follows requesting 10 minutes of flight time.
-Mechanic asks which flight time counts and swaps to the BetaFPV LAVA II 1S 680 pack.
-AnyBuild rebuilds to version 2, showing metrics differences, quotes, warnings, and updated order tasks.
-When a meeting ends, AnyBuild rebuilds the drone and posts differences back to Jamie as notes.
-Jamie tags mark drone versions on meetings.
-Order tasks with assignees and due dates appear in Jamie.
+Every requirement and every part links to the words from the user's request behind it, or is marked as proposed by Mechanic.
+A typed change such as "Make it fly 10 minutes" revises the requirement and swaps to the BetaFPV LAVA II 1S 680 pack.
+AnyBuild rebuilds to version 2, showing metrics differences and quotes.
 The public web app is at https://anybuild-demo.vercel.app and talks to the live backend.
 
 ## Repository Map
 
 The repository is structured into five main directories:
 
-- `agent/`: Python backend, Claude tool definitions, physics simulation, CAD generation, and Jamie client.
-  - `agent/src/pai_agent/app.py`: FastAPI application server, SSE event stream, and webhook endpoints.
+- `agent/`: Python backend, Claude tool definitions, physics simulation, and CAD generation.
+  - `agent/src/pai_agent/app.py`: FastAPI application server, SSE event stream, and HTTP endpoints.
   - `agent/src/pai_agent/session.py`: Session orchestrator managing events, tool execution, and mock flow.
-  - `agent/src/pai_agent/mock_story.py`: Deterministic fallback mock runner for version 1 and version 2 builds.
+  - `agent/src/pai_agent/mock_story.py`: Deterministic fallback mock runner for version 1 and version 2 drone builds from typed requests.
   - `agent/src/pai_agent/orchestrator.py`: Claude tool-use execution loop.
-  - `agent/src/pai_agent/tools/`: Tool definitions for CAD, MuJoCo simulation, Blender, Jamie, BOM, and UI interaction.
+  - `agent/src/pai_agent/tools/`: Tool definitions for CAD, MuJoCo simulation, Blender, BOM, and UI interaction.
   - `agent/src/pai_agent/freecad_run.py`: FreeCAD MCP RPC connector and headless fallback execution.
-  - `agent/src/pai_agent/jamie_client.py`: Streamable HTTP client for the Jamie MCP server.
   - `agent/src/pai_agent/voice.py`: Reson8 STT token management and voice capabilities.
   - `agent/scripts/smoke_sse.py`: End-to-end SSE mock verification script.
 - `web/`: Vite, React, and Three.js frontend dashboard.
@@ -66,9 +56,8 @@ The repository is structured into five main directories:
   - `web/src/events/source.ts`: SSE stream consumer.
   - `web/src/events/types.ts`: TypeScript interfaces for the wire protocol.
   - `web/src/components/chat/`: Mechanic sidebar chat with audio controls and speech recognition.
-  - `web/src/components/timeline/`: Jamie meeting timeline showing kickoff and review milestones.
   - `web/src/components/canvas/`: 3D canvas tabs for model visualization, CAD views, and simulation.
-  - `web/src/components/panels/`: Shared source pieces (Jamie mark, quote citation); requirements and results are cards in the chat.
+  - `web/src/components/panels/`: Shared source pieces (quote citation); requirements and results are cards in the chat.
   - `web/src/views/`: Primary views including workbench, logbook, and training tabs.
 - `desktop/`: Tauri 2 native desktop application wrapper.
   - `desktop/src-tauri/`: Tauri Rust backend configuration and window lifecycle handlers.
@@ -116,19 +105,19 @@ The Tauri 2 application bundles the web dashboard into a native macOS window.
 cd desktop && npm install && npm run dev
 ```
 
-### Mock Mode and Webhook Triggers
+### Mock Mode Triggers
 
 Without an Anthropic key, the backend runs in mock mode automatically.
-Trigger the kickoff build via webhook:
+Trigger the first drone build with a typed request:
 
 ```bash
-curl -s -X POST http://127.0.0.1:8100/api/webhooks/jamie -H 'content-type: application/json' --data @agent/data/webhooks/meeting-ended.json
+curl -s -X POST http://127.0.0.1:8100/api/prompt -H 'content-type: application/json' --data '{"text":"Build a micro drone under 120 euros with at least 8 minutes of flight time, under 50 g."}'
 ```
 
-Trigger the review build via webhook:
+Trigger the version 2 rebuild with a typed change:
 
 ```bash
-curl -s -X POST http://127.0.0.1:8100/api/webhooks/jamie -H 'content-type: application/json' --data @agent/data/webhooks/review-ended.json
+curl -s -X POST http://127.0.0.1:8100/api/prompt -H 'content-type: application/json' --data '{"text":"Make it fly 10 minutes."}'
 ```
 
 Reset the session state to start over:
@@ -164,10 +153,8 @@ All clients and backend tools must adhere to that specification.
 
 - `POST /api/prompt`: Sends user messages to the agent session.
 - `GET /api/events`: Subscribes to the Server-Sent Events stream.
-- `POST /api/reset`: Resets session state, event history, and timeline.
-- `POST /api/webhooks/jamie`: Receives Jamie meeting lifecycle webhooks.
+- `POST /api/reset`: Resets session state and event history.
 - `POST /api/answer`: Submits answers to mascot Mechanic's clarification questions.
-- `POST /api/tasks/{id}`: Toggles status of parts ordering tasks.
 - `POST /api/cad/params`: Recomputes frame parameters dynamically.
 - `POST /api/cad/open`: Launches FreeCAD GUI with the current CAD file.
 - `GET /api/voice`: Returns speech-to-text capabilities and Gemini Live availability.
@@ -184,7 +171,7 @@ The event stream emits typed JSON objects:
 - `step`: Notifies workflow step transitions (`meeting`, `teile`, `cad`, `render`, `simulation`, `training`, `stueckliste`).
 - `chat`: Carries user or agent chat utterances.
 - `tool`: Updates tool connection and execution status.
-- `requirement`: Conveys requirement definitions, quotes, and validation status.
+- `requirement`: Conveys requirement definitions, the request quote or Mechanic's proposal (`source`), and validation status.
 - `metrics`: Updates the four core metrics (weight, thrust-to-weight, flight time, BOM cost).
 - `sim`: Delivers simulation flight trajectory points and pass/fail results.
 - `cad`: Emits generated CAD file links, parameter ranges, and scene trees.
@@ -192,12 +179,9 @@ The event stream emits typed JSON objects:
 - `draw`: Overlays visual annotations and guides on 3D scenes.
 - `bom`: Publishes the full bill of materials with prices and weights.
 - `mascot`: Changes Mechanic's expression state and dialogue bubble.
-- `jamie`: Records Jamie API actions and fallback outbox writes.
-- `meeting`: Updates meeting entries on the timeline.
-- `version`: Attaches completed drone builds to timeline meetings.
-- `part`: Announces chosen or considered hardware parts with quotes and warnings.
-- `question`: Prompts the user with multiple-choice decisions during contradictions.
-- `tasks`: Transmits order task checklists associated with meetings.
+- `version`: Records each completed build with its trigger, numbers and difference from the last version.
+- `part`: Announces chosen hardware parts with the request quote behind them.
+- `question`: Prompts the user with multiple-choice decisions, for example a requirement the design cannot meet.
 - `point`: Directs the 3D pointer indicator to specific model elements.
 - `training`: Streams reinforcement learning curves and status from Isaac Lab, or from the 1,024 browser MuJoCo simulations (`source: "browser"`).
 
@@ -212,9 +196,6 @@ Never commit `.env` files or secret keys to the repository.
 - `PAI_FORCE_MOCK`: Set to `1` to force mock story execution even when an API key is present.
 - `DEMO_PACE_S`: Introduces pause delays between steps in seconds; defaults to `0`.
 - `PORT`: Configures the backend HTTP listening port; defaults to `8100`.
-- `JAMIE_MCP_TOKEN`: Bearer token for live Jamie MCP API calls; falls back to local data and outbox when omitted.
-- `JAMIE_MCP_URL`: Target endpoint URL for Jamie MCP; defaults to `https://mcp.meetjamie.ai/mcp`.
-- `JAMIE_WEBHOOK_SECRET`: Secret token validated against incoming Jamie webhook requests.
 - `RESON8_API_KEY`: API key for generating live Reson8 speech-to-text tokens.
 - `RESON8_LANGUAGE`: Language code for Reson8 speech-to-text; defaults to `de`.
 - `GEMINI_LIVE_MODEL`: Gemini Live model for Mechanic's voice; defaults to `gemini-3.8-live`.
@@ -241,7 +222,6 @@ Never commit `.env` files or secret keys to the repository.
 - FreeCAD: Interactive CAD modeling via `freecad-mcp` RPC on port 9875; automatic fallback chain descends to headless `freecadcmd`, then CadQuery.
 - Blender: Headless photorealistic studio rendering using EEVEE; falls back to static still render asset if Blender is not installed.
 - MuJoCo: Physics-based aerodynamics and downdraft gust stability tests; evaluates altitude thresholds and produces 3D trajectory data.
-- Jamie MCP: Connects via Streamable HTTP; writes to local session outbox `jamie_outbox.json` and loads fixture meetings when unauthenticated or offline.
 - Reson8: Realtime streaming speech-to-text; vends short-lived session tokens from backend; falls back to browser Web Speech API.
 - Tauri app: Desktop wrapper in `desktop/` providing a native macOS window for the web dashboard.
 - Vercel: Hosts the web app at `https://anybuild-demo.vercel.app`, which talks to the live backend.
@@ -252,7 +232,7 @@ Never commit `.env` files or secret keys to the repository.
 - The captain owns visual styling and design polish; agents must not make visual design changes beyond what their task requires.
 - Visual styling follows the Bevel design system with rounded card surfaces, subtle borders, and soft drop shadows.
 - Maintain high projector readability on stage using dark ink text variants (`--color-agent-ink`, `--color-ok-ink`, `--color-fail-ink`) and tabular numbers.
-- Keep the display uncluttered with essentials only: chat on the left, at most three canvas tabs (`Model`, `CAD`, `Simulation`), partner status chips in the top bar, Jamie meetings in the Logbook, and the requirement checks and three key numbers as cards in the chat.
+- Keep the display uncluttered with essentials only: chat on the left, at most three canvas tabs (`Model`, `CAD`, `Simulation`), partner status chips in the top bar, versions in the Logbook, and the requirement checks and three key numbers as cards in the chat.
 
 ## Planned Next Work
 
@@ -260,7 +240,7 @@ Never commit `.env` files or secret keys to the repository.
 - Integrate teammate modules: physics stress testing, step-by-step exploded build guide, and firmware download with wiring table.
 - Rename remaining repository paths and package identifiers from Bauplan to AnyBuild. The user-visible name is already AnyBuild, and the interface and agent dialogue are already English.
 - Connect NVIDIA Omniverse and Isaac Sim on RunPod RTX 4090 to load drone USD files, execute wind tests, run Isaac Lab training, and stream results to a dedicated tab.
-- Switch Jamie MCP and Reson8 STT to live production credentials once on-site keys are provided.
+- Switch Reson8 STT to live production credentials once on-site keys are provided.
 
 ## Team Workflow
 

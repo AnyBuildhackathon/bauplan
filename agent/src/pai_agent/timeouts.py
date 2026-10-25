@@ -1,7 +1,7 @@
 """Per-tool time budgets, so a stuck tool degrades with a clear message instead of freezing the run.
 
 call_tool wraps every tool in its budget. Most tools already bound their own subprocess or network
-call (FreeCAD 60 s per script, Blender 180 s, Jamie 5 s per request, Isaac by ISAAC_TIMEOUT_S);
+call (FreeCAD 60 s per script, Blender 180 s, Isaac by ISAAC_TIMEOUT_S);
 the budget here is the backstop above that, sized so it never cuts a healthy run short.
 PAI_TIMEOUT_<TOOL> (for example PAI_TIMEOUT_BLENDER_RENDER=30) overrides one tool,
 PAI_TOOL_TIMEOUT_S the default for tools without their own entry. 0 turns a budget off.
@@ -36,13 +36,6 @@ BUDGET_S = {
     "isaac_test": 600.0,
     "isaac_sim_render": 600.0,
     "isaac_lab_status": 30.0,
-    # Jamie gives up on the live server after one 5 s timeout, skips it for 60 s and writes the local outbox.
-    "jamie_templates": 15.0,
-    "jamie_requirements": 15.0,
-    "jamie_search": 15.0,
-    "jamie_meeting": 15.0,
-    "jamie_create_tasks": 30.0,
-    "version_commit": 15.0,
     # Live shop prices search the web per line, 45 s each at most.
     "bom_build": 120.0,
     # A slicer takes seconds to a minute per part; its own subprocess timeout is 180 s.
@@ -82,12 +75,6 @@ LABELS = {
     "isaac_test": "Isaac Sim",
     "isaac_sim_render": "Isaac Sim",
     "isaac_lab_status": "Isaac Lab",
-    "jamie_templates": "Jamie",
-    "jamie_requirements": "Jamie",
-    "jamie_search": "Jamie",
-    "jamie_meeting": "Jamie",
-    "jamie_create_tasks": "Jamie",
-    "version_commit": "Jamie",
     "bom_build": "The price search",
     "delegate": "The sub-agent",
 }

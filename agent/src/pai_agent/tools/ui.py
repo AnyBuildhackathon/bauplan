@@ -146,7 +146,7 @@ def _default_say(control: str, args: dict) -> str:
         on = args.get("value", True) is not False
         if control == "setting:voice":
             return "Speaking again." if on else "Going quiet."
-        return ("Turning on " if on else "Turning off ") + {"agents": "agent steps", "tools": "tool details", "jamie": "Jamie activity", "push to talk": "push-to-talk"}.get(name, name) + "."
+        return ("Turning on " if on else "Turning off ") + {"agents": "agent steps", "tools": "tool details", "push to talk": "push-to-talk"}.get(name, name) + "."
     if control == "explode" and not float(args.get("value", 100) or 0):
         return "Putting it back together."
     if control.startswith("library:"):

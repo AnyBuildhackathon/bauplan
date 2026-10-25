@@ -28,7 +28,7 @@ UI_TARGETS = (
 TARGETS = PART_TARGETS + UI_TARGETS
 
 STEPS = (
-    ("meeting", "Meeting"),
+    ("meeting", "Spec"),
     ("teile", "Parts"),
     ("cad", "CAD"),
     ("render", "Render"),
@@ -71,12 +71,11 @@ CONTROLS = {
     "panel:settings": "the settings panel (open true or false)",
     "setting:agents": "setting: show agent steps and costs (value true or false)",
     "setting:tools": "setting: show tool details (value true or false)",
-    "setting:jamie": "setting: show Jamie activity (value true or false)",
     "setting:all_metrics": "setting: show all metrics (value true or false)",
     "setting:push_to_talk": "setting: push-to-talk instead of hands-free (value true or false)",
     "setting:voice": "Mechanic's voice on or off (value true or false)",
     "explode": "the explode slider in the Model tab: value 0 (assembled) to 100 (every part pulled apart)",
     "focus": "turn the 3D camera to one part (part: a part name or id)",
     "run:test": "run the product's MuJoCo test again",
-    "run:rebuild": "rebuild: end the next Jamie review and build the next version, or rebuild the CAD and rerun the checks",
+    "run:rebuild": "rebuild the CAD and rerun the checks",
 }

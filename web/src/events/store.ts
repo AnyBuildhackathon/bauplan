@@ -2,7 +2,7 @@
 // the UI state every view reads. `apply` is a reducer over one event at a time, so a client
 // that connects late replays the backlog onto an empty state and ends up exactly where a live
 // client is; `reset` empties it. Every event is also appended to `log`, which the camera
-// director, the agent graph, the meeting timeline and the training view read in order.
+// director, the agent graph and the training view read in order.
 // Nothing here calls the backend: user actions are posted through events/source.ts and
 // lib/api.ts, and their effect comes back as events.
 import { create } from "zustand";
@@ -20,17 +20,14 @@ import {
   type ElectronicsEvent,
   type RenderEvent,
   type MascotState,
-  type MeetingEvent,
   type MetricsEvent,
   type PartEvent,
-  type PartWarning,
   type ProductEvent,
   type SketchEvent,
   type QuestionEvent,
   type RemixEvent,
   type RunStatus,
   type SafetyEvent,
-  type TasksEvent,
   type VersionEvent,
   type RequirementEvent,
   type SimEvent,
@@ -45,7 +42,7 @@ import {
 } from "./types";
 
 export const STEP_LABELS: Record<StepId, string> = {
-  meeting: "Meeting",
+  meeting: "Spec",
   teile: "Parts",
   cad: "CAD",
   render: "Render",
@@ -64,7 +61,6 @@ export const TOOL_NAMES = [
   "Isaac Sim",
   "Isaac Lab",
   "RunPod",
-  "Jamie",
   "Reson8",
 ] as const;
 
@@ -137,13 +133,11 @@ function resultNumbers(metrics: MetricsEvent | null, total: number): ResultNumbe
 export type ChatItem =
   | { kind: "msg"; id: string; seq: number; at: number; role: "user" | "agent"; text: string; local?: boolean; voice?: boolean }
   | { kind: "tool"; id: string; seq: number; at: number; name: string; phase: Phase; detail: string; endedAt?: number; instant?: boolean }
-  | { kind: "jamie"; id: string; seq: number; at: number; action: string; phase: Phase; detail: string; endedAt?: number }
   | { kind: "sim"; id: string; seq: number; at: number; run: number; result: "pass" | "fail"; summary: string }
   | { kind: "bom"; id: string; seq: number; at: number; count: number; total: number; numbers: ResultNumber[] }
   /** The one requirements card; it reads the live requirements from the store. */
   | { kind: "requirements"; id: string; seq: number; at: number }
   | { kind: "training"; id: string; seq: number; at: number; status: TrainingEvent["status"]; detail: string }
-  | { kind: "warning"; id: string; seq: number; at: number; part: string; warning: PartWarning }
   | { kind: "question"; id: string; seq: number; at: number; questionId: string }
   | { kind: "version"; id: string; seq: number; at: number; n: number }
   | { kind: "agent"; id: string; seq: number; at: number; agentId: string }
@@ -170,16 +164,6 @@ export interface Pointing {
   at: number;
 }
 
-export interface JamieEntry {
-  id: string;
-  seq: number;
-  at: number;
-  action: string;
-  status: string;
-  phase: Phase;
-  detail: string;
-}
-
 export interface SessionState {
   log: LoggedEvent[];
   steps: Record<StepId, StepState>;
@@ -192,7 +176,6 @@ export interface SessionState {
   point: Pointing | null;
   mascot: { state: MascotState; say: string; voice?: string; at: number };
   bom: BomEvent | null;
-  jamie: JamieEntry[];
   training: (TrainingEvent & { at: number }) | null;
   omniverse: OmniverseEvent | null;
   /** `training` events with `source: "browser"` (MuJoCo WASM in this dashboard), kept apart from Isaac Lab. */
@@ -200,15 +183,12 @@ export interface SessionState {
   /** Latest CAD part, and how many `cad` events arrived (a new one answers a parameter change). */
   cad: (CadEvent & { at: number; n: number }) | null;
   renders: (RenderEvent & { id: string; at: number })[];
-  /** Jamie meetings in timeline order (kickoff, reviews; archive meetings are kept too). */
-  meetings: MeetingEvent[];
   versions: VersionEvent[];
-  /** Chosen part per category, with the Jamie quote behind it. */
+  /** Chosen part per category, with the request quote behind it. */
   parts: Record<string, PartEvent>;
   /** Every part announced so far by name, so an older version can still be drawn. */
   partsByName: Record<string, PartEvent>;
   questions: Record<string, QuestionEvent>;
-  tasks: TasksEvent | null;
   /** The orchestrator and its sub-agents by id, as they last reported. */
   agents: Record<string, AgentRunEvent & { at: number }>;
   /** The product this session builds: empty on a fresh bench, set by a `product` event or by the first drone event. */
@@ -263,12 +243,6 @@ function initialTools(): Record<string, ToolState> {
 
 /** Backend tool functions shown under the program they drive. */
 const TOOL_ALIASES: Record<string, string> = {
-  jamie_requirements: "Jamie",
-  jamie_search: "Jamie",
-  jamie_meeting: "Jamie",
-  jamie_create_tasks: "Jamie",
-  jamie_templates: "Jamie",
-  jamie_note: "Jamie",
   cad_frame: "FreeCAD",
   cad_part: "FreeCAD",
   simulate_grip: "MuJoCo",
@@ -302,13 +276,12 @@ const TOOL_ALIASES: Record<string, string> = {
   firmware: "Firmware",
   electronics_plan: "Electronics",
   safety_check: "Safety",
-  version_commit: "Version",
   ask_user: "Question",
 };
 
 /**
  * Tools that never get a chat card: pointer and face moves, and calls whose result
- * has its own card (Jamie actions, the question, the version).
+ * has its own card (the question, the version).
  */
 const SILENT_TOOLS = new Set([
   "ui_point_at",
@@ -316,13 +289,6 @@ const SILENT_TOOLS = new Set([
   "mascot_say",
   "ui_control",
   "ask_user",
-  "version_commit",
-  "requirements_accept",
-  "jamie_templates",
-  "jamie_requirements",
-  "jamie_search",
-  "jamie_meeting",
-  "jamie_create_tasks",
   "bom_build",
   "physics_calc",
   "grip_calc",
@@ -358,18 +324,15 @@ function emptyState() {
     point: null as Pointing | null,
     mascot: { state: "ruhig" as MascotState, say: "", at: 0 },
     bom: null as BomEvent | null,
-    jamie: [] as JamieEntry[],
     training: null as SessionState["training"],
     omniverse: null as OmniverseEvent | null,
     browserTraining: null as SessionState["browserTraining"],
     cad: null as SessionState["cad"],
     renders: [] as SessionState["renders"],
-    meetings: [] as MeetingEvent[],
     versions: [] as VersionEvent[],
     parts: {} as Record<string, PartEvent>,
     partsByName: {} as Record<string, PartEvent>,
     questions: {} as Record<string, QuestionEvent>,
-    tasks: null as TasksEvent | null,
     firmware: null as FirmwareEvent | null,
     electronics: null as ElectronicsEvent | null,
     agents: {} as SessionState["agents"],
@@ -387,8 +350,6 @@ function emptyState() {
   };
 }
 
-const meetingOrder = (m: MeetingEvent) => `${m.date}T${m.time}`;
-
 const DRONE_PARTS = new Set(["motor", "propeller", "battery", "flight_controller", "frame"]);
 
 function isDroneEvent(ev: AgentEvent): boolean {
@@ -399,12 +360,11 @@ function isDroneEvent(ev: AgentEvent): boolean {
   return ev.type === "version";
 }
 
-/** Finds the newest still-running chat card of a tool or Jamie action so its result updates it in place. */
-function findOpenCard(chat: ChatItem[], kind: "tool" | "jamie", key: string): number {
+/** Finds the newest still-running chat card of a tool so its result updates it in place. */
+function findOpenCard(chat: ChatItem[], key: string): number {
   for (let i = chat.length - 1; i >= 0; i--) {
     const item = chat[i];
-    if (item.kind === "tool" && kind === "tool" && item.name === key && item.phase === "running") return i;
-    if (item.kind === "jamie" && kind === "jamie" && item.action === key && item.phase === "running") return i;
+    if (item.kind === "tool" && item.name === key && item.phase === "running") return i;
   }
   return -1;
 }
@@ -419,7 +379,7 @@ export const useSession = create<SessionState>((set, get) => ({
     if (ev.type === "replayed") return;
     const at = opts?.instant ? Date.now() - INSTANT_AGE_MS : Date.now();
     const seq = ++seqCounter;
-    // The drone flow (Jamie kickoff, recordings) sends no product event; its own events name it.
+    // Older drone recordings send no product event; their own events name it.
     if (get().product === "" && isDroneEvent(ev)) set({ product: "drone", productLabel: "Drone" });
     const s = get();
     const log = [...s.log, opts?.instant ? { seq, at, ev, instant: true } : { seq, at, ev }];
@@ -453,7 +413,7 @@ export const useSession = create<SessionState>((set, get) => ({
         let chat = s.chat;
         if (ev.status === "running") {
           // A second "running" for an open card is progress (FreeCAD: Arm 2 von 4), not a new call.
-          const open = findOpenCard(chat, "tool", name);
+          const open = findOpenCard(chat, name);
           if (open >= 0) {
             chat = chat.slice();
             const item = chat[open];
@@ -464,7 +424,7 @@ export const useSession = create<SessionState>((set, get) => ({
         } else {
           // offline (a fallback took over) and connected also end a call.
           const phase: Phase = ev.status === "error" ? "error" : "ok";
-          const open = findOpenCard(chat, "tool", name);
+          const open = findOpenCard(chat, name);
           if (open >= 0) {
             chat = chat.slice();
             const item = chat[open];
@@ -523,30 +483,10 @@ export const useSession = create<SessionState>((set, get) => ({
         const chat: ChatItem[] = open >= 0 ? s.chat.map((c, i) => (i === open ? { ...card, id: c.id } : c)) : [...s.chat, card];
         return set({ log, bom: ev, chat });
       }
-      case "jamie": {
-        const phase = phaseOf(ev.status);
-        const jamie = [...s.jamie, { id: nextId("jamie"), seq, at, action: ev.action, status: ev.status, phase, detail: ev.detail }];
-        let chat = s.chat;
-        const open = findOpenCard(chat, "jamie", ev.action);
-        if (phase !== "running" && open >= 0) {
-          chat = chat.slice();
-          const item = chat[open];
-          if (item.kind === "jamie") chat[open] = { ...item, phase, detail: ev.detail || item.detail, endedAt: at };
-        } else {
-          chat = [...chat, { kind: "jamie", id: nextId("jamie"), seq, at, action: ev.action, phase, detail: ev.detail }];
-        }
-        return set({ log, jamie, chat });
-      }
       case "cad":
         return set({ log, cad: { ...ev, at, n: (s.cad?.n ?? 0) + 1 } });
       case "render":
         return set({ log, renders: [...s.renders, { ...ev, id: nextId("render"), at }] });
-      case "meeting": {
-        const meetings = [...s.meetings.filter((m) => m.id !== ev.id && m.id !== ev.replaces), ev].sort((a, b) =>
-          meetingOrder(a).localeCompare(meetingOrder(b)),
-        );
-        return set({ log, meetings });
-      }
       case "version": {
         const versions = [...s.versions.filter((v) => v.n !== ev.n), ev].sort((a, b) => a.n - b.n);
         // A version published again with its snapshot fields keeps its one chat card.
@@ -555,13 +495,9 @@ export const useSession = create<SessionState>((set, get) => ({
         return set({ log, versions, chat });
       }
       case "part": {
-        const parts = ev.considered ? s.parts : { ...s.parts, [ev.category]: ev };
+        const parts = { ...s.parts, [ev.category]: ev };
         const partsByName = { ...s.partsByName, [ev.name]: ev };
-        const chat: ChatItem[] = [
-          ...s.chat,
-          ...ev.warnings.map((warning) => ({ kind: "warning" as const, id: nextId("warn"), seq, at, part: ev.name, warning })),
-        ];
-        return set({ log, parts, partsByName, chat });
+        return set({ log, parts, partsByName });
       }
       case "optimize": {
         const optimizes = { ...s.optimizes, [ev.id]: ev };
@@ -575,8 +511,6 @@ export const useSession = create<SessionState>((set, get) => ({
         const chat: ChatItem[] = known ? s.chat : [...s.chat, { kind: "question", id: nextId("question"), seq, at, questionId: ev.id }];
         return set({ log, questions, chat });
       }
-      case "tasks":
-        return set({ log, tasks: ev });
       case "remix":
         return set({ log, remixedFrom: { id: ev.id, title: ev.title, author: ev.author } });
       case "run":
