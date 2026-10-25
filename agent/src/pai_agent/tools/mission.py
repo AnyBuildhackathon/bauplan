@@ -5,7 +5,7 @@ top_speed, the hard turn to turn_rate, the position hold to hold_error, the chas
 The limit is the user's when they typed a number (their words quoted), otherwise Mechanic proposes
 one and the row says so. Every mission emits a `mission` event with its replay for the
 Simulation tab, and the result names what limits the build, so a failed mission points at the
-part to swap or the dimension to change.
+part to swap or the dimension to change; a missed chase names the camera's detection range and delay.
 """
 
 from __future__ import annotations
@@ -90,7 +90,14 @@ def _why(mission: str, outcome: dict, frame: dict, metrics: dict) -> str:
     if mission == "hold":
         return "Gusts push " + f"{metrics['weight_g']:.0f}" + " g around; faster motor response (smaller props) or more mass per drag area holds tighter."
     caught = outcome.get("captured", 0)
-    return "Caught " + str(caught) + " of " + str(outcome.get("flies", 5)) + " flies: acceleration and turn rate decide a chase, so thrust-to-weight " + f"{metrics['thrust_to_weight']:.2f}" + " is the lever."
+    seeing = (
+        " The camera sees a 6 mm fly only within " + f"{outcome['detect_range_m']:.1f}" + " m and each fix is " + f"{outcome['sensing_delay_ms']:.0f}"
+        + " ms old; it spent " + f"{outcome['reacquire_s']:.1f}" + " s per fly looking for one it had lost."
+        if outcome.get("detect_range_m") is not None else ""
+    )
+    if caught < outcome.get("flies", 5) and outcome.get("detect_range_m") is not None:
+        return "Caught " + str(caught) + " of " + str(outcome.get("flies", 5)) + " flies." + seeing + " A narrower lens or more pixels see further, a faster camera and detector cut the delay."
+    return "Caught " + str(caught) + " of " + str(outcome.get("flies", 5)) + " flies: acceleration and turn rate decide a chase, so thrust-to-weight " + f"{metrics['thrust_to_weight']:.2f}" + " is the lever." + seeing
 
 
 def _summary(mission: str, outcome: dict, row: dict, passed: bool) -> str:

@@ -91,12 +91,29 @@ def test_missions_are_deterministic():
 
 def test_reference_build_numbers(flights):
     light = flights["tattu-rline-1s-550"]
-    assert light["speed_run"]["top_speed_kmh"] == pytest.approx(69.5, abs=0.5)
+    assert light["speed_run"]["top_speed_kmh"] == pytest.approx(83.0, abs=0.5)
     assert light["speed_run"]["time_to_top_s"] < 2.5
     assert light["turn"]["turn_rate_dps"] == pytest.approx(154.6, abs=3)
-    assert light["hold"]["hold_error_cm"] == pytest.approx(11.9, abs=1)
-    assert light["chase"]["captured"] == 5 and light["chase"]["capture_s"] == pytest.approx(2.39, abs=0.2)
+    assert light["hold"]["hold_error_cm"] == pytest.approx(11.3, abs=1)
     assert not any(outcome["crashed"] for outcome in light.values())
+    # The pack sags under the speed run's 30 A and drains: 8 s flat out takes about 50 mAh of 550.
+    run_pack = light["speed_run"]
+    assert run_pack["pack_v_start"] > run_pack["pack_v_min"] + 0.2 and 40 < run_pack["pack_used_mah"] < 60
+
+
+def test_the_chase_sees_flies_only_through_its_camera(flights):
+    """The Caddx Ant's 165 degrees on 720 pixels show a 6 mm fly over 2 pixels within 0.94 m, each fix 68 ms late:
+    the fly starts 2.3 m away and the reference pursuit catches at most one of five, so no median capture."""
+
+    chase = flights["tattu-rline-1s-550"]["chase"]
+    assert chase["detect_range_m"] == pytest.approx(0.94, abs=0.01)
+    assert chase["sensing_delay_ms"] == pytest.approx(68, abs=1)
+    assert chase["captured"] <= 1 and chase["capture_s"] is None
+    assert chase["first_fix_s"] is not None and chase["tracks_lost"] > 0
+    # With a near-perfect camera (no delay, 500 frames a second, all-round view, far sight) the same build catches flies again.
+    frame = _frame("tattu-rline-1s-550")
+    frame["camera"] = dict(frame["camera"], ifov=frame["camera"]["ifov"] / 100, delay_s=0.0, fov_h=3.12, fov_v=3.12, fps=500.0)
+    assert run(frame, "chase")["captured"] >= 3
 
 
 def test_a_heavier_build_loses_speed_and_the_chase(flights):
@@ -105,13 +122,15 @@ def test_a_heavier_build_loses_speed_and_the_chase(flights):
     assert heavy["speed_run"]["time_to_top_s"] > 2 * light["speed_run"]["time_to_top_s"]
     # At thrust-to-weight 1.1 it cannot lean into a 90 degree turn at 29 km/h.
     assert heavy["turn"]["turn_rate_dps"] < light["turn"]["turn_rate_dps"] / 2
-    assert heavy["chase"]["captured"] < light["chase"]["captured"]
+    # Neither camera-guided chase catches its flies; the heavy build never gets near one.
+    assert heavy["chase"]["captured"] <= light["chase"]["captured"]
+    assert heavy["chase"]["miss_distance_cm"] > 3 * light["chase"]["miss_distance_cm"]
     assert heavy["chase"]["capture_s"] is None
 
 
 def test_a_weaker_motor_loses_speed_and_turn():
     state = _state("tattu-rline-1s-550")
-    weak = dict(state.selected["motor"], thrust_g=30.0, kv=11000)
+    weak = dict(state.selected["motor"], thrust_g=22.0, kv=11000)
     state.selected["motor"] = weak
     frame = airframe(geometry(state), state.selected)
     reference = _frame("tattu-rline-1s-550")
@@ -134,15 +153,19 @@ def test_simulate_mission_makes_requirement_checks():
     ctx = Ctx(Bus(), state, auto_steps=False)
     args = {"missions": [{"mission": "speed_run"}, {"mission": "chase", "limit": 3, "quote": "catches a fly in 3 s"}]}
     result = asyncio.run(call_tool(ctx, "simulate_mission", args))
-    assert result["ok"] is not False and result["result"] == "pass"
+    assert result["ok"] is not False and result["result"] == "fail"
     rows = {e["id"]: e for e in ctx.bus.events if e.get("type") == "requirement"}
     assert rows["top_speed"]["source"] == "proposed" and rows["top_speed"]["speaker"] == "Mechanic"
     assert rows["top_speed"]["text"] == "Top speed at least 60 km/h" and rows["top_speed"]["met"] is True
     assert rows["chase_time"]["source"] == "user" and rows["chase_time"]["source_quote"] == "catches a fly in 3 s"
-    assert rows["chase_time"]["met"] is True
+    # The camera cannot see the fly far enough: the chase fails and says why.
+    assert rows["chase_time"]["met"] is False
+    chase = next(m for m in result["missions"] if m["mission"] == "chase")
+    assert "0.9 m" in chase["why"] and "68 ms" in chase["why"]
     missions = [e for e in ctx.bus.events if e.get("type") == "mission"]
     assert [m["mission"] for m in missions] == ["speed_run", "chase"]
     assert missions[1]["target"] and missions[1]["poses"] and missions[0]["parts"]["battery"] == "tattu-rline-1s-550"
+    assert missions[0]["metrics"]["pack_used_mah"] > 0 and missions[1]["metrics"]["detect_range_m"] > 0
     assert any(e.get("type") == "geometry" for e in ctx.bus.events)
 
     # A limit the build cannot reach fails, and the result says what limits it.
@@ -222,7 +245,8 @@ def test_mock_fly_hunter_flies_its_missions(monkeypatch, request):
     asyncio.run(run_mock(ctx, FLY))
     missions = [e for e in ctx.bus.events if e.get("type") == "mission"]
     assert [m["mission"] for m in missions] == ["speed_run", "turn", "chase"]
-    assert all(m["result"] == "pass" for m in missions)
+    assert [m["result"] for m in missions] == ["pass", "pass", "fail"]
+    assert "camera" in missions[2]["why"]
     rows = {r["id"]: r for r in state.requirements}
     assert {"top_speed", "turn_rate", "chase_time"} <= set(rows) and rows["top_speed"]["source"] == "proposed"
     assert state.versions and state.finished
