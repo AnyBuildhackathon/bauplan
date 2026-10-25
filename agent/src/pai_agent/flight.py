@@ -322,6 +322,8 @@ def _airframe(state, selected: dict, weight_g: float) -> tuple[dict, list[str]]:
             "source": "the airframe the MuJoCo missions fly",
         }, []
     except Exception as exc:  # the geometry lacks a dimension; the outline estimate takes over
+        from pai_agent.mission_sim import motor_lag_s
+
         shape, notes = geometry(selected, arm_length(state))
         per_motor, _note = thrust_per_motor_g(motor, pack_v)
         vp, tip, _ = pitch_speed_ms(motor, selected["propeller"], pack_v)
@@ -331,7 +333,7 @@ def _airframe(state, selected: dict, weight_g: float) -> tuple[dict, list[str]]:
             "tip_speed": tip,
             "cda_side": CD_SIDE * shape["front_m2"],
             "cda_top": CD_TOP * shape["top_m2"],
-            "tau": min(0.12, max(0.01, 0.015 * (shape["prop_d_mm"] / 51.0) ** 2)),
+            "tau": motor_lag_s(shape["prop_d_mm"]),
             "source": "part outlines (" + str(exc)[:80] + ")",
         }, notes
 
@@ -339,16 +341,12 @@ def _airframe(state, selected: dict, weight_g: float) -> tuple[dict, list[str]]:
 def arm_length(state) -> float:
     """Centre to motor shaft: the built CAD frame, else the frame's wheelbase, else what the props need."""
 
+    from pai_agent.drone_geometry import frame_arm_mm
+
     built = (getattr(state, "cad_params", None) or {}).get("arm_length_mm")
     if built:
         return float(built)
-    frame = state.selected.get("frame") or {}
-    if frame.get("arm_length_mm"):
-        return float(frame["arm_length_mm"])
-    if frame.get("wheelbase_mm"):
-        return float(frame["wheelbase_mm"]) / 2.0
-    propeller = state.selected.get("propeller") or {}
-    return (float(propeller.get("diameter_mm") or 51.0) + 4.0) / 2.0 ** 0.5
+    return frame_arm_mm(state.selected)
 
 
 def performance(state, weight_g: float) -> dict:

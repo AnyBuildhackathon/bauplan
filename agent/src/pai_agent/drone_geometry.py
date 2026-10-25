@@ -89,7 +89,7 @@ def geometry(state, params: dict | None = None) -> dict:
             return float(default)
         return value
 
-    arm = float(params.get("arm_length_mm") or DEFAULT_ARM_MM)
+    arm = float(params.get("arm_length_mm") or frame_arm_mm(selected))
     thickness = float(params.get("thickness_mm") or DEFAULT_THICKNESS_MM)
     motor_part = selected.get("motor")
     bell = pick(motor_part, "diameter_mm", DEFAULT_MOTOR["diameter_mm"], "motor diameter")
@@ -193,6 +193,19 @@ def min_arm_mm(prop_diameter_mm: float) -> float:
     """The shortest arm at which neighbouring props keep the gap: they stand arm * sqrt(2) apart."""
 
     return (prop_diameter_mm + PROP_GAP_MM) / math.sqrt(2.0)
+
+
+def frame_arm_mm(selected: dict) -> float:
+    """Centre to motor shaft before a CAD frame exists: the chosen frame's arm, else half its
+    wheelbase (motor to motor across the diagonal), else the shortest arm the props clear."""
+
+    frame = selected.get("frame")
+    arm = _num(frame, "arm_length_mm")
+    if arm is None and _num(frame, "wheelbase_mm"):
+        arm = float(frame["wheelbase_mm"]) / 2.0
+    if arm is None and _num(selected.get("propeller"), "diameter_mm"):
+        arm = min_arm_mm(float(selected["propeller"]["diameter_mm"]))
+    return arm or DEFAULT_ARM_MM
 
 
 def view(geo: dict) -> dict:

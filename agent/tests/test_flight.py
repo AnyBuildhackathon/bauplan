@@ -17,6 +17,12 @@ PARTS = {p["id"]: p for p in catalog()["parts"]}
 REFERENCE = ["generic-1103-15000kv", "gemfan-2020-4", "tattu-rline-1s-550", "betafpv-matrix-1s-5in1-v2", "twiglet-2in-carbon", "caddx-ant", "toothpick-canopy-holder", "m14-bolts"]
 WHOOP = ["betafpv-0802-22000kv", "gemfan-1614-3", "betafpv-lava-1s-300", "betafpv-matrix-1s-5in1-v2", "betafpv-air75-ii", "betafpv-c03"]
 FIVE_INCH = ["betafpv-snow-2306-1860kv", "gemfan-51466-v2", "betafpv-lava-6s-1100", "betafpv-f722-35a-aio", "betafpv-x-knight-5", "caddx-ratel-19mm", "betafpv-a03-vtx"]
+METEOR = ["betafpv-1102-21000kv", "gemfan-1811-3", "betafpv-lava-1s-450", "betafpv-f4-1s-5a-aio", "betafpv-meteor75-pro-ii", "betafpv-c03"]
+AQUILA_2S = ["betafpv-1103-10500kv", "gemfan-2218-3", "betafpv-lava-2s-550", "betafpv-f4-2-3s-20a-aio", "betafpv-aquila20", "betafpv-c03"]
+PAVO20_4S = ["betafpv-1104-5500kv", "gemfan-d22-3", "betafpv-lava-4s-550", "betafpv-toothpick-f405-20a", "betafpv-pavo20-pro-ii", "betafpv-c03"]
+PAVO25_4S = ["betafpv-1506-4200kv", "gemfan-d63-3", "betafpv-lava-4s-850", "betafpv-cube-2-4s-30a", "betafpv-pavo25-v2", "caddx-ratel-19mm"]
+# Every drone class in the library: 1S micros and whoops, 2S and 4S 2 to 2.5 inch, 6S 5 inch.
+CLASSES = {"reference": REFERENCE, "whoop": WHOOP, "meteor75-1s": METEOR, "aquila-2s": AQUILA_2S, "pavo20-4s": PAVO20_4S, "pavo25-4s": PAVO25_4S, "five-inch-6s": FIVE_INCH}
 
 
 def _state(ids, **overrides) -> BuildState:
@@ -127,7 +133,7 @@ def test_inertia_grows_with_the_arm():
     assert all(b > a for a, b in zip(near, far))
 
 
-@pytest.mark.parametrize("ids", [REFERENCE, WHOOP], ids=["reference", "whoop"])
+@pytest.mark.parametrize("ids", list(CLASSES.values()), ids=list(CLASSES))
 def test_card_and_missions_agree(ids):
     """The metrics card and the MuJoCo speed run and hard turn describe one machine."""
 
@@ -138,6 +144,50 @@ def test_card_and_missions_agree(ids):
     turn = run(frame, "turn")
     assert metrics["top_speed_kmh"] == pytest.approx(speed["top_speed_kmh"], abs=3.0)
     assert metrics["turn_rate_dps"] == pytest.approx(turn["turn_rate_dps"], rel=0.08)
+
+
+def test_five_inch_speed_run_reaches_its_thrust_limit():
+    """A 5-inch racer runs until its props run out of thrust, not with thrust to spare."""
+
+    state = _state(FIVE_INCH)
+    frame = airframe(geometry(state), state.selected)
+    speed = run(frame, "speed_run")
+    assert not speed["crashed"] and not speed["still_accelerating"]
+    # The pitch speed is the wall: little static thrust left at top speed.
+    assert speed["thrust_left_pct"] < 50
+    assert speed["top_speed_kmh"] > 0.9 * compute(state)["top_speed_kmh"]
+
+
+def test_before_cad_the_arm_is_the_frames():
+    """Without a built frame the sim, the card and the 3D model put the motors where the chosen frame does."""
+
+    for name, ids in CLASSES.items():
+        state = _state(ids)
+        geo = geometry(state)
+        frame = state.selected["frame"]
+        assert geo["arm_length_mm"] == pytest.approx(frame["arm_length_mm"]), name
+        assert geo["props_clear"], name
+        assert compute(state)["performance"]["arm_length_mm"] == pytest.approx(frame["arm_length_mm"], abs=0.1), name
+    state = _state(FIVE_INCH)
+    state.selected["frame"] = {k: v for k, v in state.selected["frame"].items() if k != "arm_length_mm"}
+    assert geometry(state)["arm_length_mm"] == pytest.approx(state.selected["frame"]["wheelbase_mm"] / 2)
+    state.selected["frame"].pop("wheelbase_mm")
+    # No frame size at all: the shortest arm whose 132 mm props keep their gap.
+    assert geometry(state)["props_clear"]
+    state.cad_params = {"arm_length_mm": 110.0}
+    assert geometry(state)["arm_length_mm"] == 110.0
+
+
+@pytest.mark.parametrize("ids", [PAVO25_4S, FIVE_INCH], ids=["pavo25-4s", "five-inch-6s"])
+def test_big_drones_hold_and_chase(ids):
+    """Bigger builds hold a point in the gusts as tightly as the micros and catch flies without crashing."""
+
+    state = _state(ids)
+    frame = airframe(geometry(state), state.selected)
+    hold = run(frame, "hold")
+    chase = run(frame, "chase")
+    assert not hold["crashed"] and hold["hold_error_cm"] < 12.0
+    assert not chase["crashed"] and chase["captured"] >= 3
 
 
 def test_cannot_hover_gives_zero_performance():
