@@ -16,7 +16,7 @@ import time
 from pathlib import Path
 
 from pai_agent import assembly as asm
-from pai_agent import web_parts
+from pai_agent import learned_parts, web_parts
 from pai_agent.context import Ctx
 from pai_agent.paths import DATA_DIR, PARTS_PATH, REPO_ROOT
 from pai_agent.pricing import price
@@ -37,7 +37,8 @@ def _fail(message: str, **extra) -> dict:
 
 def catalog_items() -> list[dict]:
     """Every catalog the repo has, flattened: generic hobby parts, the gripper parts, the maker parts
-    from real product pages, the drone parts; then the parts found on the web so far."""
+    from real product pages, the drone parts; then the learned parts (found on the web or at a
+    distributor in earlier builds; those with estimates only in exploration mode)."""
 
     global _CATALOGS
     if _CATALOGS is None:
@@ -82,6 +83,7 @@ def _search(query: str, category: str) -> list[dict]:
 def _public(item: dict) -> dict:
     shown = {k: item[k] for k in ("id", "name", "category", "unit_price_eur", "shop", "note", "provenance", "source_url", "checked", "estimated") if k in item}
     shown.update({k: item[k] for k in SPEC_FIELDS if k in item})
+    shown["confidence"] = web_parts.confidence_of(item)
     return shown
 
 
@@ -238,15 +240,19 @@ async def part_pick(ctx: Ctx, args: dict) -> dict:
     estimate = args.get("estimate")
     if args.get("web") and not select_id and not isinstance(estimate, dict):
         need = str(args.get("query") or part["query"] or part["name"])
-        discovered = await web_parts.discover(str(args.get("category") or part.get("category") or "part"), need)
+        require = args.get("require") if isinstance(args.get("require"), list) else []
+        discovered = await web_parts.discover(str(args.get("category") or part.get("category") or "part"), need, str(args.get("keywords") or ""), require)
         if not discovered.get("ok"):
-            return _fail(discovered["error"], problems=discovered.get("problems", []))
+            return _fail(discovered["error"], problems=discovered.get("problems", []), search=discovered.get("search"), detail=discovered["error"][:160] + web_parts.cost_line(discovered.get("search")))
         found = discovered["part"]
+        origin = {"learned library": "learned part", "distributors": "distributor find"}.get(discovered.get("from"), "web find")
         return {
             "ok": True,
-            "detail": part["name"] + ": web find " + found["name"],
+            "detail": part["name"] + ": " + origin + " " + found["name"] + " (" + web_parts.confidence_of(found) + ")" + web_parts.cost_line(discovered.get("search")),
             "matches": [_public({**found, "size_mm": found.get("size_mm")})],
             "source": web_parts.provenance_line(found),
+            **web_parts.card(found),
+            "search": discovered.get("search"),
             "next": "part_pick again with select_id " + found["id"] + " to use it.",
         }
     if not select_id and not isinstance(estimate, dict):
@@ -263,6 +269,8 @@ async def part_pick(ctx: Ctx, args: dict) -> dict:
         if item is None:
             return _fail("select_id " + select_id + " is not in the catalogs. Search with part_pick and a query first.")
         item["price_source"] = "catalog" if item.get("price_is_sample") is False else "sample"
+        if item.get("provenance") == "web":
+            learned_parts.mark_used(select_id)
     else:
         name = str(estimate.get("name") or part["name"]).strip()
         try:
@@ -300,6 +308,7 @@ async def part_pick(ctx: Ctx, args: dict) -> dict:
             "warnings": [],
             "provenance": item.get("provenance") or ("estimate" if item.get("price_source") == "estimated" else "catalog"),
             "source_url": item.get("source_url") or item.get("url") or None,
+            **web_parts.card(item),
         }
     )
     result = {

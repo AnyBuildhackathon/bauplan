@@ -1,0 +1,43 @@
+{
+  "Errors": [],
+  "SearchResults": {
+    "NumberOfResult": 1,
+    "Parts": [
+      {
+        "Availability": "228 In Stock",
+        "DataSheetUrl": "https://www.arducam.com/downloads/datasheet/B0165.pdf",
+        "Description": "Camera Modules OV9281 1MP Global Shutter Monochrome Camera Module",
+        "FactoryStock": "0",
+        "ImagePath": "https://www.mouser.com/images/arducam/images/b0165.jpg",
+        "Category": "Camera Modules",
+        "LeadTime": "56 Days",
+        "LifecycleStatus": null,
+        "Manufacturer": "Arducam",
+        "ManufacturerPartNumber": "B0165",
+        "Min": "1",
+        "Mult": "1",
+        "MouserPartNumber": "713-B0165",
+        "ProductAttributes": [
+          {"AttributeName": "Packaging", "AttributeValue": "Bulk"},
+          {"AttributeName": "Resolution", "AttributeValue": "1280 x 800"},
+          {"AttributeName": "Frame Rate", "AttributeValue": "120 fps"}
+        ],
+        "PriceBreaks": [
+          {"Quantity": 1, "Price": "41,15 €", "Currency": "EUR"},
+          {"Quantity": 10, "Price": "39,80 €", "Currency": "EUR"}
+        ],
+        "AlternatePackagings": null,
+        "ProductDetailUrl": "https://www.mouser.de/ProductDetail/Arducam/B0165?qs=sample",
+        "Reeling": false,
+        "ROHSStatus": "RoHS Compliant",
+        "SuggestedReplacement": "",
+        "MultiSimBlue": 0,
+        "UnitWeightKg": {"UnitWeight": 0.0045},
+        "AvailabilityInStock": "228",
+        "AvailabilityOnOrder": [],
+        "InfoMessages": [],
+        "ProductCompliance": []
+      }
+    ]
+  }
+}

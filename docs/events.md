@@ -213,6 +213,7 @@ The defaults come from `PAI_ORCHESTRATOR_MODEL` (else `ANTHROPIC_MODEL`), `PAI_O
 
 The same answer carries the user's 3D printer: `printer` is `null`, or `{model, name, maker, bed_mm, nozzle_mm, max_hotend_c, max_bed_c, enclosure, materials, source_url, filaments, printable, not_printable}` (`filaments` the user's spools, `printable` those this printer prints, `not_printable` the rest, for example ABS or ASA on a printer without an enclosure).
 `printer_catalog` is `{printers: [{id, name, maker, bed_mm, nozzle_mm, max_hotend_c, max_bed_c, enclosure, materials, source_url}], filaments: [{id, name, eur_per_kg, needs_enclosure}], checked}`; the profiles come from each maker's spec page (`source_url`), the filament properties from the makers' data sheets (`agent/src/pai_agent/printers.py`).
+`allow_estimated` (from `PAI_ALLOW_ESTIMATED`, default `false`) is the parts exploration switch; `POST /api/settings` with `allow_estimated` true lets a part found on the web carry labelled estimates for its non-critical numbers so a test build goes on, false keeps every part number sourced.
 `POST /api/settings` with `printer` `{model, filaments}` sets it (filaments `PLA`, `PETG`, `ABS`, `ASA`, `NYLON`, `TPU`; leaving `filaments` out takes every material the printer prints) and `null` clears it; HTTP 400 for an unknown model or filament.
 The dashboard keeps the choice in the browser and sends it again whenever the backend connects. With a printer set, every request to the orchestrator starts with one line naming the printer, its bed and the filaments it prints; without one the build runs as before.
 
@@ -369,6 +370,7 @@ Numbers are already rounded.
 The drone's `physics_calc` adds its flight performance from the chosen parts' specs, every one an estimate (`estimate: true`): `top_speed_mps` and `top_speed_kmh` (drag against the thrust that fades with airspeed, on a fresh pack), `accel_mps2` (horizontal, from a hover), `time_to_90pct_s`, `climb_rate_mps`, `turn_rate_dps` (90 degrees over the time to turn them at the hard-turn mission's 8 m/s, rolling in included) and `turn_radius_m`, `flip_time_s` (a 180 degree roll), `flight_time_full_speed_min` and `flight_time_full_throttle_min` (on the sagging, draining pack).
 `performance` also carries `top_speed_end_kmh` (the top speed at the end of a full-speed flight), `flight_time_hover_min`, `thrust_full_fresh_g` (full-throttle thrust on the fresh pack under load) and `pack_sag_v`.
 They use the airframe and power train the MuJoCo missions fly (the same thrust curve, pack sag, drag and 95 % thrust and 70 degree tilt limits), so `top_speed_kmh` and `turn_rate_dps` estimate what the speed run and the hard turn measure.
+`estimated_inputs` (only when there are any) lists the chosen parts whose numbers are estimates rather than stated on their pages, one `"Part name: field, field"` line each; the results card says the numbers rest on them.
 A field is absent when the parts cannot give it; all are `0` when the build cannot hover.
 `price_eur` is a total to verify, not a checkout: catalog samples, or live shop prices once `bom_build` found them.
 After `bom_build` finds live prices, a second `metrics` event carries the live total in `price_eur`; the other numbers repeat.
@@ -432,6 +434,7 @@ Every mission's `metrics` carry `pack_v_start`, `pack_v_min` and `pack_used_mah`
 The model behind it is in `agent/src/pai_agent/mission_sim.py` and `agent/src/pai_agent/plant.py`: mass and inertia from every part at its place, thrust from the motors' load tables along measured propeller curves on a sagging, draining pack, ground effect, motor lag from the propeller size, body and rotor drag, and the camera's view for the chase; `docs/validation.md` compares it with real drones. The client shows the newest run of each mission in the Simulation tab's Missions pane, and one chat card per `simulate_mission` call.
 `controller` is `reference` (simulate_mission: the reference controller, the same for every build, the hardware check) or `trained` (train_controller flies the missions again with the trained gains).
 `reference` is `null`, or on a `trained` run the reference controller's `{value, result, summary}` on the same build, so the card shows both; the trained run is the one its requirement row judges.
+`estimated_inputs` (only when there are any) lists the estimated part numbers the result rests on, as in `metrics`, and on a chase `"camera defaults: ..."` for camera fields the chosen camera did not carry.
 
 ### geometry
 
@@ -528,7 +531,9 @@ The diff also covers changed CAD parameters (key `param:{name}`) and requirement
 
 A part was chosen.
 `category`, `id`, `name`, `mass_g`, `size_mm` (`[length, width, height]` when the part has all three, else `null`), and `diameter_mm` (propellers, motors).
-`provenance` is `curated` (the parts library with specs from product pages: `agent/data/parts.json`, `agent/data/catalogs/makers.json`), `web` (found on a shop page during a build, its specs validated), `catalog` (an older sample catalog part) or `estimate` (no part fits, mass and price estimated); `source_url` is the page its specs come from.
+`provenance` is `curated` (the parts library with specs from product pages: `agent/data/parts.json`, `agent/data/catalogs/makers.json`), `web` (found during a build on the web or at a distributor, its specs validated, kept in the learned library), `catalog` (an older sample catalog part) or `estimate` (no part fits, mass and price estimated); `source_url` is the page its specs come from.
+`confidence` says how its numbers are known: `sourced` (stated on its pages), `derived` (some read off a dimensioned drawing or computed from stated numbers), `estimated` (some are estimates: only in exploration mode, `PAI_ALLOW_ESTIMATED` or Settings, and never a critical field) or `catalog` (a sample catalog part); `estimated` lists those fields.
+A web part adds `fields` (`{field: {confidence, source, basis}}`: the page each number came from, or the basis of an estimate) and `sources` (`[{url, kind, distributor}]`: the shop listing, maker page, datasheet and distributor listings, all naming the same part number).
 `why` is the requirement quote behind the choice, `{text, speaker, time}`, or `null`.
 `reason` is the agent's own reason in one line.
 

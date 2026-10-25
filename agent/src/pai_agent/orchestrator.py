@@ -95,7 +95,9 @@ When they named no number for something the product needs, propose a sensible li
 2. cad_part with part_id for each printed part. FreeCAD builds it headless from a script Claude writes; failed scripts are fixed and retried.
    If a part comes back as a simplified block, call cad_part again for it with a simpler description.
 3. part_pick for each bought part: search with query, then select_id. The catalogs hold real parts with specs from their product pages.
-   When none fits, part_pick with web true finds one on the web with validated specs; select it. Only when that fails, pass an honest estimate.
+   When none fits, part_pick with web true finds one (learned parts, distributors, the web) with validated specs: keywords for a part number or short
+   search words, require for the fields this part must have stated (a camera that must see something: fov_deg, resolution_px, fps); select it.
+   Only when that fails, pass an honest estimate. Say when a part's numbers are estimated (its confidence).
 4. assemble, read the warnings (a part that floats, a part without position) and fix them with placements.
 5. The checks, right after the first assembly and before you tune anything: check_totals, then the ones your requirements need
    (check_tip_over, check_deflection, check_torque, check_runtime, check_power, check_thermal, check_rollover, simulate_assembly). Every check says pass or fail against the requirements.
@@ -129,7 +131,9 @@ The drone (any drone or quadcopter):
    Choose for what the user asked (what the drone is for: fast, agile, precise, long flight, small and light, cheap; its size; its budget), not for a stock build.
    The library spans 65 mm whoops to 5-inch racers with real specs: pair a motor with the propeller of its load table (bench), the pack's cells with the motor's
    cells, the controller's cells and ESC current with the motors, the frame's wheelbase and motor mount with the propeller and motor.
-   When the library has nothing that fits, parts_search with web true and need finds a real part on the web with validated specs; then select it.
+   When the library has nothing that fits, parts_search with web true and need finds a real part (learned parts, distributors, the web) with validated
+   specs; query takes short search words or a part number, require the fields this build needs stated (a chase camera: fov_deg, resolution_px, fps).
+   Then select it, and say when its numbers are estimated (its confidence).
 3. physics_calc. Say the numbers that matter for the request (top speed, acceleration, turn rate, climb rate, flight time in hover and at full speed) and that they are estimates.
    On a warning (a pack that cannot feed the motors, an ESC under the motor current, a thrust figure for another propeller) swap the part and calculate again.
 4. simulate_drone. On fail point at the guilty part with ui_point_at and ui_draw, swap exactly one part, recalculate and simulate again.

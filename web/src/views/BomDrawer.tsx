@@ -49,6 +49,35 @@ function PriceSource({ item, searching }: { item: BomItem; searching: boolean })
   );
 }
 
+const CONFIDENCE_TONE = { sourced: "text-ok-ink", derived: "text-ink-2", estimated: "text-agent-ink", catalog: "text-muted" } as const;
+const CONFIDENCE_HINT = {
+  sourced: "Every number is stated on the part's own pages",
+  derived: "Some numbers are read off its drawing or computed from stated ones",
+  estimated: "Some numbers are estimates (exploration mode), not stated on any page",
+  catalog: "Catalog sample",
+} as const;
+
+/** "sourced", "derived" or "estimated: fov_deg, fps": how the part's numbers are known. */
+function Confidence({ part }: { part: PartEvent }) {
+  const level = part.confidence;
+  if (!level || level === "catalog") return null;
+  const label = level === "estimated" && part.estimated?.length ? `estimated: ${part.estimated.join(", ")}` : level;
+  return (
+    <span className={`font-semibold ${CONFIDENCE_TONE[level]}`} title={CONFIDENCE_HINT[level]}>
+      {" · "}
+      {label}
+    </span>
+  );
+}
+
+const host = (u: string) => {
+  try {
+    return new URL(u).hostname.replace(/^www\./, "");
+  } catch {
+    return u;
+  }
+};
+
 /** Absolute URLs stay, backend paths go to the backend, a bare repo path is served under /files/. */
 const href = (u: string) => (/^(https?:)?\/\//.test(u) || u.startsWith("/") ? assetUrl(u) ?? u : assetUrl(`/files/${u}`) ?? u);
 
@@ -74,11 +103,12 @@ function PartRow({ item, part, searching }: { item: BomItem; part: PartEvent | u
             )}
             {item.price_source === "live" && item.currency && item.currency !== "EUR" && item.price ? ` · ${fmtNum(item.price, 2)} ${item.currency}` : ""}
             {item.price_source === "live" && item.availability && AVAILABILITY[item.availability] ? ` · ${AVAILABILITY[item.availability]}` : ""}
+            {part && <Confidence part={part} />}
           </div>
         </div>
         <PriceSource item={item} searching={searching} />
         <span className="num shrink-0 text-[19px] font-extrabold">{fmtEur(item.qty * item.unit_price_eur)}</span>
-        {part && (part.why || part.reason) && (
+        {part && (part.why || part.reason || part.fields) && (
           <button
             type="button"
             onClick={() => setWhy(!why)}
@@ -92,6 +122,25 @@ function PartRow({ item, part, searching }: { item: BomItem; part: PartEvent | u
         <div className="mt-2.5 space-y-2 pl-14">
           {part.reason && <p className="text-[15px] leading-snug text-ink-2">{part.reason}</p>}
           {part.why && <QuoteBubble quote={part.why} />}
+          {part.fields && (
+            <ul className="num text-[13px] leading-snug text-ink-2">
+              {Object.entries(part.fields).map(([field, f]) => (
+                <li key={field}>
+                  {field} · <span className={CONFIDENCE_TONE[f.confidence]}>{f.confidence}</span>
+                  {f.source ? (
+                    <>
+                      {" · "}
+                      <a href={f.source} target="_blank" rel="noopener noreferrer" className="font-semibold text-link hover:underline">
+                        {host(f.source)}
+                      </a>
+                    </>
+                  ) : f.basis ? (
+                    ` · ${f.basis}`
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
           <WhyButton kind="part" id={part.category} label="Explain the physics" />
         </div>
       )}

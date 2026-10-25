@@ -211,6 +211,32 @@ Every variable is optional.
 | `GEMINI_LIVE_PROVIDER`, `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION`, `GEMINI_API_KEY`, `GEMINI_LIVE_MODEL`, `GEMINI_LIVE_VOICE` | Mechanic's only voice, Gemini Live (default model `gemini-3.8-live`, voice `Fenrir`): Vertex with gcloud user OAuth or AI Studio with a server-only key; empty keeps Mechanic silent with text replies; see [voice setup](docs/GEMINI_LIVE.md). |
 | `RESON8_API_KEY`, `RESON8_LANGUAGE`, `RESON8_CUSTOM_MODEL_ID` | Reson8 speech-to-text (default language `en`); empty uses browser speech recognition. |
 
+### Parts discovery
+
+When the curated library has no part that fits, `parts_search` and `part_pick` with `web` look in the learned library first, then the distributor APIs for electronics, then the web (the shop page, the maker page and the datasheet PDF of the same part number, each number with its own source).
+Every part a build validates is kept in `agent/data/learned/parts.json` (local, gitignored), so the next build finds it at once; review it with `cd agent && uv run python scripts/learned_parts.py list` (`show ID`, `remove ID`, `prune --estimated --older-than DAYS --unused --yes`).
+Prices in any currency convert at the day's ECB reference rate.
+
+| Variable | Purpose |
+| --- | --- |
+| `PAI_ALLOW_ESTIMATED` | `1` is exploration mode (also in Settings): a part may carry clearly labelled estimates for non-critical numbers so a test build goes on. Default `0`: every part number is sourced. |
+| `PAI_LEARNED_PARTS` | Path of the learned parts library (default `agent/data/learned/parts.json`). |
+| `DIGIKEY_CLIENT_ID`, `DIGIKEY_CLIENT_SECRET` | Digi-Key Product Information API v4. |
+| `NEXAR_CLIENT_ID`, `NEXAR_CLIENT_SECRET` | Nexar Supply API (Octopart data). |
+| `MOUSER_API_KEY` | Mouser Search API (30 calls a minute, 1,000 a day). |
+
+#### Distributor APIs (optional)
+
+Each distributor is searched only when its credentials are set; the app works without them.
+Paste the values into `agent/.env` (copy `agent/.env.example`, which has empty lines for each), then restart the backend.
+The parts library's tool status then names them, for example "web search on, Digi-Key, Mouser".
+
+1. **Digi-Key**: open the [Digi-Key developer portal](https://developer.digikey.com) and sign in with a Digi-Key account. Go to Organizations and create one, open it, choose Production Apps, then Create Production App. Name it, enter any OAuth callback (for example `https://localhost`; the client-credentials flow does not use it) and tick the **Product Information V4** product. Open the app and copy its Client ID to `DIGIKEY_CLIENT_ID` and its Client Secret to `DIGIKEY_CLIENT_SECRET`.
+2. **Nexar (Octopart)**: open the [Nexar portal](https://portal.nexar.com), sign up and create an app. Give it the **Supply** scope. On the app's Authorization tab copy the Client ID to `NEXAR_CLIENT_ID` and the Client Secret to `NEXAR_CLIENT_SECRET`. The secret is shown only once, so copy it when it appears; otherwise generate a new one.
+3. **Mouser**: open the [Mouser Search API page](https://www.mouser.com/api-search/), log in to My Mouser and sign up for the Search API. The key is on the APIs page of your My Mouser account (and in the confirmation email); copy it to `MOUSER_API_KEY`.
+
+Tokens are cached until they expire, results for a day, each provider stays inside its per-minute and per-day limits, and no credential is ever logged or printed.
+
 ### Engineering tools and runtime
 
 | Variable | Purpose |

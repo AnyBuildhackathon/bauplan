@@ -48,8 +48,8 @@ class Bus:
 
 
 @pytest.fixture(autouse=True)
-def _isolated(tmp_path, monkeypatch):
-    monkeypatch.setattr(web_parts, "CACHE_PATH", tmp_path / "web_parts.json")
+def _isolated():
+    # conftest keeps the learned library, distributor caches and exchange rates in the test's directory.
     web_parts.clear()
     yield
     web_parts.clear()
@@ -71,7 +71,7 @@ def test_a_missing_required_spec_refuses_the_part():
     del answer["specs"]["thrust_g"]
     part, problems = web_parts.validate("motor", answer)
     assert part is None
-    assert any("thrust_g is not on the page" in p for p in problems)
+    assert any("thrust_g is not on any of its pages" in p for p in problems)
 
 
 def test_a_required_spec_may_not_be_an_estimate():

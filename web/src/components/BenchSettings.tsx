@@ -4,8 +4,9 @@
 // hands-free to push-to-talk. In live mode it also holds the bench's model settings:
 // where Claude runs (the API key or the local Claude Code subscription), which Claude
 // orchestrates, which runs the sub-agents, how hard each one thinks (effort), and
-// whether the orchestrator delegates. GET/POST /api/settings. The 3D printer section
-// sets the user's printer and filaments (lib/printer.ts).
+// whether the orchestrator delegates, and the parts exploration switch (estimated part
+// numbers allowed, labelled, for a test build). GET/POST /api/settings. The 3D printer
+// section sets the user's printer and filaments (lib/printer.ts).
 import { useEffect, useRef, useState } from "react";
 import { SlidersHorizontal } from "lucide-react";
 import { useSource } from "../events/source";
@@ -55,6 +56,8 @@ interface Settings {
   llm_provider: string;
   provider: { requested: string; active: "api" | "subscription" | "mock"; detail: string };
   providers: { id: string; label: string }[];
+  /** Exploration: a web part may carry labelled estimates for non-critical numbers; off keeps every number sourced. */
+  allow_estimated?: boolean;
 }
 
 function Select({ label, value, options, onChange }: { label: string; value: string; options: { value: string; label: string }[]; onChange: (v: string) => void }) {
@@ -198,7 +201,18 @@ export function BenchSettings() {
                       <p className="mb-3 text-[12px] leading-snug text-muted">{settings.provider.detail}</p>
                     </>
                   )}
-                  <h3 className="eyebrow mb-1">Orchestrator</h3>
+                  <h3 className="eyebrow mb-1">Parts</h3>
+                  <Toggle
+                    label="Exploration: allow estimated parts"
+                    hint={
+                      settings.allow_estimated
+                        ? "A part may carry labelled estimates for numbers its pages lack, so a test build goes on"
+                        : "Off: every part number is stated on the part's own pages"
+                    }
+                    on={!!settings.allow_estimated}
+                    onChange={(on) => void change({ allow_estimated: on })}
+                  />
+                  <h3 className="eyebrow mt-3 mb-1">Orchestrator</h3>
                   <Select label="Model" value={settings.orchestrator_model} options={models} onChange={(v) => void change({ orchestrator_model: v })} />
                   <Select label="Effort" value={settings.orchestrator_effort} options={efforts} onChange={(v) => void change({ orchestrator_effort: v })} />
                   <h3 className="eyebrow mt-3 mb-1">Sub-agents</h3>

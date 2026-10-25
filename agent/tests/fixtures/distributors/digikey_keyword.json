@@ -1,0 +1,48 @@
+{
+  "Products": [
+    {
+      "Description": {"ProductDescription": "CAMERA MODULE 1MP GLOBAL SHUTTER", "DetailedDescription": "OV9281 Camera Module 1MP Global Shutter, Monochrome, MIPI CSI-2"},
+      "Manufacturer": {"Id": 5024, "Name": "Arducam"},
+      "ManufacturerProductNumber": "B0165",
+      "UnitPrice": 41.37,
+      "ProductUrl": "https://www.digikey.de/en/products/detail/arducam/B0165/12345678",
+      "DatasheetUrl": "https://www.arducam.com/downloads/datasheet/B0165.pdf",
+      "PhotoUrl": "https://mm.digikey.com/Volume0/opasdata/d220001/medias/images/b0165.jpg",
+      "ProductVariations": [
+        {
+          "DigiKeyProductNumber": "2196-B0165-ND",
+          "PackageType": {"Id": 3, "Name": "Bulk"},
+          "StandardPricing": [{"BreakQuantity": 1, "UnitPrice": 41.37, "TotalPrice": 41.37}],
+          "MyPricing": [],
+          "MarketPlace": false,
+          "TariffActive": false,
+          "Supplier": {"Id": 5024, "Name": "Arducam"},
+          "QuantityAvailableforPackageType": 112,
+          "MaxQuantityForDistribution": 0,
+          "MinimumOrderQuantity": 1,
+          "StandardPackage": 1,
+          "DigiReelFee": 0
+        }
+      ],
+      "QuantityAvailable": 112,
+      "ProductStatus": {"Id": 0, "Status": "Active"},
+      "BackOrderNotAllowed": false,
+      "NormallyStocking": true,
+      "Discontinued": false,
+      "EndOfLife": false,
+      "Ncnr": false,
+      "Parameters": [
+        {"ParameterId": 2061, "ParameterText": "Pixel Size", "ParameterType": "String", "ValueId": "1", "ValueText": "3µm x 3µm"},
+        {"ParameterId": 2062, "ParameterText": "Active Pixel Array", "ParameterType": "String", "ValueId": "2", "ValueText": "1280H x 800V"},
+        {"ParameterId": 2063, "ParameterText": "Frames per Second", "ParameterType": "String", "ValueId": "3", "ValueText": "120"},
+        {"ParameterId": 2064, "ParameterText": "Voltage - Supply", "ParameterType": "String", "ValueId": "4", "ValueText": "3.3V"},
+        {"ParameterId": 46, "ParameterText": "Size / Dimension", "ParameterType": "String", "ValueId": "5", "ValueText": "0.94\" L x 0.94\" W (24.0mm x 24.0mm)"}
+      ],
+      "Category": {"CategoryId": 1003, "ParentId": 0, "Name": "Camera Modules", "ProductCount": 0, "Children": []}
+    }
+  ],
+  "ProductsCount": 1,
+  "ExactMatches": [],
+  "SearchLocaleUsed": {"Site": "DE", "Language": "en", "Currency": "EUR"},
+  "AppliedParametricFiltersDto": []
+}

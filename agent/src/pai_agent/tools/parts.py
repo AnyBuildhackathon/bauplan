@@ -4,15 +4,17 @@ A search filters one category; `select_id` binds a part to the build with a reas
 requirement it serves, whose sentence from the user's request the dashboard shows next to the
 part. Every library part carries its specs, mass, price, shop link, the page its specs come from
 (`source_url`), the date they were checked and which fields are estimates. With `web` true and no
-fitting library part, `pai_agent.web_parts.discover` finds a real product on the web, validates its
-specs and adds it to the library with `provenance: "web"`; it is then selectable like any other.
+fitting library part, `pai_agent.web_parts.discover` looks in the learned library, the distributor
+APIs and then the web, validates the specs (with `require`, the fields this build needs) and adds
+the part to the learned library with `provenance: "web"`; it is then selectable like any other.
+The part event carries the part's confidence (sourced, derived or estimated) and each field's source.
 """
 
 from __future__ import annotations
 
 import json
 
-from pai_agent import web_parts
+from pai_agent import learned_parts, web_parts
 from pai_agent.context import Ctx
 from pai_agent.paths import PARTS_PATH
 from pai_agent.scene import PART_CATEGORIES
@@ -40,10 +42,11 @@ def find(part_id: str) -> dict | None:
 
 
 def _public(part: dict) -> dict:
-    hidden = {"bom_qty", "aliases", "scene_target", "shop_price", "shop_currency", "shop_pack_qty", "price_checked"}
+    hidden = {"bom_qty", "aliases", "scene_target", "shop_price", "shop_currency", "shop_pack_qty", "price_checked", "fields", "sources", "price_rate", "spec_urls"}
     shown = {key: value for key, value in part.items() if key not in hidden}
     shown["qty"] = part["bom_qty"]
     shown["price_is_sample"] = part.get("price_is_sample", True)
+    shown["confidence"] = web_parts.confidence_of(part)
     bench = shown.get("bench")
     if isinstance(bench, dict) and "load_table" in bench:
         shown["bench"] = {k: v for k, v in bench.items() if k != "load_table"}
@@ -82,6 +85,7 @@ async def emit_part(ctx: Ctx, part: dict, because: str = "", reason: str = "") -
         "diameter_mm": part.get("diameter_mm"),
         "provenance": part.get("provenance", "curated"),
         "source_url": part.get("source_url") or part.get("url"),
+        **web_parts.card(part),
     }
     ctx.state.reasons[category] = event
     await ctx.emit(event)
@@ -95,12 +99,14 @@ async def parts_search(ctx: Ctx, args: dict) -> dict:
         return {"ok": False, "error": message, "detail": message}
     query = str(args.get("query", "")).strip().lower()
     found = None
+    discovered = None
     if args.get("web"):
         need = str(args.get("need") or args.get("query") or "").strip()
-        discovered = await web_parts.discover(category, need)
+        require = args.get("require") if isinstance(args.get("require"), list) else []
+        discovered = await web_parts.discover(category, need, str(args.get("query") or ""), require)
         if not discovered.get("ok"):
             message = discovered["error"]
-            return {"ok": False, "error": message, "detail": message[:160], "library": [_public(p) for p in library(category)][:8]}
+            return {"ok": False, "error": message, "detail": message[:160] + web_parts.cost_line(discovered.get("search")), "search": discovered.get("search"), "library": [_public(p) for p in library(category)][:8]}
         found = discovered["part"]
     in_category = library(category)
     if not in_category:
@@ -130,6 +136,8 @@ async def parts_search(ctx: Ctx, args: dict) -> dict:
             return {"ok": False, "error": message, "detail": message}
         ctx.state.selected[category] = dict(chosen)
         selected = select_id
+        if chosen.get("provenance") == "web":
+            learned_parts.mark_used(select_id)
         await emit_part(ctx, chosen, str(args.get("because", "")).strip(), str(args.get("reason", "")).strip())
 
     if found is not None:
@@ -138,7 +146,8 @@ async def parts_search(ctx: Ctx, args: dict) -> dict:
     shown = [_public(part) for part in matches[:8]]
     detail = category + ": " + str(len(shown)) + " hits" + (" (nothing matched " + repr(query) + ", showing the whole category)" if unmatched else "")
     if found is not None:
-        detail = "Web find: " + found["name"] + " from " + found["shop"]
+        origin = {"learned library": "Learned part", "distributors": "Distributor find"}.get(discovered.get("from"), "Web find")
+        detail = origin + ": " + found["name"] + " from " + found["shop"] + " (" + web_parts.confidence_of(found) + ")" + web_parts.cost_line(discovered.get("search"))
     if selected:
         detail = "Picked: " + ctx.state.selected[category]["name"]
     result = {
@@ -149,5 +158,12 @@ async def parts_search(ctx: Ctx, args: dict) -> dict:
         "parts": shown,
     }
     if found is not None:
-        result["web_find"] = {"id": found["id"], "source": web_parts.provenance_line(found), "next": "parts_search with select_id " + found["id"] + " to use it."}
+        result["web_find"] = {
+            "id": found["id"],
+            "from": discovered.get("from"),
+            "source": web_parts.provenance_line(found),
+            **web_parts.card(found),
+            "search": discovered.get("search"),
+            "next": "parts_search with select_id " + found["id"] + " to use it.",
+        }
     return result

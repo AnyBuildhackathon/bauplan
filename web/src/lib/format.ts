@@ -34,3 +34,8 @@ export function boldSegments(text: string): { text: string; bold: boolean }[] {
 export function stripMarkdown(text: string): string {
   return text.replace(/\*\*(.+?)\*\*/g, "$1").replace(/[_`]/g, "");
 }
+
+/** "Rests on estimated numbers of 3 parts" (one part is named with its fields); the lines show on hover. */
+export function estimatedNote(lines: string[]): string {
+  return lines.length === 1 ? `Rests on estimated numbers: ${lines[0]}` : `Rests on estimated numbers of ${lines.length} parts`;
+}
