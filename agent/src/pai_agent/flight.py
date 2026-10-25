@@ -9,9 +9,12 @@ the speed run and hard turn describe one machine with one thrust, pitch-speed an
 - Thrust. Each motor gives its load-table thrust at 100 % throttle. Below the test voltage the
   thrust falls with the square of the voltage (rpm follows volts, thrust follows rpm squared); above
   it the bench figure stays, a higher voltage never invents thrust.
-- Dynamic thrust. Thrust falls linearly with the airflow through the disc to zero at the pitch
-  speed, pitch times loaded rpm (75 % of KV x volts, volts capped at the motor's rating; a prop
-  without a published pitch counts as pitch = 0.8 diameter).
+- Dynamic thrust and the pack. The power train in `plant.py`, the one the missions fly: thrust
+  against the airflow through the disc follows the nearest measured propeller curve (UIUC
+  database) with the motor fitted to its load table spinning up as the prop unloads, on a pack
+  whose voltage sags with the current drawn (internal resistance from its C rating) and drains over
+  the flight. The card's top speed is on the fresh pack; `top_speed_end_kmh` is the same flight at
+  the end of the usable charge.
 - Drag. Body drag 1/2 rho Cd A v^2 on the parts' outlines, Cd 1.0 edgewise and 1.2 through the disc
   plane, plus the rotors' H force (thrust x in-plane air speed / tip speed).
 - Top speed. The fastest level flight where some pitch up to 70 degrees holds altitude on at most
@@ -26,14 +29,18 @@ the speed run and hard turn describe one machine with one thrust, pitch-speed an
   hover two motors go to full and two drop as much, about the inertia of the parts as placed.
 - Endurance. The power for a thrust is read off the motor's published load table (log-log
   between its rows); a motor with only the 100 % row scales power with thrust^1.5 from it, the
-  induced-power exponent. 80 % of the pack counts. Hover carries the weight, top speed carries
-  the thrust that holds it there, full throttle is the 100 % row. The pack's C rating and the ESC
-  rating are checked against the current.
+  induced-power exponent; the plant adds how it changes with airspeed. Hover carries the weight,
+  top speed carries the thrust that holds it there, full throttle is all motors at 100 % as the
+  pack sags. Each flight drains the pack step by step at the current that power takes from the
+  sagging voltage, until 80 % of the capacity is used or a cell falls under 3.3 V under load. The
+  pack's C rating and the ESC rating are checked against the current.
 """
 
 from __future__ import annotations
 
 import math
+
+import numpy as np
 
 G = 9.80665
 RHO = 1.225  # sea-level air, kg/m3
@@ -42,7 +49,6 @@ HOVER_TWR = 1.05
 # The missions' airframe and controller (mission_sim): the same numbers on both sides.
 CD_SIDE = 1.0
 CD_TOP = 1.2
-LOADED_RPM = 0.75
 TILT_MAX = math.radians(70.0)
 THRUST_USE = 0.95
 TURN_SPEED = 8.0
@@ -103,28 +109,6 @@ def thrust_per_motor_g(motor: dict, pack_v: float) -> tuple[float, str | None]:
             + f"{scale:.2f}" + " (rpm follows volts, thrust follows rpm squared)."
         )
     return thrust, None
-
-
-def pitch_speed_ms(motor: dict, propeller: dict, pack_v: float) -> tuple[float, float, str]:
-    """(pitch speed, tip speed) in m/s as the missions take them, and where they come from."""
-
-    diameter = _num(propeller, "diameter_mm") or 51.0
-    pitch_in = _num(propeller, "pitch_in")
-    note = ""
-    if not pitch_in:
-        pitch_in = diameter * 0.8 / 25.4
-        note = " The propeller has no published pitch; 0.8 x its diameter is assumed."
-    kv = _num(motor, "kv")
-    cells_max = _num(motor, "cells_max")
-    volts = min(pack_v, cells_max * 3.8) if cells_max and pack_v else pack_v
-    if not kv or not volts:
-        return 35.0, 110.0, "No KV or pack voltage: pitch speed 35 m/s assumed." + note
-    rpm = kv * volts * LOADED_RPM
-    pitch_speed = pitch_in * 0.0254 * rpm / 60.0
-    tip_speed = rpm / 60.0 * 2 * math.pi * diameter / 2000.0
-    return pitch_speed, tip_speed, (
-        "Pitch speed " + f"{pitch_speed:.1f}" + " m/s: " + f"{pitch_in:.2g}" + " in pitch at " + f"{rpm:.0f}" + " rpm (KV x volts x " + f"{LOADED_RPM:g}" + ")." + note
-    )
 
 
 def _box(part: dict, keys=("length_mm", "width_mm", "height_mm")) -> list[float] | None:
@@ -203,17 +187,23 @@ def inertia(selected: dict, frame_mass_g: float, arm_m: float, pack_mm: list[flo
 
 
 class Model:
-    """The missions' forces in steady flight: thrust that fades with inflow, rotor H force, body drag."""
+    """The missions' forces in steady flight: thrust that fades with inflow, rotor H force, body drag.
 
-    def __init__(self, mass_kg: float, thrust_n: float, pitch_speed: float, tip_speed: float, cda_side: float, cda_top: float) -> None:
+    `curve` is (airspeed through the disc, total full-throttle thrust) from the plant; without it
+    the thrust fades linearly to zero at `pitch_speed`."""
+
+    def __init__(self, mass_kg: float, thrust_n: float, pitch_speed: float, tip_speed: float, cda_side: float, cda_top: float, curve=None) -> None:
         self.m = mass_kg
         self.t0 = thrust_n
         self.vp = pitch_speed
         self.tip = tip_speed
         self.cda_side = cda_side
         self.cda_top = cda_top
+        self.curve = curve
 
     def t_max(self, axial: float) -> float:
+        if self.curve is not None:
+            return float(np.interp(axial, self.curve[0], self.curve[1]))
         return self.t0 * min(1.2, max(0.0, 1.0 - axial / self.vp))
 
     def level(self, speed: float, tilt: float) -> float | None:
@@ -304,16 +294,14 @@ def _airframe(state, selected: dict, weight_g: float) -> tuple[dict, list[str]]:
     """The missions' airframe for these parts; the same rules on the part outlines when the CAD
     geometry cannot be built (a part without the dimensions it needs)."""
 
-    battery = selected["battery"]
     motor = selected["motor"]
-    pack_v = float(battery["voltage_v"])
     try:
         from pai_agent.drone_geometry import geometry as drone_geometry
         from pai_agent.mission_sim import airframe
 
         frame = airframe(drone_geometry(state), selected)
         return {
-            "t0": frame["t0"] * int(motor.get("bom_qty", 4)),
+            "plant": frame["plant"],
             "pitch_speed": frame["pitch_speed"],
             "tip_speed": frame["tip_speed"],
             "cda_side": frame["cda_side"],
@@ -323,14 +311,14 @@ def _airframe(state, selected: dict, weight_g: float) -> tuple[dict, list[str]]:
         }, []
     except Exception as exc:  # the geometry lacks a dimension; the outline estimate takes over
         from pai_agent.mission_sim import motor_lag_s
+        from pai_agent.plant import Plant
 
         shape, notes = geometry(selected, arm_length(state))
-        per_motor, _note = thrust_per_motor_g(motor, pack_v)
-        vp, tip, _ = pitch_speed_ms(motor, selected["propeller"], pack_v)
+        plant = Plant(motor, dict(selected["propeller"], diameter_mm=shape["prop_d_mm"]), selected["battery"], int(motor.get("bom_qty", 4)))
         return {
-            "t0": per_motor * int(motor.get("bom_qty", 4)) * G / 1000.0,
-            "pitch_speed": vp,
-            "tip_speed": tip,
+            "plant": plant,
+            "pitch_speed": plant.zero_thrust_speed(1.0),
+            "tip_speed": plant.tip_speed(1.0),
             "cda_side": CD_SIDE * shape["front_m2"],
             "cda_top": CD_TOP * shape["top_m2"],
             "tau": motor_lag_s(shape["prop_d_mm"]),
@@ -354,7 +342,6 @@ def performance(state, weight_g: float) -> dict:
 
     selected = state.selected
     motor = selected["motor"]
-    propeller = selected["propeller"]
     battery = selected["battery"]
     controller = selected["flight_controller"]
     frame_part = selected["frame"]
@@ -363,11 +350,15 @@ def performance(state, weight_g: float) -> dict:
     per_motor_g, scaled = thrust_per_motor_g(motor, pack_v)
     total_g = per_motor_g * qty
     air, notes = _airframe(state, selected, weight_g)
-    _vp, _tip, vp_note = pitch_speed_ms(motor, propeller, pack_v)
+    plant = air["plant"]
+    fresh = plant.full_throttle(1.0)
     assumptions = [
         "Same model as the MuJoCo missions, from " + air["source"] + ": sea-level air, body drag Cd " + f"{CD_SIDE:g}" + " edgewise and " + f"{CD_TOP:g}"
-        + " through the disc on the parts' outlines, rotor H force, thrust fading linearly to zero at the pitch speed, 95 % thrust and 70 degrees tilt at most.",
-        vp_note,
+        + " through the disc on the parts' outlines, rotor H force, 95 % thrust and 70 degrees tilt at most.",
+        "Full throttle on the fresh pack: " + f"{fresh['thrust_n'] * qty / G * 1000.0:.0f}" + " g of thrust, the pack sagging from " + f"{plant.pack.ocv(1.0):.2f}"
+        + " to " + f"{fresh['v_pack']:.2f}" + " V at " + f"{fresh['current_a']:.0f}" + " A (internal resistance " + f"{plant.pack.r * 1000.0:.1f}"
+        + " mOhm from its " + f"{plant.pack.c_rating:g}" + "C rating). Thrust stops at " + f"{air['pitch_speed'] * 3.6:.0f}" + " km/h through the disc.",
+        *plant.notes,
     ]
     if scaled:
         assumptions.append(scaled)
@@ -376,10 +367,13 @@ def performance(state, weight_g: float) -> dict:
     pack_mm = _box(battery) or [60.0, 18.0, 8.0]
     frame_mass_g = float(state.frame_mass_g if getattr(state, "frame_mass_g", None) is not None else frame_part["mass_g"])
     mass = weight_g / 1000.0
-    model = Model(mass, air["t0"], air["pitch_speed"], air["tip_speed"], air["cda_side"], air["cda_top"])
+    curve = plant.thrust_curve(1.0)
+    model = Model(mass, float(curve[1][0]), air["pitch_speed"], air["tip_speed"], air["cda_side"], air["cda_top"], curve=curve)
     twr = total_g / weight_g if weight_g > 0 else 0.0
     out = {
         "thrust_g": round(total_g, 1),
+        "thrust_full_fresh_g": round(fresh["thrust_n"] * qty / G * 1000.0, 1),
+        "pack_sag_v": round(plant.pack.ocv(1.0) - fresh["v_pack"], 2),
         "drag_area_side_cm2": round(air["cda_side"] * 1e4, 1),
         "drag_area_top_cm2": round(air["cda_top"] * 1e4, 1),
         "pitch_speed_mps": round(air["pitch_speed"], 1),
@@ -387,7 +381,7 @@ def performance(state, weight_g: float) -> dict:
         "arm_length_mm": round(arm_mm, 1),
         "estimate": True,
     }
-    if twr * THRUST_USE < 1.0:
+    if twr * THRUST_USE < 1.0 or model.push(0.0) is None:
         out.update({"top_speed_mps": 0.0, "top_speed_kmh": 0.0, "accel_mps2": 0.0, "climb_rate_mps": 0.0, "turn_rate_dps": 0.0,
                     "flight_time_full_speed_min": 0.0, "flight_time_full_throttle_min": 0.0})
         out["assumptions"] = assumptions + ["Thrust-to-weight under " + f"{1.0 / THRUST_USE:.2f}" + ": on 95 % thrust it cannot hold a hover, so it cannot fly anywhere."]
@@ -415,32 +409,40 @@ def performance(state, weight_g: float) -> dict:
         roll_in = 2.0 * math.sqrt(bank / roll_accel) + 1.5 * air["tau"]
         turn_rate = (math.pi / 2.0) / ((math.pi / 2.0) / turn_rate + roll_in)
 
-    row = bench(motor)
-    full_w_each = float(row.get("power_w") or 0.0)
-    test_v = _num(row, "voltage_v")
-    if full_w_each and test_v and pack_v < 0.9 * test_v:
-        full_w_each *= (pack_v / test_v) ** 3  # prop load power follows rpm cubed
-    usable_ah = float(battery["capacity_mah"]) / 1000.0 * USABLE
-    full_a = full_w_each * qty / pack_v if pack_v > 0 else 0.0
-    full_min = usable_ah / full_a * 60.0 if full_a > 0 else 0.0
+    # Endurance on the sagging, draining pack.
+    full_min, _soc = plant.endurance_min(lambda soc, v: plant.full_throttle(soc)["power_w"])
+    full_a = fresh["current_a"]
     # At top speed the motors make the thrust that holds altitude at that pitch.
     cos, sin = math.cos(tilt), math.sin(tilt)
     drag_x = 0.5 * RHO * air["cda_side"] * top * top * cos
     drag_z = 0.5 * RHO * air["cda_top"] * top * top * sin
     held_n = (mass * G + drag_z * cos - drag_x * sin) / (cos + top * cos * sin / air["tip_speed"]) if top > 0 else mass * G
-    cruise_each_g = min(per_motor_g, max(hover_each, held_n / G * 1000.0 / qty))
-    cruise_w, source = motor_power_w(motor, cruise_each_g)
-    cruise_a = cruise_w * qty / pack_v if pack_v > 0 else 0.0
-    cruise_min = usable_ah / cruise_a * 60.0 if cruise_a > 0 else 0.0
-    assumptions.append("Motor power from the " + source + "; 80 % of the pack's capacity is usable.")
+    cruise_n = max(hover_each * G / 1000.0, held_n / qty)
+    axial = top * sin
+
+    def cruise(soc: float, v: float) -> float:
+        thrust = min(cruise_n, float(plant.thrust_max(v, axial)))
+        return qty * float(plant.power(thrust, axial))
+
+    cruise_min, soc_end = plant.endurance_min(cruise)
+    hover_min, _soc = plant.endurance_min(lambda soc, v: qty * float(plant.power(hover_each * G / 1000.0, 0.0)))
+    tired = Model(mass, 0.0, air["pitch_speed"], air["tip_speed"], air["cda_side"], air["cda_top"], curve=plant.thrust_curve(soc_end))
+    top_end = tired.top_speed() if tired.push(0.0) is not None else 0.0
+    _w, source = motor_power_w(motor, hover_each)
+    assumptions.append(
+        "Motor power from the " + source + "; each flight drains the pack until 80 % of it is used or a cell sags under 3.3 V. At the end of a full-speed flight the top speed is "
+        + f"{top_end * 3.6:.0f}" + " km/h."
+    )
 
     warnings = []
+    row = bench(motor)
+    test_v = _num(row, "voltage_v")
     c_rating = _num(battery, "c_rating")
     if c_rating and full_a:
         limit_a = c_rating * float(battery["capacity_mah"]) / 1000.0
         if full_a > limit_a:
             warnings.append(
-                "At full throttle the motors pull " + f"{full_a:.0f}" + " A; the pack's " + f"{c_rating:g}" + "C rating allows " + f"{limit_a:.0f}" + " A, so the voltage sags and the top speed is lower than computed."
+                "At full throttle the motors pull " + f"{full_a:.0f}" + " A; the pack's " + f"{c_rating:g}" + "C rating allows " + f"{limit_a:.0f}" + " A, so it runs past its rating."
             )
     motor_a = _num(row, "current_a")
     esc_a = _num(controller, "esc_peak_a") or _num(controller, "esc_continuous_a")
@@ -455,6 +457,7 @@ def performance(state, weight_g: float) -> dict:
         {
             "top_speed_mps": round(top, 1),
             "top_speed_kmh": round(top * 3.6, 1),
+            "top_speed_end_kmh": round(top_end * 3.6, 1),
             "top_speed_pitch_deg": round(math.degrees(tilt), 1),
             "accel_mps2": round(accel, 1),
             "accel_g": round(accel / G, 2),
@@ -467,6 +470,7 @@ def performance(state, weight_g: float) -> dict:
             "roll_accel_dps2": round(math.degrees(roll_accel), 0),
             "flip_time_s": round(flip_s, 3) if math.isfinite(flip_s) else None,
             "full_throttle_current_a": round(full_a, 1),
+            "flight_time_hover_min": round(hover_min, 1),
             "flight_time_full_throttle_min": round(full_min, 1),
             "flight_time_full_speed_min": round(cruise_min, 1),
             "assumptions": assumptions,

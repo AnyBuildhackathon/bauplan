@@ -8,13 +8,13 @@ The airframe (`airframe`) comes from the parts, nothing is a fixed constant of o
   motors, the pack under the plate, the board on its standoffs, the frame as a hub and four
   arms. MuJoCo sums them into the body's mass, centre of mass and full inertia matrix, so the
   sim weighs exactly what physics_calc and the bill of materials list.
-- Thrust: each motor's peak static thrust is its catalog `thrust_g` (the bench figure at its
-  rated voltage; a higher-voltage pack never adds thrust, a pack under 90 % of the test voltage
-  loses thrust with the voltage squared, `flight.thrust_per_motor_g`, as physics_calc counts it). Thrust falls linearly with the air
-  speed through the disc, to zero at the propeller's pitch speed: pitch times loaded rpm, with
-  loaded rpm = 75 % of kv times the pack's voltage (capped at 3.8 V per cell the motor is
-  rated for). Without a pitch the propeller is taken as
-  pitch = 0.8 diameter; without a kv, the pitch speed is 35 m/s.
+- Thrust: the power train in `plant.py`. Each motor's static thrust is its maker's 100 % load-table
+  row, and with the air coming through the disc it follows the measured thrust and power
+  coefficients of the nearest documented propeller (UIUC database) while the motor, a DC motor
+  fitted to the same row, spins up as the prop unloads. The pack's voltage sags with the current
+  actually drawn (internal resistance from its C rating and capacity) and drains over the mission,
+  and the full-throttle thrust follows the sagging voltage. Near the floor the thrust gains the
+  Cheeseman-Bennett ground effect.
 - Motor response: a first-order lag of 15 ms for a 51 mm propeller, growing in proportion to the
   diameter, 10 to 120 ms. That puts a 5.1 inch prop at 39 ms, the time constant measured on a
   thrust stand for the Agilicious 5-inch racer (Foehn et al., Science Robotics 2022: 39.1 ms).
@@ -24,8 +24,15 @@ The airframe (`airframe`) comes from the parts, nothing is a fixed constant of o
   disc plane, A from the parts' own outlines (pack, board, motors, arms, camera); plus rotor
   drag (blade flapping, the H force): each rotor pushes back against the in-plane air speed with
   its thrust times the air speed over its tip speed. Air density 1.225 kg/m^3.
-- Not modelled: battery sag over the flight, ground effect, prop wash between rotors, the
-  vortex ring state, sensor noise and estimator delay. The pack is taken as fresh.
+- Chase sensing: the drone sees each fly only through its camera (`plant.camera_spec`): the
+  camera's field of view, uptilt, 720 x 480 pixels and frame rate; a 6 mm fly is detected while it
+  covers 2 pixels and is inside the view. Each fix arrives late by the camera's latency, one frame
+  and the detector's pass, with half a pixel of noise in bearing and in apparent size (so in
+  range), into a constant-velocity Kalman filter that predicts across the delay. A track coasts
+  0.5 s without a fix; then the drone stops and turns on the spot to search. It starts with the
+  fly's first position pointed out to it, no velocity.
+- Not modelled: prop wash between rotors, the vortex ring state, motor heating, the drone's own
+  sensor noise (it knows its own position and attitude exactly).
 
 The flight controller is the same for every build: a geometric attitude controller whose
 bandwidth follows the motor lag (0.8 / lag, at most 28 rad/s: half the 1.6 / lag where a PD loop
@@ -43,7 +50,7 @@ import random
 
 import numpy as np
 
-from pai_agent.flight import thrust_per_motor_g
+from pai_agent.plant import Plant, camera_spec, ground_effect
 
 GRAVITY = 9.80665
 RHO = 1.225
@@ -51,7 +58,6 @@ DT = 0.002
 SAMPLE_S = 0.02
 START_Z = 1.5
 TILT_MAX = math.radians(70.0)
-LOADED_RPM = 0.75
 
 MISSIONS = {
     "speed_run": {"label": "Speed run", "requirement": "top_speed", "key": "top_speed_kmh", "unit": "km/h", "kind": "min"},
@@ -101,20 +107,8 @@ def airframe(geo: dict, selected: dict) -> dict:
     if not geo["masses"]:
         raise AirframeError("No parts chosen yet.")
     diameter = float(geo["propeller"]["diameter_mm"])
-    pitch_in = _num(prop, "pitch_in") or diameter * 0.8 / 25.4
-    kv = _num(motor, "kv")
-    volts = _num(battery, "voltage_v")
-    cells_max = _num(motor, "cells_max")
-    if volts and cells_max:
-        # A pack above the motor's rating spins it no faster here, as physics_calc adds no thrust for it.
-        volts = min(volts, cells_max * 3.8)
-    if kv and volts:
-        rpm = kv * volts * LOADED_RPM
-        pitch_speed = pitch_in * 0.0254 * rpm / 60.0
-        tip_speed = rpm / 60.0 * 2 * math.pi * diameter / 2000.0
-    else:
-        pitch_speed = 35.0
-        tip_speed = 110.0
+    plant = Plant(motor, dict(prop, diameter_mm=diameter), battery, qty)
+    fresh = plant.full_throttle(1.0)
     scale = diameter / 51.0
     pack = geo["battery"]["size_mm"]
     bell = geo["motor"]["bell_diameter_mm"]
@@ -140,10 +134,14 @@ def airframe(geo: dict, selected: dict) -> dict:
     return {
         "geo": geo,
         "rotors": rotors,
-        # Below the load table's voltage the motor makes less thrust, as physics_calc computes it.
-        "t0": thrust_per_motor_g(motor, float(battery["voltage_v"]))[0] / 1000.0 * GRAVITY if battery.get("voltage_v") else thrust_g / 1000.0 * GRAVITY,
-        "pitch_speed": pitch_speed,
-        "tip_speed": tip_speed,
+        # Full-throttle static thrust per motor on the fresh pack, sagged under that load.
+        "t0": fresh["thrust_n"],
+        "plant": plant,
+        "camera": camera_spec(selected.get("camera")),
+        "rotor_radius": diameter / 2000.0,
+        # The airspeed through the disc where full throttle makes no thrust any more.
+        "pitch_speed": plant.zero_thrust_speed(1.0),
+        "tip_speed": plant.tip_speed(1.0),
         "tau": motor_lag_s(diameter),
         "kq": 0.012 * scale,
         "cda_side": 1.0 * side,
@@ -213,6 +211,13 @@ class _Flight:
         self.peak_rate = 0.0
         self.saturated = 0.0
         self.thrust_left = 1.0
+        # The pack starts fresh and sags with what the motors draw.
+        self.plant = frame["plant"]
+        self.soc = 1.0
+        self.v_pack = self.plant.full_throttle(1.0)["v_pack"]
+        self.v_start = self.plant.pack.ocv(1.0)
+        self.v_min = self.v_start
+        self.axial = np.zeros(4)
         mujoco.mj_resetData(self.model, self.data)
         self.data.qpos[0:3] = (0.0, 0.0, START_Z)
         self.data.qpos[3:7] = (1.0, 0.0, 0.0, 0.0)
@@ -242,11 +247,22 @@ class _Flight:
     # -- one step -----------------------------------------------------------------------------
 
     def _limits(self, rot: np.ndarray, v_rel_b: np.ndarray, w_b: np.ndarray) -> np.ndarray:
-        axial = v_rel_b[2] + np.cross(w_b, self.r)[:, 2]
-        factor = np.clip(1.0 - axial / self.frame["pitch_speed"], 0.0, 1.2)
-        return self.frame["t0"] * factor
+        # Positive axial: the disc moving along its thrust axis into the air, as when climbing or
+        # tilted forward at speed, so the air comes through it faster.
+        self.axial = v_rel_b[2] + np.cross(w_b, self.r)[:, 2]
+        return self.plant.thrust_max(self.v_pack, self.axial)
 
-    def step(self, accel: np.ndarray) -> None:
+    def _drain(self) -> None:
+        watts = float(self.plant.power(self.thrust, self.axial).sum())
+        self.v_pack, current = self.plant.pack.terminal(self.soc, watts)
+        self.soc = self.plant.pack.drain(self.soc, current, DT)
+        self.v_min = min(self.v_min, self.v_pack)
+
+    def pack_numbers(self) -> dict:
+        used = (1.0 - self.soc) * self.plant.pack.capacity_ah * 1000.0
+        return {"pack_v_start": round(self.v_start, 2), "pack_v_min": round(self.v_min, 2), "pack_used_mah": round(used, 1)}
+
+    def step(self, accel: np.ndarray, heading: np.ndarray | None = None) -> None:
         frame = self.frame
         rot = self.rotation()
         w_b = np.array(self.data.qvel[3:6])
@@ -267,9 +283,9 @@ class _Flight:
             self.saturated += DT
         force = self.mass * np.array([horizontal[0], horizontal[1], up])
 
-        # Attitude: point the thrust along the force, nose kept to world +y.
+        # Attitude: point the thrust along the force, nose kept to world +y or to `heading`.
         b3 = force / max(float(np.linalg.norm(force)), 1e-9)
-        b2 = np.cross(b3, np.array([1.0, 0.0, 0.0]))
+        b2 = np.cross(b3, np.array([1.0, 0.0, 0.0])) if heading is None else heading - (heading @ b3) * b3
         b2 /= max(float(np.linalg.norm(b2)), 1e-9)
         b1 = np.cross(b2, b3)
         target = np.column_stack([b1, b2, b3])
@@ -289,14 +305,17 @@ class _Flight:
         cmd = np.clip(cmd, 0.0, t_max)
         self.thrust += (cmd - self.thrust) * (DT / frame["tau"])
         self.thrust = np.minimum(self.thrust, t_max)
+        self._drain()
 
-        # Plant: rotor thrust and H force, body drag, yaw drag torque.
+        # Plant: rotor thrust (with ground effect) and H force, body drag, yaw drag torque.
+        heights = float(self.data.qpos[2]) + (rot @ self.r.T)[2]
+        lift = self.thrust * ground_effect(heights, frame["rotor_radius"])
         f_b = np.zeros(3)
         tau_b = np.zeros(3)
         for i in range(4):
             v_i = v_rel_b + np.cross(w_b, self.r[i])
             in_plane = np.array([v_i[0], v_i[1], 0.0])
-            f_i = np.array([0.0, 0.0, self.thrust[i]]) - self.thrust[i] * in_plane / frame["tip_speed"]
+            f_i = np.array([0.0, 0.0, lift[i]]) - self.thrust[i] * in_plane / frame["tip_speed"]
             f_b += f_i
             tau_b += np.cross(self.r[i], f_i)
             tau_b[2] -= self.spin[i] * frame["kq"] * self.thrust[i]
@@ -376,6 +395,7 @@ def speed_run(frame: dict, duration: float = 8.0) -> dict:
         # How much of the static thrust the props still make at top speed: low means the pitch speed is the wall.
         "thrust_left_pct": round(flight.thrust_left * 100.0, 0),
         "distance_m": round(float(flight.pos[0]), 1),
+        **flight.pack_numbers(),
         "series": [[t, s] for t, s in speeds],
         "poses": poses,
     }
@@ -430,6 +450,7 @@ def turn(frame: dict, speed: float = TURN_SPEED, duration: float = 4.0) -> dict:
         "turn_rate_dps": round(90.0 / turn_time, 1) if turn_time else 0.0,
         "overshoot_pct": round(max(peak - 90.0, 0.0) / 90.0 * 100.0, 1),
         "peak_body_rate_dps": round(math.degrees(flight.peak_rate), 0),
+        **flight.pack_numbers(),
         "series": [[t, h] for t, h in headings],
         "poses": poses,
     }
@@ -476,6 +497,9 @@ def hold(frame: dict, duration: float = 6.0) -> dict:
         "hold_error_cm": round(worst if not crashed else 999.0, 1),
         "rms_error_cm": round(rms, 1),
         "wind_ms": 3.0,
+        # The thrust gained from the floor at the hold's height: the hold flies too high for it to matter.
+        "ground_effect_pct": round(float(ground_effect(START_Z, frame["rotor_radius"]) - 1.0) * 100.0, 3),
+        **flight.pack_numbers(),
         "series": [[t, e] for t, e in errors],
         "wind": wind,
         "poses": poses,
@@ -516,8 +540,100 @@ def _fly_path(seed: int, duration: float, speed: float) -> list[np.ndarray]:
     return path
 
 
-def _chase_one(frame: dict, fly: list[np.ndarray], record: bool) -> dict:
+class _Tracker:
+    """A constant-velocity Kalman filter on the camera's delayed, noisy fixes of the fly."""
+
+    ACCEL = 30.0  # m/s^2: a fly at 2.5 m/s darts off by up to 120 degrees in about a tenth of a second
+
+    def __init__(self, position: np.ndarray, sigma: float) -> None:
+        self.x = np.concatenate([position, np.zeros(3)])
+        self.P = np.diag([sigma * sigma] * 3 + [TARGET_SPEED * TARGET_SPEED] * 3)
+        self.t = 0.0
+        self.last_fix: float | None = None
+
+    def _propagate(self, dt: float) -> None:
+        if dt <= 0:
+            return
+        f = np.eye(6)
+        f[0:3, 3:6] = np.eye(3) * dt
+        q = self.ACCEL * self.ACCEL
+        block = np.array([[dt**4 / 4, dt**3 / 2], [dt**3 / 2, dt * dt]]) * q
+        self.x = f @ self.x
+        self.P = f @ self.P @ f.T + np.kron(block, np.eye(3))
+
+    def update(self, z: np.ndarray, cov: np.ndarray, t_capture: float) -> None:
+        self._propagate(t_capture - self.t)
+        self.t = max(self.t, t_capture)
+        h = np.hstack([np.eye(3), np.zeros((3, 3))])
+        s = h @ self.P @ h.T + cov
+        gain = self.P @ h.T @ np.linalg.inv(s)
+        self.x = self.x + gain @ (z - h @ self.x)
+        self.P = (np.eye(6) - gain @ h) @ self.P
+        self.last_fix = t_capture
+
+    def at(self, t: float) -> tuple[np.ndarray, np.ndarray]:
+        """Position and velocity predicted across the delay to now."""
+
+        return self.x[0:3] + self.x[3:6] * (t - self.t), self.x[3:6].copy()
+
+
+TRACK_COAST_S = 0.5
+CUE_S = 1.0
+SEARCH_YAW = 3.0
+YAW_RATE = 10.0
+
+
+def _look(flight: _Flight, camera: dict, fly: np.ndarray) -> tuple[bool, float, float, float]:
+    """(seen, azimuth, elevation, pixels): where the fly is in the camera's picture and how big."""
+
+    rot = flight.rotation()
+    tilt = camera["tilt"]
+    forward = rot @ np.array([0.0, math.cos(tilt), math.sin(tilt)])
+    up = rot @ np.array([0.0, -math.sin(tilt), math.cos(tilt)])
+    right = rot @ np.array([1.0, 0.0, 0.0])
+    rel = fly - flight.pos
+    ahead = float(rel @ forward)
+    distance = float(np.linalg.norm(rel))
+    pixels = 0.006 / max(distance, 1e-6) / camera["ifov"]
+    if ahead <= 0:
+        return False, 0.0, 0.0, pixels
+    az = math.atan2(float(rel @ right), ahead)
+    el = math.atan2(float(rel @ up), ahead)
+    seen = abs(az) <= camera["fov_h"] / 2 and abs(el) <= camera["fov_v"] / 2 and pixels >= 2.0
+    return seen, az, el, pixels
+
+
+def _fix(flight: _Flight, camera: dict, az: float, el: float, pixels: float, rng: random.Random) -> tuple[np.ndarray, np.ndarray]:
+    """The fly's position from one detection: half a pixel of noise in bearing and in apparent size."""
+
+    rot = flight.rotation()
+    tilt = camera["tilt"]
+    forward = rot @ np.array([0.0, math.cos(tilt), math.sin(tilt)])
+    up = rot @ np.array([0.0, -math.sin(tilt), math.cos(tilt)])
+    right = rot @ np.array([1.0, 0.0, 0.0])
+    ifov = camera["ifov"]
+    az += rng.gauss(0.0, 0.5 * ifov)
+    el += rng.gauss(0.0, 0.5 * ifov)
+    seen_px = max(pixels + rng.gauss(0.0, 0.5), 1.0)
+    distance = 0.006 / (seen_px * ifov)
+    ray = forward + math.tan(az) * right + math.tan(el) * up
+    ray /= float(np.linalg.norm(ray))
+    sigma_r = distance * 0.5 / seen_px
+    sigma_side = distance * 0.5 * ifov
+    cov = sigma_r * sigma_r * np.outer(ray, ray) + sigma_side * sigma_side * (np.eye(3) - np.outer(ray, ray))
+    return flight.pos + ray * distance, cov
+
+
+def _chase_one(frame: dict, fly: list[np.ndarray], record: bool, seed: int = 0) -> dict:
     flight = _Flight(frame)
+    camera = frame["camera"]
+    rng = random.Random(1000 + seed)
+    tracker = _Tracker(fly[0], 0.5)
+    pending: list[tuple[float, np.ndarray, np.ndarray, float]] = []
+    period = 1.0 / camera["fps"]
+    next_frame = 0.0
+    # The nose (and the camera) starts towards the fly.
+    psi = math.atan2(float(fly[0][1] - flight.pos[1]), float(fly[0][0] - flight.pos[0]))
     poses: list = []
     target: list[list[float]] = []
     distances: list[list[float]] = []
@@ -525,9 +641,13 @@ def _chase_one(frame: dict, fly: list[np.ndarray], record: bool) -> dict:
     closest = float("inf")
     captured_at = None
     crashed = False
+    first_fix = None
+    lost_at = None
+    reacquire = 0.0
+    lost_count = 0
+    seen_time = 0.0
     for step in range(len(fly) - 1):
         p_t = fly[step]
-        v_t = (fly[step + 1] - p_t) / DT
         distance = float(np.linalg.norm(p_t - flight.pos))
         closest = min(closest, distance)
         done = distance <= CAPTURE_M
@@ -538,18 +658,62 @@ def _chase_one(frame: dict, fly: list[np.ndarray], record: bool) -> dict:
         if done:
             captured_at = flight.t
             break
-        # Lead pursuit: match the fly's velocity, aim where it will be when the drone gets there
-        # (at most 1 s ahead), and close at 4 m/s per metre of gap, never slower than 3 m/s.
-        closing = max(CLOSING_MS, float(np.linalg.norm(flight.vel)))
-        aim = p_t + v_t * min(distance / closing, 1.0)
-        lead = aim - flight.pos
-        reach = float(np.linalg.norm(lead))
-        v_des = v_t + lead / max(reach, 1e-6) * min(max(4.0 * reach, CLOSING_MS), 30.0)
-        flight.step(10.0 * (v_des - flight.vel))
+        # The camera: one picture per frame, the fix reaches the estimator after the delay.
+        if flight.t >= next_frame - 1e-9:
+            next_frame += period
+            seen, az, el, pixels = _look(flight, camera, p_t)
+            if seen:
+                z, cov = _fix(flight, camera, az, el, pixels, rng)
+                pending.append((flight.t + camera["delay_s"], z, cov, flight.t))
+                seen_time += period
+                if first_fix is None:
+                    first_fix = flight.t
+                if lost_at is not None:
+                    reacquire += flight.t - lost_at
+                    lost_at = None
+            elif first_fix is not None and lost_at is None:
+                lost_at = flight.t
+                lost_count += 1
+        while pending and pending[0][0] <= flight.t + 1e-9:
+            _ready, z, cov, taken = pending.pop(0)
+            tracker.update(z, cov, taken)
+        tracking = (tracker.last_fix is not None and flight.t - tracker.last_fix <= TRACK_COAST_S + camera["delay_s"]) or (tracker.last_fix is None and flight.t <= CUE_S)
+        if tracking:
+            # Lead pursuit on the estimate: match the fly's velocity, aim where it will be when the
+            # drone gets there (at most 1 s ahead), and close at 4 m/s per metre of gap, never slower than 3 m/s.
+            p_hat, v_hat = tracker.at(flight.t)
+            gap = float(np.linalg.norm(p_hat - flight.pos))
+            closing = max(CLOSING_MS, float(np.linalg.norm(flight.vel)))
+            aim = p_hat + v_hat * min(gap / closing, 1.0)
+            lead = aim - flight.pos
+            reach = float(np.linalg.norm(lead))
+            v_des = v_hat + lead / max(reach, 1e-6) * min(max(4.0 * reach, CLOSING_MS), 30.0)
+            want = math.atan2(float(p_hat[1] - flight.pos[1]), float(p_hat[0] - flight.pos[0]))
+        else:
+            # Lost: stop and turn on the spot until the fly is in the picture again.
+            v_des = np.zeros(3)
+            want = psi + SEARCH_YAW * DT
+        turn_by = (want - psi + math.pi) % (2 * math.pi) - math.pi
+        psi += float(np.clip(turn_by, -YAW_RATE * DT, YAW_RATE * DT))
+        flight.step(10.0 * (v_des - flight.vel), heading=np.array([math.cos(psi), math.sin(psi), 0.0]))
         if flight.crashed():
             crashed = True
             break
-    return {"capture_s": None if captured_at is None else round(captured_at, 2), "closest_cm": round(closest * 100.0, 1), "crashed": crashed, "poses": poses, "target": target, "series": distances}
+    if lost_at is not None:
+        reacquire += flight.t - lost_at
+    return {
+        "capture_s": None if captured_at is None else round(captured_at, 2),
+        "closest_cm": round(closest * 100.0, 1),
+        "crashed": crashed,
+        "first_fix_s": None if first_fix is None else round(first_fix, 2),
+        "reacquire_s": round(reacquire, 2),
+        "tracks_lost": lost_count,
+        "seen_pct": round(seen_time / max(flight.t, 1e-6) * 100.0, 0),
+        "pack": flight.pack_numbers(),
+        "poses": poses,
+        "target": target,
+        "series": distances,
+    }
 
 
 def chase(frame: dict, flies: int = CHASE_FLIES, duration: float = CHASE_S, speed: float = TARGET_SPEED) -> dict:
@@ -562,14 +726,14 @@ def chase(frame: dict, flies: int = CHASE_FLIES, duration: float = CHASE_S, spee
 
     tries = []
     for seed in range(flies):
-        tries.append(_chase_one(frame, _fly_path(seed, duration, speed), record=False))
+        tries.append(_chase_one(frame, _fly_path(seed, duration, speed), record=False, seed=seed))
     times = sorted(t["capture_s"] if t["capture_s"] is not None else math.inf for t in tries)
     median = times[len(times) // 2]
     caught = sum(1 for t in tries if t["capture_s"] is not None)
     # Replay the fly closest to the median: the typical chase, not the luckiest one.
     order = sorted(range(flies), key=lambda i: (tries[i]["capture_s"] if tries[i]["capture_s"] is not None else math.inf, tries[i]["closest_cm"]))
     shown = order[len(order) // 2]
-    replay = _chase_one(frame, _fly_path(shown, duration, speed), record=True)
+    replay = _chase_one(frame, _fly_path(shown, duration, speed), record=True, seed=shown)
     missed = [t["closest_cm"] for t in tries if t["capture_s"] is None]
     return {
         "crashed": any(t["crashed"] for t in tries),
@@ -581,10 +745,23 @@ def chase(frame: dict, flies: int = CHASE_FLIES, duration: float = CHASE_S, spee
         "target_speed_kmh": round(speed * 3.6, 1),
         "capture_radius_cm": round(CAPTURE_M * 100.0, 0),
         "shown_fly": shown + 1,
+        # What the camera allows: the range a 6 mm fly still covers 2 pixels, the delay of each fix,
+        # and the time spent looking for a fly the camera had lost, per fly.
+        "detect_range_m": round(frame["camera"]["detect_range_m"], 2),
+        "sensing_delay_ms": round(frame["camera"]["delay_s"] * 1000.0, 0),
+        "first_fix_s": _median([t["first_fix_s"] for t in tries]),
+        "reacquire_s": round(sum(t["reacquire_s"] for t in tries) / flies, 2),
+        "tracks_lost": sum(t["tracks_lost"] for t in tries),
+        **replay["pack"],
         "series": replay["series"],
         "target": replay["target"],
         "poses": replay["poses"],
     }
+
+
+def _median(values: list) -> float | None:
+    known = sorted(v for v in values if v is not None)
+    return known[len(known) // 2] if known else None
 
 
 RUNNERS = {"speed_run": speed_run, "turn": turn, "hold": hold, "chase": chase}

@@ -280,7 +280,18 @@
       "provenance": "curated",
       "source_url": "https://www.caddxfpv.com/products/caddx-ant-analog-camera",
       "checked": "2026-10-24",
-      "estimated": []
+      "estimated": [
+        "fps",
+        "resolution_px"
+      ],
+      "fov_deg": 165,
+      "resolution_px": [
+        720,
+        480
+      ],
+      "fps": 30,
+      "video": "NTSC (also PAL)",
+      "sensing_source": "FOV 165 degrees with the 1.8 mm lens per the Caddx Ant listings (rotorama.com/product/caddx-ant-nano); 720 x 480 is NTSC digitised per ITU-R BT.601, 30 frames per second (59.94 fields). No latency is published."
     },
     {
       "id": "toothpick-canopy-holder",
@@ -2141,7 +2152,18 @@
       "provenance": "curated",
       "source_url": "https://betafpv.com/products/c03-fpv-micro-camera",
       "checked": "2026-10-25",
-      "estimated": []
+      "estimated": [
+        "fps",
+        "resolution_px"
+      ],
+      "fov_deg": 160,
+      "resolution_px": [
+        720,
+        480
+      ],
+      "fps": 30,
+      "video": "NTSC (4:3)",
+      "sensing_source": "Lens 2.1 mm (M7), FOV 160 degrees, NTSC 4:3 per the page; 720 x 480 is NTSC digitised per ITU-R BT.601, 30 frames per second. No latency is published."
     },
     {
       "id": "betafpv-c04",
@@ -2171,7 +2193,18 @@
       "provenance": "curated",
       "source_url": "https://betafpv.com/products/c04-fpv-camera",
       "checked": "2026-10-25",
-      "estimated": []
+      "estimated": [
+        "fps",
+        "resolution_px"
+      ],
+      "fov_deg": 160,
+      "resolution_px": [
+        720,
+        480
+      ],
+      "fps": 30,
+      "video": "NTSC (4:3)",
+      "sensing_source": "FOV 160 degrees, NTSC 4:3 per the page; 720 x 480 is NTSC digitised per ITU-R BT.601, 30 frames per second. No latency is published."
     },
     {
       "id": "caddx-ratel-19mm",
@@ -2202,7 +2235,19 @@
       "provenance": "curated",
       "source_url": "https://betafpv.com/products/caddx-ratel-camera",
       "checked": "2026-10-25",
-      "estimated": []
+      "estimated": [
+        "fps",
+        "resolution_px"
+      ],
+      "fov_deg": 160,
+      "resolution_px": [
+        720,
+        480
+      ],
+      "fps": 30,
+      "latency_ms": 8,
+      "video": "NTSC or PAL (4:3 or 16:9)",
+      "sensing_source": "2.1 mm lens, 160 degrees, latency 8 ms, NTSC or PAL per the page; 720 x 480 is NTSC digitised per ITU-R BT.601, 30 frames per second."
     },
     {
       "id": "betafpv-a03-vtx",

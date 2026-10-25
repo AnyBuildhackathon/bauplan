@@ -207,8 +207,8 @@ SCHEMAS = [
     {
         "name": "physics_calc",
         "description": (
-            "Computes from the chosen parts' specs: mass, thrust-to-weight, flight time in hover, price, and the flight performance: top speed (thrust, mass, a drag model and the prop's pitch speed), "
-            "acceleration, time to 90 % of top speed, climb rate, turn rate and radius at half top speed, flip time, flight time at full speed and at full throttle, the inertia of the parts as placed. "
+            "Computes from the chosen parts' specs: mass, thrust-to-weight, flight time in hover, price, and the flight performance: top speed (thrust fading with airspeed along a measured prop curve, mass, a drag model, on the fresh pack and at the end of it), "
+            "acceleration, time to 90 % of top speed, climb rate, turn rate and radius at half top speed, flip time, flight time at full speed and at full throttle on the sagging, draining pack, the inertia of the parts as placed. "
             "Every performance number is an estimate; assumptions lists what was assumed and warnings what does not fit (a pack whose C rating cannot feed the motors, an ESC under the motor current)."
         ),
         "input_schema": {"type": "object", "properties": {}},
@@ -221,12 +221,12 @@ SCHEMAS = [
     {
         "name": "simulate_mission",
         "description": (
-            "Mission tests in MuJoCo for the drone, built from the chosen parts: mass and inertia from every part at its place, thrust from the motors' thrust_g "
-            "falling to zero at the propeller's pitch speed, motor lag from the prop size, body and rotor drag. "
+            "Mission tests in MuJoCo for the drone, built from the chosen parts: mass and inertia from every part at its place, thrust from the motors' load tables "
+            "along a measured propeller curve on a pack that sags and drains, ground effect, motor lag from the prop size, body and rotor drag. "
             "speed_run: full throttle from a hover, top speed (km/h) and the time to reach it; judged on top_speed. "
             "turn: a 90° course change at 29 km/h, turn rate (°/s) and overshoot; judged on turn_rate. "
             "hold: hold a point at 1.5 m in 3 m/s gusting wind with a downdraft, worst drift (cm); judged on hold_error. "
-            "chase: chase five flies that dart off every 0.5 to 0.9 s, capture within 12 cm, median capture time (s); judged on chase_time. "
+            "chase: chase five flies that dart off every 0.5 to 0.9 s, capture within 12 cm, median capture time (s); the drone sees each fly only through its camera (field of view, pixels, frame rate, delay); judged on chase_time. "
             "Pick from the request: fast or racing means speed_run and turn, agile means turn, precise or steady means hold, hunting, catching or intercepting means chase (and speed_run and turn). "
             "Each mission is a requirement check: pass limit with the user's number and quote when they typed one; without a limit the row already set by product_brief is used, else Mechanic proposes one. "
             "Every result says why the build is limited, for the fix loop."
