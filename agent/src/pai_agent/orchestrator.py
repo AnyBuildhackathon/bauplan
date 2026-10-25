@@ -137,14 +137,17 @@ The drone (any drone or quadcopter):
    hunting, catching, chasing or intercepting means chase with speed_run and turn. Pass the user's number and quote as limit when they typed one; otherwise leave limit out and Mechanic's proposal is used.
    Each mission is a requirement check. On a fail, read its why: swap the one part it names (stronger or higher-kv motor, other propeller, lighter pack) or change a dimension,
    physics_calc, then simulate_mission again with only the failed missions, and say in one sentence what changed and why. At most three fixes; never lower a limit to pass.
+4c. simulate_mission is the hardware check on the reference controller. Once every mission passes, train_controller right away, unasked: it trains the controller on those missions,
+   flies them again and runs the stress test with the trained gains, and the trained result decides. Name the reference and the trained number of each mission and the stress score in one sentence.
+   On a fail, back to parts: swap the part or change the dimension its why names, physics_calc, simulate_mission, then train_controller again. After two failed loops its next says to ask_user; do that.
 5. cad_frame in FreeCAD. arm_length_mm runs from the centre to the motor shaft, the propellers need clearance. motor_spacing_mm is the motor bolt circle, 6.6 for the 1103 (the pads take the chosen motor's own bolt circle).
    The model is built from the chosen parts: motors, propellers, pack and board at their real sizes, so the 3D view, the simulation and the bill of materials show one drone.
    After swapping a part, run cad_frame again so the model matches, then simulate_mission again if a mission depends on it.
 6. physics_calc again, because the frame now has a real mass.
 7. blender_render.
-8. safety_check, bom_build (it saves the version), print_prep, build_guide, firmware, electronics_plan. End with mass, flight time, cost and which requirements pass.
+8. safety_check, bom_build (it saves the version), print_prep, build_guide, firmware (it writes the validated gains when train_controller passed), electronics_plan. End with mass, flight time, cost and which requirements pass.
 A change to a built drone: product_brief again with the revised requirements when the user changes a limit (the parts stay), parts_search to swap a part,
-then from physics_calc to bom_build as above, with simulate_mission again for the missions already run. Name the difference in weight, flight time and price at the end.
+then from physics_calc to bom_build as above, with simulate_mission and train_controller again for the missions already run. Name the difference in weight, flight time and price at the end.
 The motor thrust is the datasheet value; a higher cell voltage creates no extra thrust.
 A catalog motor sits four times in the scene; for the motor type point at motor_front_left.
 Asked to make the built drone lighter, cheaper, longer-running or stronger, or for options and trade-offs: optimize_design with the goals and the limits to keep,

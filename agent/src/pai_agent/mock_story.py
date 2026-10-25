@@ -403,7 +403,85 @@ async def _missions(ctx: Ctx, missions: list[str]) -> None:
         worst = failed[0]
         await _say(ctx, "besorgt", "Mission check: not all green.", worst["summary"] + " " + worst["why"] + " The offline catalog has no stronger part for this; with the live model I would search for one.")
     else:
-        await _say(ctx, "freut_sich", "All missions pass.", "All " + str(len(flown["missions"])) + " missions pass with these parts; the card has the numbers and every replay is in the Simulation tab.")
+        await _say(
+            ctx,
+            "freut_sich",
+            "All missions pass.",
+            "All " + str(len(flown["missions"])) + " missions pass with these parts on the reference controller; the card has the numbers and every replay is in the Simulation tab.",
+        )
+        await _train_loop(ctx, missions)
+
+
+# The offline training budget: no time limit, so the numbers are the same on every machine.
+MOCK_TRAINING = {"population": 6, "generations": 3, "time_limit_s": 0}
+
+
+def _compare(result: dict) -> str:
+    """Each mission's reference and trained number, and the stress score, in one line."""
+
+    def number(value, unit: str) -> str:
+        return "no catch" if value is None else en(float(value), 1 if unit in {"s", "cm"} else 0) + " " + unit
+
+    parts = [
+        row["mission"].replace("_", " ").capitalize() + ": reference " + number(row["reference"]["value"], row["unit"]) + ", trained " + number(row["trained"]["value"], row["unit"])
+        for row in result["missions"]
+    ]
+    stress = result["stress"]
+    return ". ".join(parts) + ". Stress test with the trained gains: " + str(stress["survived"]) + "/" + str(stress["total"]) + " worlds."
+
+
+async def _train_loop(ctx: Ctx, missions: list[str]) -> None:
+    """Steps 2 to 4: train on the missions, re-fly them and the stress test with the trained gains, back to parts on a fail."""
+
+    from pai_agent.tools.train_loop import MAX_LOOPS
+
+    runs = MOCK_TRAINING["population"] * MOCK_TRAINING["generations"]
+    await _say(
+        ctx,
+        "erklaert",
+        "Hardware passes. Now the controller learns the job.",
+        "That was the hardware check: the reference controller every build gets. The drone flies the firmware's gains, so I train them on these missions now, "
+        + str(runs)
+        + " MuJoCo flights on this machine, then fly every mission and 50 stress worlds again with the trained gains. The trained result decides.",
+    )
+    for _attempt in range(MAX_LOOPS):
+        await ctx.step("training", "running")
+        result = await _need(ctx, "train_controller", MOCK_TRAINING)
+        if result["result"] == "pass":
+            await _say(ctx, "freut_sich", "Trained and validated. The firmware gets exactly these gains.", _compare(result) + " Every mission passes with the trained controller; the firmware writes exactly these gains.")
+            return
+        await _say(ctx, "besorgt", "The trained controller fails. Back to the parts.", _compare(result) + " " + str(result.get("why") or ""))
+        if result.get("next_action") == "ask" or not await _lighter_pack(ctx, missions):
+            break
+    await _need(
+        ctx,
+        "ask_user",
+        {
+            "question": "Parts and training did not pass the missions. Keep trying with other parts, or keep the build as it flies now?",
+            "options": [{"id": "keep", "label": "Keep the build as it is"}, {"id": "retry", "label": "Keep trying with other parts"}],
+            "default_id": "keep",
+        },
+    )
+
+
+async def _lighter_pack(ctx: Ctx, missions: list[str]) -> bool:
+    """Back to parts offline: the next lighter pack with the same cells, then the hardware check again. False when none is left or it fails."""
+
+    from pai_agent.tools.parts import catalog
+
+    current = ctx.state.selected.get("battery") or {}
+    lighter = [
+        p
+        for p in catalog()["parts"]
+        if p.get("category") == "battery" and p.get("cells") == current.get("cells") and float(p.get("mass_g") or 0) < float(current.get("mass_g") or 0)
+    ]
+    if not lighter:
+        return False
+    pack = max(lighter, key=lambda p: float(p["mass_g"]))
+    await _pick(ctx, "battery", pack["name"], pack["id"], "Lighter by " + en(float(current["mass_g"]) - float(pack["mass_g"]), 1) + " g: more thrust per gram for the missions.", "weight")
+    await _need(ctx, "physics_calc", {})
+    flown = await _need(ctx, "simulate_mission", {"missions": [{"mission": m} for m in missions]})
+    return flown["result"] == "pass"
 
 
 async def _swap_pack(ctx: Ctx) -> bool:

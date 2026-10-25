@@ -118,6 +118,7 @@ function MissionsPartRenderer({ item }: { item: Extract<ChatItem, { kind: "missi
   const selectMission = useUi((s) => s.selectMission);
   const rows = item.runs.flatMap((n) => (runs[n] ? [runs[n]] : []));
   const passed = rows.filter((r) => r.result === "pass").length;
+  const trained = rows.some((r) => r.controller === "trained");
   const open = (run: number) => {
     setView("werkbank");
     setTab("simulation");
@@ -127,7 +128,7 @@ function MissionsPartRenderer({ item }: { item: Extract<ChatItem, { kind: "missi
   return (
     <div className={`w-full rounded-2xl p-3 ${passed === rows.length ? "bg-ok-soft" : "bg-fail-soft"}`}>
       <div className={`text-[14px] font-bold ${passed === rows.length ? "text-ok-ink" : "text-fail-ink"}`}>
-        Missions · {passed} of {rows.length} passed
+        Missions{trained ? " · trained controller" : ""} · {passed} of {rows.length} passed
       </div>
       <div className="mt-1.5 flex flex-col gap-1">
         {rows.map((r) => (
@@ -139,6 +140,7 @@ function MissionsPartRenderer({ item }: { item: Extract<ChatItem, { kind: "missi
             )}
             <span className="min-w-0 flex-1 text-[14px] leading-snug text-ink-2">
               <span className="font-semibold text-ink">{r.label}.</span> {r.summary.replace(/^(Pass|Fail)\. /, "")}
+              {r.reference ? <span className="text-muted"> Reference controller: {r.reference.value === null ? "none" : `${r.reference.value} ${r.unit}`}.</span> : null}
             </span>
             <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-muted transition group-hover:translate-x-0.5" />
           </button>
@@ -157,7 +159,7 @@ function TrainingPartRenderer({ item }: { item: Extract<ChatItem, { kind: "train
       <PhaseIcon phase={phase} />
       <div className="min-w-0 flex-1">
         <div className="text-[14px] font-semibold text-ink-2">{title}</div>
-        <div className="truncate font-label text-[12px] text-muted">Isaac Lab · {item.detail}</div>
+        <div className="truncate font-label text-[12px] text-muted">{item.source === "backend" ? "On the missions, MuJoCo" : "Isaac Lab"} · {item.detail}</div>
       </div>
       <Cpu className="h-4 w-4 text-muted" />
     </button>

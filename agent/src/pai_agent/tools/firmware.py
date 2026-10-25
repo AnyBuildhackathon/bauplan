@@ -2,6 +2,11 @@
 
 Deterministic templates filled from the chosen parts: a Betaflight CLI script for the
 drone, an Arduino sketch for a servo product. Claude only writes the explanation.
+
+The drone's PID gains are the validated set when train_controller passed for the build on the
+bench (trained on its missions, then re-flown: every mission and the stress test), exactly as
+validated; else a live Isaac Lab or browser training's gains, which no mission has checked; else
+the Betaflight starting values. The file and the result say which.
 """
 
 from __future__ import annotations
@@ -47,6 +52,7 @@ _RATES = {"rc_rate": 7, "srate": 67, "expo": 0}
 _SERVO_PINS = (9, 10, 11, 6, 5, 3)
 
 _SOURCE_TEXT = {
+    "validated": "the mission-validated controller (trained on this build's missions in MuJoCo, then passed every mission and the stress test)",
     "isaac": "the Isaac Lab trained controller",
     "browser": "the browser-tuned controller (1,024 MuJoCo runs)",
     "defaults": "Betaflight starting values for a 1S whoop",
@@ -83,8 +89,15 @@ def _is_browser(event: dict) -> bool:
 
 
 def trained_gains(ctx: Ctx) -> tuple[dict, str]:
-    """Isaac Lab gains from the last live `omniverse` training, else the browser training's, else the defaults."""
+    """The validated set for this build, else Isaac Lab gains from the last live `omniverse` training, else the browser training's, else the defaults."""
 
+    from pai_agent.tools.train_loop import validated_gains
+
+    validated = validated_gains(ctx.state)
+    if validated:
+        gains = _betaflight_gains(validated["gains"])
+        if gains:
+            return gains, "validated"
     for source, matches in (("isaac", _is_isaac), ("browser", _is_browser)):
         for event in reversed(ctx.bus.events):
             if matches(event) and isinstance(event.get("gains"), dict):
@@ -214,6 +227,7 @@ def betaflight_cli(ctx: Ctx, gains: dict, gains_source: str) -> str:
         "# Propellers: " + (propeller["name"] if propeller else "unknown"),
         "# Battery: " + (battery["name"] if battery else "unknown"),
         "# PID gains: " + _SOURCE_TEXT.get(gains_source, gains_source),
+        *_validated_lines(ctx, gains_source),
         "# Paste into the Betaflight Configurator CLI tab and press Enter. The board saves and reboots.",
         "# A motor that spins the wrong way: swap any two of its phase wires, or reverse it in the Motors tab.",
     ]
@@ -259,6 +273,25 @@ def betaflight_cli(ctx: Ctx, gains: dict, gains_source: str) -> str:
         lines.append(f"set {axis}_expo = {_RATES['expo']}")
     lines += ["", "batch end", "", "save", ""]
     return "\n".join(lines)
+
+
+def _validated_lines(ctx: Ctx, gains_source: str) -> list[str]:
+    """What the gains were validated on, and the cascaded gains behind the roll and pitch values."""
+
+    from pai_agent.mission_sim import GAIN_KEYS, MISSIONS
+    from pai_agent.tools.train_loop import validated_gains
+
+    validated = validated_gains(ctx.state) if gains_source == "validated" else None
+    if not validated:
+        return ["# Not validated in the mission tests: run the train loop (train_controller) for gains that are."]
+    flown = ", ".join(MISSIONS[m]["label"].lower() + f" {v['value']:g} {v['unit']}" for m, v in validated["missions"].items() if v["value"] is not None)
+    survived, total = validated["stress"]
+    gains = validated["gains"]
+    return [
+        f"# Validated: {flown}; stress test {survived}/{total} worlds.",
+        "# Cascaded gains as validated: " + ", ".join(f"{k} {gains[k]:g}" for k in GAIN_KEYS) + " (attitude in N m/rad, N m s/rad).",
+        "# Roll and pitch P and I below scale the Betaflight defaults by the validated rate damping; D, F and yaw stay at the defaults.",
+    ]
 
 
 def arduino_wiring(ctx: Ctx) -> list[dict]:
@@ -364,9 +397,10 @@ def _default_explanation(kind: str, ctx: Ctx, gains_source: str, wiring: list[di
     if kind == "betaflight":
         fc = _part(ctx, "flight_controller")
         source = _SOURCE_TEXT.get(gains_source, gains_source)
+        exactly = "exactly the validated" if gains_source == "validated" else "not mission-validated"
         return (
             f"Betaflight CLI for the {fc['name'] if fc else 'flight controller'}: Quad X motor order, DShot300, "
-            f"actual rates 70/670 deg/s, PID gains from {source}. "
+            f"actual rates 70/670 deg/s, PID gains from {source}, {exactly} gains. "
             f"{len(wiring)} wiring rows come straight from the bill of materials."
         )
     return f"Arduino sketch that opens and closes the servos over serial. {len(wiring)} wiring rows from the parts."
@@ -401,6 +435,7 @@ async def firmware(ctx: Ctx, args: dict) -> dict:
         "content": content,
         "gains": gains if kind == "betaflight" else None,
         "gains_source": gains_source,
+        "gains_validated": gains_source == "validated",
         "explanation": explanation,
         "wiring": wiring,
     }
@@ -412,5 +447,7 @@ async def firmware(ctx: Ctx, args: dict) -> dict:
         "kind": kind,
         "filename": filename,
         "gains_source": gains_source,
+        "gains_validated": gains_source == "validated",
+        "gains": gains if kind == "betaflight" else None,
         "wiring": wiring,
     }

@@ -13,6 +13,10 @@ dashboard tab that sees it claims the job, flies the seeded worlds with the
 training module's drone episode, and posts the outcomes back to `/api/stress/...`.
 The backend keeps the worlds, the scoring, the worst world and the weak point.
 
+With `backend` the drone's worlds fly on the backend instead, on the missions' MuJoCo model
+(`mission_train.stress_world`): the train loop (train_loop.py) validates the trained gains there,
+on the model they were trained on, with or without a dashboard open.
+
 The controller is the trained one: the `gains` of the last `training` event (the
 same source firmware reads), or the tool's `gains` argument; without a training
 result the default gains below fly and the card says so.
@@ -257,7 +261,7 @@ def _drone_plan(ctx: Ctx, args: dict) -> StressPlan:
     except PhysicsError as exc:
         raise ValueError("Build the drone first: " + str(exc)) from exc
     gains, policy = trained_gains(ctx, args.get("gains"))
-    return StressPlan(
+    plan = StressPlan(
         product="drone",
         base={
             "policy": policy,
@@ -270,6 +274,26 @@ def _drone_plan(ctx: Ctx, args: dict) -> StressPlan:
         weakest=weakest_point,
         spec=product_spec(ctx),
     )
+    if args.get("backend"):
+        from pai_agent.mission_sim import AirframeError
+        from pai_agent.mission_train import nominal_body, stress_world
+        from pai_agent.tools.mission import airframe_of
+
+        try:
+            frame = airframe_of(ctx.state)[2]
+        except (PhysicsError, AirframeError) as exc:
+            raise ValueError("Build the drone first: " + str(exc)) from exc
+        nominal = nominal_body(frame)
+        flown = asdict(gains)
+
+        def fly(world: World) -> dict:
+            outcome = stress_world(frame, flown, world, nominal)
+            return browser_outcome(outcome["metrics"], outcome["trajectory"])
+
+        plan.run = fly
+        plan.spec = None
+        plan.base["source"] = "backend"
+    return plan
 
 
 def _gripper_plan(state) -> StressPlan:

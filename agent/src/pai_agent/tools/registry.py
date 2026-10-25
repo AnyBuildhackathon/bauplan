@@ -40,6 +40,7 @@ from pai_agent.drone_geometry import publish_geometry
 from pai_agent.tools.mission import simulate_mission
 from pai_agent.tools.simulate import simulate_drone
 from pai_agent.tools.stress import stress_test
+from pai_agent.tools.train_loop import train_controller
 from pai_agent.tools.ui import mascot_say, ui_control, ui_draw, ui_point_at
 
 TOOLS = {
@@ -49,6 +50,7 @@ TOOLS = {
     "simulate_drone": simulate_drone,
     "simulate_mission": simulate_mission,
     "stress_test": stress_test,
+    "train_controller": train_controller,
     "cad_frame": cad_frame,
     "cad_part": cad_part,
     "product_brief": product_brief,
@@ -126,6 +128,7 @@ _STEP = {
     "isaac_sim_render": "render",
     "simulate_drone": "simulation",
     "simulate_mission": "simulation",
+    "train_controller": "training",
     "isaac_lab_train": "training",
     "isaac_train": "training",
     "isaac_lab_status": "training",
@@ -249,6 +252,23 @@ SCHEMAS = [
                 },
             },
             "required": ["missions"],
+        },
+    },
+    {
+        "name": "train_controller",
+        "description": (
+            "Drone only, after simulate_mission passed every mission (the hardware check on the reference controller): trains the flight controller's seven gains "
+            "(kp_z, ki_z, kd_z, kp_xy, kd_xy, kp_att, kd_att) on those same missions plus a hover, an evolution strategy in MuJoCo on the backend (no dashboard needed, about two minutes), "
+            "then flies every mission again with the trained gains and runs the stress test with them on the same model. The trained result decides: pass needs every mission and 90 % of the stress worlds. "
+            "Returns the reference and the trained number per mission, the stress score and next: on a pass the gains are the validated set firmware writes; "
+            "on a fail go back to parts (swap a part or change a dimension), simulate_mission, then train_controller again; after two failed loops it says to ask_user."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "population": {"type": "integer", "minimum": 4, "maximum": 32, "description": "Candidates per generation, default 8."},
+                "generations": {"type": "integer", "minimum": 1, "maximum": 12, "description": "Default 5."},
+            },
         },
     },
     {
@@ -944,6 +964,8 @@ async def _advance(ctx: Ctx, name: str, result: dict, started: bool) -> None:
             await ctx.step("training", "failed")
     elif name == "train_in_browser" and result.get("training_status") == "done":
         await ctx.step("training", "done")
+    elif name == "train_controller":
+        await ctx.step("training", "done" if result.get("result") == "pass" else "failed")
     elif name == "isaac_lab_status" and result.get("training_status") == "done":
         await ctx.step("training", "done")
     elif name in {"blender_render", "isaac_sim_render", "cad_frame", "cad_part", "cad_update", "assemble", "product_brief", "product_spec", "sketch_to_spec", "reference_load", "part_pick", "bom_build", "print_prep", "material_pick"}:
@@ -996,7 +1018,7 @@ async def call_tool(ctx: Ctx, name: str, args: dict | None) -> dict:
     if result.get("ok") is not False:
         await refresh_requirements(ctx)
         await publish_geometry(ctx)
-        if name in {"train_in_browser", "isaac_train", "isaac_lab_train"}:
+        if name in {"train_in_browser", "isaac_train", "isaac_lab_train", "train_controller"}:
             await refresh_after_training(ctx)
         if name == "bom_build":
             from pai_agent.versions import after_tool

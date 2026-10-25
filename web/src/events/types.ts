@@ -458,6 +458,10 @@ export interface MissionEvent {
   wind?: number[][];
   parts: Record<string, string | null>;
   mass_g: number;
+  /** Who flew it: the reference controller (the hardware check) or the trained gains (train_controller). */
+  controller?: "reference" | "trained";
+  /** A trained run: the reference controller's result on the same build, for the comparison. */
+  reference?: { value: number | null; result: "pass" | "fail"; summary: string } | null;
 }
 /** The drone's dimensioned parts (drone_geometry.py): what the model, the sim and the BOM share. */
 export interface GeometryEvent {

@@ -322,7 +322,7 @@ Sent when a run starts and ends and on every change through [pause and stop](#pa
 ### step
 
 `id` is `meeting`, `teile`, `cad`, `render`, `simulation`, `training`, or `stueckliste`.
-The mock story does not use `training`; a "train it" prompt does.
+The mock story uses `training` for the train loop after a request's missions pass (`train_controller`), and a "train it" prompt does too.
 `status` is `pending`, `running`, `done`, or `failed`.
 `label` is `Spec`, `Parts`, `CAD`, `Render`, `Simulation`, `Training`, or `BOM`; the `meeting` id is the spec step, its name kept for older recordings.
 
@@ -430,6 +430,8 @@ One mission test of the drone (`simulate_mission`), flown in MuJoCo with the cho
 `chase`: five flies at 9 km/h, each darting 45° to 120° off course every 0.5 to 0.9 s in a 12 × 12 × 3 m room; a fly is caught within 12 cm. `capture_s` is the median capture time (a missed fly counts as never), `captured` of `flies`, `capture_times_s` per fly, `miss_distance_cm` the closest miss; the drone sees the flies only through its camera: `detect_range_m` (where a 6 mm fly still covers 2 pixels), `sensing_delay_ms`, `first_fix_s` (median), `reacquire_s` (mean time per fly spent finding a lost fly) and `tracks_lost`; `target` is `[[t, x, y, z], ...]` of the fly closest to the median, and `poses` that chase.
 Every mission's `metrics` carry `pack_v_start`, `pack_v_min` and `pack_used_mah`; the hold adds `ground_effect_pct`.
 The model behind it is in `agent/src/pai_agent/mission_sim.py` and `agent/src/pai_agent/plant.py`: mass and inertia from every part at its place, thrust from the motors' load tables along measured propeller curves on a sagging, draining pack, ground effect, motor lag from the propeller size, body and rotor drag, and the camera's view for the chase; `docs/validation.md` compares it with real drones. The client shows the newest run of each mission in the Simulation tab's Missions pane, and one chat card per `simulate_mission` call.
+`controller` is `reference` (simulate_mission: the reference controller, the same for every build, the hardware check) or `trained` (train_controller flies the missions again with the trained gains).
+`reference` is `null`, or on a `trained` run the reference controller's `{value, result, summary}` on the same build, so the card shows both; the trained run is the one its requirement row judges.
 
 ### geometry
 
@@ -616,6 +618,12 @@ Only fresh events act; a replayed backlog changes nothing.
 A `done` event after an `offline` tool means the fallback file was played, not that a pod finished a job.
 The browser training's `done` event carries `gains` (see the browser run below); the firmware reads its `roll` and `pitch` `{p, i}` as browser-tuned gains.
 
+Training on the missions (`train_controller`, `agent/src/pai_agent/mission_train.py`) adds `source: "backend"`: MuJoCo in Python on the backend, the missions' own model, so no dashboard is needed.
+It has the browser run's fields (`job_id` starting `mt`, `product: "drone"`, `population`, `generations`, `rollouts_total`, `generation`, `best_params`, `best_metrics`, and `gains` on `done`, in the same format) plus `missions`, the missions it trains on.
+`best_params` are the exported gains here (attitude in N m/rad), and `best_metrics` on `done` holds each term's number: `hover_rms_error_cm` and the missions' own keys (`top_speed_kmh`, `turn_rate_dps`, `hold_error_cm`, `capture_s`).
+`reward` is the training score, 0–100: each term's requirement ratio capped at 1.5, averaged. There is no `queued`: `running` follows every generation, then `done` or `failed`.
+The chat shows one card per run; it does not touch the Isaac Lab panel.
+
 ### firmware
 
 The firmware and wiring for the built product, from the `firmware` tool after `bom_build`.
@@ -625,7 +633,9 @@ The firmware and wiring for the built product, from the `firmware` tool after `b
 `content` is the whole file, so a client can offer the download without the backend.
 The file is a fixed template filled from the chosen parts; only `explanation`, one or two sentences, may come from Claude.
 `gains` is `{roll, pitch, yaw}`, each `{p, i, d, f}` in Betaflight units, or `null` for an Arduino sketch.
-`gains_source` says where they came from, first match wins: `isaac`, `browser`, `defaults`, or `none` (an Arduino sketch).
+`gains_source` says where they came from, first match wins: `validated`, `isaac`, `browser`, `defaults`, or `none` (an Arduino sketch).
+`validated` is the gain set train_controller validated on this build (every mission and the stress test passed with it), written exactly as validated; it stays this build's until a part or the arm changes or the mass moves by more than 5 %.
+The file then names what it was validated on and the seven cascaded gains; any other source is marked as not validated in the mission tests. `gains_validated` is `true` with `validated`.
 `isaac` is the `gains` field of the last live Isaac Lab training (`omniverse` with `mode: "train"`, `source: "live"`, `status: "done"`); no Isaac job emits it yet, so this source stays inactive until one does.
 `browser` is the `gains` field of the last `done` browser `training` event (`source: "browser"`).
 `defaults` are the Betaflight 4.4 starting values for a 1S whoop. With `isaac` or `browser`, missing terms keep the defaults.
@@ -672,6 +682,7 @@ The stress test runs the current product in 50 randomized MuJoCo worlds (`stress
 `weakest` names the factor that separates lost worlds from survived ones, or is `null` when every world survived; `explanation` is Mechanic's one sentence about it.
 
 Drone: the worlds fly in the browser, on the MuJoCo WASM workers of the training module, with its drone episode: the controller holds its spot 1 m up for 10 s while a 1-cosine gust hits it.
+With `backend` (the train loop's validation) the same worlds fly on the backend on the missions' model instead (`source: "backend"`, no `job_id` or `spec`): 5 s each, the gust as moving air, the plant with the world's mass and motor strength, the controller with the nominal build's and noisy position and velocity readings.
 The first event is `queued` with `source: "browser"`, `job_id`, and `spec` (the training spec); the first dashboard tab that sees it claims the job, and every later event carries the same three fields.
 No claim within `PAI_TRAIN_CLAIM_TIMEOUT_S`, no report for `PAI_TRAIN_STALL_S`, or no finish within `PAI_TRAIN_TIMEOUT_S` ends it as `failed`.
 `policy` is `trained` when the last drone `training` event carries `gains` (or the tool got `gains`), else `default`, and the card says the gains are not trained yet.
@@ -749,7 +760,7 @@ Closing buttons are tagged `{control}:close`, and `look:3d` is the 3D switch of 
 
 ## Tools
 
-`ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `simulate_mission`, `stress_test`, `cad_frame`, `cad_part`, `product_brief`, `product_spec`, `sketch_to_spec`, `reference_load`, `delegate`, `part_pick`, `assemble`, `cad_update`, `check_totals`, `check_tip_over`, `check_deflection`, `check_torque`, `check_runtime`, `check_power`, `check_thermal`, `check_rollover`, `simulate_assembly`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `blender_render`, `bom_build`, `print_prep`, `build_guide`, `firmware`, `electronics_plan`, `safety_check`, `ui_point_at`, `ui_draw`, `ui_control`, `mascot_say`, `train_in_browser`, `optimize_design`, `optimize_apply`, `material_pick`, `fem_check`.
+`ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `simulate_mission`, `stress_test`, `cad_frame`, `cad_part`, `product_brief`, `product_spec`, `sketch_to_spec`, `reference_load`, `delegate`, `part_pick`, `assemble`, `cad_update`, `check_totals`, `check_tip_over`, `check_deflection`, `check_torque`, `check_runtime`, `check_power`, `check_thermal`, `check_rollover`, `simulate_assembly`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `blender_render`, `bom_build`, `print_prep`, `build_guide`, `firmware`, `electronics_plan`, `safety_check`, `ui_point_at`, `ui_draw`, `ui_control`, `mascot_say`, `train_in_browser`, `train_controller`, `optimize_design`, `optimize_apply`, `material_pick`, `fem_check`.
 
 `material_pick` takes `part_id` (none for the drone frame), `max_temp_c`, `outdoor`, `impact`, `flex` and optionally `material` and `reason`; it chooses among the filaments the user's printer prints (every material without a printer): heat and flex rule a material out (heat deflection temperature at least 5 °C over `max_temp_c`), then outdoor UV and impact toughness rank, then stiffness and strength, then the spool price. It returns `material`, a one-sentence `reason`, `meets_needs`, `rejected` with why, and the data sheet `properties` and `source`; the part's mass follows the density and every check runs again.
 `fem_check` takes `part_id` and optionally `cases` (`[{name, region, force_n}]`, newtons in the assembly frame), `fixed` (the held region), `infill_pct` and `walls`; a region is `{face: x_min ... z_max}`, `{near: [x, y, z], radius_mm}` or `{box: [x0, y0, z0, x1, y1, z1]}`. Without cases a spec part is held on its lowest face and loaded by each external load within 40 mm at twice its weight (else a 10 N press on its top); the drone frame is held at the stack, with all four motors at full thrust and a crash on one motor at 10 g. It emits the `fem` event, stores its result as a check (rerun by `cad_update`, by `cad_frame` for the drone and by `material_pick`) and judges the `strength` requirement.
@@ -812,6 +823,11 @@ Without `ANTHROPIC_API_KEY` only templates and passed scripts build.
 `simulate_grip` runs the MuJoCo grip test above.
 
 `train_in_browser` queues a browser training job and waits until a dashboard tab finishes it; the result carries `best_params`, `best_metrics`, `best_score`, and `curve`.
+
+`train_controller` is the drone's train loop after `simulate_mission` (the hardware check) passes. It flies the hardware check first when this build has none (the position hold when no mission was asked for); a failed one returns `result: "fail"`, `stage: "hardware"` without training.
+Then it trains the seven gains on those missions plus a hover (`population` default 8, `generations` default 5, stopped after `PAI_TRAIN_BACKEND_S`, default 120 s; `time_limit_s: 0` means no limit), flies every mission again with them and runs the backend stress test with them.
+It returns `result` (`pass` needs every mission and 90 % of the stress worlds), `stage: "trained"`, `training` (`rollouts`, `generations`, `score`, `start_score`, `seconds`, `stopped_early`), `gains`, `missions` (`[{mission, unit, limit, reference: {value, result}, trained: {value, result}, summary, why}]`), `stress` (`{survived, total, pass, needed, weakest, explanation}`) and `next`.
+On a fail it adds `loop` (failed loops so far), `why` and `next_action`: `parts` (swap a part or change a dimension, the hardware check, then train again) or, after two failed loops, `ask` (ask the user).
 In mock mode a prompt containing "train" runs it after a short Mechanic line, and the `training` step goes `running`, then `done` or `failed`.
 
 `cad_frame` arguments are `arm_length_mm` (center to motor shaft), `thickness_mm`, and `motor_spacing_mm` (bolt-circle diameter of the motor screws).
