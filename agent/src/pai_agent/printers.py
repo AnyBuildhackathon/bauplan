@@ -432,7 +432,8 @@ def choose_material(needs: dict, candidates: list[str] | None = None) -> dict:
         else:
             fitting.append(material)
     ok = bool(fitting)
-    ranked = fitting or pool
+    # Nothing meets the hard limits: the best fallback is still rigid for a rigid part (flexible for a flexible one).
+    ranked = fitting or [m for m in pool if MATERIALS[m]["flexible"] == flex] or pool
 
     def score(material: str) -> tuple:
         entry = MATERIALS[material]

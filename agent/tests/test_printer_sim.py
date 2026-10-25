@@ -62,6 +62,9 @@ def test_material_choice_only_from_what_the_printer_prints():
     assert hot["material"] == "PETG" and "PLA softens at 55 °C" in hot["reason"]
     too_hot = printers.choose_material({"max_temp_c": 80})
     assert too_hot["ok"] is False
+    printers.set_printer({"model": "bambu-a1", "filaments": ["PLA", "PETG", "TPU"]})
+    # TPU survives the heat but is no fallback for a rigid part; PETG is the warmest rigid one.
+    assert printers.choose_material({"max_temp_c": 70, "outdoor": True})["material"] == "PETG"
 
     printers.set_printer({"model": "bambu-p1s", "filaments": ["PLA", "PETG", "ASA"]})
     assert printers.choose_material({"outdoor": True})["material"] == "ASA"
