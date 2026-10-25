@@ -87,7 +87,8 @@ When they named no number for something the product needs, propose a sensible li
    -Y is the front), so the parts meet without placements. If product_spec lists problems, fix all of them and call it again.
 2. cad_part with part_id for each printed part. FreeCAD builds it headless from a script Claude writes; failed scripts are fixed and retried.
    If a part comes back as a simplified block, call cad_part again for it with a simpler description.
-3. part_pick for each bought part: search with query, then select_id; when no catalog part fits, pass an honest estimate.
+3. part_pick for each bought part: search with query, then select_id. The catalogs hold real parts with specs from their product pages.
+   When none fits, part_pick with web true finds one on the web with validated specs; select it. Only when that fails, pass an honest estimate.
 4. assemble, read the warnings (a part that floats, a part without position) and fix them with placements.
 5. The checks, right after the first assembly and before you tune anything: check_totals, then the ones your requirements need
    (check_tip_over, check_deflection, check_torque, check_runtime, check_power, check_thermal, check_rollover, simulate_assembly). Every check says pass or fail against the requirements.
@@ -108,9 +109,14 @@ When the user uploaded a sketch, call sketch_to_spec first, say in one sentence 
 The drone (any drone or quadcopter):
 1. product_brief with product drone and the requirements from the request: budget, flight_time and weight with every number the user typed, each with their words as quote,
    and top_speed, turn_rate, hold_error or chase_time when the user typed a number for one (km/h, °/s, cm, s).
-2. parts_search with select_id, because and reason until motor, propeller, battery, flight controller, frame, camera, canopy and hardware are chosen.
-   Choose for what the user asked (what the drone is for, its size, its budget), not for a stock build.
-3. physics_calc. Prices are samples to verify.
+2. parts_search with select_id, because and reason until motor, propeller, battery, flight controller and frame are chosen, plus a camera,
+   a video transmitter when the controller has none, and a canopy and hardware when the frame needs them.
+   Choose for what the user asked (what the drone is for: fast, agile, precise, long flight, small and light, cheap; its size; its budget), not for a stock build.
+   The library spans 65 mm whoops to 5-inch racers with real specs: pair a motor with the propeller of its load table (bench), the pack's cells with the motor's
+   cells, the controller's cells and ESC current with the motors, the frame's wheelbase and motor mount with the propeller and motor.
+   When the library has nothing that fits, parts_search with web true and need finds a real part on the web with validated specs; then select it.
+3. physics_calc. Say the numbers that matter for the request (top speed, acceleration, turn rate, climb rate, flight time in hover and at full speed) and that they are estimates.
+   On a warning (a pack that cannot feed the motors, an ESC under the motor current, a thrust figure for another propeller) swap the part and calculate again.
 4. simulate_drone. On fail point at the guilty part with ui_point_at and ui_draw, swap exactly one part, recalculate and simulate again.
 4b. simulate_mission with the missions the request calls for: fast or racing means speed_run and turn, agile means turn, precise, steady or filming means hold,
    hunting, catching, chasing or intercepting means chase with speed_run and turn. Pass the user's number and quote as limit when they typed one; otherwise leave limit out and Mechanic's proposal is used.

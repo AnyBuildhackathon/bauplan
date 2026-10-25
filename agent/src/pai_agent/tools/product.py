@@ -1,8 +1,8 @@
 """Any physical product: spec, bought parts, assembly and parameter changes.
 
 product_spec validates the spec Claude writes and starts the build. cad_part builds
-each printed part of it, part_pick binds each bought part to a catalog item (or an
-honest estimate), assemble puts everything together, and the checks in
+each printed part of it, part_pick binds each bought part to a catalog item, a part found and
+validated on the web (`web` true, `pai_agent.web_parts`), or an honest estimate, assemble puts everything together, and the checks in
 pai_agent.tools.checks judge the requirements. cad_update changes a printed part's
 numbers, rebuilds it from the same script, reassembles and reruns every check so far.
 """
@@ -16,6 +16,7 @@ import time
 from pathlib import Path
 
 from pai_agent import assembly as asm
+from pai_agent import web_parts
 from pai_agent.context import Ctx
 from pai_agent.paths import DATA_DIR, PARTS_PATH, REPO_ROOT
 from pai_agent.pricing import price
@@ -23,7 +24,11 @@ from pai_agent.requirements import attribute
 from pai_agent.spec import SpecError, find_part, part_of, slug, validate_spec
 
 _CATALOGS: list[dict] | None = None
-SPEC_FIELDS = ("mass_g", "size_mm", "voltage_v", "power_w", "sleep_power_w", "capacity_mah", "capacity_wh", "stall_torque_nm", "stall_torque_kgcm", "rpm", "flow_l_min", "airflow_m3h", "thrust_g", "pull_force_n")
+SPEC_FIELDS = (
+    "mass_g", "size_mm", "voltage_v", "power_w", "sleep_power_w", "capacity_mah", "capacity_wh", "stall_torque_nm", "stall_torque_kgcm",
+    "rpm", "flow_l_min", "airflow_m3h", "thrust_g", "pull_force_n", "current_a", "max_current_a", "stall_current_a", "holding_torque_nm",
+    "range_cm", "diameter_mm", "voltage_min_v", "voltage_max_v",
+)
 
 
 def _fail(message: str, **extra) -> dict:
@@ -31,12 +36,13 @@ def _fail(message: str, **extra) -> dict:
 
 
 def catalog_items() -> list[dict]:
-    """Every catalog the repo has, flattened: generic hobby parts, the gripper parts, the drone parts."""
+    """Every catalog the repo has, flattened: generic hobby parts, the gripper parts, the maker parts
+    from real product pages, the drone parts; then the parts found on the web so far."""
 
     global _CATALOGS
     if _CATALOGS is None:
         items = []
-        sources = [DATA_DIR / "catalogs" / "generic.json", DATA_DIR / "catalogs" / "gripper.json", PARTS_PATH]
+        sources = [DATA_DIR / "catalogs" / "generic.json", DATA_DIR / "catalogs" / "gripper.json", DATA_DIR / "catalogs" / "makers.json", PARTS_PATH]
         for path in sources:
             data = json.loads(path.read_text(encoding="utf-8"))
             for part in data["parts"]:
@@ -46,7 +52,17 @@ def catalog_items() -> list[dict]:
                 item["catalog"] = path.stem if path.stem != "parts" else "drone"
                 items.append(item)
         _CATALOGS = items
-    return _CATALOGS
+    known = {item["id"] for item in _CATALOGS}
+    found = []
+    for part in web_parts.found_parts():
+        if part["id"] in known:
+            continue
+        item = {k: v for k, v in part.items() if k not in {"bom_qty", "scene_target", "price_is_sample"}}
+        if "size_mm" not in item and all(k in part for k in ("length_mm", "width_mm", "height_mm")):
+            item["size_mm"] = [part["length_mm"], part["width_mm"], part["height_mm"]]
+        item["catalog"] = "web"
+        found.append(item)
+    return _CATALOGS + found
 
 
 def _search(query: str, category: str) -> list[dict]:
@@ -64,7 +80,7 @@ def _search(query: str, category: str) -> list[dict]:
 
 
 def _public(item: dict) -> dict:
-    shown = {k: item[k] for k in ("id", "name", "category", "unit_price_eur", "shop", "note") if k in item}
+    shown = {k: item[k] for k in ("id", "name", "category", "unit_price_eur", "shop", "note", "provenance", "source_url", "checked", "estimated") if k in item}
     shown.update({k: item[k] for k in SPEC_FIELDS if k in item})
     return shown
 
@@ -211,6 +227,19 @@ async def part_pick(ctx: Ctx, args: dict) -> dict:
     reason = str(args.get("reason") or "").strip()
     select_id = str(args.get("select_id") or "").strip()
     estimate = args.get("estimate")
+    if args.get("web") and not select_id and not isinstance(estimate, dict):
+        need = str(args.get("query") or part["query"] or part["name"])
+        discovered = await web_parts.discover(str(args.get("category") or part.get("category") or "part"), need)
+        if not discovered.get("ok"):
+            return _fail(discovered["error"], problems=discovered.get("problems", []))
+        found = discovered["part"]
+        return {
+            "ok": True,
+            "detail": part["name"] + ": web find " + found["name"],
+            "matches": [_public({**found, "size_mm": found.get("size_mm")})],
+            "source": web_parts.provenance_line(found),
+            "next": "part_pick again with select_id " + found["id"] + " to use it.",
+        }
     if not select_id and not isinstance(estimate, dict):
         query = str(args.get("query") or part["query"] or part["name"])
         matches = _search(query, str(args.get("category") or part.get("category") or ""))
@@ -224,7 +253,7 @@ async def part_pick(ctx: Ctx, args: dict) -> dict:
         item = next((dict(m) for m in catalog_items() if m["id"] == select_id), None)
         if item is None:
             return _fail("select_id " + select_id + " is not in the catalogs. Search with part_pick and a query first.")
-        item["price_source"] = "sample"
+        item["price_source"] = "catalog" if item.get("price_is_sample") is False else "sample"
     else:
         name = str(estimate.get("name") or part["name"]).strip()
         try:

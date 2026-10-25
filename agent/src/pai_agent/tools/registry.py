@@ -31,6 +31,7 @@ from pai_agent.tools.isaac import isaac_lab_status, isaac_lab_train, isaac_sim_r
 from pai_agent.tools.usd import product_usd
 from pai_agent.tools.ask import ask_user
 from pai_agent.tools.parts import parts_search
+from pai_agent.tools.parts_search import live_prices_enabled
 from pai_agent.tools.optimize import optimize_apply, optimize_design
 from pai_agent.tools.print_prep import print_prep
 from pai_agent.tools.physics import physics_calc
@@ -176,7 +177,14 @@ SCHEMAS = [
     },
     {
         "name": "parts_search",
-        "description": "Searches the curated drone parts catalog. select_id chooses the part; because names the requirement it serves; reason is your one-sentence reason. Prices are samples.",
+        "description": (
+            "Searches the drone parts library: real parts from shop pages, each with its specs (motors with the maker's load table: thrust, current and power at 100 %, KV, size; "
+            "propellers with diameter and pitch; packs 1S to 6S with voltage, capacity, C rating and size; flight controllers with mount and ESC rating; frames with wheelbase; cameras; video transmitters), "
+            "the page the specs come from (source_url), the date checked and which fields are estimates. It spans 65 mm whoops to 5-inch racers. "
+            "select_id chooses the part; because names the requirement it serves; reason is your one-sentence reason. "
+            "web true with need (what the part must do, e.g. '2S 1103 motor, 140 g thrust') searches shops on the web when the library has nothing that fits: "
+            "the specs are copied from the product page and validated (units, plausible ranges); the find is added to the library, then select it with select_id."
+        ),
         "input_schema": {
             "type": "object",
             "properties": {
@@ -185,13 +193,19 @@ SCHEMAS = [
                 "select_id": {"type": "string"},
                 "because": {"type": "string", "enum": ["budget", "flight_time", "weight", "hover", "printable"]},
                 "reason": {"type": "string"},
+                "web": {"type": "boolean", "description": "Search shops on the web for a real part with real specs. Use it only when no library part fits."},
+                "need": {"type": "string", "description": "With web: what the part must do and fit, with numbers."},
             },
             "required": ["category"],
         },
     },
     {
         "name": "physics_calc",
-        "description": "Computes mass, thrust-to-weight, estimated flight time and sample price from the chosen parts.",
+        "description": (
+            "Computes from the chosen parts' specs: mass, thrust-to-weight, flight time in hover, price, and the flight performance: top speed (thrust, mass, a drag model and the prop's pitch speed), "
+            "acceleration, time to 90 % of top speed, climb rate, turn rate and radius at half top speed, flip time, flight time at full speed and at full throttle, the inertia of the parts as placed. "
+            "Every performance number is an estimate; assumptions lists what was assumed and warnings what does not fit (a pack whose C rating cannot feed the motors, an ESC under the motor current)."
+        ),
         "input_schema": {"type": "object", "properties": {}},
     },
     {
@@ -418,7 +432,10 @@ SCHEMAS = [
     {
         "name": "part_pick",
         "description": (
-            "Chooses the bought part for a spec part. With query (and no select_id) it searches every catalog (hobby electronics, motors, fans, pumps, batteries, servos, hardware). "
+            "Chooses the bought part for a spec part. With query (and no select_id) it searches every catalog (hobby electronics, motors, fans, pumps, batteries, servos, hardware, "
+            "and the maker library of real product pages: gearmotors, steppers, servos, motor and stepper drivers, ESP32, RP2040 and Arduino boards, IMU, distance and lidar sensors, "
+            "LiPo and 18650 cells, chargers, regulators, wheels, casters, bearings, screws). web true with query searches shops on the web for a real part and validates its specs; "
+            "then select it with select_id. "
             "select_id binds a catalog part (prices are samples to verify). When nothing fits, pass estimate {name, mass_g, unit_price_eur, and specs such as power_w, capacity_mah, voltage_v, stall_torque_nm} "
             "and it is marked as an estimated price. reason is your one-line reason. A swap after checks reruns them."
         ),
@@ -431,6 +448,7 @@ SCHEMAS = [
                 "select_id": {"type": "string"},
                 "estimate": {"type": "object"},
                 "reason": {"type": "string"},
+                "web": {"type": "boolean", "description": "Search shops on the web for a real part with real specs when no catalog part fits."},
             },
             "required": ["part_id"],
         },
@@ -951,7 +969,7 @@ async def emit_connections(publish) -> None:
     else:
         cad_detail = "CadQuery on this machine. freecadcmd is missing."
     rows = (
-        ("parts_search", "connected", "Catalog agent/data/parts.json"),
+        ("parts_search", "connected", "Parts library with specs from shop pages" + (", web search on" if live_prices_enabled() else "")),
         ("simulate_drone", "connected", "MuJoCo on this machine"),
         ("simulate_mission", "connected", "MuJoCo missions on this machine"),
         ("cad_frame", "connected", cad_detail),

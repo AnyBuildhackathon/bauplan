@@ -1,14 +1,18 @@
-"""`parts_search`: the curated drone parts catalog (`agent/data/parts.json`) and the choice of one part.
+"""`parts_search`: the drone parts library (`agent/data/parts.json`) plus live web finds, and the choice of one part.
 
 A search filters one category; `select_id` binds a part to the build with a reason and the
 requirement it serves, whose sentence from the user's request the dashboard shows next to the
-part. Every catalog part carries its mass, price, shop link and the date the price was checked.
+part. Every library part carries its specs, mass, price, shop link, the page its specs come from
+(`source_url`), the date they were checked and which fields are estimates. With `web` true and no
+fitting library part, `pai_agent.web_parts.discover` finds a real product on the web, validates its
+specs and adds it to the library with `provenance: "web"`; it is then selectable like any other.
 """
 
 from __future__ import annotations
 
 import json
 
+from pai_agent import web_parts
 from pai_agent.context import Ctx
 from pai_agent.paths import PARTS_PATH
 from pai_agent.scene import PART_CATEGORIES
@@ -23,11 +27,26 @@ def catalog() -> dict:
     return _CATALOG
 
 
+def library(category: str | None = None) -> list[dict]:
+    """The curated parts and the web finds, one category or all."""
+
+    parts = [part for part in catalog()["parts"] if category is None or part["category"] == category]
+    known = {part["id"] for part in parts}
+    return parts + [part for part in web_parts.found_parts(category) if part["id"] not in known]
+
+
+def find(part_id: str) -> dict | None:
+    return next((part for part in library() if part["id"] == part_id), None)
+
+
 def _public(part: dict) -> dict:
-    hidden = {"bom_qty"}
+    hidden = {"bom_qty", "aliases", "scene_target", "shop_price", "shop_currency", "shop_pack_qty", "price_checked"}
     shown = {key: value for key, value in part.items() if key not in hidden}
     shown["qty"] = part["bom_qty"]
     shown["price_is_sample"] = part.get("price_is_sample", True)
+    bench = shown.get("bench")
+    if isinstance(bench, dict) and "load_table" in bench:
+        shown["bench"] = {k: v for k, v in bench.items() if k != "load_table"}
     return shown
 
 
@@ -59,8 +78,10 @@ async def emit_part(ctx: Ctx, part: dict, because: str = "", reason: str = "") -
         "why": why,
         "reason": reason,
         "mass_g": part.get("mass_g"),
-        "size_mm": [part[k] for k in ("length_mm", "width_mm", "height_mm")] if "length_mm" in part else None,
+        "size_mm": [part[k] for k in ("length_mm", "width_mm", "height_mm")] if all(k in part for k in ("length_mm", "width_mm", "height_mm")) else None,
         "diameter_mm": part.get("diameter_mm"),
+        "provenance": part.get("provenance", "curated"),
+        "source_url": part.get("source_url") or part.get("url"),
     }
     ctx.state.reasons[category] = event
     await ctx.emit(event)
@@ -70,10 +91,18 @@ async def emit_part(ctx: Ctx, part: dict, because: str = "", reason: str = "") -
 async def parts_search(ctx: Ctx, args: dict) -> dict:
     category = str(args.get("category", "")).strip()
     if category not in PART_CATEGORIES:
-        message = "category must be motor, propeller, battery, flight_controller or frame."
+        message = "category must be one of " + ", ".join(PART_CATEGORIES) + "."
         return {"ok": False, "error": message, "detail": message}
     query = str(args.get("query", "")).strip().lower()
-    in_category = [part for part in catalog()["parts"] if part["category"] == category]
+    found = None
+    if args.get("web"):
+        need = str(args.get("need") or args.get("query") or "").strip()
+        discovered = await web_parts.discover(category, need)
+        if not discovered.get("ok"):
+            message = discovered["error"]
+            return {"ok": False, "error": message, "detail": message[:160], "library": [_public(p) for p in library(category)][:8]}
+        found = discovered["part"]
+    in_category = library(category)
     if not in_category:
         message = "No " + category + " parts in the catalog."
         return {"ok": False, "error": message, "detail": message}
@@ -103,14 +132,22 @@ async def parts_search(ctx: Ctx, args: dict) -> dict:
         selected = select_id
         await emit_part(ctx, chosen, str(args.get("because", "")).strip(), str(args.get("reason", "")).strip())
 
+    if found is not None:
+        matches = [found] + [part for part in matches if part["id"] != found["id"]]
+        unmatched = False
     shown = [_public(part) for part in matches[:8]]
     detail = category + ": " + str(len(shown)) + " hits" + (" (nothing matched " + repr(query) + ", showing the whole category)" if unmatched else "")
+    if found is not None:
+        detail = "Web find: " + found["name"] + " from " + found["shop"]
     if selected:
         detail = "Picked: " + ctx.state.selected[category]["name"]
-    return {
+    result = {
         "ok": True,
         "detail": detail,
         "price_note": catalog().get("price_note", ""),
         "selected_id": selected,
         "parts": shown,
     }
+    if found is not None:
+        result["web_find"] = {"id": found["id"], "source": web_parts.provenance_line(found), "next": "parts_search with select_id " + found["id"] + " to use it."}
+    return result

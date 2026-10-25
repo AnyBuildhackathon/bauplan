@@ -1,0 +1,1327 @@
+{
+  "product": "maker",
+  "price_note": "Robot and maker parts, each from the shop page in source_url, checked on the date in checked. unit_price_eur is the price per piece in euros at 1 EUR = 1.1193 USD; shipping is extra. Fields named in estimated are not on that page.",
+  "parts": [
+    {
+      "id": "pololu-2361-75-1-hp",
+      "name": "Pololu 75:1 Micro Metal Gearmotor HP 6V",
+      "category": "motor",
+      "mass_g": 9.5,
+      "size_mm": [
+        10,
+        12,
+        25
+      ],
+      "voltage_v": 6.0,
+      "rpm": 410,
+      "stall_torque_kgcm": 1.3,
+      "stall_current_a": 1.6,
+      "power_w": 1.4,
+      "shaft_mm": 3,
+      "note": "10 x 12 x 25 mm, 9.5 g, 3 mm D shaft; 410 rpm and 0.10 A no-load, 1.3 kg cm and 1.6 A stall (extrapolated), 1.4 W max at 6 V per the specs page.",
+      "aliases": [
+        "micro metal gearmotor",
+        "n20",
+        "75:1",
+        "small robot motor"
+      ],
+      "unit_price_eur": 21.4,
+      "price_is_sample": false,
+      "shop": "Pololu",
+      "url": "https://www.pololu.com/product/2361",
+      "shop_price": 23.95,
+      "shop_currency": "USD",
+      "shop_pack_qty": 1,
+      "in_stock": true,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://www.pololu.com/product/2361",
+      "checked": "2026-10-25",
+      "estimated": []
+    },
+    {
+      "id": "pololu-2364-30-1-mp",
+      "name": "Pololu 30:1 Micro Metal Gearmotor MP 6V",
+      "category": "motor",
+      "mass_g": 9.5,
+      "size_mm": [
+        10,
+        12,
+        25
+      ],
+      "voltage_v": 6.0,
+      "rpm": 720,
+      "stall_torque_kgcm": 0.33,
+      "stall_current_a": 0.67,
+      "power_w": 0.57,
+      "shaft_mm": 3,
+      "note": "720 rpm and 0.07 A no-load, 0.33 kg cm and 0.67 A stall, 0.57 W max at 6 V; 9.5 g per the specs page.",
+      "aliases": [
+        "micro metal gearmotor",
+        "30:1",
+        "fast small motor"
+      ],
+      "unit_price_eur": 21.4,
+      "price_is_sample": false,
+      "shop": "Pololu",
+      "url": "https://www.pololu.com/product/2364",
+      "shop_price": 23.95,
+      "shop_currency": "USD",
+      "shop_pack_qty": 1,
+      "in_stock": true,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://www.pololu.com/product/2364",
+      "checked": "2026-10-25",
+      "estimated": []
+    },
+    {
+      "id": "pololu-3061-10-1-hpcb",
+      "name": "Pololu 10:1 Micro Metal Gearmotor HPCB 6V",
+      "category": "motor",
+      "mass_g": 9.5,
+      "size_mm": [
+        10,
+        12,
+        25
+      ],
+      "voltage_v": 6.0,
+      "rpm": 3300,
+      "stall_torque_kgcm": 0.17,
+      "stall_current_a": 1.5,
+      "power_w": 1.3,
+      "shaft_mm": 3,
+      "note": "3300 rpm and 0.15 A no-load, 0.17 kg cm and 1.5 A stall, 1.3 W max at 6 V; carbon brushes; 9.5 g per the specs page.",
+      "aliases": [
+        "micro metal gearmotor",
+        "10:1",
+        "high speed"
+      ],
+      "unit_price_eur": 23.63,
+      "price_is_sample": false,
+      "shop": "Pololu",
+      "url": "https://www.pololu.com/product/3061",
+      "shop_price": 26.45,
+      "shop_currency": "USD",
+      "shop_pack_qty": 1,
+      "in_stock": true,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://www.pololu.com/product/3061",
+      "checked": "2026-10-25",
+      "estimated": []
+    },
+    {
+      "id": "pololu-3485-488-1-20d",
+      "name": "Pololu 488:1 Metal Gearmotor 20D x 46L mm 12V",
+      "category": "motor",
+      "mass_g": 47.0,
+      "size_mm": [
+        20,
+        20,
+        47.7
+      ],
+      "voltage_v": 12.0,
+      "rpm": 28,
+      "stall_torque_kgcm": 25.0,
+      "stall_current_a": 1.6,
+      "power_w": 1.5,
+      "shaft_mm": 4,
+      "note": "20 mm diameter, 47.7 mm long, 47 g, 4 mm shaft; 28 rpm no-load and 25 kg cm, 1.6 A stall at 12 V per the specs page. For slow, strong joints.",
+      "aliases": [
+        "20d gearmotor",
+        "high torque",
+        "slow motor"
+      ],
+      "unit_price_eur": 28.54,
+      "price_is_sample": false,
+      "shop": "Pololu",
+      "url": "https://www.pololu.com/product/3485",
+      "shop_price": 31.95,
+      "shop_currency": "USD",
+      "shop_pack_qty": 1,
+      "in_stock": true,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://www.pololu.com/product/3485",
+      "checked": "2026-10-25",
+      "estimated": []
+    },
+    {
+      "id": "pololu-4861-4-4-1-25d-enc",
+      "name": "Pololu 4.4:1 Metal Gearmotor 25D x 63L mm 12V with encoder",
+      "category": "motor",
+      "mass_g": 95.0,
+      "size_mm": [
+        25,
+        25,
+        63
+      ],
+      "voltage_v": 12.0,
+      "rpm": 1800,
+      "stall_torque_kgcm": 0.71,
+      "stall_current_a": 1.8,
+      "power_w": 3.2,
+      "shaft_mm": 4,
+      "note": "25 x 63 mm, 95 g, 4 mm shaft, 48 CPR encoder; 1800 rpm no-load, 0.71 kg cm and 1.8 A stall, 3.2 W max at 12 V per the specs page.",
+      "aliases": [
+        "25d gearmotor",
+        "encoder motor",
+        "fast wheel motor"
+      ],
+      "unit_price_eur": 48.2,
+      "price_is_sample": false,
+      "shop": "Pololu",
+      "url": "https://www.pololu.com/product/4861",
+      "shop_price": 53.95,
+      "shop_currency": "USD",
+      "shop_pack_qty": 1,
+      "in_stock": true,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://www.pololu.com/product/4861",
+      "checked": "2026-10-25",
+      "estimated": []
+    },
+    {
+      "id": "pololu-4752-30-1-37d-enc",
+      "name": "Pololu 30:1 Metal Gearmotor 37D x 68L mm 12V with encoder",
+      "category": "motor",
+      "mass_g": 200.0,
+      "size_mm": [
+        37,
+        37,
+        68
+      ],
+      "voltage_v": 12.0,
+      "rpm": 330,
+      "stall_torque_kgcm": 14.0,
+      "stall_current_a": 5.5,
+      "power_w": 12.0,
+      "shaft_mm": 6,
+      "note": "37 x 68 mm, 200 g, 6 mm shaft, 64 CPR encoder; 330 rpm no-load, 14 kg cm and 5.5 A stall, 12 W max at 12 V per the specs page.",
+      "aliases": [
+        "37d gearmotor",
+        "rover motor",
+        "encoder motor"
+      ],
+      "unit_price_eur": 54.45,
+      "price_is_sample": false,
+      "shop": "Pololu",
+      "url": "https://www.pololu.com/product/4752",
+      "shop_price": 60.95,
+      "shop_currency": "USD",
+      "shop_pack_qty": 1,
+      "in_stock": true,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://www.pololu.com/product/4752",
+      "checked": "2026-10-25",
+      "estimated": []
+    },
+    {
+      "id": "adafruit-3777-tt-motor",
+      "name": "TT DC Gearbox Motor 200 RPM 3-6 V",
+      "category": "motor",
+      "mass_g": 30.6,
+      "size_mm": [
+        70,
+        22,
+        18
+      ],
+      "voltage_v": 6.0,
+      "rpm": 200,
+      "stall_torque_kgcm": 0.8,
+      "note": "70 x 22 x 18 mm, 30.6 g, 1:48; 200 rpm and 0.8 kg cm stall at 6 V, 150 mA no-load per the page.",
+      "aliases": [
+        "tt motor",
+        "yellow gearmotor",
+        "dc gearbox motor"
+      ],
+      "unit_price_eur": 2.64,
+      "price_is_sample": false,
+      "shop": "Adafruit",
+      "url": "https://www.adafruit.com/product/3777",
+      "shop_price": 2.95,
+      "shop_currency": "USD",
+      "shop_pack_qty": 1,
+      "in_stock": true,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://www.adafruit.com/product/3777",
+      "checked": "2026-10-25",
+      "estimated": []
+    },
+    {
+      "id": "pololu-1200-nema17-48",
+      "name": "NEMA 17 stepper 42 x 48 mm, 4 V 1.2 A (SOYO)",
+      "category": "motor",
+      "mass_g": 350.0,
+      "size_mm": [
+        42.3,
+        42.3,
+        48
+      ],
+      "voltage_v": 4.0,
+      "current_a": 1.2,
+      "holding_torque_nm": 0.311,
+      "steps_per_rev": 200,
+      "shaft_mm": 5,
+      "note": "42.3 mm square x 48 mm, 350 g, 5 mm D shaft, 200 steps, 1.2 A and 4 V per phase, 44 oz in holding torque per the specs page.",
+      "aliases": [
+        "nema 17",
+        "stepper",
+        "stepper motor"
+      ],
+      "unit_price_eur": 38.52,
+      "price_is_sample": false,
+      "shop": "Pololu",
+      "url": "https://www.pololu.com/product/1200",
+      "shop_price": 43.12,
+      "shop_currency": "USD",
+      "shop_pack_qty": 1,
+      "in_stock": true,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://www.pololu.com/product/1200",
+      "checked": "2026-10-25",
+      "estimated": []
+    },
+    {
+      "id": "pololu-2267-nema17-38",
+      "name": "NEMA 17 stepper 42 x 38 mm, 2.8 V 1.7 A (SOYO)",
+      "category": "motor",
+      "mass_g": 285.0,
+      "size_mm": [
+        42.3,
+        42.3,
+        38
+      ],
+      "voltage_v": 2.8,
+      "current_a": 1.68,
+      "holding_torque_nm": 0.36,
+      "steps_per_rev": 200,
+      "shaft_mm": 5,
+      "note": "42.3 mm square x 38 mm, 285 g, 5 mm D shaft, 200 steps, 1.68 A and 2.8 V per phase, 51 oz in holding torque per the specs page.",
+      "aliases": [
+        "nema 17",
+        "stepper",
+        "short stepper"
+      ],
+      "unit_price_eur": 31.38,
+      "price_is_sample": false,
+      "shop": "Pololu",
+      "url": "https://www.pololu.com/product/2267",
+      "shop_price": 35.12,
+      "shop_currency": "USD",
+      "shop_pack_qty": 1,
+      "in_stock": true,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://www.pololu.com/product/2267",
+      "checked": "2026-10-25",
+      "estimated": []
+    },
+    {
+      "id": "pololu-2818-fs90",
+      "name": "FEETECH FS90 micro servo",
+      "category": "servo",
+      "mass_g": 9.0,
+      "size_mm": [
+        23.2,
+        12.5,
+        22
+      ],
+      "voltage_v": 6.0,
+      "stall_torque_kgcm": 1.5,
+      "speed_s_per_60deg": 0.1,
+      "stall_current_a": 0.6,
+      "note": "23.2 x 12.5 x 22 mm, 9 g; 1.5 kg cm and 0.10 s/60 deg at 6 V, 1.3 kg cm at 4.8 V, 600 mA stall per the specs page.",
+      "aliases": [
+        "fs90",
+        "micro servo",
+        "9g servo"
+      ],
+      "unit_price_eur": 7.5,
+      "price_is_sample": false,
+      "shop": "Pololu",
+      "url": "https://www.pololu.com/product/2818",
+      "shop_price": 8.4,
+      "shop_currency": "USD",
+      "shop_pack_qty": 1,
+      "in_stock": true,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://www.pololu.com/product/2818",
+      "checked": "2026-10-25",
+      "estimated": []
+    },
+    {
+      "id": "adafruit-155-sg5010",
+      "name": "TowerPro SG-5010 standard servo",
+      "category": "servo",
+      "mass_g": 47.0,
+      "size_mm": [
+        40.6,
+        20.5,
+        38
+      ],
+      "voltage_v": 6.0,
+      "stall_torque_kgcm": 6.5,
+      "speed_s_per_60deg": 0.16,
+      "note": "40.6 x 20.5 x 38 mm, 47 g; 6.5 kg cm at 6 V (5.5 at 5 V), 0.16 s/60 deg at 6 V per the page.",
+      "aliases": [
+        "sg5010",
+        "standard servo"
+      ],
+      "unit_price_eur": 10.72,
+      "price_is_sample": false,
+      "shop": "Adafruit",
+      "url": "https://www.adafruit.com/product/155",
+      "shop_price": 12.0,
+      "shop_currency": "USD",
+      "shop_pack_qty": 1,
+      "in_stock": true,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://www.adafruit.com/product/155",
+      "checked": "2026-10-25",
+      "estimated": []
+    },
+    {
+      "id": "pololu-1057-hd1501mg",
+      "name": "Power HD 1501MG high-torque servo",
+      "category": "servo",
+      "mass_g": 60.0,
+      "size_mm": [
+        40.7,
+        20.5,
+        39.5
+      ],
+      "voltage_v": 6.0,
+      "stall_torque_kgcm": 17.0,
+      "speed_s_per_60deg": 0.14,
+      "note": "40.7 x 20.5 x 39.5 mm, 60 g; 17 kg cm and 0.14 s/60 deg at 6 V per the specs page. Out of stock at Pololu on 2026-10-25.",
+      "aliases": [
+        "1501mg",
+        "high torque servo",
+        "metal gear servo"
+      ],
+      "unit_price_eur": 19.61,
+      "price_is_sample": false,
+      "shop": "Pololu",
+      "url": "https://www.pololu.com/product/1057",
+      "shop_price": 21.95,
+      "shop_currency": "USD",
+      "shop_pack_qty": 1,
+      "in_stock": false,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://www.pololu.com/product/1057",
+      "checked": "2026-10-25",
+      "estimated": []
+    },
+    {
+      "id": "pololu-2130-drv8833",
+      "name": "Pololu DRV8833 dual motor driver carrier",
+      "category": "driver",
+      "mass_g": 1.0,
+      "size_mm": [
+        12.7,
+        20.3,
+        3
+      ],
+      "voltage_min_v": 2.7,
+      "voltage_max_v": 10.8,
+      "current_a": 1.2,
+      "peak_current_a": 2.0,
+      "channels": 2,
+      "note": "0.5 x 0.8 in, 1.0 g; 2.7-10.8 V, 1.2 A continuous and 2 A peak per channel, two channels per the specs page; the 3 mm height is not published.",
+      "aliases": [
+        "drv8833",
+        "dual motor driver",
+        "h bridge"
+      ],
+      "unit_price_eur": 9.78,
+      "price_is_sample": false,
+      "shop": "Pololu",
+      "url": "https://www.pololu.com/product/2130",
+      "shop_price": 10.95,
+      "shop_currency": "USD",
+      "shop_pack_qty": 1,
+      "in_stock": true,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://www.pololu.com/product/2130",
+      "checked": "2026-10-25",
+      "estimated": [
+        "size_mm"
+      ]
+    },
+    {
+      "id": "pololu-713-tb6612fng",
+      "name": "Pololu TB6612FNG dual motor driver carrier",
+      "category": "driver",
+      "mass_g": 1.5,
+      "size_mm": [
+        15.2,
+        20.3,
+        3
+      ],
+      "voltage_min_v": 4.5,
+      "voltage_max_v": 13.5,
+      "current_a": 1.0,
+      "peak_current_a": 3.0,
+      "channels": 2,
+      "note": "0.6 x 0.8 in, 1.5 g; 4.5-13.5 V, 1 A continuous and 3 A peak per channel per the specs page; the 3 mm height is not published.",
+      "aliases": [
+        "tb6612",
+        "tb6612fng",
+        "dual motor driver"
+      ],
+      "unit_price_eur": 4.42,
+      "price_is_sample": false,
+      "shop": "Pololu",
+      "url": "https://www.pololu.com/product/713",
+      "shop_price": 4.95,
+      "shop_currency": "USD",
+      "shop_pack_qty": 1,
+      "in_stock": true,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://www.pololu.com/product/713",
+      "checked": "2026-10-25",
+      "estimated": [
+        "size_mm"
+      ]
+    },
+    {
+      "id": "pololu-2992-g2-24v13",
+      "name": "Pololu G2 high-power motor driver 24v13",
+      "category": "driver",
+      "mass_g": 3.3,
+      "size_mm": [
+        33.0,
+        20.3,
+        5
+      ],
+      "voltage_min_v": 6.5,
+      "voltage_max_v": 40.0,
+      "current_a": 13.0,
+      "channels": 1,
+      "note": "1.3 x 0.8 in, 3.3 g; 6.5-40 V, 13 A continuous, one channel per the specs page; the 5 mm height is not published.",
+      "aliases": [
+        "g2",
+        "high power motor driver",
+        "24v13"
+      ],
+      "unit_price_eur": 40.16,
+      "price_is_sample": false,
+      "shop": "Pololu",
+      "url": "https://www.pololu.com/product/2992",
+      "shop_price": 44.95,
+      "shop_currency": "USD",
+      "shop_pack_qty": 1,
+      "in_stock": true,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://www.pololu.com/product/2992",
+      "checked": "2026-10-25",
+      "estimated": [
+        "size_mm"
+      ]
+    },
+    {
+      "id": "pololu-1182-a4988",
+      "name": "Pololu A4988 stepper driver carrier",
+      "category": "driver",
+      "mass_g": 1.3,
+      "size_mm": [
+        15.2,
+        20.3,
+        3
+      ],
+      "voltage_min_v": 8.0,
+      "voltage_max_v": 35.0,
+      "current_a": 1.0,
+      "peak_current_a": 2.0,
+      "channels": 1,
+      "note": "0.6 x 0.8 in, 1.3 g; 8-35 V, 1 A per phase continuous (2 A with cooling), up to 1/16 microstep per the specs page.",
+      "aliases": [
+        "a4988",
+        "stepper driver"
+      ],
+      "unit_price_eur": 8.0,
+      "price_is_sample": false,
+      "shop": "Pololu",
+      "url": "https://www.pololu.com/product/1182",
+      "shop_price": 8.95,
+      "shop_currency": "USD",
+      "shop_pack_qty": 1,
+      "in_stock": true,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://www.pololu.com/product/1182",
+      "checked": "2026-10-25",
+      "estimated": [
+        "size_mm"
+      ]
+    },
+    {
+      "id": "pololu-2133-drv8825",
+      "name": "Pololu DRV8825 stepper driver carrier",
+      "category": "driver",
+      "mass_g": 1.6,
+      "size_mm": [
+        15.2,
+        20.3,
+        3
+      ],
+      "voltage_min_v": 8.2,
+      "voltage_max_v": 45.0,
+      "current_a": 1.5,
+      "peak_current_a": 2.2,
+      "channels": 1,
+      "note": "0.6 x 0.8 in, 1.6 g; 8.2-45 V, 1.5 A per phase continuous (2.2 A max), up to 1/32 microstep per the specs page.",
+      "aliases": [
+        "drv8825",
+        "stepper driver"
+      ],
+      "unit_price_eur": 14.25,
+      "price_is_sample": false,
+      "shop": "Pololu",
+      "url": "https://www.pololu.com/product/2133",
+      "shop_price": 15.95,
+      "shop_currency": "USD",
+      "shop_pack_qty": 1,
+      "in_stock": true,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://www.pololu.com/product/2133",
+      "checked": "2026-10-25",
+      "estimated": [
+        "size_mm"
+      ]
+    },
+    {
+      "id": "arduino-nano",
+      "name": "Arduino Nano (A000005)",
+      "category": "controller",
+      "mass_g": 7.0,
+      "size_mm": [
+        18,
+        45,
+        8
+      ],
+      "voltage_v": 5.0,
+      "power_w": 0.095,
+      "note": "ATmega328 at 16 MHz, 18 x 45 mm, 7 g, 5 V logic, 7-12 V input, 19 mA per the Tech Specs; the 8 mm height is not published.",
+      "aliases": [
+        "arduino",
+        "nano",
+        "atmega328"
+      ],
+      "unit_price_eur": 27.2,
+      "price_is_sample": false,
+      "shop": "Arduino Store",
+      "url": "https://store.arduino.cc/products/arduino-nano",
+      "shop_price": 27.2,
+      "shop_currency": "EUR",
+      "shop_pack_qty": 1,
+      "in_stock": true,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://store.arduino.cc/products/arduino-nano",
+      "checked": "2026-10-25",
+      "estimated": [
+        "size_mm"
+      ]
+    },
+    {
+      "id": "adafruit-3405-huzzah32",
+      "name": "Adafruit HUZZAH32 ESP32 Feather",
+      "category": "controller",
+      "mass_g": 6.8,
+      "size_mm": [
+        51.0,
+        22.7,
+        7.3
+      ],
+      "voltage_v": 3.3,
+      "note": "51.0 x 22.7 x 7.3 mm, 6.8 g, ESP32 with WiFi and Bluetooth, LiPo charger on board per the page.",
+      "aliases": [
+        "esp32",
+        "feather",
+        "wifi microcontroller"
+      ],
+      "unit_price_eur": 17.82,
+      "price_is_sample": false,
+      "shop": "Adafruit",
+      "url": "https://www.adafruit.com/product/3405",
+      "shop_price": 19.95,
+      "shop_currency": "USD",
+      "shop_pack_qty": 1,
+      "in_stock": true,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://www.adafruit.com/product/3405",
+      "checked": "2026-10-25",
+      "estimated": []
+    },
+    {
+      "id": "adafruit-5426-qtpy-esp32s3",
+      "name": "Adafruit QT Py ESP32-S3 (8 MB flash)",
+      "category": "controller",
+      "mass_g": 1.2,
+      "size_mm": [
+        21.7,
+        17.8,
+        5.7
+      ],
+      "voltage_v": 3.3,
+      "note": "21.7 x 17.8 x 5.7 mm, 1.2 g, ESP32-S3 with WiFi and BLE per the page. The lightest controller here.",
+      "aliases": [
+        "esp32-s3",
+        "qt py",
+        "tiny microcontroller"
+      ],
+      "unit_price_eur": 11.17,
+      "price_is_sample": false,
+      "shop": "Adafruit",
+      "url": "https://www.adafruit.com/product/5426",
+      "shop_price": 12.5,
+      "shop_currency": "USD",
+      "shop_pack_qty": 1,
+      "in_stock": true,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://www.adafruit.com/product/5426",
+      "checked": "2026-10-25",
+      "estimated": []
+    },
+    {
+      "id": "adafruit-4883-pico",
+      "name": "Raspberry Pi Pico RP2040",
+      "category": "controller",
+      "mass_g": 3.0,
+      "size_mm": [
+        51.3,
+        21.0,
+        3.9
+      ],
+      "voltage_v": 3.3,
+      "note": "51.3 x 21 x 3.9 mm unassembled, RP2040 per the page. The page gives no mass; 3 g is an estimate.",
+      "aliases": [
+        "pico",
+        "rp2040",
+        "raspberry pi pico"
+      ],
+      "unit_price_eur": 4.47,
+      "price_is_sample": false,
+      "shop": "Adafruit",
+      "url": "https://www.adafruit.com/product/4883",
+      "shop_price": 5.0,
+      "shop_currency": "USD",
+      "shop_pack_qty": 1,
+      "in_stock": true,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://www.adafruit.com/product/4883",
+      "checked": "2026-10-25",
+      "estimated": [
+        "mass_g"
+      ]
+    },
+    {
+      "id": "adafruit-4062-nrf52840",
+      "name": "Adafruit Feather nRF52840 Express",
+      "category": "controller",
+      "mass_g": 6.0,
+      "size_mm": [
+        51,
+        23,
+        7.2
+      ],
+      "voltage_v": 3.3,
+      "note": "51 x 23 x 7.2 mm, 6 g, nRF52840 with Bluetooth LE per the page.",
+      "aliases": [
+        "nrf52840",
+        "bluetooth microcontroller",
+        "feather"
+      ],
+      "unit_price_eur": 22.29,
+      "price_is_sample": false,
+      "shop": "Adafruit",
+      "url": "https://www.adafruit.com/product/4062",
+      "shop_price": 24.95,
+      "shop_currency": "USD",
+      "shop_pack_qty": 1,
+      "in_stock": true,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://www.adafruit.com/product/4062",
+      "checked": "2026-10-25",
+      "estimated": []
+    },
+    {
+      "id": "pololu-2490-vl53l0x",
+      "name": "Pololu VL53L0X time-of-flight distance sensor (200 cm)",
+      "category": "sensor",
+      "mass_g": 0.5,
+      "size_mm": [
+        12.7,
+        17.8,
+        2.2
+      ],
+      "voltage_v": 5.0,
+      "power_w": 0.1,
+      "range_cm": 200,
+      "note": "0.5 x 0.7 x 0.085 in, 0.5 g, up to 200 cm at 1 mm resolution, I2C, 2.6-5.5 V, 20 mA per the specs page.",
+      "aliases": [
+        "vl53l0x",
+        "distance sensor",
+        "tof",
+        "time of flight"
+      ],
+      "unit_price_eur": 17.82,
+      "price_is_sample": false,
+      "shop": "Pololu",
+      "url": "https://www.pololu.com/product/2490",
+      "shop_price": 19.95,
+      "shop_currency": "USD",
+      "shop_pack_qty": 1,
+      "in_stock": true,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://www.pololu.com/product/2490",
+      "checked": "2026-10-25",
+      "estimated": []
+    },
+    {
+      "id": "pololu-3415-vl53l1x",
+      "name": "Pololu VL53L1X time-of-flight distance sensor (400 cm)",
+      "category": "sensor",
+      "mass_g": 0.5,
+      "size_mm": [
+        12.7,
+        17.8,
+        2.2
+      ],
+      "voltage_v": 5.0,
+      "power_w": 0.1,
+      "range_cm": 400,
+      "note": "0.5 x 0.7 x 0.085 in, 0.5 g, 4 to 400 cm, I2C, 2.6-5.5 V, 20 mA per the specs page.",
+      "aliases": [
+        "vl53l1x",
+        "distance sensor",
+        "lidar sensor",
+        "tof"
+      ],
+      "unit_price_eur": 20.5,
+      "price_is_sample": false,
+      "shop": "Pololu",
+      "url": "https://www.pololu.com/product/3415",
+      "shop_price": 22.95,
+      "shop_currency": "USD",
+      "shop_pack_qty": 1,
+      "in_stock": true,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://www.pololu.com/product/3415",
+      "checked": "2026-10-25",
+      "estimated": []
+    },
+    {
+      "id": "pololu-2738-minimu9-v5",
+      "name": "Pololu MinIMU-9 v5 (LSM6DS33 + LIS3MDL)",
+      "category": "sensor",
+      "mass_g": 0.7,
+      "size_mm": [
+        20.3,
+        12.7,
+        2.5
+      ],
+      "voltage_v": 5.0,
+      "power_w": 0.025,
+      "note": "0.8 x 0.5 x 0.1 in, 0.7 g, 3-axis gyro, accelerometer and compass, I2C, 2.5-5.5 V, 5 mA per the specs page.",
+      "aliases": [
+        "imu",
+        "gyro",
+        "accelerometer",
+        "compass",
+        "lsm6ds33"
+      ],
+      "unit_price_eur": 31.22,
+      "price_is_sample": false,
+      "shop": "Pololu",
+      "url": "https://www.pololu.com/product/2738",
+      "shop_price": 34.95,
+      "shop_currency": "USD",
+      "shop_pack_qty": 1,
+      "in_stock": true,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://www.pololu.com/product/2738",
+      "checked": "2026-10-25",
+      "estimated": []
+    },
+    {
+      "id": "adafruit-2472-bno055",
+      "name": "Adafruit BNO055 9-DOF absolute orientation IMU",
+      "category": "sensor",
+      "mass_g": 3.0,
+      "size_mm": [
+        20,
+        27,
+        4
+      ],
+      "voltage_v": 3.3,
+      "note": "20 x 27 x 4 mm, 3 g, sensor fusion on chip, I2C per the page.",
+      "aliases": [
+        "bno055",
+        "imu",
+        "orientation sensor"
+      ],
+      "unit_price_eur": 31.22,
+      "price_is_sample": false,
+      "shop": "Adafruit",
+      "url": "https://www.adafruit.com/product/2472",
+      "shop_price": 34.95,
+      "shop_currency": "USD",
+      "shop_pack_qty": 1,
+      "in_stock": true,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://www.adafruit.com/product/2472",
+      "checked": "2026-10-25",
+      "estimated": []
+    },
+    {
+      "id": "ldrobot-stl06n-lidar",
+      "name": "LDROBOT STL-06N 360 degree DTOF lidar",
+      "category": "sensor",
+      "mass_g": 42.0,
+      "size_mm": [
+        38.59,
+        38.59,
+        33.5
+      ],
+      "range_cm": 1200,
+      "note": "38.59 x 38.59 x 33.50 mm, 0.03-12 m at 80 % reflectivity, about 10 Hz scan per the page, 46.15 EUR. The page gives no mass; 42 g is the LD06 datasheet figure for the same body.",
+      "aliases": [
+        "lidar",
+        "360 lidar",
+        "ld06",
+        "stl-06n"
+      ],
+      "unit_price_eur": 46.15,
+      "price_is_sample": false,
+      "shop": "OpenELAB",
+      "url": "https://openelab.io/products/ldrobot-stl06n-mini-dtof-lidar",
+      "shop_price": 46.15,
+      "shop_currency": "EUR",
+      "shop_pack_qty": 1,
+      "in_stock": true,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://openelab.io/products/ldrobot-stl06n-mini-dtof-lidar",
+      "checked": "2026-10-25",
+      "estimated": [
+        "mass_g"
+      ]
+    },
+    {
+      "id": "adafruit-328-lipo-2500",
+      "name": "LiPo 3.7 V 2500 mAh",
+      "category": "battery",
+      "mass_g": 50.0,
+      "size_mm": [
+        50,
+        60,
+        7.3
+      ],
+      "voltage_v": 3.7,
+      "capacity_mah": 2500,
+      "note": "50 x 60 x 7.3 mm, 50 g, 2500 mAh at 3.7 V nominal, JST-PH per the page.",
+      "aliases": [
+        "lipo",
+        "2500mah",
+        "1s lipo"
+      ],
+      "unit_price_eur": 13.36,
+      "price_is_sample": false,
+      "shop": "Adafruit",
+      "url": "https://www.adafruit.com/product/328",
+      "shop_price": 14.95,
+      "shop_currency": "USD",
+      "shop_pack_qty": 1,
+      "in_stock": true,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://www.adafruit.com/product/328",
+      "checked": "2026-10-25",
+      "estimated": []
+    },
+    {
+      "id": "adafruit-2011-li-ion-2000",
+      "name": "Li-ion 3.7 V 2000 mAh",
+      "category": "battery",
+      "mass_g": 34.0,
+      "size_mm": [
+        60,
+        36,
+        7
+      ],
+      "voltage_v": 3.7,
+      "capacity_mah": 2000,
+      "max_current_a": 0.5,
+      "note": "60 x 36 x 7 mm, 34 g, 2000 mAh at 3.7 V, 0.5 A standard discharge per the page.",
+      "aliases": [
+        "li-ion",
+        "2000mah"
+      ],
+      "unit_price_eur": 11.17,
+      "price_is_sample": false,
+      "shop": "Adafruit",
+      "url": "https://www.adafruit.com/product/2011",
+      "shop_price": 12.5,
+      "shop_currency": "USD",
+      "shop_pack_qty": 1,
+      "in_stock": true,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://www.adafruit.com/product/2011",
+      "checked": "2026-10-25",
+      "estimated": []
+    },
+    {
+      "id": "adafruit-353-li-ion-6600",
+      "name": "Li-ion pack 3.7 V 6600 mAh (3 x 18650)",
+      "category": "battery",
+      "mass_g": 155.0,
+      "size_mm": [
+        69,
+        54,
+        18
+      ],
+      "voltage_v": 3.7,
+      "capacity_mah": 6600,
+      "max_current_a": 3.3,
+      "note": "69 x 54 x 18 mm, 155 g, three 2200 mAh 18650 cells in parallel, 3.3 A max continuous discharge per the page.",
+      "aliases": [
+        "18650 pack",
+        "6600mah",
+        "big battery"
+      ],
+      "unit_price_eur": 21.89,
+      "price_is_sample": false,
+      "shop": "Adafruit",
+      "url": "https://www.adafruit.com/product/353",
+      "shop_price": 24.5,
+      "shop_currency": "USD",
+      "shop_pack_qty": 1,
+      "in_stock": true,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://www.adafruit.com/product/353",
+      "checked": "2026-10-25",
+      "estimated": []
+    },
+    {
+      "id": "samsung-35e-18650",
+      "name": "Samsung INR18650-35E 3500 mAh cell",
+      "category": "battery",
+      "mass_g": 50.0,
+      "size_mm": [
+        18.5,
+        18.5,
+        65
+      ],
+      "voltage_v": 3.6,
+      "capacity_mah": 3500,
+      "max_current_a": 8.0,
+      "note": "3500 mAh, 3.6 V nominal, 8 A continuous, 50 g max per the page; 18.5 x 65 mm is the 18650 size class.",
+      "aliases": [
+        "18650",
+        "35e",
+        "li-ion cell"
+      ],
+      "unit_price_eur": 6.24,
+      "price_is_sample": false,
+      "shop": "18650 Battery Store",
+      "url": "https://www.18650batterystore.com/products/samsung-35e-18650-3500mah-8a-battery",
+      "shop_price": 6.99,
+      "shop_currency": "USD",
+      "shop_pack_qty": 1,
+      "in_stock": true,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://www.18650batterystore.com/products/samsung-35e-18650-3500mah-8a-battery",
+      "checked": "2026-10-25",
+      "estimated": [
+        "size_mm"
+      ]
+    },
+    {
+      "id": "adafruit-1904-micro-lipo",
+      "name": "Adafruit Micro-Lipo charger (USB)",
+      "category": "power",
+      "mass_g": 2.0,
+      "size_mm": [
+        21,
+        19,
+        7
+      ],
+      "voltage_v": 5.0,
+      "note": "21 x 19 mm, 7 mm with the JST, 2 g, single-cell LiPo/Li-ion charger per the page.",
+      "aliases": [
+        "lipo charger",
+        "charger",
+        "bms"
+      ],
+      "unit_price_eur": 6.21,
+      "price_is_sample": false,
+      "shop": "Adafruit",
+      "url": "https://www.adafruit.com/product/1904",
+      "shop_price": 6.95,
+      "shop_currency": "USD",
+      "shop_pack_qty": 1,
+      "in_stock": true,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://www.adafruit.com/product/1904",
+      "checked": "2026-10-25",
+      "estimated": []
+    },
+    {
+      "id": "pololu-2119-s7v7f5",
+      "name": "Pololu 5 V step-up/step-down regulator S7V7F5",
+      "category": "power",
+      "mass_g": 0.4,
+      "size_mm": [
+        8.9,
+        12.1,
+        2.5
+      ],
+      "voltage_v": 5.0,
+      "max_current_a": 1.0,
+      "voltage_min_v": 2.7,
+      "voltage_max_v": 11.8,
+      "note": "0.35 x 0.475 x 0.1 in, 0.4 g; 2.7-11.8 V in, 5 V out, 1 A max per the specs page.",
+      "aliases": [
+        "5v regulator",
+        "buck boost",
+        "s7v7f5"
+      ],
+      "unit_price_eur": 7.59,
+      "price_is_sample": false,
+      "shop": "Pololu",
+      "url": "https://www.pololu.com/product/2119",
+      "shop_price": 8.49,
+      "shop_currency": "USD",
+      "shop_pack_qty": 1,
+      "in_stock": true,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://www.pololu.com/product/2119",
+      "checked": "2026-10-25",
+      "estimated": []
+    },
+    {
+      "id": "pololu-2850-d24v25f5",
+      "name": "Pololu 5 V 2.5 A step-down regulator D24V25F5",
+      "category": "power",
+      "mass_g": 2.6,
+      "size_mm": [
+        17.8,
+        17.8,
+        8.9
+      ],
+      "voltage_v": 5.0,
+      "max_current_a": 2.5,
+      "voltage_min_v": 6.0,
+      "voltage_max_v": 38.0,
+      "note": "0.7 x 0.7 x 0.35 in, 2.6 g; 6-38 V in, 5 V, 2.5 A continuous per the specs page. Out of stock at Pololu on 2026-10-25.",
+      "aliases": [
+        "5v regulator",
+        "buck",
+        "step down"
+      ],
+      "unit_price_eur": 23.18,
+      "price_is_sample": false,
+      "shop": "Pololu",
+      "url": "https://www.pololu.com/product/2850",
+      "shop_price": 25.95,
+      "shop_currency": "USD",
+      "shop_pack_qty": 1,
+      "in_stock": false,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://www.pololu.com/product/2850",
+      "checked": "2026-10-25",
+      "estimated": []
+    },
+    {
+      "id": "pololu-1420-wheel-60x8",
+      "name": "Pololu wheel 60 x 8 mm (black)",
+      "category": "wheel",
+      "mass_g": 11.3,
+      "size_mm": [
+        60,
+        60,
+        8
+      ],
+      "diameter_mm": 60,
+      "note": "60 x 8 mm, 3 mm D shaft (micro metal gearmotors), 0.4 oz per the specs page; sold as a pair, unit price is per wheel. Whether 0.4 oz is per wheel is not stated.",
+      "aliases": [
+        "wheel",
+        "60mm wheel",
+        "robot wheel"
+      ],
+      "unit_price_eur": 3.02,
+      "price_is_sample": false,
+      "shop": "Pololu",
+      "url": "https://www.pololu.com/product/1420",
+      "shop_price": 6.75,
+      "shop_currency": "USD",
+      "shop_pack_qty": 2,
+      "in_stock": true,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://www.pololu.com/product/1420",
+      "checked": "2026-10-25",
+      "estimated": [
+        "mass_g"
+      ]
+    },
+    {
+      "id": "pololu-1432-wheel-80x10",
+      "name": "Pololu wheel 80 x 10 mm (yellow)",
+      "category": "wheel",
+      "mass_g": 19.8,
+      "size_mm": [
+        80,
+        80,
+        10
+      ],
+      "diameter_mm": 80,
+      "note": "80 x 10 mm, 3 mm D shaft, 0.7 oz per the specs page; sold as a pair, unit price is per wheel. Whether 0.7 oz is per wheel is not stated.",
+      "aliases": [
+        "wheel",
+        "80mm wheel",
+        "robot wheel"
+      ],
+      "unit_price_eur": 3.91,
+      "price_is_sample": false,
+      "shop": "Pololu",
+      "url": "https://www.pololu.com/product/1432",
+      "shop_price": 8.75,
+      "shop_currency": "USD",
+      "shop_pack_qty": 2,
+      "in_stock": true,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://www.pololu.com/product/1432",
+      "checked": "2026-10-25",
+      "estimated": [
+        "mass_g"
+      ]
+    },
+    {
+      "id": "pololu-953-ball-caster",
+      "name": "Pololu ball caster with 1/2 in metal ball",
+      "category": "wheel",
+      "mass_g": 9.0,
+      "size_mm": [
+        19,
+        19,
+        13
+      ],
+      "note": "1/2 in metal ball, 9 g per the specs page; the outer size is not published.",
+      "aliases": [
+        "ball caster",
+        "caster"
+      ],
+      "unit_price_eur": 2.64,
+      "price_is_sample": false,
+      "shop": "Pololu",
+      "url": "https://www.pololu.com/product/953",
+      "shop_price": 2.95,
+      "shop_currency": "USD",
+      "shop_pack_qty": 1,
+      "in_stock": true,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://www.pololu.com/product/953",
+      "checked": "2026-10-25",
+      "estimated": [
+        "size_mm"
+      ]
+    },
+    {
+      "id": "solarbotics-608zz",
+      "name": "608ZZ ball bearing 8 x 22 x 7 mm",
+      "category": "bearing",
+      "mass_g": 11.2,
+      "size_mm": [
+        22,
+        22,
+        7
+      ],
+      "bore_mm": 8,
+      "note": "8 mm bore, 22 mm OD, 7 mm wide, double shielded, 11.2 g per the page.",
+      "aliases": [
+        "608",
+        "608zz",
+        "skate bearing",
+        "bearing"
+      ],
+      "unit_price_eur": 1.07,
+      "price_is_sample": false,
+      "shop": "Solarbotics",
+      "url": "https://solarbotics.com/?p=88381",
+      "shop_price": 1.2,
+      "shop_currency": "USD",
+      "shop_pack_qty": 1,
+      "in_stock": true,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://solarbotics.com/?p=88381",
+      "checked": "2026-10-25",
+      "estimated": []
+    },
+    {
+      "id": "pololu-1076-m3x8",
+      "name": "Machine screw M3 x 8 mm, Phillips",
+      "category": "hardware",
+      "mass_g": 0.6,
+      "size_mm": [
+        5.5,
+        5.5,
+        8
+      ],
+      "note": "M3 thread, 8 mm length per the specs page; 2.38 USD for 25. The mass and head size are estimates for steel M3 x 8.",
+      "aliases": [
+        "m3",
+        "m3 screw",
+        "machine screw"
+      ],
+      "unit_price_eur": 0.09,
+      "price_is_sample": false,
+      "shop": "Pololu",
+      "url": "https://www.pololu.com/product/1076",
+      "shop_price": 2.38,
+      "shop_currency": "USD",
+      "shop_pack_qty": 25,
+      "in_stock": true,
+      "price_checked": "2026-10-25",
+      "provenance": "curated",
+      "source_url": "https://www.pololu.com/product/1076",
+      "checked": "2026-10-25",
+      "estimated": [
+        "mass_g",
+        "size_mm"
+      ]
+    }
+  ]
+}

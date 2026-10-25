@@ -51,6 +51,7 @@ PART_CATEGORIES = (
     "camera",
     "canopy",
     "hardware",
+    "vtx",
 )
 
 # Dashboard controls Mechanic can operate (tool ui_control, event `ui`). Each id is the

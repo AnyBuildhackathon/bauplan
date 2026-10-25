@@ -14,6 +14,7 @@ from collections.abc import Callable
 
 from pai_agent.context import Ctx, de
 from pai_agent.scene import PART_CATEGORIES
+from pai_agent.tools.physics import REQUIRED
 from pai_agent.tools.parts_search import catalog_line, live_lines, live_prices_enabled
 
 
@@ -23,12 +24,12 @@ async def bom_build(ctx: Ctx, args: dict) -> dict:
         return await _gripper_bom(ctx)
     if ctx.state.product == "generic":
         return await _generic_bom(ctx)
-    missing = [category for category in PART_CATEGORIES if category not in ctx.state.selected]
+    missing = [category for category in REQUIRED if category not in ctx.state.selected]
     if missing:
         message = "Parts missing: " + ", ".join(missing)
         return {"ok": False, "error": message, "detail": message}
     items = []
-    for category in PART_CATEGORIES:
+    for category in [c for c in PART_CATEGORIES if c in ctx.state.selected]:
         part = ctx.state.selected[category]
         mass = float(part["mass_g"])
         if category == "frame" and ctx.state.frame_mass_g is not None:
