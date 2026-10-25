@@ -72,10 +72,10 @@ class CacheTest(unittest.TestCase):
             row = {"name": "Body", "volume_mm3": 1000.0, "mass_g": 1.24, "material": "PLA", "reference": False, "bbox_mm": [0, 0, 0, 10, 10, 10], "stl": stem + "-0.stl", "color": None}
             return PartBuild([row], [0, 0, 0, 10, 10, 10], 1000.0, 1.24, out_dir / (stem + ".stl"), out_dir / (stem + ".step"), out_dir / (stem + ".glb"))
 
-        with tempfile.TemporaryDirectory() as tmp, patch.object(cache, "CACHE_DIR", Path(tmp) / "cache"), patch.object(cad_script, "run_script", fake_run):
+        with tempfile.TemporaryDirectory() as tmp, patch.object(cache, "CACHE_DIR", Path(tmp) / "cache"), patch.object(cad_script, "run_script", fake_run), patch.dict(os.environ, {"PAI_CACHE": "1"}):
             first, first_cached = cad_script.run_script_cached("shape = 1", {"w": 10}, Path(tmp) / "a", "part-base", "PLA")
             second, second_cached = cad_script.run_script_cached("shape = 1", {"w": 10}, Path(tmp) / "b", "part-other", "PLA")
-            changed, changed_cached = cad_script.run_script_cached("shape = 1", {"w": 11}, Path(tmp) / "c", "part-base", "PLA")
+            _changed, changed_cached = cad_script.run_script_cached("shape = 1", {"w": 11}, Path(tmp) / "c", "part-base", "PLA")
             self.assertEqual((first_cached, second_cached, changed_cached), (False, True, False))
             self.assertEqual(calls, ["part-base", "part-base"])
             self.assertEqual(second.mass_g, first.mass_g)

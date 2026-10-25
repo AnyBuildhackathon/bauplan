@@ -57,3 +57,15 @@ def _sessions(request, tmp_path, monkeypatch):
     monkeypatch.setattr("pai_agent.history.SESSIONS_DIR", tmp_path)
     monkeypatch.setattr("pai_agent.session.SESSIONS_DIR", tmp_path)
     return tmp_path
+
+
+@pytest.fixture
+def fallback_apps(monkeypatch):
+    """A whole mock build on the fallbacks: CadQuery for FreeCAD and the recorded still for Blender, so the run
+    never drives an open FreeCAD window and takes the same path whatever this machine has installed."""
+
+    monkeypatch.setenv("FREECAD_GUI", "off")
+    for name in ("freecad_run", "cad_script", "tools.cad", "tools.registry"):
+        monkeypatch.setattr("pai_agent." + name + ".find_freecadcmd", lambda: None)
+    for name in ("tools.blender", "tools.registry"):
+        monkeypatch.setattr("pai_agent." + name + ".find_blender", lambda: None)

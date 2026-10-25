@@ -5,6 +5,8 @@ import os
 import unittest
 from unittest import mock
 
+import pytest
+
 from bench.judge import judge, retries, usage
 from bench.run import load_prompts, run_one, summarize
 from pai_agent.bus import EventBus
@@ -78,6 +80,7 @@ class JudgeTest(unittest.TestCase):
         self.assertAlmostEqual(s["cost_per_valid_product_usd"], 0.6)
 
 
+@pytest.mark.usefixtures("fallback_apps")
 class MockRunTest(unittest.TestCase):
     def setUp(self):
         self._env = os.environ.get("PAI_FORCE_MOCK")
@@ -99,7 +102,8 @@ class MockRunTest(unittest.TestCase):
                 buses.append(self)
 
         with mock.patch("pai_agent.bus.EventBus", RecordedBus):
-            result = asyncio.run(run_one(item, 120))
+            # A guard against a hung run, not a speed check: the mock trains in MuJoCo, which slows with machine load.
+            result = asyncio.run(run_one(item, 600))
         self.assertEqual(result["status"], "done")
         self.assertEqual(result["checks_total"], len(item["checks"]))
         self.assertTrue(next(c for c in result["checks"] if c["id"] == "built")["pass"])

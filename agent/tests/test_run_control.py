@@ -4,9 +4,14 @@ import unittest
 from types import SimpleNamespace
 from unittest import mock
 
+import pytest
+
 from pai_agent.run_control import RunControl, RunStopped
 
 _ENV = {"PAI_FORCE_MOCK": "1", "PAI_WARM": "0", "PAI_ASK_TIMEOUT_S": "0", "FREECAD_GUI": "off"}
+# A guard against a hung run, not a speed check: the mock trains its controller in MuJoCo, about a minute of
+# CPU that stretches several times over when other test runs share the machine.
+_RUN_S = 600
 
 
 async def _until(check, seconds: float = 30.0) -> None:
@@ -79,6 +84,7 @@ class ClosedConversation(unittest.TestCase):
         self.assertEqual(messages[2]["content"][0]["tool_use_id"], "t1")
 
 
+@pytest.mark.usefixtures("fallback_apps")
 class SessionFlow(unittest.TestCase):
     def test_paused_build_runs_no_tool_and_resume_finishes_it(self):
         with mock.patch.dict(os.environ, _ENV):
@@ -95,7 +101,7 @@ class SessionFlow(unittest.TestCase):
                 await asyncio.sleep(0.3)
                 after = len([e for e in session.bus.events if e.get("type") == "tool" and e.get("status") == "running"])
                 self.assertTrue((await session.resume())["ok"])
-                await asyncio.wait_for(session.task, 120)
+                await asyncio.wait_for(session.task, _RUN_S)
                 return count, after, session
 
             count, after, session = asyncio.run(flow())
@@ -117,7 +123,7 @@ class SessionFlow(unittest.TestCase):
                 chat = [e["text"] for e in session.bus.events if e.get("type") == "chat"]
                 stopped = (await session.stop())["ok"]
                 again = await session.start("Build me a racing drone")
-                await asyncio.wait_for(session.task, 120)
+                await asyncio.wait_for(session.task, _RUN_S)
                 return chat, stopped, again, session
 
             chat, stopped, again, session = asyncio.run(flow())
@@ -138,7 +144,7 @@ class SessionFlow(unittest.TestCase):
                 await session.pause()
                 await _until(lambda: session.run.status == "paused")
                 result = await session.start("Make it lighter")
-                await asyncio.wait_for(session.task, 120)
+                await asyncio.wait_for(session.task, _RUN_S)
                 chat = [(e["role"], e["text"]) for e in session.bus.events if e.get("type") == "chat"]
                 return result, chat
 
