@@ -29,17 +29,7 @@ from pai_agent.tools.electronics import electronics_plan
 from pai_agent.tools.safety import SCHEMA as SAFETY_SCHEMA, safety_check
 from pai_agent.tools.isaac import isaac_lab_status, isaac_lab_train, isaac_sim_render, isaac_test, isaac_train, ssh_setting
 from pai_agent.tools.usd import product_usd
-from pai_agent.jamie_client import live_enabled
 from pai_agent.tools.ask import ask_user
-from pai_agent.tools.jamie import (
-    jamie_create_tasks,
-    jamie_meeting,
-    jamie_requirements,
-    jamie_search,
-    jamie_templates,
-    requirements_accept,
-    version_commit,
-)
 from pai_agent.tools.parts import parts_search
 from pai_agent.tools.optimize import optimize_apply, optimize_design
 from pai_agent.tools.print_prep import print_prep
@@ -49,13 +39,7 @@ from pai_agent.tools.stress import stress_test
 from pai_agent.tools.ui import mascot_say, ui_control, ui_draw, ui_point_at
 
 TOOLS = {
-    "jamie_templates": jamie_templates,
-    "jamie_requirements": jamie_requirements,
-    "jamie_search": jamie_search,
-    "jamie_meeting": jamie_meeting,
-    "requirements_accept": requirements_accept,
     "ask_user": ask_user,
-    "version_commit": version_commit,
     "parts_search": parts_search,
     "physics_calc": physics_calc,
     "simulate_drone": simulate_drone,
@@ -95,7 +79,6 @@ TOOLS = {
     "firmware": firmware,
     "electronics_plan": electronics_plan,
     "safety_check": safety_check,
-    "jamie_create_tasks": jamie_create_tasks,
     "ui_point_at": ui_point_at,
     "ui_draw": ui_draw,
     "mascot_say": mascot_say,
@@ -109,8 +92,6 @@ TOOLS = {
 DELEGATED = {"part_pick", "check_totals", "check_tip_over", "check_deflection", "check_torque", "check_runtime", "check_power", "check_thermal", "check_rollover", "simulate_assembly"}
 
 _STEP = {
-    "jamie_requirements": "meeting",
-    "jamie_meeting": "meeting",
     "parts_search": "teile",
     "physics_calc": "teile",
     "cad_frame": "cad",
@@ -142,7 +123,6 @@ _STEP = {
     "isaac_lab_status": "training",
     "bom_build": "stueckliste",
     "print_prep": "stueckliste",
-    "jamie_create_tasks": "stueckliste",
     "train_in_browser": "training",
 }
 
@@ -171,43 +151,6 @@ SCHEMAS = [
         }},
     },
     {
-        "name": "jamie_templates",
-        "description": "Creates the Jamie summary templates Hardware-Anforderungen and Drohnen-Review (upsert_template). Once per session.",
-        "input_schema": {"type": "object", "properties": {}},
-    },
-    {
-        "name": "jamie_requirements",
-        "description": "Reads the kickoff requirements from Jamie, each with quote, person and time. Without meeting_id, the newest kickoff.",
-        "input_schema": {"type": "object", "properties": {"meeting_id": {"type": "string"}}},
-    },
-    {
-        "name": "jamie_search",
-        "description": "Searches earlier Jamie meetings (search_meetings), for example for a part, to find warnings.",
-        "input_schema": {
-            "type": "object",
-            "properties": {"query": {"type": "string"}},
-            "required": ["query"],
-        },
-    },
-    {
-        "name": "jamie_meeting",
-        "description": "Reads a finished review: changed requirements, conflicts with earlier meetings, and complaints about parts. A complaint about 'last week' is already resolved to the part from that earlier meeting (refers_to).",
-        "input_schema": {
-            "type": "object",
-            "properties": {"meeting_id": {"type": "string"}},
-            "required": ["meeting_id"],
-        },
-    },
-    {
-        "name": "requirements_accept",
-        "description": "Accepts requirements from a meeting into the build. ids picks some, omitting ids takes all. On conflicts, ask_user first.",
-        "input_schema": {
-            "type": "object",
-            "properties": {"meeting_id": {"type": "string"}, "ids": {"type": "array", "items": {"type": "string"}}},
-            "required": ["meeting_id"],
-        },
-    },
-    {
         "name": "ask_user",
         "description": "Asks the room and waits for a click, speech or text. With no answer, default_id applies after a short wait.",
         "input_schema": {
@@ -228,20 +171,15 @@ SCHEMAS = [
         },
     },
     {
-        "name": "version_commit",
-        "description": "Closes a version: hangs it on the meeting it came from, computes the difference from the last version, writes that note to Jamie and tags the meeting.",
-        "input_schema": {"type": "object", "properties": {"meeting_id": {"type": "string"}}},
-    },
-    {
         "name": "parts_search",
-        "description": "Searches the curated catalog. Every hit includes jamie_notes, what earlier meetings said about the part. select_id chooses the part; because names the requirement or 'complaint'; reason is your one-sentence reason. Prices are samples.",
+        "description": "Searches the curated drone parts catalog. select_id chooses the part; because names the requirement it serves; reason is your one-sentence reason. Prices are samples.",
         "input_schema": {
             "type": "object",
             "properties": {
                 "category": {"type": "string", "enum": list(PART_CATEGORIES)},
                 "query": {"type": "string"},
                 "select_id": {"type": "string"},
-                "because": {"type": "string", "enum": ["budget", "flight_time", "weight", "hover", "printable", "complaint"]},
+                "because": {"type": "string", "enum": ["budget", "flight_time", "weight", "hover", "printable"]},
                 "reason": {"type": "string"},
             },
             "required": ["category"],
@@ -306,13 +244,30 @@ SCHEMAS = [
     {
         "name": "product_brief",
         "description": (
-            "Starts a build for a product and turns the request into requirement checks. product is drone or gripper. "
-            "For the gripper pass object_mass_g, object_width_mm, optionally max_weight_g and budget_eur, and quote, the user's sentence."
+            "Starts a drone or gripper build and turns the user's request into requirement checks. "
+            "Drone: requirements lists budget (max €), flight_time (min minutes) and weight (max g), each with limit and quote, "
+            "the user's own words copied exactly from their request (e.g. 'under 150 euros'). Take every number the user typed. "
+            "When the user named no number for one you need, you may propose it with proposed true and your reason as quote; it shows as proposed by Mechanic. "
+            "Hover and the printable frame are added automatically. Calling it again on a built drone revises the requirements and keeps the parts. "
+            "Gripper: pass object_mass_g, object_width_mm, optionally max_weight_g and budget_eur, and quote, the user's sentence."
         ),
         "input_schema": {
             "type": "object",
             "properties": {
                 "product": {"type": "string", "enum": ["drone", "gripper"]},
+                "requirements": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "id": {"type": "string", "enum": ["budget", "flight_time", "weight"]},
+                            "limit": {"type": "number"},
+                            "quote": {"type": "string"},
+                            "proposed": {"type": "boolean"},
+                        },
+                        "required": ["id", "limit"],
+                    },
+                },
                 "object_mass_g": {"type": "number"},
                 "object_width_mm": {"type": "number"},
                 "max_weight_g": {"type": "number"},
@@ -355,7 +310,8 @@ SCHEMAS = [
                             "min": {"type": "number"},
                             "unit": {"type": "string", "description": "g, eur, mm, deg, N, x, min, h or days."},
                             "part_id": {"type": "string"},
-                            "quote": {"type": "string"},
+                            "quote": {"type": "string", "description": "The user's own words this requirement comes from, copied exactly from their request (e.g. 'under 150 euros')."},
+                            "proposed": {"type": "boolean", "description": "true when the user named no limit for this and you propose one; quote then gives your one-line reason. Shown as proposed by Mechanic."},
                         },
                         "required": ["text", "check"],
                     },
@@ -709,11 +665,6 @@ SCHEMAS = [
         "input_schema": {"type": "object", "properties": {"explanation": {"type": "string"}}},
     },
     {
-        "name": "jamie_create_tasks",
-        "description": "Creates one order or print task per bill-of-materials line, with a person and a due date on the meeting. Unchanged parts keep their task. Replaced parts are closed.",
-        "input_schema": {"type": "object", "properties": {"meeting_id": {"type": "string"}}},
-    },
-    {
         "name": "ui_point_at",
         "description": "The pointer flies to a scene part or a UI element. A catalog motor sits four times in the scene; for the motor type use motor_front_left.",
         "input_schema": {
@@ -832,8 +783,6 @@ def _running_detail(name: str, args: dict) -> str:
         return str(args.get("state", ""))
     if name == "ui_control":
         return str(args.get("control", ""))
-    if name == "jamie_search":
-        return str(args.get("query", ""))
     if name in {"cad_part", "cad_update", "part_pick"}:
         return str(args.get("part_id") or args.get("name") or "")
     if name == "product_spec":
@@ -887,9 +836,7 @@ async def _advance(ctx: Ctx, name: str, result: dict, started: bool) -> None:
         await ctx.step("training", "done")
     elif name == "isaac_lab_status" and result.get("training_status") == "done":
         await ctx.step("training", "done")
-    elif name == "jamie_create_tasks":
-        await ctx.step("stueckliste", "done")
-    elif name in {"blender_render", "isaac_sim_render", "cad_frame", "cad_part", "cad_update", "assemble", "product_brief", "product_spec", "sketch_to_spec", "reference_load", "part_pick", "jamie_requirements", "jamie_meeting"}:
+    elif name in {"blender_render", "isaac_sim_render", "cad_frame", "cad_part", "cad_update", "assemble", "product_brief", "product_spec", "sketch_to_spec", "reference_load", "part_pick"}:
         await ctx.step(step, "done")
 
 
@@ -909,10 +856,7 @@ async def call_tool(ctx: Ctx, name: str, args: dict | None) -> dict:
     seconds = limit(name)
     started = time.perf_counter()
     try:
-        from pai_agent.versions import commit_with_snapshot
-
-        call = commit_with_snapshot(ctx, function, payload) if name == "version_commit" else function(ctx, payload)
-        result = await asyncio.wait_for(call, seconds)
+        result = await asyncio.wait_for(function(ctx, payload), seconds)
     except RunStopped:
         # A tool that runs tools (delegate) was stopped inside: its card ends too.
         await ctx.emit({"type": "tool", "name": name, "status": "error", "detail": "Stopped by the user"})
@@ -964,9 +908,7 @@ async def emit_connections(publish) -> None:
         cad_detail = "FreeCAD on this machine. CadQuery stays the fallback."
     else:
         cad_detail = "CadQuery on this machine. freecadcmd is missing."
-    jamie_detail = "Jamie MCP live" if live_enabled() else "Local meetings and outbox. JAMIE_MCP_TOKEN is missing."
     rows = (
-        ("jamie_requirements", "connected", jamie_detail),
         ("parts_search", "connected", "Catalog agent/data/parts.json"),
         ("simulate_drone", "connected", "MuJoCo on this machine"),
         ("cad_frame", "connected", cad_detail),

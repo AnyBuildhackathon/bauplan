@@ -524,7 +524,7 @@ async def run_stress_mock(ctx: Ctx) -> None:
     product = "gripper" if gripper else "drone"
     if not ctx.state.selected:
         await call_tool(ctx, "mascot_say", {"state": "besorgt", "say": "There is nothing to stress yet. Build it first."})
-        await ctx.chat("agent", "There is nothing to stress test yet. Let the kickoff build v1 first, then ask again.")
+        await ctx.chat("agent", "There is nothing to stress test yet. Build the drone first, then ask again.")
         return
     if gripper:
         intro = (

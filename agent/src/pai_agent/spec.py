@@ -217,7 +217,7 @@ def validate_spec(raw: dict) -> dict:
             requirement_id = requirement_id + "_" + str(index + 1)
         used.add(requirement_id)
         direction, units = CHECKS[check]
-        requirement = {"id": requirement_id, "text": text, "check": check, "quote": str(entry.get("quote") or "").strip()}
+        requirement = {"id": requirement_id, "text": text, "check": check, "quote": str(entry.get("quote") or "").strip(), "proposed": bool(entry.get("proposed"))}
         if direction is not None:
             limit = _number(entry.get(direction))
             if limit is None or limit <= 0:

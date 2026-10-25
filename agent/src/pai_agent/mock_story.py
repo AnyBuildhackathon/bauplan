@@ -1,25 +1,27 @@
 """Deterministic demo. Same tools as the Claude loop, fixed choices.
 
-The kickoff arrives at the reference micro build, the $59 toothpick from Mediocre Nerd's
+The first build arrives at the reference micro build, the $59 toothpick from Mediocre Nerd's
 "Build a Micro FPV Drone" video: Twiglet 2" carbon frame, 1103 15000KV motors, Gemfan 2020
 four-blade props, Caddx Ant camera, BetaFPV Matrix 1S 5in1 AIO, canopy with battery holder,
-M1.4 bolts and a 1S pack. run_mock builds v1 from the kickoff, run_review builds the next
-version from a review. A MockTeam stands for the orchestrator: it fans the parts, CAD,
-pricing and checks jobs out to sub-agents, as the live orchestrator delegates them.
+M1.4 bolts and a 1S pack. The requirements come from the typed request (`limits_from_text`):
+run_mock builds v1 to them, run_mock_followup builds the next version when a later message
+changes a limit ("make it fly 10 minutes"). A MockTeam stands for the orchestrator: it fans the
+parts, CAD, pricing and checks jobs out to sub-agents, as the live orchestrator delegates them.
 """
 
 from __future__ import annotations
 
 import asyncio
+import re
 
 from pai_agent.env import pace_seconds
 from pai_agent.context import Ctx
-from pai_agent.meetings import fmt_number, short_date
 from pai_agent.mock_team import MockTeam, build_jobs, parts_job
 from pai_agent.tools.build_guide import mock_steps
 from pai_agent.tools.registry import call_tool
 
-_UNITS = {"Minuten": "min", "minutes": "min"}
+# The request the library's micro drone and the optimizer stand on when nobody typed one.
+DEFAULT_REQUEST = "Build a micro drone under 120 euros with at least 8 minutes of flight time, under 50 g."
 
 # The Twiglet's arm, centre to motor shaft, from its ~85 mm wheelbase: 2" props need 39 mm.
 TWIGLET_ARM_MM = 42.5
@@ -27,6 +29,31 @@ TWIGLET_ARM_MM = 42.5
 COMPACT_ARM_MM = 34.0
 FRAME_PLATE_MM = 2.0
 MOTOR_BOLT_CIRCLE_MM = 6.6
+
+_WORDS = {"five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11, "twelve": 12, "fifteen": 15, "twenty": 20, "thirty": 30, "fifty": 50, "hundred": 100}
+_NUMBER = r"(\d+(?:[.,]\d+)?|" + "|".join(_WORDS) + r")"
+_LIMITS = (
+    ("budget", re.compile(r"(?:(?:under|below|less than|at most|max(?:imum)?|within|for)\s+)?(?:€\s*" + _NUMBER + r"|" + _NUMBER + r"\s*(?:euros?|eur\b|€))", re.I)),
+    ("flight_time", re.compile(r"(?:(?:at least|min(?:imum)?|for|fly(?:ing)?|of)\s+)?" + _NUMBER + r"\s*(?:minutes?|mins?\b)", re.I)),
+    ("weight", re.compile(r"(?:under|below|less than|at most|max(?:imum)?|lighter than)\s+" + _NUMBER + r"\s*(?:grams?|g\b)", re.I)),
+)
+
+
+def _number(raw: str) -> float:
+    word = raw.strip().lower()
+    return float(_WORDS[word]) if word in _WORDS else float(word.replace(",", "."))
+
+
+def limits_from_text(text: str) -> list[dict]:
+    """product_brief requirements from a typed request, each quoting the words it came from."""
+
+    found = []
+    for rid, pattern in _LIMITS:
+        match = pattern.search(text or "")
+        if match:
+            raw = next(group for group in match.groups() if group)
+            found.append({"id": rid, "limit": _number(raw), "quote": match.group(0).strip()})
+    return found
 
 
 def en(value: float, digits: int) -> str:
@@ -75,16 +102,6 @@ def _numbers(metrics: dict) -> str:
     )
 
 
-def _who(quote: dict) -> str:
-    """'Ben at 20:06', or just 'Ben' when the transcript has no times."""
-
-    return quote["speaker"] + (" at " + quote["time"] if quote.get("time") else "")
-
-
-def _unit(raw: str) -> str:
-    return _UNITS.get(raw, raw)
-
-
 def _part(part_id: str) -> dict:
     from pai_agent.tools.parts import catalog
 
@@ -98,13 +115,19 @@ async def _pick(ctx: Ctx, category: str, query: str, part_id: str, reason: str, 
     await _need(ctx, "parts_search", args)
 
 
-async def _build_tail(ctx: Ctx, meeting_id: str, label: str, team: MockTeam) -> dict:
-    """Frame in FreeCAD, real frame mass, Blender, bill of materials, Jamie tasks, version."""
+def _passes(ctx: Ctx) -> str:
+    rows = ctx.state.requirements
+    passed = sum(1 for r in rows if r.get("_met") is True)
+    return str(passed) + " of " + str(len(rows)) + " requirements pass"
 
-    return await team.alongside(build_jobs(label), _build(ctx, meeting_id, label))
+
+async def _build_tail(ctx: Ctx, label: str, team: MockTeam) -> dict:
+    """Frame in FreeCAD, real frame mass, Blender, bill of materials and the version it commits."""
+
+    return await team.alongside(build_jobs(label), _build(ctx, label))
 
 
-async def _build(ctx: Ctx, meeting_id: str, label: str) -> dict:
+async def _build(ctx: Ctx, label: str) -> dict:
     await _beat()
     await ctx.step("cad", "running")
     arm = float(ctx.state.cad_params.get("arm_length_mm") or 0)
@@ -156,22 +179,20 @@ async def _build(ctx: Ctx, meeting_id: str, label: str) -> dict:
     await _beat()
     await ctx.step("stueckliste", "running")
     await _safety(ctx)
+    # bom_build commits the version.
     await _need(ctx, "bom_build", {})
     await call_tool(ctx, "print_prep", {"orientation": "as_modeled"})
     await _need(ctx, "build_guide", {"steps": mock_steps(ctx)})
     await _need(ctx, "firmware", {})
     await call_tool(ctx, "electronics_plan", {})
-    tasks = await _need(ctx, "jamie_create_tasks", {"meeting_id": meeting_id})
-    version = await _need(ctx, "version_commit", {"meeting_id": meeting_id})
     await ctx.step("stueckliste", "done")
-    version["tasks"] = tasks
-    return version
+    return ctx.state.versions[-1]
 
 
 async def _first_picks(ctx: Ctx) -> None:
     motor = _part("generic-1103-15000kv")
-    await _pick(ctx, "motor", "1103", motor["id"], "Hovered cleanly in last week's flight test, " + en(float(motor["thrust_g"]), 0) + " g thrust per motor.")
-    await _pick(ctx, "propeller", "2020", "gemfan-2020-4", "The 2-inch four-blade the 1103 thrust figure is measured with.")
+    await _pick(ctx, "motor", "1103", motor["id"], "The micro-class motor, " + en(float(motor["thrust_g"]), 0) + " g thrust per motor on 1S.", "hover")
+    await _pick(ctx, "propeller", "2020", "gemfan-2020-4", "The 2-inch four-blade the 1103 thrust figure is measured with.", "hover")
     await _pick(ctx, "battery", "FunFly", "tattu-funfly-4s-1300", "1300 mAh looks like plenty of flight time. I check that.", "flight_time")
     controller = _part("betafpv-matrix-1s-5in1-v2")
     await _pick(
@@ -188,54 +209,43 @@ async def _first_picks(ctx: Ctx) -> None:
     await _pick(ctx, "hardware", "M1.4", "m14-bolts", "Motor bolts, 3 mm, so they stop short of the windings.")
 
 
-async def run_mock(ctx: Ctx, meeting_id: str = "") -> None:
-    async with MockTeam(ctx, "build the small drone from the kickoff") as team:
-        await _kickoff(ctx, meeting_id, team)
+async def run_mock(ctx: Ctx, text: str = "") -> None:
+    async with MockTeam(ctx, "build the drone from the request") as team:
+        await _first_build(ctx, text, team)
 
 
-async def _kickoff(ctx: Ctx, meeting_id: str, team: MockTeam) -> None:
+async def _first_build(ctx: Ctx, text: str, team: MockTeam) -> None:
+    request = text.strip()
+    if not request:
+        # The library and the optimizer start from the reference request, taken as the user's.
+        request = DEFAULT_REQUEST
+        ctx.state.requests.append(request)
     await _beat()
     await ctx.step("meeting", "running")
-    await _say(ctx, "denkt", "Meeting first. Guessing is for people without Jamie.")
-    await _need(ctx, "jamie_templates", {})
-    requirements = await _need(ctx, "jamie_requirements", {"meeting_id": meeting_id})
-    kickoff_id = requirements["meeting_id"]
+    if not re.search(r"\b(drone|quad\w*|copter|fpv|whoop)\b", request, re.I):
+        await ctx.chat("agent", "Offline demo without the live model: I can only build the sample micro drone, so that is what you get.")
+    await _say(ctx, "denkt", "Your numbers first. Then the parts.")
+    brief = await _need(ctx, "product_brief", {"product": "drone", "requirements": limits_from_text(request)})
+    typed = [r for r in brief["requirements"] if r["source"] == "user"]
+    lines = "\n".join("- " + r["text"] for r in brief["requirements"])
     await ctx.chat(
         "agent",
-        str(len(requirements["requirements"]))
-        + " requirements from “"
-        + requirements["title"]
-        + "”. Budget, flight time and weight are in the Hardware-Anforderungen template, each with the sentence and who said it. I created the kickoff and review templates in Jamie myself.",
+        (str(len(typed)) + " requirement" + ("" if len(typed) == 1 else "s") + " from your request" if typed else "No numbers in your request")
+        + ", plus what every drone needs:\n\n"
+        + lines,
     )
-    await _need(ctx, "ui_point_at", {"target": "requirements", "label": requirements["title"]})
-    motors = await _need(ctx, "jamie_search", {"query": "1103"})
-    funfly = await _need(ctx, "jamie_search", {"query": "FunFly"})
-    warned = any(meeting["quotes"] for meeting in funfly["meetings"])
-    if motors["meetings"] and warned:
-        await _say(
-            ctx,
-            "erklaert",
-            "Last week the 1103s hovered cleanly. Lea warned about the FunFly.",
-            "Jamie has it: in the flight test on Oct 17 the 1103 15000KV with Gemfan 2020 props hovered cleanly. In the workshop note from Sep 2 Lea warns against the FunFly 4S on the 1103s. I run the numbers anyway, or nobody believes it.",
-        )
-    else:
-        await _say(
-            ctx,
-            "denkt",
-            "No earlier notes on these. Fine, I check everything myself.",
-            "Jamie has no earlier meetings on the 1103s or the FunFly. Then I check every part myself.",
-        )
+    await _need(ctx, "ui_point_at", {"target": "requirements", "label": "Your requirements"})
     await ctx.step("meeting", "done")
 
     await _beat()
     await ctx.step("teile", "running")
-    await _say(ctx, "denkt", "Eight minutes? Everyone grabs a big battery. That is the trap.")
+    await _say(ctx, "denkt", "Everyone grabs a big battery for flight time. That is the trap.")
     await team.alongside(
         [
             parts_job(
                 "pick the bought parts for the 1S toothpick",
                 ["1103 15000KV motors", "Gemfan 2020 props", "FunFly 4S battery", "Matrix 1S 5in1 AIO", "frame, camera, canopy and bolts"],
-                "8 parts picked. The FunFly 4S looks like flight time, but Lea warned about it; the checks decide.",
+                "8 parts picked. The FunFly 4S looks like flight time; the checks decide.",
             )
         ],
         _first_picks(ctx),
@@ -252,10 +262,7 @@ async def _kickoff(ctx: Ctx, meeting_id: str, team: MockTeam) -> None:
         ctx,
         "besorgt",
         "Downdraft test: failed. Spectacularly. The battery is a brick.",
-        ("Lea was right: " if warned else "")
-        + "at thrust-to-weight "
-        + en(failed["thrust_to_weight"], 2)
-        + " there is no reserve for the gust. The battery is the brick.",
+        "At thrust-to-weight " + en(failed["thrust_to_weight"], 2) + " there is no reserve for the gust. The battery is the brick.",
     )
     await _need(ctx, "ui_point_at", {"target": "battery", "label": ctx.state.selected["battery"]["name"]})
     await _need(ctx, "ui_draw", {"kind": "halo", "target": "battery", "text": "too heavy"})
@@ -295,169 +302,50 @@ async def _kickoff(ctx: Ctx, meeting_id: str, team: MockTeam) -> None:
     await ctx.step("simulation", "done")
     await _say(ctx, "freut_sich", "Second run holds the gust. Told you.")
     await _need(ctx, "ui_draw", {"kind": "halo", "target": "battery", "text": "fits"})
+    await _swap_pack(ctx)
 
-    version = await _build_tail(ctx, kickoff_id, "v1", team)
-    await _need(ctx, "ui_point_at", {"target": "timeline", "label": "v1 hangs on the kickoff"})
+    version = await _build_tail(ctx, "v1", team)
     await _say(
         ctx,
         "freut_sich",
-        "Mark 1, done. Notes, tags and tasks are in Jamie.",
-        "Version 1 hangs on the kickoff: "
-        + version["detail"].split(" · ", 1)[-1]
-        + ". Jamie has a note, the tags drohne and drohne-v1 and "
-        + str(version["tasks"]["task_count"])
-        + " order tasks for Lea and Ben. Shop prices are from 2026-10-24; check them before ordering.",
+        "Mark 1, done. Tell me what to change.",
+        "Version 1: " + version["summary"] + ", " + _passes(ctx) + ". Shop prices are from 2026-10-24; check them before ordering. Tell me what to change, for example a longer flight time.",
     )
     ctx.state.finished = True
 
 
-async def run_review(ctx: Ctx, meeting_id: str) -> None:
-    async with MockTeam(ctx, "build the next version from the review") as team:
-        await _review(ctx, meeting_id, team)
+async def _swap_pack(ctx: Ctx) -> bool:
+    """A flight time the 550 pack cannot reach takes the bigger 1S pack; the motors stay."""
 
-
-async def _review(ctx: Ctx, meeting_id: str, team: MockTeam) -> None:
-    ctx.state.finished = False
-    await _beat()
-    await ctx.step("meeting", "running")
-    await _say(ctx, "denkt", "Review is over. Let me see what you changed.")
-    review = await _need(ctx, "jamie_meeting", {"meeting_id": meeting_id})
-    lines = []
-    for change in review["changes"]:
-        lines.append(_who(change["quote"]) + ": “" + change["quote"]["text"] + "”")
-    for complaint in review["complaints"]:
-        lines.append(_who(complaint["quote"]) + ": “" + complaint["quote"]["text"] + "”")
-    if lines:
-        await ctx.chat("agent", "From “" + review["title"] + "”:\n\n" + "\n\n".join(lines))
-
-    accept: list[str] = [change["id"] for change in review["changes"]]
-    for conflict in review["conflicts"]:
-        old, new = conflict["old"], conflict["new"]
-        await _need(ctx, "mascot_say", {"state": "denkt", "say": "That contradicts the kickoff. Better ask."})
-        new_value = fmt_number(float(new["limit"])) + " " + _unit(conflict["unit"])
-        old_value = fmt_number(float(old["limit"])) + " " + _unit(conflict["unit"])
-        answer = await _need(
-            ctx,
-            "ask_user",
-            {
-                "question": old["meeting_title"]
-                + ", "
-                + _who(old)
-                + ": “"
-                + old["source_quote"]
-                + "”\n"
-                + new["meeting_title"]
-                + ", "
-                + _who(new)
-                + ": “"
-                + new["source_quote"]
-                + "”\nDo I build for "
-                + new_value
-                + "?",
-                "options": [
-                    {"id": "new", "label": new_value + " (" + new["meeting_title"] + ")"},
-                    {"id": "old", "label": old_value + " (" + old["meeting_title"] + ")"},
-                ],
-                "default_id": "new",
-            },
-        )
-        if answer["answer_id"] == "old":
-            accept.remove(conflict["id"])
-    if accept:
-        await _need(ctx, "requirements_accept", {"meeting_id": meeting_id, "ids": accept})
-    await _need(ctx, "ui_point_at", {"target": "requirements", "label": review["title"]})
-
-    complaint = next((c for c in review["complaints"] if c["category"] == "motor"), None)
-    refers = (complaint or {}).get("refers_to")
-    if complaint and refers:
-        await _say(
-            ctx,
-            "erklaert",
-            "“Last week's motor” is the one from the flight test.",
-            "“Last week's motor”: Jamie has the flight test on "
-            + short_date(refers["date"])
-            + ", "
-            + _who(refers["quote"])
-            + ": “"
-            + refers["quote"]["text"]
-            + "” That is "
-            + refers["name"]
-            + ", the motor in v1.",
-        )
-    await ctx.step("meeting", "done")
-
-    await _beat()
-    await ctx.step("teile", "running")
-    await team.alongside(
-        [parts_job("find a pack for the new flight time", ["1S packs with more capacity", "BetaFPV LAVA II 1S 680"], "LAVA II 1S 680 fits: more capacity, still 1S, the motors stay.")],
-        _swap_pack(ctx),
+    target = next((r for r in ctx.state.requirements if r["id"] == "flight_time"), None)
+    if not target or float(target.get("min", 0)) <= float(ctx.state.metrics.get("flight_time_min", 0)):
+        return False
+    bigger = _part("betafpv-lava-1s-680")
+    if ctx.state.selected.get("battery", {}).get("id") == bigger["id"]:
+        return False
+    await _need(ctx, "parts_search", {"category": "battery", "query": ""})
+    await _say(
+        ctx,
+        "denkt",
+        "More flight time means more battery. But not the 4S brick.",
+        "For " + en(float(target["min"]), 0) + " minutes I need more capacity. I stay at 1S and take the " + bigger["name"] + ", the other pack from the video.",
+    )
+    await _pick(
+        ctx,
+        "battery",
+        "680",
+        bigger["id"],
+        en(float(bigger["capacity_mah"]), 0) + " mAh for " + en(float(target["min"]), 0) + " minutes, " + en(float(bigger["mass_g"]), 1) + " g, still 1S.",
+        "flight_time",
     )
     metrics = await _need(ctx, "physics_calc", {})
-    await ctx.step("teile", "done")
     await ctx.chat("agent", "Computed: " + _numbers(metrics) + ".")
-
-    await _beat()
-    await ctx.step("simulation", "running")
     run = await _need(ctx, "simulate_drone", {})
     await ctx.step("simulation", "done" if run["result"] == "pass" else "failed")
-    if run["result"] == "pass":
-        await _say(ctx, "freut_sich", "Longer in the air and still holds the gust. You are welcome.")
-    else:
-        await _say(ctx, "besorgt", "Gust wins this round. Back to the parts.")
-
-    version = await _build_tail(ctx, meeting_id, "v" + str(len(ctx.state.versions) + 1), team)
-    changes = [item for item in version["diff"] if item["key"] in {"weight_g", "flight_time_min", "price_eur"}]
-    digits = {"weight_g": 1, "flight_time_min": 1, "price_eur": 2}
-    parts = ", ".join(
-        item["label"] + " " + en(item["before"], digits[item["key"]]) + " → " + en(item["after"], digits[item["key"]]) + " " + item["unit"]
-        for item in changes
-    )
-    await _need(ctx, "ui_point_at", {"target": "metrics", "label": "v" + str(version["version"])})
-    await _say(
-        ctx,
-        "freut_sich",
-        "v" + str(version["version"]) + " is done. The difference is a note in Jamie.",
-        "Version "
-        + str(version["version"])
-        + " hangs on “"
-        + review["title"]
-        + "”: "
-        + parts
-        + ". The difference is a note on the meeting; order tasks: "
-        + str(version["tasks"]["new"])
-        + " new, "
-        + str(version["tasks"]["closed"])
-        + " closed.",
-    )
-    ctx.state.finished = True
+    return True
 
 
-async def _swap_pack(ctx: Ctx) -> None:
-    target = next((r for r in ctx.state.requirements if r["id"] == "flight_time"), None)
-    if target and float(target.get("min", 0)) > float(ctx.state.metrics.get("flight_time_min", 0)):
-        await _need(ctx, "parts_search", {"category": "battery", "query": ""})
-        bigger = _part("betafpv-lava-1s-680")
-        await _say(
-            ctx,
-            "denkt",
-            "More flight time means more battery. But not the FunFly.",
-            "For "
-            + en(float(target["min"]), 0)
-            + " minutes I need more capacity. The FunFly would have it, but Jamie reminds me of Lea's warning. I stay at 1S and take the "
-            + bigger["name"]
-            + ", the other pack from the video.",
-        )
-        await _pick(
-            ctx,
-            "battery",
-            "680",
-            bigger["id"],
-            en(float(bigger["capacity_mah"]), 0) + " mAh for " + en(float(target["min"]), 0) + " minutes, " + en(float(bigger["mass_g"]), 1) + " g, still 1S.",
-            "flight_time",
-        )
-
-
-async def run_mock_followup(ctx: Ctx) -> None:
+async def run_mock_followup(ctx: Ctx, text: str = "") -> None:
     if not ctx.state.finished:
         await _say(
             ctx,
@@ -466,10 +354,60 @@ async def run_mock_followup(ctx: Ctx) -> None:
             "Reset the session and send the sentence again. I do not build on half a state.",
         )
         return
+    changes = limits_from_text(text)
+    if not changes:
+        await _say(
+            ctx,
+            "ruhig",
+            "The version is done. Give me a new number.",
+            "The version is done. Tell me a new limit, for example \"make it fly 10 minutes\" or \"under 100 euros\", and I rebuild and show the difference.",
+        )
+        return
+    async with MockTeam(ctx, "build the next version from your change") as team:
+        await _next_version(ctx, changes, team)
+
+
+async def _next_version(ctx: Ctx, changes: list[dict], team: MockTeam) -> None:
+    state = ctx.state
+    state.finished = False
+    await _beat()
+    await ctx.step("meeting", "running")
+    await _say(ctx, "denkt", "New numbers. Let me see what that breaks.")
+    # The typed change wins over the earlier limit of the same kind; the others stay.
+    keep = [
+        {"id": r["id"], "limit": r.get("min", r.get("max")), "quote": r["source_quote"], "proposed": r.get("source") == "proposed"}
+        for r in state.requirements
+        if r["id"] in {"budget", "flight_time", "weight"} and r["id"] not in {c["id"] for c in changes}
+    ]
+    await _need(ctx, "product_brief", {"product": "drone", "requirements": keep + changes})
+    await _need(ctx, "ui_point_at", {"target": "requirements", "label": "Your change"})
+    await ctx.step("meeting", "done")
+
+    await _beat()
+    await ctx.step("teile", "running")
+    await team.alongside(
+        [parts_job("find a pack for the new flight time", ["1S packs with more capacity", "BetaFPV LAVA II 1S 680"], "LAVA II 1S 680 fits: more capacity, still 1S, the motors stay.")],
+        _swap_pack(ctx),
+    )
+    await ctx.step("teile", "done")
+    run = state.last_sim or {}
+    if run.get("result") == "pass":
+        await _say(ctx, "freut_sich", "Longer in the air and still holds the gust. You are welcome.")
+    elif run:
+        await _say(ctx, "besorgt", "Gust wins this round. Back to the parts.")
+
+    version = await _build_tail(ctx, "v" + str(len(state.versions) + 1), team)
+    changes_shown = [item for item in version["diff"] if item["key"] in {"weight_g", "flight_time_min", "price_eur"}]
+    digits = {"weight_g": 1, "flight_time_min": 1, "price_eur": 2}
+    parts = ", ".join(
+        item["label"] + " " + en(item["before"], digits[item["key"]]) + " → " + en(item["after"], digits[item["key"]]) + " " + item["unit"]
+        for item in changes_shown
+    )
+    await _need(ctx, "ui_point_at", {"target": "metrics", "label": "v" + str(version["n"])})
     await _say(
         ctx,
-        "ruhig",
-        "The version is done. The next review in Jamie builds the next one.",
-        "The version is done. As soon as the next review in Jamie ends, I rebuild and write the difference back.",
+        "freut_sich",
+        "v" + str(version["n"]) + " is done. The difference is on the card.",
+        "Version " + str(version["n"]) + ": " + (parts or version["summary"]) + ". " + _passes(ctx) + ".",
     )
-
+    state.finished = True

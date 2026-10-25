@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from pai_agent.context import Ctx
 from pai_agent.scene import PART_CATEGORIES, PART_TARGETS
+from pai_agent.versions import bench_version
 
 MAX_STEPS = 20
 MAX_MINUTES = 240
@@ -132,7 +133,7 @@ async def build_guide(ctx: Ctx, args: dict) -> dict:
         step["items"] = names
     total = round(sum(step["minutes"] for step in steps), 1)
     guide = {
-        "version": len(ctx.state.versions) + 1,
+        "version": bench_version(ctx.state),
         "steps": steps,
         "total_minutes": total,
     }

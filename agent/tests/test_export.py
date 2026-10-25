@@ -15,7 +15,6 @@ from pai_agent.context import Ctx
 from pai_agent.export import bom_csv, build_guide_md, bundle, order
 from pai_agent.paths import SESSIONS_DIR
 from pai_agent.state import BuildState
-from pai_agent.tools.jamie import init_timeline
 
 BOM = {
     "items": [
@@ -134,7 +133,6 @@ class DroneExportTest(unittest.TestCase):
         directory = Path(tempfile.mkdtemp(dir=SESSIONS_DIR))
         self.addCleanup(shutil.rmtree, directory, True)
         state = BuildState(session_id=directory.name, directory=directory)
-        init_timeline(state)
         ctx = Ctx(EventBus(), state, auto_steps=False)
         from pai_agent.mock_story import run_mock
 

@@ -1,9 +1,8 @@
 """`parts_search`: the curated drone parts catalog (`agent/data/parts.json`) and the choice of one part.
 
-A search filters one category; `select_id` binds a part to the build with a reason. Before a
-part is chosen, earlier Jamie meetings are searched for warnings about it (`tools/jamie.py`),
-so a complaint from a past meeting surfaces before the part is ordered again. Every catalog
-part carries its mass, price, shop link and the date the price was checked.
+A search filters one category; `select_id` binds a part to the build with a reason and the
+requirement it serves, whose sentence from the user's request the dashboard shows next to the
+part. Every catalog part carries its mass, price, shop link and the date the price was checked.
 """
 
 from __future__ import annotations
@@ -32,6 +31,42 @@ def _public(part: dict) -> dict:
     return shown
 
 
+# The requirement a part serves when the model names none.
+_DEFAULT_BECAUSE = {"battery": "flight_time", "frame": "printable", "flight_controller": "weight", "motor": "hover", "propeller": "hover"}
+
+
+def requirement_quote(state, requirement_id: str) -> dict | None:
+    """The user's sentence behind a requirement, for the part it justifies."""
+
+    item = next((r for r in state.requirements if r["id"] == requirement_id), None)
+    if not item:
+        return None
+    return {"text": item["source_quote"], "speaker": item.get("speaker", ""), "time": item.get("time", "")}
+
+
+async def emit_part(ctx: Ctx, part: dict, because: str = "", reason: str = "") -> dict:
+    """Announces a chosen part with the requirement it serves and the sentence behind that requirement."""
+
+    category = part["category"]
+    why = requirement_quote(ctx.state, because) if because else None
+    if why is None:
+        why = requirement_quote(ctx.state, _DEFAULT_BECAUSE.get(category, "hover"))
+    event = {
+        "type": "part",
+        "category": category,
+        "id": part["id"],
+        "name": part["name"],
+        "why": why,
+        "reason": reason,
+        "mass_g": part.get("mass_g"),
+        "size_mm": [part[k] for k in ("length_mm", "width_mm", "height_mm")] if "length_mm" in part else None,
+        "diameter_mm": part.get("diameter_mm"),
+    }
+    ctx.state.reasons[category] = event
+    await ctx.emit(event)
+    return event
+
+
 async def parts_search(ctx: Ctx, args: dict) -> dict:
     category = str(args.get("category", "")).strip()
     if category not in PART_CATEGORIES:
@@ -52,8 +87,6 @@ async def parts_search(ctx: Ctx, args: dict) -> dict:
         message = "No match for " + category + (" " + query if query else "") + "."
         return {"ok": False, "error": message, "detail": message}
 
-    from pai_agent.tools.jamie import emit_part, part_notes, warn_candidates
-
     selected = None
     select_id = str(args.get("select_id", "")).strip()
     if select_id:
@@ -65,16 +98,8 @@ async def parts_search(ctx: Ctx, args: dict) -> dict:
         ctx.state.selected[category] = dict(chosen)
         selected = select_id
         await emit_part(ctx, chosen, str(args.get("because", "")).strip(), str(args.get("reason", "")).strip())
-    else:
-        await warn_candidates(ctx, matches)
 
-    shown = []
-    for part in matches[:8]:
-        public = _public(part)
-        public["jamie_notes"] = [
-            {key: note[key] for key in ("speaker", "time", "meeting_title", "text", "tone")} for note in part_notes(ctx.state, part)
-        ]
-        shown.append(public)
+    shown = [_public(part) for part in matches[:8]]
     detail = category + ": " + str(len(shown)) + " hits"
     if selected:
         detail = "Picked: " + ctx.state.selected[category]["name"]

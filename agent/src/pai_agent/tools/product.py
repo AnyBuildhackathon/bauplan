@@ -19,6 +19,7 @@ from pai_agent import assembly as asm
 from pai_agent.context import Ctx
 from pai_agent.paths import DATA_DIR, PARTS_PATH, REPO_ROOT
 from pai_agent.pricing import price
+from pai_agent.requirements import attribute
 from pai_agent.spec import SpecError, find_part, part_of, slug, validate_spec
 
 _CATALOGS: list[dict] | None = None
@@ -70,28 +71,14 @@ def _public(item: dict) -> dict:
 
 def _quote(state) -> dict:
     spec = state.spec or {}
-    return {
-        "text": spec.get("quote") or spec.get("function") or "",
-        "speaker": "You",
-        "time": spec.get("_time", ""),
-        "meeting_id": "",
-        "meeting_title": "Chat request",
-    }
+    return {"text": spec.get("quote") or spec.get("function") or "", "speaker": "You", "time": spec.get("_time", "")}
 
 
-def _requirement_rows(spec: dict, stamp: str) -> list[dict]:
+def _requirement_rows(state, spec: dict) -> list[dict]:
     rows = []
     for requirement in spec["requirements"]:
-        rows.append(
-            {
-                **requirement,
-                "source_quote": requirement["quote"] or spec["quote"] or spec["function"],
-                "speaker": "You",
-                "time": stamp,
-                "meeting_title": "Chat request",
-                "changed_from": None,
-            }
-        )
+        said = attribute(state, requirement["quote"], requirement.get("proposed", False))
+        rows.append({**requirement, **said, "changed_from": None})
     return rows
 
 
@@ -157,7 +144,7 @@ async def product_spec(ctx: Ctx, args: dict) -> dict:
     state.assembly = None
     state.assembly_stale = True
     state.bom = None
-    state.requirements = _requirement_rows(spec, stamp)
+    state.requirements = _requirement_rows(state, spec)
     await ctx.emit(
         {"type": "product", "id": spec["id"], "label": spec["name"], "kind": "generic", "requirements": [r["id"] for r in spec["requirements"]]}
     )

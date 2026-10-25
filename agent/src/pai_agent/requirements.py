@@ -1,7 +1,7 @@
 """Requirement rows: whether each requirement is met, recomputed from the measured state.
 
-The meeting file (or the product spec) owns the wording and the limits; this module owns
-`met`. `refresh_requirements` runs after every successful tool call (`tools/registry.py`), so a
+The brief or the product spec owns the wording and the limits; this module owns `met` and who a
+requirement is attributed to (`attribute`). `refresh_requirements` runs after every successful tool call (`tools/registry.py`), so a
 row only turns green when a tool produced a number that satisfies its limit. For a generic
 product the verdict comes from the check library (`tools/checks.judge`); the drone and gripper
 compare their metrics against fixed requirement ids.
@@ -9,9 +9,39 @@ compare their metrics against fixed requirement ids.
 
 from __future__ import annotations
 
+import re
+import time
+
 from pai_agent.context import Ctx
 from pai_agent.paths import REPO_ROOT
 from pai_agent.state import BuildState
+
+
+def _words(text: str) -> str:
+    return " ".join(re.findall(r"[\w€$%.,]+", text.lower())).strip(" .,")
+
+
+def typed_by_user(state: BuildState, quote: str) -> bool:
+    """True when `quote` is words the user actually typed or said in this session."""
+
+    needle = _words(quote)
+    if len(needle) < 3:
+        return False
+    return any(needle in _words(text) for text in state.requests)
+
+
+def attribute(state: BuildState, quote: str, proposed: bool, reason: str = "") -> dict:
+    """Who a requirement row names: the user with their own words, or Mechanic's proposal.
+
+    A requirement counts as the user's only when its quote is in what they typed; anything
+    else, a sensible default or a quote the model made up, is shown as proposed by Mechanic.
+    """
+
+    stamp = time.strftime("%H:%M")
+    if not proposed and quote and typed_by_user(state, quote):
+        return {"source": "user", "source_quote": quote.strip(), "speaker": "You", "time": stamp}
+    note = reason.strip() or ("Proposed by Mechanic: no number for this in your request." if not quote else quote.strip())
+    return {"source": "proposed", "source_quote": note, "speaker": "Mechanic", "time": stamp}
 
 
 def met_for(state: BuildState, requirement: dict) -> bool | None:
@@ -87,7 +117,7 @@ async def emit_requirement(ctx: Ctx, requirement: dict, met: bool | None) -> Non
             "met": met,
             "speaker": requirement.get("speaker", ""),
             "time": requirement.get("time", ""),
-            "meeting_title": requirement.get("meeting_title", ""),
+            "source": requirement.get("source", "user"),
             "changed_from": requirement.get("changed_from"),
             "detail": detail or None,
         }

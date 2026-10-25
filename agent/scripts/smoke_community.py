@@ -24,7 +24,6 @@ from pai_agent.context import Ctx
 from pai_agent.orchestrator import run_remix
 from pai_agent.paths import SESSIONS_DIR
 from pai_agent.state import BuildState
-from pai_agent.tools.jamie import init_timeline
 
 
 def check(condition: bool, message: str) -> None:
@@ -38,7 +37,6 @@ def fresh(name: str) -> BuildState:
     shutil.rmtree(folder, ignore_errors=True)
     folder.mkdir(parents=True)
     state = BuildState(session_id=folder.name, directory=folder)
-    init_timeline(state)
     return state
 
 

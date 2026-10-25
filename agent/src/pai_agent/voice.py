@@ -22,7 +22,7 @@ import urllib.request
 RESON8_TOKEN_URL = "https://api.reson8.dev/v1/auth/token"
 RESON8_REALTIME_URL = "wss://api.reson8.dev/v1/speech-to-text/realtime"
 RESON8_TURNS_URL = "wss://api.reson8.dev/v1/speech-to-text/turns"
-# Words the base model gets wrong in our meetings: part names, tools and the mascot.
+# Words the base model gets wrong in our requests: part names, tools and the mascot.
 PHRASES = [
     "Mechanic",
     "AnyBuild",
@@ -45,7 +45,6 @@ PHRASES = [
     "FreeCAD",
     "CadQuery",
     "Blender",
-    "Jamie",
     "Reson8",
     "thrust-to-weight",
 ]

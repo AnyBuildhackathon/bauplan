@@ -6,7 +6,7 @@ Starts its own mock backend on PROFILE_PORT (default 8102) unless PROFILE_BASE p
     cd agent && uv run python scripts/profile_build.py            # mock
     cd agent && PROFILE_BASE=http://127.0.0.1:8100 uv run python scripts/profile_build.py drone
 
-Flows: drone (reference drone, then the review rebuild), gripper (robot gripper from a request),
+Flows: drone (reference drone, then a typed change), gripper (robot gripper from a request),
 stand (phone stand from scratch). Prints the wall time of each flow and the slowest tools.
 """
 
@@ -82,7 +82,7 @@ def run_flow(base: str, recorder: Recorder, flow: str) -> dict:
     if flow == "drone":
         _request(base, "/api/library/micro-drone/open", {})
         _wait_idle(base, 600)
-        _request(base, "/api/prompt", {"text": "The review is done, rebuild it."})
+        _request(base, "/api/prompt", {"text": "Make it fly 10 minutes."})
     elif flow == "gripper":
         _request(base, "/api/prompt", {"text": GRIPPER})
     else:
@@ -98,7 +98,7 @@ def _start_server(port: str) -> subprocess.Popen:
     env = os.environ.copy()
     env.update({"PAI_FORCE_MOCK": "1", "DEMO_PACE_S": "0", "PAI_ASK_TIMEOUT_S": "0", "PORT": port})
     for key in list(env):
-        if key.startswith("RUNPOD_") or key in {"ANTHROPIC_API_KEY", "JAMIE_MCP_TOKEN"}:
+        if key.startswith("RUNPOD_") or key in {"ANTHROPIC_API_KEY"}:
             env.pop(key, None)
     log_path = Path(os.environ.get("TMPDIR", "/tmp")) / "pai-agent-profile.log"
     process = subprocess.Popen(["uv", "run", "physical-ai-agent"], cwd=ROOT, env=env, start_new_session=True, stdout=log_path.open("w"), stderr=subprocess.STDOUT)

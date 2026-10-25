@@ -1,9 +1,8 @@
 """Version history: every rebuild is a version with its trigger, its numbers, its parts and a copy of its model.
 
-The drone's versions come from version_commit (Jamie meetings); `snapshot` adds the model copy and the
-fields below to them. Every other product commits a version here after its bill of materials. A restore
-rebuilds an old version through the same tools as any build and commits it as a new version, so history
-only grows.
+Every product, the drone included, commits a version here after its bill of materials; `snapshot` adds
+the model copy, the requirement results and what a restore needs. A restore rebuilds an old version
+through the same tools as any build and commits it as a new version, so history only grows.
 """
 
 from __future__ import annotations
@@ -15,7 +14,7 @@ from pathlib import Path
 
 from pai_agent.context import Ctx
 
-TRIGGERS = ("meeting", "chat", "library", "check_failed", "restore")
+TRIGGERS = ("chat", "library", "check_failed", "restore")
 
 # Drone numbers in the existing diff shape: key, label, unit.
 _DRONE_NUMBERS = (
@@ -164,7 +163,7 @@ def snapshot(ctx: Ctx, version: dict, trigger: str, label: str | None = None, re
     directory = Path(state.directory)
     version["trigger"] = trigger if trigger in TRIGGERS else "chat"
     version["product"] = state.product
-    version["label"] = label or version.get("meeting_title") or ""
+    version["label"] = label or ""
     version["requirements"] = _requirements(state)
     version["params"] = _params(state)
     version["restored_from"] = restored_from
@@ -206,6 +205,14 @@ def _trigger(ctx: Ctx, version: dict, previous: dict | None) -> str:
     return trigger
 
 
+def bench_version(state) -> int:
+    """The number of the version on the bench: the one its bill of materials committed, or the next one."""
+
+    if state.versions and (state.bom or {}).get("version") == len(state.versions):
+        return len(state.versions)
+    return len(state.versions) + 1
+
+
 async def commit(ctx: Ctx, label: str | None = None, restored_from: int | None = None) -> dict:
     """Commits the bench as the next version and publishes it."""
 
@@ -225,8 +232,6 @@ async def commit(ctx: Ctx, label: str | None = None, restored_from: int | None =
     n = len(state.versions) + 1
     version = {
         "n": n,
-        "meeting_id": "",
-        "meeting_title": label or "",
         **numbers,
         "sim": state.last_sim["result"] if state.last_sim else None,
         "parts": _parts(state),
@@ -245,36 +250,17 @@ async def commit(ctx: Ctx, label: str | None = None, restored_from: int | None =
     pieces.append(f"{price:.2f} €" if isinstance(price, (int, float)) else "")
     version["summary"] = " · ".join(p for p in pieces if p)
     state.versions.append(version)
+    if state.bom is not None:
+        # The tools after the bill of materials (build guide, firmware) describe this version, not the next.
+        state.bom["version"] = n
     await ctx.emit({"type": "version", **version})
     return version
 
 
-async def commit_with_snapshot(ctx: Ctx, function, args: dict) -> dict:
-    """Runs the drone's version_commit so its one `version` event already carries the snapshot fields."""
-
-    state = ctx.state
-    emit = ctx.emit
-
-    async def enriched(event: dict) -> None:
-        if event.get("type") == "version" and state.versions and state.versions[-1]["n"] == event.get("n"):
-            version = state.versions[-1]
-            previous = state.versions[-2] if len(state.versions) > 1 else None
-            snapshot(ctx, version, getattr(ctx, "trigger", None) or "meeting", restored_from=getattr(ctx, "restored_from", None))
-            version["diff"] = diff(previous, version)
-            event = {"type": "version", **version}
-        await emit(event)
-
-    ctx.emit = enriched
-    try:
-        return await function(ctx, args)
-    finally:
-        ctx.emit = emit
-
-
 async def after_tool(ctx: Ctx, name: str, args: dict, result: dict) -> None:
-    """Hooked into call_tool: any product other than the drone commits a version after its bill of materials."""
+    """Hooked into call_tool: every product commits a version after its bill of materials."""
 
-    if name == "bom_build" and ctx.state.product != "drone":
+    if name == "bom_build":
         await commit(ctx, label=getattr(ctx, "label", None), restored_from=getattr(ctx, "restored_from", None))
 
 
@@ -335,5 +321,6 @@ async def restore(ctx: Ctx, n: int) -> dict:
         await need("cad_frame", dict(saved["cad_params"]))
     await call_tool(ctx, "simulate_drone", {})
     await call_tool(ctx, "blender_render", {})
+    # bom_build commits the version through after_tool.
     await need("bom_build", {})
-    return await commit(ctx, label=ctx.label, restored_from=n)
+    return state.versions[-1]

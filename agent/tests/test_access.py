@@ -5,7 +5,7 @@ import re
 import unittest
 from unittest.mock import patch
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from pai_agent import access
@@ -38,10 +38,6 @@ def make_client() -> TestClient:
     async def files(bucket: str, name: str):
         return {"ok": True}
 
-    @app.post("/api/webhooks/jamie")
-    async def webhook():
-        return {"ok": True}
-
     app.add_middleware(access.AccessGate)
     # As behind Tailscale Funnel: the peer is loopback, the caller is in X-Forwarded-For.
     return TestClient(app, client=("127.0.0.1", 50000))
@@ -49,7 +45,7 @@ def make_client() -> TestClient:
 
 class AccessGateTest(unittest.TestCase):
     def setUp(self):
-        env = {"ANYBUILD_ACCESS_CODE": CODE, "JAMIE_WEBHOOK_SECRET": ""}
+        env = {"ANYBUILD_ACCESS_CODE": CODE}
         self.env = patch.dict(os.environ, env)
         self.env.start()
         self.client = make_client()
@@ -142,23 +138,6 @@ class AccessGateTest(unittest.TestCase):
         window.add("k", 0.0)
         self.assertGreater(window.retry_after("k", 1, 60, 30.0), 0)
         self.assertEqual(window.retry_after("k", 1, 60, 61.0), 0)
-
-    def test_jamie_webhook_may_use_its_own_secret(self):
-        self.assertEqual(self.client.post("/api/webhooks/jamie", headers=JSON, json={}).status_code, 401)
-        with patch.dict(os.environ, {"JAMIE_WEBHOOK_SECRET": "s3"}):
-            self.assertEqual(self.client.post("/api/webhooks/jamie", headers=JSON, json={}).status_code, 200)
-
-    def test_signed_in_users_skip_the_webhook_secret(self):
-        from starlette.requests import Request
-
-        from pai_agent.app import _check_webhook_secret
-
-        with patch.dict(os.environ, {"JAMIE_WEBHOOK_SECRET": "s3"}):
-            signed_in = Request({"type": "http", "headers": [], "query_string": b"", "state": {"access_session": "abc"}})
-            _check_webhook_secret(signed_in)
-            stranger = Request({"type": "http", "headers": [], "query_string": b""})
-            with self.assertRaises(HTTPException):
-                _check_webhook_secret(stranger)
 
     def test_client_ip_trusts_forwarding_only_from_loopback(self):
         scope = {"client": ("127.0.0.1", 1), "headers": [(b"x-forwarded-for", b"1.1.1.1, 2.2.2.2")]}

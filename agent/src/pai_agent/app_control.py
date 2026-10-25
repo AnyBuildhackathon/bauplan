@@ -101,7 +101,6 @@ _PATTERNS: list[tuple[re.Pattern, object]] = [
     (re.compile(r"build guide|assembly guide|assembly instructions|bauanleitung|how (do i|to) (build|assemble) it", re.I), _panel("guide")),
     (re.compile(r"\bagent (steps|costs?)\b", re.I), _setting("agents")),
     (re.compile(r"\btool (details|cards)\b", re.I), _setting("tools")),
-    (re.compile(r"\bjamie activity\b", re.I), _setting("jamie")),
     (re.compile(r"\ball (the )?(metrics|numbers|key numbers)\b", re.I), _setting("all_metrics")),
     (re.compile(r"push.to.talk", re.I), _setting("push_to_talk")),
     (re.compile(r"\b(unmute|mute|be quiet|stop talking|speak again|talk again|voice (on|off))\b", re.I), _voice),

@@ -402,7 +402,6 @@ async def optimize_apply(ctx: Ctx, args: dict) -> dict:
     """Builds one variant through the normal tools and commits it as the next version."""
 
     from pai_agent.tools.registry import call_tool
-    from pai_agent.versions import commit
 
     state = ctx.state
     runs = list(state.optimize.values())
@@ -430,8 +429,9 @@ async def optimize_apply(ctx: Ctx, args: dict) -> dict:
     await need("physics_calc", {})
     await call_tool(ctx, "simulate_drone", {})
     await call_tool(ctx, "blender_render", {})
+    # bom_build commits the variant as the next version through after_tool.
     await need("bom_build", {})
-    version = await commit(ctx, label=ctx.label)
+    version = state.versions[-1]
     event.update({"applied": variant["id"], "version": version["n"]})
     await ctx.emit(dict(event))
     return {"ok": True, "detail": "Variant " + variant["id"] + " is v" + str(version["n"]) + " · " + version["summary"], "version": version["n"], "diff": version["diff"], "summary": version["summary"]}

@@ -1,6 +1,6 @@
 """One pass of the stress test in mock mode, with this script playing the dashboard tab. Not a suite.
 
-The kickoff builds v1, then "stress test it" queues the drone's 50 worlds for the browser: a client
+A typed drone request builds v1, then "stress test it" queues the drone's 50 worlds for the browser: a client
 claims them, a second client is refused, the outcomes go back in batches, and the backend scores
 them (default gains, since nothing was trained). Then a training run leaves gains in its final
 `training` event and the next stress test flies those. Last, a stress test nobody claims fails.
@@ -40,7 +40,7 @@ def main() -> None:
     env = os.environ.copy()
     env.update({"PAI_FORCE_MOCK": "1", "DEMO_PACE_S": "0", "PAI_ASK_TIMEOUT_S": "0", "PORT": PORT, "PAI_TRAIN_CLAIM_TIMEOUT_S": "3"})
     for key in list(env):
-        if key.startswith("RUNPOD_") or key in {"ANTHROPIC_API_KEY", "JAMIE_MCP_TOKEN"}:
+        if key.startswith("RUNPOD_") or key in {"ANTHROPIC_API_KEY"}:
             env.pop(key, None)
     log_path = Path(os.environ.get("TMPDIR", "/tmp")) / "pai-agent-smoke-stress.log"
     with log_path.open("w", encoding="utf-8") as log_file:
@@ -49,8 +49,7 @@ def main() -> None:
         )
         try:
             _wait_healthy(process, log_path)
-            kickoff = json.loads((ROOT / "data" / "webhooks" / "meeting-ended.json").read_text(encoding="utf-8"))
-            _post("/api/webhooks/jamie", kickoff)
+            _post("/api/prompt", {"text": "Build a micro drone under 120 euros with at least 8 minutes of flight time, under 50 g."})
             _wait_events(lambda events: any(e.get("type") == "version" for e in events), timeout=300)
             first = _stress(1, fly=True)
             _assert_default(first)

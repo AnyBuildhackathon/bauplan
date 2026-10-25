@@ -14,8 +14,7 @@ dashboard through the same `ui_control` path as the agent; `product_state` retur
 snapshot (metrics, checks, open question, version). `engineer` is declared NON_BLOCKING and
 awaited behind `asyncio.shield`, so the microphone and barge-in keep working while Claude
 builds. Gemini's own input and output transcriptions are published as `chat` events and
-appended to `voice_conversation.jsonl`, which makes the voice conversation part of the logbook
-and lets `POST /api/voice/note` send it to a Jamie meeting.
+appended to `voice_conversation.jsonl`, which makes the voice conversation part of the logbook.
 """
 
 from __future__ import annotations
@@ -29,8 +28,7 @@ import shutil
 import time
 from contextlib import suppress
 
-from fastapi import APIRouter, HTTPException, Request, WebSocket, WebSocketDisconnect
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from websockets.asyncio.client import connect
 
 from pai_agent.access import AccessGate, access_code, verify_token
@@ -534,27 +532,3 @@ async def live(ws: WebSocket):
         with suppress(Exception):
             await ws.close()
         owner.closed.set()
-
-
-class NoteIn(BaseModel):
-    text: str = Field(min_length=1, max_length=24000)
-    meeting_id: str = Field(min_length=1, max_length=200)
-
-
-@router.post("/api/voice/note")
-async def send_note(body: NoteIn, request: Request):
-    session = request.app.state.session
-    if body.meeting_id not in session.state.meetings:
-        raise HTTPException(400, "Choose a meeting from the timeline.")
-    from pai_agent.tools.jamie import _write
-
-    return await _write(
-        session._ctx(auto_steps=False),
-        "note",
-        {
-            "meeting_id": body.meeting_id,
-            "title": "AnyBuild voice conversation",
-            "text": body.text,
-        },
-        "Voice conversation sent to Jamie",
-    )

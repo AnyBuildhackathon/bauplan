@@ -7,6 +7,7 @@ drone, an Arduino sketch for a servo product. Claude only writes the explanation
 from __future__ import annotations
 
 from pai_agent.context import Ctx
+from pai_agent.versions import bench_version
 
 # Betaflight targets for the flight controllers in the catalog. An unknown board gets no
 # board_name line and a serial receiver on UART1, so the config stays generic.
@@ -112,7 +113,7 @@ def _part(ctx: Ctx, category: str) -> dict | None:
 
 
 def _version_label(ctx: Ctx) -> str:
-    return "v" + str(len(ctx.state.versions) + 1)
+    return "v" + str(bench_version(ctx.state))
 
 
 def _drone_warnings(fc: dict | None, motor: dict | None, battery: dict | None) -> list[str]:

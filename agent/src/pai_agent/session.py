@@ -2,7 +2,7 @@
 
 The demo is single-user, so there is exactly one `Session` per server (created in the app
 lifespan). Every entry point (a chat prompt, a voice request from Gemini Live, a sketch, a
-library reference, a remix, a Jamie meeting-ended webhook, a slider change) arrives here and
+library reference, a remix, a slider change) arrives here and
 becomes at most one background task; a second build while one runs is refused with
 `already_running` instead of interleaving two runs on the same state. Pure dashboard commands
 ("show me the CAD") are matched first by `app_control.match_commands` and answered without a
@@ -28,12 +28,11 @@ from pai_agent.app_control import match_commands
 from pai_agent.bus import EventBus
 from pai_agent.context import Ctx
 from pai_agent.env import claude_enabled
-from pai_agent.orchestrator import run_meeting, run_prompt, run_reference, run_remix, run_sketch
+from pai_agent.orchestrator import run_prompt, run_reference, run_remix, run_sketch
 from pai_agent.paths import SESSIONS_DIR
 from pai_agent.run_control import RunControl, RunStopped
 from pai_agent.scene import STEPS
 from pai_agent.state import BuildState
-from pai_agent.tools.jamie import forget_client, init_timeline, meeting_event, resolve_meeting, set_task_done
 from pai_agent.tools.registry import emit_connections
 
 log = logging.getLogger(__name__)
@@ -57,8 +56,6 @@ class Session:
         self.question: dict | None = None
         self._answer: asyncio.Future | None = None
         self.run = RunControl(self.bus.publish)
-        # Webhooks can arrive twice (retries); one meeting-ended at a time decides what happens.
-        self._meeting_lock = asyncio.Lock()
         # What the person sent while a run was busy: the run reads it next round, or it starts the next run.
         self.pending: list[str] = []
         # Mechanic greets once per project; a voice reconnect or a second Talk continues the conversation.
@@ -98,6 +95,8 @@ class Session:
                     await self.bus.publish({"type": "chat", "role": "user", "text": text, **({"voice": True} if voice else {})})
                     await self.bus.publish({"type": "chat", "role": "agent", "text": "Got it. I finish the current step, then take that on."})
                 self.pending.append(text.strip())
+                # The running build may revise its requirements from it, so it counts as typed now.
+                self.state.requests.append(text.strip())
                 return {"ok": True, "mode": mode, "status": "queued"}
         ctx = self._ctx(auto_steps=claude_enabled())
         ctx.trigger = "chat"
@@ -113,16 +112,6 @@ class Session:
 
         if record_user:
             await self.bus.publish({"type": "chat", "role": "user", "text": text})
-        if any(c["control"] == "run:rebuild" for c in commands):
-            review = next(
-                (m for m in sorted(self.state.meetings.values(), key=lambda m: (m["date"], m["time"])) if m["kind"] == "review" and m["status"] != "done"),
-                None,
-            )
-            if review is not None and self.state.versions and not self._busy():
-                # "Rebuild" with a review on the timeline ends that review, as its End button does.
-                await self.bus.publish(ui_event("run:review", {"say": "Ending the review, rebuilding."}))
-                result = await self.start_from_meeting(review["id"], review["title"])
-                return {**result, "status": "ui"}
         runs = [c for c in commands if c["control"].startswith("run:")]
         if runs and self._busy():
             if not claude_enabled():
@@ -263,33 +252,6 @@ class Session:
         except ValueError as exc:
             return {"ok": False, "error": str(exc)}
 
-    async def meeting_started(self, meeting_id: str, title: str) -> dict:
-        meta = resolve_meeting(self.state, meeting_id, title)
-        if meta["status"] != "done":
-            meta["status"] = "live"
-        await self.bus.publish(meeting_event(meta))
-        return {"ok": True, "status": "live", "meeting_id": meta["id"]}
-
-    async def start_from_meeting(self, meeting_id: str, title: str) -> dict:
-        """A meeting ended in Jamie: the kickoff starts a fresh build, a review rebuilds the current one."""
-
-        mode = "claude" if claude_enabled() else "mock"
-        async with self._meeting_lock:
-            if self._busy():
-                return {"ok": True, "mode": mode, "status": "already_running"}
-            meta = resolve_meeting(self.state, meeting_id, title)
-            if meta["version"] is not None:
-                # A retried webhook for a meeting that already has its version builds nothing.
-                return {"ok": True, "mode": mode, "status": "already_built", "meeting_id": meta["id"], "version": meta["version"]}
-            if meta["kind"] == "kickoff" and self.state.started:
-                await self.reset()
-                meta = resolve_meeting(self.state, meeting_id, title)
-            await self.bus.publish(meeting_event(meta))
-            ctx = self._ctx(auto_steps=claude_enabled())
-            ctx.trigger = "meeting"
-            self.task = self._launch(run_meeting(ctx, meta, self.messages), ctx)
-            return {"ok": True, "mode": mode, "status": "started", "meeting_id": meta["id"], "kind": meta["kind"]}
-
     async def ask(self, question: dict) -> str:
         """Shows a question with options and waits for a click, a spoken or typed answer, or the timeout."""
 
@@ -347,9 +309,6 @@ class Session:
                 await self.bus.publish({"type": "chat", "role": "user", "text": text, **({"voice": True} if voice else {})})
             return await self.answer(self.question["id"], self.question["default_id"])
         return False
-
-    async def toggle_task(self, task_id: str, done: bool) -> dict:
-        return await set_task_done(self._ctx(auto_steps=False), task_id, done)
 
     async def update_params(self, body: dict) -> dict:
         from pai_agent.tools.cad import apply_param_body, cad_frame
@@ -448,7 +407,6 @@ class Session:
         await self._stop()
         # The chat that ends here stays in the history; the next one is a new entry.
         self.save_chat()
-        forget_client(self.state.session_id)
         self.state = _new_state()
         self.messages = []
         self.created_at = time.time()
@@ -469,7 +427,6 @@ class Session:
             return {"ok": False, "missing": True, "error": "No saved chat " + chat_id + "."}
         await self._stop()
         self.save_chat()
-        forget_client(self.state.session_id)
         self.state, self.messages, events, self.created_at = saved
         await self.bus.load(events)
         await emit_connections(self.bus.publish)
@@ -561,14 +518,10 @@ class Session:
         await emit_connections(self.bus.publish)
         for step_id, label in STEPS:
             await self.bus.publish({"type": "step", "id": step_id, "status": "pending", "label": label})
-        for meta in self.state.meetings.values():
-            await self.bus.publish(meeting_event(meta))
 
 
 def _new_state() -> BuildState:
     session_id = uuid.uuid4().hex[:8]
     directory = SESSIONS_DIR / session_id
     directory.mkdir(parents=True, exist_ok=True)
-    state = BuildState(session_id=session_id, directory=directory)
-    init_timeline(state)
-    return state
+    return BuildState(session_id=session_id, directory=directory)

@@ -144,7 +144,7 @@ def reference_brief(ref_id: str) -> tuple[str, str]:
         if slug == "micro-drone":
             detail = (
                 _drone_summary()
-                + " Kickoff limits: under 120 €, at least 8 minutes, under 50 g, it must hover, and the frame is an STL and a STEP. "
+                + " Limits: under 120 €, at least 8 minutes, under 50 g, it must hover, and the frame is an STL and a STEP. "
                 + "Use a 1S pack, not the FunFly 4S."
             )
         else:

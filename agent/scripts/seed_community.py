@@ -29,7 +29,6 @@ from pai_agent.context import Ctx
 from pai_agent.paths import REPO_ROOT, SESSIONS_DIR
 from pai_agent.references import build_reference
 from pai_agent.state import BuildState
-from pai_agent.tools.jamie import init_timeline
 
 WEB_DIR = REPO_ROOT / "web" / "public" / "community"
 # Renders the web app already ships; the other seeds copy theirs next to feed.json.
@@ -93,7 +92,6 @@ async def build(seed: dict) -> dict:
     shutil.rmtree(folder, ignore_errors=True)
     folder.mkdir(parents=True)
     state = BuildState(session_id=folder.name, directory=folder)
-    init_timeline(state)
     result = await build_reference(Ctx(EventBus(), state, auto_steps=False), seed["base"])
     bom = (state.bom or {}).get("items", [])
     entry = {

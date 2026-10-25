@@ -1,6 +1,6 @@
 """The Claude tool-use loop that drives a build, and the routing of every run type into it.
 
-`run_prompt`, `run_meeting`, `run_sketch`, `run_reference` and `run_remix` are the entry points
+`run_prompt`, `run_sketch`, `run_reference` and `run_remix` are the entry points
 the session calls. With `ANTHROPIC_API_KEY` they all end in `_run_claude`: the orchestrator
 model (Opus 5.5 by default, `settings.py`) gets Mechanic's system prompt, which lays out the
 engineering flow for any product and the worked drone and gripper flows, plus the tool
@@ -13,6 +13,8 @@ Design decisions:
 - The model plans and decides, the tools compute. The prompt forbids stating any number,
   price or pass that a tool did not return, and requirement rows are recomputed from tool
   output, not from model text.
+- Requirements come from what the user typed. A requirement row names the user only when its
+  quote is in their request (`requirements.attribute`); anything else shows as proposed by Mechanic.
 - With delegation on, the check, part-pick and pricing tools are removed from the
   orchestrator's tool list (`DELEGATED`) and reached through `delegate`, so bounded jobs run on
   a cheaper sub-agent model with only the tools they need (`agents.py`).
@@ -25,7 +27,7 @@ Design decisions:
 Without a key, the same entry points route by keywords to deterministic mock runners
 (`mock_story.py`, `mock_product.py`, `mock_gripper.py`, `mock_lamp.py`, `mock_categories.py`)
 that call the very same tools through the same `call_tool`, so offline runs exercise the real
-CAD, MuJoCo, Blender and Jamie code paths.
+CAD, MuJoCo and Blender code paths.
 """
 
 from __future__ import annotations
@@ -42,7 +44,7 @@ from pai_agent.mock_categories import NAMES as CATEGORY_NAMES, RUNS as CATEGORY_
 from pai_agent.mock_gripper import run_gripper_mock, wants_gripper
 from pai_agent.mock_lamp import run_lamp_mock, wants_lamp
 from pai_agent.mock_product import run_product_mock, wants_product
-from pai_agent.mock_story import run_mock, run_mock_followup, run_review
+from pai_agent.mock_story import run_mock, run_mock_followup
 from pai_agent.run_control import RunStopped
 from pai_agent.scene import STEPS
 from pai_agent.tools.browser_train import run_mock_training
@@ -72,6 +74,9 @@ When someone asks to see, open, compare or pull something apart, use it instead 
 {controls}
 
 Any product (the default; a phone stand, a desk fan, a plant-watering robot, a bike light mount, an enclosure):
+Requirements come from the user's request, never from a template. Take every number the user typed as a requirement with their words as quote,
+copied exactly (for example "under 150 euros" is a cost requirement with max 150 and quote "under 150 euros"; a stated weight, size, runtime or load is its own requirement).
+When they named no number for something the product needs, propose a sensible limit with proposed true and your one-line reason as quote; it shows as proposed by Mechanic.
 1. product_spec with the full spec: function, requirements each with the check that judges it and a limit, and every part
    (printed, bought, external loads such as the phone it holds or the water in a tank). Pick checks that fit the product:
    mass and cost always, tip_over for anything that stands, deflection for arms, shelves, clips and brackets,
@@ -100,22 +105,18 @@ Every product, the drone and the gripper too: call safety_check right before bom
 Then say the top finding honestly in one sentence, as a hint and not legal advice, and apply its fix first when it changes the design (for example mains voltage inside a printed part).
 When the user uploaded a sketch, call sketch_to_spec first, say in one sentence what you read and what you guessed, then product_spec with that spec.
 
-The drone (a drone, or a Jamie meeting that ended). Jamie is the team's memory: every drone decision hangs on a sentence from a meeting.
-New build from the kickoff:
-1. product_brief with product drone when the user asks in chat, then jamie_templates and jamie_requirements, then jamie_search for the parts you plan to take, to find warnings from earlier meetings.
-2. parts_search with select_id, because and reason until motor, propeller, battery, flight controller, frame, camera, canopy and hardware are chosen. Take warnings seriously and say who said them and when.
+The drone (any drone or quadcopter):
+1. product_brief with product drone and the requirements from the request: budget, flight_time and weight with every number the user typed, each with their words as quote.
+2. parts_search with select_id, because and reason until motor, propeller, battery, flight controller, frame, camera, canopy and hardware are chosen.
+   Choose for what the user asked (what the drone is for, its size, its budget), not for a stock build.
 3. physics_calc. Prices are samples to verify.
 4. simulate_drone. On fail point at the guilty part with ui_point_at and ui_draw, swap exactly one part, recalculate and simulate again.
 5. cad_frame in FreeCAD. arm_length_mm runs from the centre to the motor shaft, the propellers need clearance. motor_spacing_mm is the motor bolt circle, 6.6 for the 1103.
 6. physics_calc again, because the frame now has a real mass.
 7. blender_render.
-8. bom_build, print_prep, build_guide, firmware, electronics_plan, jamie_create_tasks, then version_commit with the meeting_id of the kickoff.
-Rebuild after a review:
-1. jamie_meeting with the meeting_id.
-2. If there are conflicts, ask with ask_user before building: quote both sentences with person and time. The newer one is default_id.
-3. requirements_accept with the ids that apply.
-4. For every complaint swap the part (parts_search with because complaint). refers_to says which part 'last week' means.
-5. Then as above from physics_calc to version_commit with the meeting_id of the review. Name the difference in weight, flight time and price at the end.
+8. safety_check, bom_build (it saves the version), print_prep, build_guide, firmware, electronics_plan. End with mass, flight time, cost and which requirements pass.
+A change to a built drone: product_brief again with the revised requirements when the user changes a limit (the parts stay), parts_search to swap a part,
+then from physics_calc to bom_build as above. Name the difference in weight, flight time and price at the end.
 The motor thrust is the datasheet value; a higher cell voltage creates no extra thrust.
 A catalog motor sits four times in the scene; for the motor type point at motor_front_left.
 Asked to make the built drone lighter, cheaper, longer-running or stronger, or for options and trade-offs: optimize_design with the goals and the limits to keep,
@@ -160,6 +161,7 @@ async def _first(ctx: Ctx) -> bool:
 async def run_prompt(ctx: Ctx, text: str, messages: list[dict], voice: bool = False, *, record_user: bool = True) -> None:
     if record_user:
         await ctx.chat("user", text, voice)
+    ctx.state.requests.append(text)
     # "Train it, then stress test it": training first, so the stress test flies the trained gains.
     if not claude_enabled() and wants_train_then_stress(text):
         await _first(ctx)
@@ -194,18 +196,12 @@ async def run_prompt(ctx: Ctx, text: str, messages: list[dict], voice: bool = Fa
         if wants_product(text) and not (ctx.state.product == "generic" and ctx.state.finished):
             await run_product_mock(ctx, text)
             return
-        review = _next_review(ctx) if ctx.state.finished and _REVIEW_DONE.search(text) else None
-        if review is not None:
-            # "The review is done" by voice or text does what the meeting-ended webhook does.
-            review["status"] = "done"
-            await ctx.emit({"type": "jamie", "action": "meeting_ended", "status": "ok", "detail": review["title"] + " ended"})
-            await run_review(ctx, review["id"])
-        elif wants_stress(text, ctx.state.finished):
+        if wants_stress(text, ctx.state.finished):
             await run_stress_mock(ctx)
-        elif ctx.state.finished or (not first and (ctx.state.sim_run or ctx.state.selected)):
-            await run_mock_followup(ctx)
+        elif ctx.state.product == "drone" and (ctx.state.finished or (not first and (ctx.state.sim_run or ctx.state.selected))):
+            await run_mock_followup(ctx, text)
         else:
-            await run_mock(ctx)
+            await run_mock(ctx, text)
         return
     await _run_claude(ctx, text, messages)
 
@@ -246,47 +242,13 @@ def wants_train_then_stress(text: str) -> bool:
 
     return bool(_TRAIN_THEN_STRESS.search(text))
 
-_REVIEW_DONE = re.compile(
-    r"\b(review|meeting)\b.*\b(durch|vorbei|zu ende|fertig|beendet|aus|done|over|ended|finished)\b|\b(bau|baue|rebuild|build)\b.*\b(neu|again)\b",
-    re.IGNORECASE,
-)
-
-
-def _next_review(ctx: Ctx) -> dict | None:
-    pending = [m for m in ctx.state.meetings.values() if m["kind"] == "review" and m["status"] != "done"]
-    return sorted(pending, key=lambda m: (m["date"], m["time"]))[0] if pending else None
-
-
-async def run_meeting(ctx: Ctx, meta: dict, messages: list[dict]) -> None:
-    """A meeting ended in Jamie. The kickoff builds v1; a review rebuilds from the current version."""
-
-    review = meta["kind"] == "review"
-    if review and not ctx.state.versions:
-        # A review without a first version: build v1 from the kickoff first.
-        kickoff = next((m for m in ctx.state.meetings.values() if m["kind"] == "kickoff"), None)
-        if kickoff is not None:
-            await run_meeting(ctx, kickoff, messages)
-    await _first(ctx)
-    title = meta["title"]
-    if review:
-        text = "The meeting “" + title + "” has ended (meeting_id " + meta["id"] + "). Read it and build the next version."
-    else:
-        text = "The meeting “" + title + "” has ended (meeting_id " + meta["id"] + "). Build the small drone from the kickoff."
-    await ctx.emit({"type": "jamie", "action": "meeting_ended", "status": "ok", "detail": title + " ended"})
-    if not claude_enabled():
-        if review:
-            await run_review(ctx, meta["id"])
-        else:
-            await run_mock(ctx, meta["id"])
-        return
-    await _run_claude(ctx, text, messages)
-
-
 async def run_sketch(ctx: Ctx, name: str, note: str, messages: list[dict]) -> None:
     """The photo of a hand sketch starts a product: sketch_to_spec reads it, product_spec and the any-product flow build it."""
 
     await _first(ctx)
     await ctx.chat("user", "Build this from my sketch" + (": " + note if note else "."))
+    if note:
+        ctx.state.requests.append(note)
     if not claude_enabled():
         await run_product_mock(ctx, note, sketch=True)
         return
@@ -306,6 +268,8 @@ async def run_reference(ctx: Ctx, ref_id: str, messages: list[dict] | None = Non
     await _first(ctx)
     visible, model = reference_brief(ref_id)
     await ctx.chat("user", visible)
+    # Rebuilding a reference takes its request and limits as the user's own.
+    ctx.state.requests.append(model)
     if not claude_enabled():
         await ctx.chat("agent", "Offline: rebuilding the saved build without the live model.")
         await ctx.step("meeting", "running")
