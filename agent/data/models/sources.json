@@ -1,0 +1,8454 @@
+{
+ "note": "Per part: generator type or official model, measured numbers with the source each comes from (dims), numbers drawn in proportion (style) and numbers not found in any real source (estimate). See agent/src/pai_agent/part_models/build.py.",
+ "parts": {
+  "betafpv-0802-22000kv": {
+   "name": "BetaFPV 0802 Freestyle 22000KV (2026)",
+   "category": "motor",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "brushless_motor",
+   "source": "https://betafpv.com/products/0802-brushless-motors-2026",
+   "checked": "2026-10-25",
+   "dims": {
+    "diameter_mm": {
+     "value": 10.55,
+     "source": "https://betafpv.com/products/0802-brushless-motors-2026"
+    },
+    "height_mm": {
+     "value": 12.8,
+     "source": "https://betafpv.com/products/0802-brushless-motors-2026"
+    },
+    "shaft_mm": {
+     "value": 1.0,
+     "source": "https://betafpv.com/products/0802-brushless-motors-2026"
+    },
+    "bolt_circle_mm": {
+     "value": 6.6,
+     "source": "https://betafpv.com/products/0802-brushless-motors-2026"
+    },
+    "bolts": {
+     "value": 3,
+     "source": "https://betafpv.com/products/0802-brushless-motors-2026"
+    },
+    "bolt_thread_mm": {
+     "value": 1.4,
+     "source": "https://betafpv.com/products/0802-brushless-motors-2026"
+    },
+    "shaft_len_mm": {
+     "value": 4.0,
+     "source": "https://betafpv.com/products/0802-brushless-motors-2026"
+    }
+   },
+   "style": {
+    "color": "#c62f2f",
+    "wire_len_mm": 35
+   }
+  },
+  "betafpv-0802-28000kv": {
+   "name": "BetaFPV 0802 Champion 28000KV (2026)",
+   "category": "motor",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "brushless_motor",
+   "source": "https://betafpv.com/products/0802-brushless-motors-2026",
+   "checked": "2026-10-25",
+   "dims": {
+    "diameter_mm": {
+     "value": 10.55,
+     "source": "https://betafpv.com/products/0802-brushless-motors-2026"
+    },
+    "height_mm": {
+     "value": 12.8,
+     "source": "https://betafpv.com/products/0802-brushless-motors-2026"
+    },
+    "shaft_mm": {
+     "value": 1.0,
+     "source": "https://betafpv.com/products/0802-brushless-motors-2026"
+    },
+    "bolt_circle_mm": {
+     "value": 6.6,
+     "source": "https://betafpv.com/products/0802-brushless-motors-2026"
+    },
+    "bolts": {
+     "value": 3,
+     "source": "https://betafpv.com/products/0802-brushless-motors-2026"
+    },
+    "bolt_thread_mm": {
+     "value": 1.4,
+     "source": "https://betafpv.com/products/0802-brushless-motors-2026"
+    },
+    "shaft_len_mm": {
+     "value": 4.0,
+     "source": "https://betafpv.com/products/0802-brushless-motors-2026"
+    }
+   },
+   "style": {
+    "color": "#2f6fd1",
+    "wire_len_mm": 35
+   }
+  },
+  "betafpv-1102-21000kv": {
+   "name": "BetaFPV 1102 21000KV (2026)",
+   "category": "motor",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "brushless_motor",
+   "source": "https://betafpv.com/products/1102-brushless-motors-2026",
+   "checked": "2026-10-25",
+   "dims": {
+    "diameter_mm": {
+     "value": 13.8,
+     "source": "https://betafpv.com/products/1102-brushless-motors-2026"
+    },
+    "height_mm": {
+     "value": 13.6,
+     "source": "https://betafpv.com/products/1102-brushless-motors-2026"
+    },
+    "shaft_mm": {
+     "value": 1.5,
+     "source": "https://betafpv.com/products/1102-brushless-motors-2026"
+    },
+    "bolt_circle_mm": {
+     "value": 6.6,
+     "source": "https://betafpv.com/products/1102-brushless-motors-2026"
+    },
+    "bolts": {
+     "value": 3,
+     "source": "https://betafpv.com/products/1102-brushless-motors-2026"
+    },
+    "bolt_thread_mm": {
+     "value": 1.4,
+     "source": "https://betafpv.com/products/1102-brushless-motors-2026"
+    },
+    "shaft_len_mm": {
+     "value": 5.0,
+     "source": "https://betafpv.com/products/1102-brushless-motors-2026"
+    }
+   },
+   "style": {
+    "color": "#c62f2f",
+    "wire_len_mm": 37
+   }
+  },
+  "betafpv-1103-10500kv": {
+   "name": "BetaFPV 1103 10500KV (2S)",
+   "category": "motor",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "brushless_motor",
+   "source": "https://betafpv.com/products/1103-brushless-motors-aquila20",
+   "checked": "2026-10-25",
+   "dims": {
+    "diameter_mm": {
+     "value": 13.6,
+     "source": "https://betafpv.com/products/1103-brushless-motors-aquila20"
+    },
+    "height_mm": {
+     "value": 13.8,
+     "source": "https://betafpv.com/products/1103-brushless-motors-aquila20"
+    },
+    "shaft_mm": {
+     "value": 1.5,
+     "source": "https://betafpv.com/products/1103-brushless-motors-aquila20"
+    },
+    "bolt_circle_mm": {
+     "value": 6.6,
+     "source": "https://betafpv.com/products/1103-brushless-motors-aquila20"
+    },
+    "bolts": {
+     "value": 3,
+     "source": "https://betafpv.com/products/1103-brushless-motors-aquila20"
+    },
+    "bolt_thread_mm": {
+     "value": 1.4,
+     "source": "https://betafpv.com/products/1103-brushless-motors-aquila20"
+    },
+    "shaft_len_mm": {
+     "value": 5.0,
+     "source": "https://betafpv.com/products/1103-brushless-motors-aquila20"
+    }
+   },
+   "style": {
+    "color": "#1d1f22",
+    "wire_len_mm": 52
+   },
+   "note": "Three screws per motor: the kit lists 12 x M1.4x3 for four motors."
+  },
+  "betafpv-1104-7200kv": {
+   "name": "BetaFPV LAVA 1104 7200KV",
+   "category": "motor",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "brushless_motor",
+   "source": "https://betafpv.com/products/lava-series-1104-brushless-motors",
+   "checked": "2026-10-25",
+   "dims": {
+    "diameter_mm": {
+     "value": 15.2,
+     "source": "https://betafpv.com/products/lava-series-1104-brushless-motors"
+    },
+    "height_mm": {
+     "value": 16.0,
+     "source": "https://betafpv.com/products/lava-series-1104-brushless-motors"
+    },
+    "shaft_mm": {
+     "value": 1.5,
+     "source": "https://betafpv.com/products/lava-series-1104-brushless-motors"
+    },
+    "bolt_circle_mm": {
+     "value": 9.0,
+     "source": "https://betafpv.com/products/lava-series-1104-brushless-motors"
+    },
+    "bolts": {
+     "value": 4,
+     "source": "https://betafpv.com/products/lava-series-1104-brushless-motors"
+    },
+    "bolt_thread_mm": {
+     "value": 2.0,
+     "source": "https://betafpv.com/products/lava-series-1104-brushless-motors"
+    },
+    "shaft_len_mm": {
+     "value": 5.0,
+     "source": "https://betafpv.com/products/lava-series-1104-brushless-motors"
+    },
+    "prop_bolts": {
+     "value": 4,
+     "source": "https://betafpv.com/products/lava-series-1104-brushless-motors"
+    },
+    "prop_bolt_circle_mm": {
+     "value": 5.0,
+     "source": "https://betafpv.com/products/lava-series-1104-brushless-motors"
+    },
+    "prop_bolt_thread_mm": {
+     "value": 2.0,
+     "source": "https://betafpv.com/products/lava-series-1104-brushless-motors"
+    }
+   },
+   "style": {
+    "color": "#e0512a",
+    "wire_len_mm": 24
+   }
+  },
+  "betafpv-1104-5500kv": {
+   "name": "BetaFPV LAVA 1104 5500KV",
+   "category": "motor",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "brushless_motor",
+   "source": "https://betafpv.com/products/lava-series-1104-brushless-motors",
+   "checked": "2026-10-25",
+   "dims": {
+    "diameter_mm": {
+     "value": 15.2,
+     "source": "https://betafpv.com/products/lava-series-1104-brushless-motors"
+    },
+    "height_mm": {
+     "value": 16.0,
+     "source": "https://betafpv.com/products/lava-series-1104-brushless-motors"
+    },
+    "shaft_mm": {
+     "value": 1.5,
+     "source": "https://betafpv.com/products/lava-series-1104-brushless-motors"
+    },
+    "bolt_circle_mm": {
+     "value": 9.0,
+     "source": "https://betafpv.com/products/lava-series-1104-brushless-motors"
+    },
+    "bolts": {
+     "value": 4,
+     "source": "https://betafpv.com/products/lava-series-1104-brushless-motors"
+    },
+    "bolt_thread_mm": {
+     "value": 2.0,
+     "source": "https://betafpv.com/products/lava-series-1104-brushless-motors"
+    },
+    "shaft_len_mm": {
+     "value": 5.0,
+     "source": "https://betafpv.com/products/lava-series-1104-brushless-motors"
+    },
+    "prop_bolts": {
+     "value": 4,
+     "source": "https://betafpv.com/products/lava-series-1104-brushless-motors"
+    },
+    "prop_bolt_circle_mm": {
+     "value": 5.0,
+     "source": "https://betafpv.com/products/lava-series-1104-brushless-motors"
+    },
+    "prop_bolt_thread_mm": {
+     "value": 2.0,
+     "source": "https://betafpv.com/products/lava-series-1104-brushless-motors"
+    }
+   },
+   "style": {
+    "color": "#e0512a",
+    "wire_len_mm": 24
+   }
+  },
+  "betafpv-1506-4200kv": {
+   "name": "BetaFPV LAVA 1506 4200KV",
+   "category": "motor",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "brushless_motor",
+   "source": "https://betafpv.com/products/lava-series-1506-brushless-motors",
+   "checked": "2026-10-25",
+   "dims": {
+    "diameter_mm": {
+     "value": 20.0,
+     "source": "https://betafpv.com/products/lava-series-1506-brushless-motors"
+    },
+    "height_mm": {
+     "value": 16.8,
+     "source": "https://betafpv.com/products/lava-series-1506-brushless-motors"
+    },
+    "shaft_mm": {
+     "value": 1.5,
+     "source": "https://betafpv.com/products/lava-series-1506-brushless-motors"
+    },
+    "bolt_circle_mm": {
+     "value": 12.0,
+     "source": "https://betafpv.com/products/lava-series-1506-brushless-motors"
+    },
+    "bolts": {
+     "value": 4,
+     "source": "https://betafpv.com/products/lava-series-1506-brushless-motors"
+    },
+    "bolt_thread_mm": {
+     "value": 2.0,
+     "source": "https://betafpv.com/products/lava-series-1506-brushless-motors"
+    },
+    "shaft_len_mm": {
+     "value": 4.0,
+     "source": "https://betafpv.com/products/lava-series-1506-brushless-motors"
+    },
+    "prop_bolts": {
+     "value": 4,
+     "source": "https://betafpv.com/products/lava-series-1506-brushless-motors"
+    },
+    "prop_bolt_circle_mm": {
+     "value": 5.0,
+     "source": "https://betafpv.com/products/lava-series-1506-brushless-motors"
+    },
+    "prop_bolt_thread_mm": {
+     "value": 2.0,
+     "source": "https://betafpv.com/products/lava-series-1506-brushless-motors"
+    }
+   },
+   "style": {
+    "color": "#e0512a",
+    "wire_len_mm": 34
+   }
+  },
+  "betafpv-snow-2306-1860kv": {
+   "name": "BetaFPV Snow 2306 1860KV",
+   "category": "motor",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "brushless_motor",
+   "source": "https://betafpv.com/products/snow-2306-brushless-motors",
+   "checked": "2026-10-25",
+   "dims": {
+    "diameter_mm": {
+     "value": 29.3,
+     "source": "https://betafpv.com/products/snow-2306-brushless-motors"
+    },
+    "height_mm": {
+     "value": 30.6,
+     "source": "https://betafpv.com/products/snow-2306-brushless-motors"
+    },
+    "shaft_mm": {
+     "value": 5.0,
+     "source": "https://betafpv.com/products/snow-2306-brushless-motors"
+    },
+    "shaft_len_mm": {
+     "value": 12.3,
+     "source": "https://betafpv.com/products/snow-2306-brushless-motors"
+    },
+    "bolt_thread_mm": {
+     "value": 3.0,
+     "source": "https://betafpv.com/products/snow-2306-brushless-motors"
+    }
+   },
+   "style": {
+    "color": "#d9dbde",
+    "base_color": "#c4c7cc",
+    "wire_len_mm": 160,
+    "spokes": 6,
+    "wire_r_mm": 0.6
+   },
+   "estimate": {
+    "bolts": 4,
+    "bolt_circle_mm": 22.63
+   },
+   "missing": [
+    "bolts",
+    "bolt_circle_mm"
+   ],
+   "note": "The page gives 3 x M3 screw sizes but not the pattern; 2306 motors commonly use 16 x 16 mm (a 22.6 mm circle). The catalog's 16 mm is not confirmed by the page."
+  },
+  "betafpv-snow-2306-2500kv": {
+   "name": "BetaFPV Snow 2306 2500KV",
+   "category": "motor",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "brushless_motor",
+   "source": "https://betafpv.com/products/snow-2306-brushless-motors",
+   "checked": "2026-10-25",
+   "dims": {
+    "diameter_mm": {
+     "value": 29.3,
+     "source": "https://betafpv.com/products/snow-2306-brushless-motors"
+    },
+    "height_mm": {
+     "value": 30.6,
+     "source": "https://betafpv.com/products/snow-2306-brushless-motors"
+    },
+    "shaft_mm": {
+     "value": 5.0,
+     "source": "https://betafpv.com/products/snow-2306-brushless-motors"
+    },
+    "shaft_len_mm": {
+     "value": 12.3,
+     "source": "https://betafpv.com/products/snow-2306-brushless-motors"
+    },
+    "bolt_thread_mm": {
+     "value": 3.0,
+     "source": "https://betafpv.com/products/snow-2306-brushless-motors"
+    }
+   },
+   "style": {
+    "color": "#d9dbde",
+    "base_color": "#c4c7cc",
+    "wire_len_mm": 160,
+    "spokes": 6,
+    "wire_r_mm": 0.6
+   },
+   "estimate": {
+    "bolts": 4,
+    "bolt_circle_mm": 22.63
+   },
+   "missing": [
+    "bolts",
+    "bolt_circle_mm"
+   ],
+   "note": "The page gives 3 x M3 screw sizes but not the pattern; 2306 motors commonly use 16 x 16 mm (a 22.6 mm circle). The catalog's 16 mm is not confirmed by the page."
+  },
+  "generic-1103-15000kv": {
+   "name": "1103 15000KV (no-name)",
+   "category": "motor",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "brushless_motor",
+   "source": "https://www.aliexpress.com/item/1005009514249914.html",
+   "checked": "2026-10-25",
+   "dims": {
+    "diameter_mm": {
+     "value": 14,
+     "source": "https://www.aliexpress.com/item/1005009514249914.html"
+    },
+    "height_mm": {
+     "value": 13.5,
+     "source": "https://www.aliexpress.com/item/1005009514249914.html"
+    },
+    "shaft_mm": {
+     "value": 1.5,
+     "source": "https://www.aliexpress.com/item/1005009514249914.html"
+    },
+    "bolt_circle_mm": {
+     "value": 6.6,
+     "source": "https://www.aliexpress.com/item/1005009514249914.html"
+    },
+    "shaft_len_mm": {
+     "value": 5.0,
+     "source": "https://www.aliexpress.com/item/1005009514249914.html"
+    }
+   },
+   "style": {
+    "color": "#1d1f22",
+    "wire_len_mm": 40
+   },
+   "estimate": {
+    "bolts": 3,
+    "bolt_thread_mm": 1.4
+   },
+   "missing": [
+    "bolts"
+   ],
+   "note": "The AliExpress listing gives size, shaft and 6.6 mm pattern; the screw count is not stated."
+  },
+  "gemfan-1614-3": {
+   "name": "Gemfan 1614 40 mm 3-blade",
+   "category": "propeller",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "propeller",
+   "source": "https://betafpv.com/products/gemfan-1614-3-blade-propellers-1-0mm-shaft",
+   "checked": "2026-10-25",
+   "dims": {
+    "diameter_mm": {
+     "value": 40.0,
+     "source": "https://betafpv.com/products/gemfan-1614-3-blade-propellers-1-0mm-shaft"
+    },
+    "blades": {
+     "value": 3,
+     "source": "https://betafpv.com/products/gemfan-1614-3-blade-propellers-1-0mm-shaft"
+    },
+    "shaft_mm": {
+     "value": 1.0,
+     "source": "https://betafpv.com/products/gemfan-1614-3-blade-propellers-1-0mm-shaft"
+    },
+    "pitch_in": {
+     "value": 1.4,
+     "source": "https://betafpv.com/products/gemfan-1614-3-blade-propellers-1-0mm-shaft"
+    },
+    "hub_h_mm": {
+     "value": 4.0,
+     "source": "https://betafpv.com/products/gemfan-1614-3-blade-propellers-1-0mm-shaft"
+    },
+    "chord_mm": {
+     "value": 7.7,
+     "source": "https://betafpv.com/products/gemfan-1614-3-blade-propellers-1-0mm-shaft"
+    }
+   },
+   "style": {
+    "color": "#8a8f98",
+    "alpha": 0.6
+   }
+  },
+  "gemfan-1811-3": {
+   "name": "Gemfan 1811 45 mm 3-blade",
+   "category": "propeller",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "propeller",
+   "source": "https://betafpv.com/products/gemfan-1811-3-blade-propellers-1-5mm-shaft",
+   "checked": "2026-10-25",
+   "dims": {
+    "diameter_mm": {
+     "value": 45.0,
+     "source": "https://betafpv.com/products/gemfan-1811-3-blade-propellers-1-5mm-shaft"
+    },
+    "blades": {
+     "value": 3,
+     "source": "https://betafpv.com/products/gemfan-1811-3-blade-propellers-1-5mm-shaft"
+    },
+    "shaft_mm": {
+     "value": 1.5,
+     "source": "https://betafpv.com/products/gemfan-1811-3-blade-propellers-1-5mm-shaft"
+    },
+    "pitch_in": {
+     "value": 1.8,
+     "source": "https://betafpv.com/products/gemfan-1811-3-blade-propellers-1-5mm-shaft"
+    },
+    "hub_h_mm": {
+     "value": 4.4,
+     "source": "https://betafpv.com/products/gemfan-1811-3-blade-propellers-1-5mm-shaft"
+    },
+    "chord_mm": {
+     "value": 8.7,
+     "source": "https://betafpv.com/products/gemfan-1811-3-blade-propellers-1-5mm-shaft"
+    }
+   },
+   "style": {
+    "color": "#f2f2ee",
+    "alpha": 0.95
+   }
+  },
+  "gemfan-2020-4": {
+   "name": "Gemfan 2020 51 mm 4-blade",
+   "category": "propeller",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "propeller",
+   "source": "https://betafpv.com/products/gemfan-2020-4-blade-propellers-1-5mm-shaft",
+   "checked": "2026-10-25",
+   "dims": {
+    "diameter_mm": {
+     "value": 50.3,
+     "source": "https://betafpv.com/products/gemfan-2020-4-blade-propellers-1-5mm-shaft"
+    },
+    "blades": {
+     "value": 4,
+     "source": "https://betafpv.com/products/gemfan-2020-4-blade-propellers-1-5mm-shaft"
+    },
+    "pitch_in": {
+     "value": 2.0,
+     "source": "https://betafpv.com/products/gemfan-2020-4-blade-propellers-1-5mm-shaft"
+    },
+    "hub_h_mm": {
+     "value": 4.5,
+     "source": "https://betafpv.com/products/gemfan-2020-4-blade-propellers-1-5mm-shaft"
+    },
+    "shaft_mm": {
+     "value": 1.5,
+     "source": "https://betafpv.com/products/gemfan-2020-4-blade-propellers-1-5mm-shaft"
+    }
+   },
+   "style": {
+    "color": "#2f6fd1",
+    "alpha": 0.9
+   },
+   "note": "The page gives a 50.3 mm prop disk; the catalog rounds to 51 mm."
+  },
+  "gemfan-2218-3": {
+   "name": "Gemfan 2218 56 mm 3-blade",
+   "category": "propeller",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "propeller",
+   "source": "https://betafpv.com/products/gemfan-2218-3-blade-propellers-1-5mm-shaft",
+   "checked": "2026-10-25",
+   "dims": {
+    "diameter_mm": {
+     "value": 55.9,
+     "source": "https://betafpv.com/products/gemfan-2218-3-blade-propellers-1-5mm-shaft"
+    },
+    "blades": {
+     "value": 3,
+     "source": "https://betafpv.com/products/gemfan-2218-3-blade-propellers-1-5mm-shaft"
+    },
+    "shaft_mm": {
+     "value": 1.5,
+     "source": "https://betafpv.com/products/gemfan-2218-3-blade-propellers-1-5mm-shaft"
+    }
+   },
+   "style": {
+    "color": "#1f2125",
+    "alpha": 0.95
+   },
+   "estimate": {
+    "hub_h_mm": 4.8
+   },
+   "missing": [
+    "hub_h_mm"
+   ]
+  },
+  "gemfan-d22-3": {
+   "name": "Gemfan D2.2 56 mm 3-blade",
+   "category": "propeller",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "propeller",
+   "source": "https://betafpv.com/products/gemfan-d2-2-3-blade-propellers-1-5mm-shaft",
+   "checked": "2026-10-25",
+   "dims": {
+    "diameter_mm": {
+     "value": 55.88,
+     "source": "https://betafpv.com/products/gemfan-d2-2-3-blade-propellers-1-5mm-shaft"
+    },
+    "blades": {
+     "value": 3,
+     "source": "https://betafpv.com/products/gemfan-d2-2-3-blade-propellers-1-5mm-shaft"
+    },
+    "shaft_mm": {
+     "value": 1.5,
+     "source": "https://betafpv.com/products/gemfan-d2-2-3-blade-propellers-1-5mm-shaft"
+    },
+    "pitch_in": {
+     "value": 1.5,
+     "source": "https://betafpv.com/products/gemfan-d2-2-3-blade-propellers-1-5mm-shaft"
+    },
+    "hub_h_mm": {
+     "value": 4.8,
+     "source": "https://betafpv.com/products/gemfan-d2-2-3-blade-propellers-1-5mm-shaft"
+    },
+    "chord_mm": {
+     "value": 11.9,
+     "source": "https://betafpv.com/products/gemfan-d2-2-3-blade-propellers-1-5mm-shaft"
+    }
+   },
+   "style": {
+    "color": "#8a8f98",
+    "alpha": 0.6
+   }
+  },
+  "gemfan-d63-3": {
+   "name": "Gemfan D63 63.5 mm 3-blade",
+   "category": "propeller",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "propeller",
+   "source": "https://betafpv.com/products/gemfan-d63-3-blade-propellers-1-5mm-shaft",
+   "checked": "2026-10-25",
+   "dims": {
+    "diameter_mm": {
+     "value": 63.5,
+     "source": "https://betafpv.com/products/gemfan-d63-3-blade-propellers-1-5mm-shaft"
+    },
+    "blades": {
+     "value": 3,
+     "source": "https://betafpv.com/products/gemfan-d63-3-blade-propellers-1-5mm-shaft"
+    },
+    "shaft_mm": {
+     "value": 1.5,
+     "source": "https://betafpv.com/products/gemfan-d63-3-blade-propellers-1-5mm-shaft"
+    },
+    "hub_h_mm": {
+     "value": 4.9,
+     "source": "https://betafpv.com/products/gemfan-d63-3-blade-propellers-1-5mm-shaft"
+    }
+   },
+   "style": {
+    "color": "#1f2125",
+    "alpha": 1.0
+   },
+   "estimate": {
+    "pitch_in": 2.0
+   }
+  },
+  "gemfan-d90s-3": {
+   "name": "Gemfan D90S 90 mm 3-blade",
+   "category": "propeller",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "propeller",
+   "source": "https://betafpv.com/products/gemfan-d90s-3-blade-propellers1-5mm-shaft",
+   "checked": "2026-10-25",
+   "dims": {
+    "diameter_mm": {
+     "value": 90.0,
+     "source": "https://betafpv.com/products/gemfan-d90s-3-blade-propellers1-5mm-shaft"
+    },
+    "blades": {
+     "value": 3,
+     "source": "https://betafpv.com/products/gemfan-d90s-3-blade-propellers1-5mm-shaft"
+    },
+    "shaft_mm": {
+     "value": 1.5,
+     "source": "https://betafpv.com/products/gemfan-d90s-3-blade-propellers1-5mm-shaft"
+    },
+    "pitch_in": {
+     "value": 3.0,
+     "source": "https://betafpv.com/products/gemfan-d90s-3-blade-propellers1-5mm-shaft"
+    },
+    "hub_h_mm": {
+     "value": 5.5,
+     "source": "https://betafpv.com/products/gemfan-d90s-3-blade-propellers1-5mm-shaft"
+    }
+   },
+   "style": {
+    "color": "#8a8f98",
+    "alpha": 0.6
+   }
+  },
+  "gemfan-51466-v2": {
+   "name": "Gemfan 51466 MCK V2 5-inch 3-blade",
+   "category": "propeller",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "propeller",
+   "source": "https://betafpv.com/products/gemfan-51466-mck-v2-3-blade-propellers-5-0mm-shaft-4pcs",
+   "checked": "2026-10-25",
+   "dims": {
+    "diameter_mm": {
+     "value": 131.8,
+     "source": "https://betafpv.com/products/gemfan-51466-mck-v2-3-blade-propellers-5-0mm-shaft-4pcs"
+    },
+    "blades": {
+     "value": 3,
+     "source": "https://betafpv.com/products/gemfan-51466-mck-v2-3-blade-propellers-5-0mm-shaft-4pcs"
+    },
+    "shaft_mm": {
+     "value": 5.0,
+     "source": "https://betafpv.com/products/gemfan-51466-mck-v2-3-blade-propellers-5-0mm-shaft-4pcs"
+    },
+    "pitch_in": {
+     "value": 3.6,
+     "source": "https://betafpv.com/products/gemfan-51466-mck-v2-3-blade-propellers-5-0mm-shaft-4pcs"
+    },
+    "hub_h_mm": {
+     "value": 6.8,
+     "source": "https://betafpv.com/products/gemfan-51466-mck-v2-3-blade-propellers-5-0mm-shaft-4pcs"
+    }
+   },
+   "style": {
+    "color": "#e57a1f",
+    "alpha": 0.9
+   }
+  },
+  "betafpv-lava-1s-300": {
+   "name": "BetaFPV LAVA 1S 300mAh 75C",
+   "category": "battery",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "lipo_pack",
+   "source": "https://betafpv.com/products/lava-1s-300mah-75c-battery-5pcs",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 63.5,
+     "source": "https://betafpv.com/products/lava-1s-300mah-75c-battery-5pcs"
+    },
+    "width_mm": {
+     "value": 11,
+     "source": "https://betafpv.com/products/lava-1s-300mah-75c-battery-5pcs"
+    },
+    "height_mm": {
+     "value": 6.4,
+     "source": "https://betafpv.com/products/lava-1s-300mah-75c-battery-5pcs"
+    },
+    "cells": {
+     "value": 1,
+     "source": "https://betafpv.com/products/lava-1s-300mah-75c-battery-5pcs"
+    },
+    "connector": {
+     "value": "bt2.0",
+     "source": "https://betafpv.com/products/lava-1s-300mah-75c-battery-5pcs"
+    }
+   },
+   "style": {
+    "end_cap": true,
+    "wrap_color": "#c9ccd1",
+    "label_color": "#e0512a"
+   },
+   "note": "Length includes the moulded BT2.0 end cap, as BetaFPV's dimension drawing shows (63.5 mm overall)."
+  },
+  "betafpv-lava-1s-450": {
+   "name": "BetaFPV LAVA 1S 450mAh 75C",
+   "category": "battery",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "lipo_pack",
+   "source": "https://betafpv.com/products/lava-1s-450mah-75c-battery-4pcs",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 61,
+     "source": "https://betafpv.com/products/lava-1s-450mah-75c-battery-4pcs"
+    },
+    "width_mm": {
+     "value": 15.5,
+     "source": "https://betafpv.com/products/lava-1s-450mah-75c-battery-4pcs"
+    },
+    "height_mm": {
+     "value": 6.7,
+     "source": "https://betafpv.com/products/lava-1s-450mah-75c-battery-4pcs"
+    },
+    "cells": {
+     "value": 1,
+     "source": "https://betafpv.com/products/lava-1s-450mah-75c-battery-4pcs"
+    },
+    "connector": {
+     "value": "bt2.0",
+     "source": "https://betafpv.com/products/lava-1s-450mah-75c-battery-4pcs"
+    }
+   },
+   "style": {
+    "end_cap": true,
+    "wrap_color": "#c9ccd1",
+    "label_color": "#e0512a"
+   }
+  },
+  "betafpv-lava-1s-550": {
+   "name": "BetaFPV LAVA 1S 550mAh 75C",
+   "category": "battery",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "lipo_pack",
+   "source": "https://betafpv.com/products/lava-1s-550mah-75c-battery-4pcs",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 68,
+     "source": "https://betafpv.com/products/lava-1s-550mah-75c-battery-4pcs"
+    },
+    "width_mm": {
+     "value": 15.5,
+     "source": "https://betafpv.com/products/lava-1s-550mah-75c-battery-4pcs"
+    },
+    "height_mm": {
+     "value": 6.7,
+     "source": "https://betafpv.com/products/lava-1s-550mah-75c-battery-4pcs"
+    },
+    "cells": {
+     "value": 1,
+     "source": "https://betafpv.com/products/lava-1s-550mah-75c-battery-4pcs"
+    },
+    "connector": {
+     "value": "bt2.0",
+     "source": "https://betafpv.com/products/lava-1s-550mah-75c-battery-4pcs"
+    }
+   },
+   "style": {
+    "end_cap": true,
+    "wrap_color": "#c9ccd1",
+    "label_color": "#e0512a"
+   }
+  },
+  "betafpv-lava-1s-680": {
+   "name": "BetaFPV LAVA II 1S 680mAh 95C",
+   "category": "battery",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "lipo_pack",
+   "source": "https://betafpv.com/products/lava-ii-1s-battery",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 80,
+     "source": "https://betafpv.com/products/lava-ii-1s-battery"
+    },
+    "width_mm": {
+     "value": 15,
+     "source": "https://betafpv.com/products/lava-ii-1s-battery"
+    },
+    "height_mm": {
+     "value": 6.5,
+     "source": "https://betafpv.com/products/lava-ii-1s-battery"
+    },
+    "cells": {
+     "value": 1,
+     "source": "https://betafpv.com/products/lava-ii-1s-battery"
+    },
+    "connector": {
+     "value": "bt2.0",
+     "source": "https://betafpv.com/products/lava-ii-1s-battery"
+    }
+   },
+   "style": {
+    "end_cap": true,
+    "wrap_color": "#1d1f22",
+    "label_color": "#9bd62a"
+   }
+  },
+  "betafpv-lava-2s-550": {
+   "name": "BetaFPV LAVA 2S 550mAh 75C",
+   "category": "battery",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "lipo_pack",
+   "source": "https://betafpv.com/products/lava-2s-3s-4s-550mah-75c-battery-2pcs",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 67,
+     "source": "https://betafpv.com/products/lava-2s-3s-4s-550mah-75c-battery-2pcs"
+    },
+    "width_mm": {
+     "value": 15.5,
+     "source": "https://betafpv.com/products/lava-2s-3s-4s-550mah-75c-battery-2pcs"
+    },
+    "height_mm": {
+     "value": 13.5,
+     "source": "https://betafpv.com/products/lava-2s-3s-4s-550mah-75c-battery-2pcs"
+    },
+    "cells": {
+     "value": 2,
+     "source": "https://betafpv.com/products/lava-2s-3s-4s-550mah-75c-battery-2pcs"
+    },
+    "connector": {
+     "value": "xt30",
+     "source": "https://betafpv.com/products/lava-2s-3s-4s-550mah-75c-battery-2pcs"
+    }
+   },
+   "style": {
+    "wrap_color": "#c9ccd1",
+    "label_color": "#e0512a",
+    "lead_len_mm": 40,
+    "balance_lead": true,
+    "wire_r_mm": 0.9
+   }
+  },
+  "betafpv-lava-3s-550": {
+   "name": "BetaFPV LAVA 3S 550mAh 75C",
+   "category": "battery",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "lipo_pack",
+   "source": "https://betafpv.com/products/lava-2s-3s-4s-550mah-75c-battery-2pcs",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 67,
+     "source": "https://betafpv.com/products/lava-2s-3s-4s-550mah-75c-battery-2pcs"
+    },
+    "width_mm": {
+     "value": 15.5,
+     "source": "https://betafpv.com/products/lava-2s-3s-4s-550mah-75c-battery-2pcs"
+    },
+    "height_mm": {
+     "value": 20,
+     "source": "https://betafpv.com/products/lava-2s-3s-4s-550mah-75c-battery-2pcs"
+    },
+    "cells": {
+     "value": 3,
+     "source": "https://betafpv.com/products/lava-2s-3s-4s-550mah-75c-battery-2pcs"
+    },
+    "connector": {
+     "value": "xt30",
+     "source": "https://betafpv.com/products/lava-2s-3s-4s-550mah-75c-battery-2pcs"
+    }
+   },
+   "style": {
+    "wrap_color": "#c9ccd1",
+    "label_color": "#e0512a",
+    "lead_len_mm": 40,
+    "balance_lead": true,
+    "wire_r_mm": 0.9
+   }
+  },
+  "betafpv-lava-4s-550": {
+   "name": "BetaFPV LAVA 4S 550mAh 75C",
+   "category": "battery",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "lipo_pack",
+   "source": "https://betafpv.com/products/lava-2s-3s-4s-550mah-75c-battery-2pcs",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 67,
+     "source": "https://betafpv.com/products/lava-2s-3s-4s-550mah-75c-battery-2pcs"
+    },
+    "width_mm": {
+     "value": 15.5,
+     "source": "https://betafpv.com/products/lava-2s-3s-4s-550mah-75c-battery-2pcs"
+    },
+    "height_mm": {
+     "value": 26,
+     "source": "https://betafpv.com/products/lava-2s-3s-4s-550mah-75c-battery-2pcs"
+    },
+    "cells": {
+     "value": 4,
+     "source": "https://betafpv.com/products/lava-2s-3s-4s-550mah-75c-battery-2pcs"
+    },
+    "connector": {
+     "value": "xt30",
+     "source": "https://betafpv.com/products/lava-2s-3s-4s-550mah-75c-battery-2pcs"
+    }
+   },
+   "style": {
+    "wrap_color": "#c9ccd1",
+    "label_color": "#e0512a",
+    "lead_len_mm": 40,
+    "balance_lead": true,
+    "wire_r_mm": 0.9
+   }
+  },
+  "betafpv-lava-4s-850": {
+   "name": "BetaFPV LAVA 4S 850mAh 100C",
+   "category": "battery",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "lipo_pack",
+   "source": "https://betafpv.com/products/lava-series-4s-850mah-lipo-battery",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 58,
+     "source": "https://betafpv.com/products/lava-series-4s-850mah-lipo-battery"
+    },
+    "width_mm": {
+     "value": 30,
+     "source": "https://betafpv.com/products/lava-series-4s-850mah-lipo-battery"
+    },
+    "height_mm": {
+     "value": 30,
+     "source": "https://betafpv.com/products/lava-series-4s-850mah-lipo-battery"
+    },
+    "cells": {
+     "value": 4,
+     "source": "https://betafpv.com/products/lava-series-4s-850mah-lipo-battery"
+    },
+    "connector": {
+     "value": "xt30",
+     "source": "https://betafpv.com/products/lava-series-4s-850mah-lipo-battery"
+    }
+   },
+   "style": {
+    "wrap_color": "#c9ccd1",
+    "label_color": "#e0512a",
+    "lead_len_mm": 50,
+    "balance_lead": true,
+    "wire_r_mm": 1.0
+   }
+  },
+  "betafpv-lava-6s-1100": {
+   "name": "BetaFPV LAVA 6S 1100mAh 100C",
+   "category": "battery",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "lipo_pack",
+   "source": "https://betafpv.com/products/lava-6s-1100mah-lipo-battery",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 78,
+     "source": "https://betafpv.com/products/lava-6s-1100mah-lipo-battery"
+    },
+    "width_mm": {
+     "value": 38,
+     "source": "https://betafpv.com/products/lava-6s-1100mah-lipo-battery"
+    },
+    "height_mm": {
+     "value": 36,
+     "source": "https://betafpv.com/products/lava-6s-1100mah-lipo-battery"
+    },
+    "cells": {
+     "value": 6,
+     "source": "https://betafpv.com/products/lava-6s-1100mah-lipo-battery"
+    },
+    "connector": {
+     "value": "xt60",
+     "source": "https://betafpv.com/products/lava-6s-1100mah-lipo-battery"
+    }
+   },
+   "style": {
+    "wrap_color": "#c9ccd1",
+    "label_color": "#e0512a",
+    "lead_len_mm": 60,
+    "balance_lead": true,
+    "wire_r_mm": 1.3
+   }
+  },
+  "tattu-funfly-4s-1300": {
+   "name": "Tattu FunFly 4S 1300mAh 100C",
+   "category": "battery",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "lipo_pack",
+   "source": "https://www.genstattu.com/ta-ff-100c-1300-4s1p.html",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 73,
+     "source": "https://www.genstattu.com/ta-ff-100c-1300-4s1p.html"
+    },
+    "width_mm": {
+     "value": 35,
+     "source": "https://www.genstattu.com/ta-ff-100c-1300-4s1p.html"
+    },
+    "height_mm": {
+     "value": 28.5,
+     "source": "https://www.genstattu.com/ta-ff-100c-1300-4s1p.html"
+    },
+    "cells": {
+     "value": 4,
+     "source": "https://www.genstattu.com/ta-ff-100c-1300-4s1p.html"
+    },
+    "connector": {
+     "value": "xt60",
+     "source": "https://www.genstattu.com/ta-ff-100c-1300-4s1p.html"
+    }
+   },
+   "style": {
+    "wrap_color": "#20242b",
+    "label_color": "#e8b21e",
+    "lead_len_mm": 60,
+    "balance_lead": true,
+    "wire_r_mm": 1.4
+   }
+  },
+  "tattu-rline-1s-550": {
+   "name": "Tattu R-Line 1S 550mAh 95C",
+   "category": "battery",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "lipo_pack",
+   "source": "https://genstattu.com/tattu-1s-550mah-75c-3-8v-hv-lipo-battery-pack-with-bt-2-0-plug-5pcs/",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 66.0,
+     "source": "https://genstattu.com/tattu-1s-550mah-75c-3-8v-hv-lipo-battery-pack-with-bt-2-0-plug-5pcs/"
+    },
+    "width_mm": {
+     "value": 15.5,
+     "source": "https://genstattu.com/tattu-1s-550mah-75c-3-8v-hv-lipo-battery-pack-with-bt-2-0-plug-5pcs/"
+    },
+    "height_mm": {
+     "value": 7.5,
+     "source": "https://genstattu.com/tattu-1s-550mah-75c-3-8v-hv-lipo-battery-pack-with-bt-2-0-plug-5pcs/"
+    },
+    "cells": {
+     "value": 1,
+     "source": "https://genstattu.com/tattu-1s-550mah-75c-3-8v-hv-lipo-battery-pack-with-bt-2-0-plug-5pcs/"
+    },
+    "connector": {
+     "value": "bt2.0",
+     "source": "https://genstattu.com/tattu-1s-550mah-75c-3-8v-hv-lipo-battery-pack-with-bt-2-0-plug-5pcs/"
+    }
+   },
+   "style": {
+    "wrap_color": "#1d1f22",
+    "label_color": "#d7262b",
+    "lead_len_mm": 25
+   },
+   "note": "Tattu's page gives 66.0 x 15.5 x 7.5 mm per pack; the catalog's 59 x 18 x 8 mm does not match it."
+  },
+  "betafpv-matrix-1s-5in1-v2": {
+   "name": "BetaFPV Matrix 1S 5IN1 V2 AIO",
+   "category": "flight_controller",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "board",
+   "source": "https://betafpv.com/products/matrix-1s-5in1-ii-brushless-flight-controller",
+   "checked": "2026-10-25",
+   "dims": {
+    "holes": {
+     "value": [
+      [
+       13.0,
+       13.0,
+       2.0
+      ],
+      [
+       -13.0,
+       13.0,
+       2.0
+      ],
+      [
+       -13.0,
+       -13.0,
+       2.0
+      ],
+      [
+       13.0,
+       -13.0,
+       2.0
+      ]
+     ],
+     "source": "https://betafpv.com/products/matrix-1s-5in1-ii-brushless-flight-controller"
+    }
+   },
+   "style": {
+    "pcb_color": "black",
+    "pcb_mm": 1.0,
+    "parts": [
+     {
+      "k": "chip",
+      "x": 0,
+      "y": 0,
+      "w": 7,
+      "l": 7,
+      "h": 0.9,
+      "name": "mcu"
+     },
+     {
+      "k": "chip",
+      "x": -5.5,
+      "y": 4,
+      "w": 3,
+      "l": 3,
+      "h": 0.9,
+      "name": "gyro"
+     },
+     {
+      "k": "led",
+      "x": 6,
+      "y": -9,
+      "w": 1.6,
+      "l": 0.8,
+      "h": 0.5,
+      "color": "#59c2ff"
+     },
+     {
+      "k": "chip",
+      "x": 7.5,
+      "y": 3.5,
+      "w": 3,
+      "l": 3,
+      "h": 0.8,
+      "name": "esc_fet_1"
+     },
+     {
+      "k": "jst_gh",
+      "n": 3,
+      "x": 12.8,
+      "y": 8.5,
+      "rot": 90,
+      "right_angle": false,
+      "name": "motor_plug_1"
+     },
+     {
+      "k": "chip",
+      "x": -7.5,
+      "y": 3.5,
+      "w": 3,
+      "l": 3,
+      "h": 0.8,
+      "name": "esc_fet_2"
+     },
+     {
+      "k": "jst_gh",
+      "n": 3,
+      "x": -12.8,
+      "y": 8.5,
+      "rot": 90,
+      "right_angle": false,
+      "name": "motor_plug_2"
+     },
+     {
+      "k": "chip",
+      "x": -7.5,
+      "y": -3.5,
+      "w": 3,
+      "l": 3,
+      "h": 0.8,
+      "name": "esc_fet_3"
+     },
+     {
+      "k": "jst_gh",
+      "n": 3,
+      "x": -12.8,
+      "y": -8.5,
+      "rot": 90,
+      "right_angle": false,
+      "name": "motor_plug_3"
+     },
+     {
+      "k": "chip",
+      "x": 7.5,
+      "y": -3.5,
+      "w": 3,
+      "l": 3,
+      "h": 0.8,
+      "name": "esc_fet_4"
+     },
+     {
+      "k": "jst_gh",
+      "n": 3,
+      "x": 12.8,
+      "y": -8.5,
+      "rot": 90,
+      "right_angle": false,
+      "name": "motor_plug_4"
+     },
+     {
+      "k": "chip",
+      "x": 5,
+      "y": 8,
+      "w": 4,
+      "l": 4,
+      "h": 0.8,
+      "name": "receiver"
+     },
+     {
+      "k": "box",
+      "x": 9,
+      "y": 9,
+      "w": 3,
+      "l": 1.6,
+      "h": 1.0,
+      "color": "#e9e4d8",
+      "name": "rx_antenna"
+     },
+     {
+      "k": "usb_c",
+      "x": 0,
+      "y": -11.5,
+      "rot": 0,
+      "name": "usb"
+     },
+     {
+      "k": "pads",
+      "n": 2,
+      "x": -8,
+      "y": -12.5,
+      "pitch": 3.0,
+      "d": 2.2,
+      "name": "battery_pad"
+     }
+    ],
+    "corner_mm": 2.0,
+    "battery_connector": "bt2.0"
+   },
+   "estimate": {
+    "length_mm": 30,
+    "width_mm": 30
+   },
+   "note": " Chip and connector positions follow the product photos, not a drawing."
+  },
+  "betafpv-f4-1s-5a-aio": {
+   "name": "BetaFPV F4 1S 5A AIO (ELRS)",
+   "category": "flight_controller",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "board",
+   "source": "https://betafpv.com/products/f4-1s-5a-aio-brushless-flight-controller-elrs-2-4g",
+   "checked": "2026-10-25",
+   "dims": {
+    "holes": {
+     "value": [
+      [
+       13.0,
+       13.0,
+       2.0
+      ],
+      [
+       -13.0,
+       13.0,
+       2.0
+      ],
+      [
+       -13.0,
+       -13.0,
+       2.0
+      ],
+      [
+       13.0,
+       -13.0,
+       2.0
+      ]
+     ],
+     "source": "https://betafpv.com/products/f4-1s-5a-aio-brushless-flight-controller-elrs-2-4g"
+    },
+    "length_mm": {
+     "value": 30,
+     "source": "https://betafpv.com/products/f4-1s-5a-aio-brushless-flight-controller-elrs-2-4g"
+    },
+    "width_mm": {
+     "value": 30,
+     "source": "https://betafpv.com/products/f4-1s-5a-aio-brushless-flight-controller-elrs-2-4g"
+    }
+   },
+   "style": {
+    "pcb_color": "black",
+    "pcb_mm": 1.0,
+    "parts": [
+     {
+      "k": "chip",
+      "x": 0,
+      "y": 0,
+      "w": 7,
+      "l": 7,
+      "h": 0.9,
+      "name": "mcu"
+     },
+     {
+      "k": "chip",
+      "x": -5.5,
+      "y": 4,
+      "w": 3,
+      "l": 3,
+      "h": 0.9,
+      "name": "gyro"
+     },
+     {
+      "k": "led",
+      "x": 6,
+      "y": -9,
+      "w": 1.6,
+      "l": 0.8,
+      "h": 0.5,
+      "color": "#59c2ff"
+     },
+     {
+      "k": "chip",
+      "x": 7.5,
+      "y": 3.5,
+      "w": 3,
+      "l": 3,
+      "h": 0.8,
+      "name": "esc_fet_1"
+     },
+     {
+      "k": "jst_gh",
+      "n": 3,
+      "x": 12.8,
+      "y": 8.5,
+      "rot": 90,
+      "right_angle": false,
+      "name": "motor_plug_1"
+     },
+     {
+      "k": "chip",
+      "x": -7.5,
+      "y": 3.5,
+      "w": 3,
+      "l": 3,
+      "h": 0.8,
+      "name": "esc_fet_2"
+     },
+     {
+      "k": "jst_gh",
+      "n": 3,
+      "x": -12.8,
+      "y": 8.5,
+      "rot": 90,
+      "right_angle": false,
+      "name": "motor_plug_2"
+     },
+     {
+      "k": "chip",
+      "x": -7.5,
+      "y": -3.5,
+      "w": 3,
+      "l": 3,
+      "h": 0.8,
+      "name": "esc_fet_3"
+     },
+     {
+      "k": "jst_gh",
+      "n": 3,
+      "x": -12.8,
+      "y": -8.5,
+      "rot": 90,
+      "right_angle": false,
+      "name": "motor_plug_3"
+     },
+     {
+      "k": "chip",
+      "x": 7.5,
+      "y": -3.5,
+      "w": 3,
+      "l": 3,
+      "h": 0.8,
+      "name": "esc_fet_4"
+     },
+     {
+      "k": "jst_gh",
+      "n": 3,
+      "x": 12.8,
+      "y": -8.5,
+      "rot": 90,
+      "right_angle": false,
+      "name": "motor_plug_4"
+     },
+     {
+      "k": "chip",
+      "x": 5,
+      "y": 8,
+      "w": 4,
+      "l": 4,
+      "h": 0.8,
+      "name": "receiver"
+     },
+     {
+      "k": "box",
+      "x": 9,
+      "y": 9,
+      "w": 3,
+      "l": 1.6,
+      "h": 1.0,
+      "color": "#e9e4d8",
+      "name": "rx_antenna"
+     },
+     {
+      "k": "usb_c",
+      "x": 0,
+      "y": -11.5,
+      "rot": 0,
+      "name": "usb"
+     },
+     {
+      "k": "pads",
+      "n": 2,
+      "x": -8,
+      "y": -12.5,
+      "pitch": 3.0,
+      "d": 2.2,
+      "name": "battery_pad"
+     }
+    ],
+    "corner_mm": 2.0,
+    "battery_connector": "bt2.0"
+   },
+   "note": " Chip and connector positions follow the product photos, not a drawing."
+  },
+  "betafpv-f4-2-3s-20a-aio": {
+   "name": "BetaFPV F4 2-3S 20A AIO V1",
+   "category": "flight_controller",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "board",
+   "source": "https://betafpv.com/products/f4-2-3s-20a-aio-fc-v1",
+   "checked": "2026-10-25",
+   "dims": {
+    "holes": {
+     "value": [
+      [
+       13.0,
+       13.0,
+       2.0
+      ],
+      [
+       -13.0,
+       13.0,
+       2.0
+      ],
+      [
+       -13.0,
+       -13.0,
+       2.0
+      ],
+      [
+       13.0,
+       -13.0,
+       2.0
+      ]
+     ],
+     "source": "https://betafpv.com/products/f4-2-3s-20a-aio-fc-v1"
+    }
+   },
+   "style": {
+    "pcb_color": "black",
+    "pcb_mm": 1.0,
+    "parts": [
+     {
+      "k": "chip",
+      "x": 0,
+      "y": 0,
+      "w": 7,
+      "l": 7,
+      "h": 0.9,
+      "name": "mcu"
+     },
+     {
+      "k": "chip",
+      "x": -5.5,
+      "y": 4,
+      "w": 3,
+      "l": 3,
+      "h": 0.9,
+      "name": "gyro"
+     },
+     {
+      "k": "led",
+      "x": 6,
+      "y": -9,
+      "w": 1.6,
+      "l": 0.8,
+      "h": 0.5,
+      "color": "#59c2ff"
+     },
+     {
+      "k": "chip",
+      "x": 7.5,
+      "y": 3.5,
+      "w": 3,
+      "l": 3,
+      "h": 0.8,
+      "name": "esc_fet_1"
+     },
+     {
+      "k": "chip",
+      "x": -7.5,
+      "y": 3.5,
+      "w": 3,
+      "l": 3,
+      "h": 0.8,
+      "name": "esc_fet_2"
+     },
+     {
+      "k": "chip",
+      "x": -7.5,
+      "y": -3.5,
+      "w": 3,
+      "l": 3,
+      "h": 0.8,
+      "name": "esc_fet_3"
+     },
+     {
+      "k": "chip",
+      "x": 7.5,
+      "y": -3.5,
+      "w": 3,
+      "l": 3,
+      "h": 0.8,
+      "name": "esc_fet_4"
+     },
+     {
+      "k": "chip",
+      "x": 5,
+      "y": 8,
+      "w": 4,
+      "l": 4,
+      "h": 0.8,
+      "name": "receiver"
+     },
+     {
+      "k": "box",
+      "x": 9,
+      "y": 9,
+      "w": 3,
+      "l": 1.6,
+      "h": 1.0,
+      "color": "#e9e4d8",
+      "name": "rx_antenna"
+     },
+     {
+      "k": "usb_c",
+      "x": 0,
+      "y": -11.5,
+      "rot": 0,
+      "name": "usb"
+     },
+     {
+      "k": "pads",
+      "n": 2,
+      "x": -8,
+      "y": -12.5,
+      "pitch": 3.0,
+      "d": 2.2,
+      "name": "battery_pad"
+     }
+    ],
+    "corner_mm": 2.0,
+    "battery_connector": "xt30"
+   },
+   "estimate": {
+    "length_mm": 30,
+    "width_mm": 30
+   },
+   "note": " Chip and connector positions follow the product photos, not a drawing."
+  },
+  "betafpv-toothpick-f405-20a": {
+   "name": "BetaFPV Toothpick F405 2-4S AIO 20A V4",
+   "category": "flight_controller",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "board",
+   "source": "https://betafpv.com/products/toothpick-f405-2-4s-aio-brushless-flight-controller-20a-blheli_32-v4",
+   "checked": "2026-10-25",
+   "dims": {
+    "holes": {
+     "value": [
+      [
+       13.0,
+       13.0,
+       2.0
+      ],
+      [
+       -13.0,
+       13.0,
+       2.0
+      ],
+      [
+       -13.0,
+       -13.0,
+       2.0
+      ],
+      [
+       13.0,
+       -13.0,
+       2.0
+      ]
+     ],
+     "source": "https://betafpv.com/products/toothpick-f405-2-4s-aio-brushless-flight-controller-20a-blheli_32-v4"
+    }
+   },
+   "style": {
+    "pcb_color": "black",
+    "pcb_mm": 1.0,
+    "parts": [
+     {
+      "k": "chip",
+      "x": 0,
+      "y": 0,
+      "w": 7,
+      "l": 7,
+      "h": 0.9,
+      "name": "mcu"
+     },
+     {
+      "k": "chip",
+      "x": -5.5,
+      "y": 4,
+      "w": 3,
+      "l": 3,
+      "h": 0.9,
+      "name": "gyro"
+     },
+     {
+      "k": "led",
+      "x": 6,
+      "y": -9,
+      "w": 1.6,
+      "l": 0.8,
+      "h": 0.5,
+      "color": "#59c2ff"
+     },
+     {
+      "k": "chip",
+      "x": 7.5,
+      "y": 3.5,
+      "w": 3,
+      "l": 3,
+      "h": 0.8,
+      "name": "esc_fet_1"
+     },
+     {
+      "k": "chip",
+      "x": -7.5,
+      "y": 3.5,
+      "w": 3,
+      "l": 3,
+      "h": 0.8,
+      "name": "esc_fet_2"
+     },
+     {
+      "k": "chip",
+      "x": -7.5,
+      "y": -3.5,
+      "w": 3,
+      "l": 3,
+      "h": 0.8,
+      "name": "esc_fet_3"
+     },
+     {
+      "k": "chip",
+      "x": 7.5,
+      "y": -3.5,
+      "w": 3,
+      "l": 3,
+      "h": 0.8,
+      "name": "esc_fet_4"
+     },
+     {
+      "k": "chip",
+      "x": 5,
+      "y": 8,
+      "w": 4,
+      "l": 4,
+      "h": 0.8,
+      "name": "receiver"
+     },
+     {
+      "k": "box",
+      "x": 9,
+      "y": 9,
+      "w": 3,
+      "l": 1.6,
+      "h": 1.0,
+      "color": "#e9e4d8",
+      "name": "rx_antenna"
+     },
+     {
+      "k": "usb_c",
+      "x": 0,
+      "y": -11.5,
+      "rot": 0,
+      "name": "usb"
+     },
+     {
+      "k": "pads",
+      "n": 2,
+      "x": -8,
+      "y": -12.5,
+      "pitch": 3.0,
+      "d": 2.2,
+      "name": "battery_pad"
+     }
+    ],
+    "corner_mm": 2.0,
+    "battery_connector": "xt30"
+   },
+   "estimate": {
+    "length_mm": 30,
+    "width_mm": 30
+   },
+   "note": " Chip and connector positions follow the product photos, not a drawing."
+  },
+  "betafpv-cube-2-4s-30a": {
+   "name": "BetaFPV Cube 2-4S 3IN1 (30A)",
+   "category": "flight_controller",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "board",
+   "source": "https://betafpv.com/products/cube-2-4s-brushless-flight-controller",
+   "checked": "2026-10-25",
+   "dims": {
+    "holes": {
+     "value": [
+      [
+       13.0,
+       13.0,
+       2.0
+      ],
+      [
+       -13.0,
+       13.0,
+       2.0
+      ],
+      [
+       -13.0,
+       -13.0,
+       2.0
+      ],
+      [
+       13.0,
+       -13.0,
+       2.0
+      ]
+     ],
+     "source": "https://betafpv.com/products/cube-2-4s-brushless-flight-controller"
+    }
+   },
+   "style": {
+    "pcb_color": "black",
+    "pcb_mm": 1.0,
+    "parts": [
+     {
+      "k": "chip",
+      "x": 0,
+      "y": 0,
+      "w": 7,
+      "l": 7,
+      "h": 0.9,
+      "name": "mcu"
+     },
+     {
+      "k": "chip",
+      "x": -5.5,
+      "y": 4,
+      "w": 3,
+      "l": 3,
+      "h": 0.9,
+      "name": "gyro"
+     },
+     {
+      "k": "led",
+      "x": 6,
+      "y": -9,
+      "w": 1.6,
+      "l": 0.8,
+      "h": 0.5,
+      "color": "#59c2ff"
+     },
+     {
+      "k": "chip",
+      "x": 7.5,
+      "y": 3.5,
+      "w": 3,
+      "l": 3,
+      "h": 0.8,
+      "name": "esc_fet_1"
+     },
+     {
+      "k": "jst_gh",
+      "n": 3,
+      "x": 12.8,
+      "y": 8.5,
+      "rot": 90,
+      "right_angle": false,
+      "name": "motor_plug_1"
+     },
+     {
+      "k": "chip",
+      "x": -7.5,
+      "y": 3.5,
+      "w": 3,
+      "l": 3,
+      "h": 0.8,
+      "name": "esc_fet_2"
+     },
+     {
+      "k": "jst_gh",
+      "n": 3,
+      "x": -12.8,
+      "y": 8.5,
+      "rot": 90,
+      "right_angle": false,
+      "name": "motor_plug_2"
+     },
+     {
+      "k": "chip",
+      "x": -7.5,
+      "y": -3.5,
+      "w": 3,
+      "l": 3,
+      "h": 0.8,
+      "name": "esc_fet_3"
+     },
+     {
+      "k": "jst_gh",
+      "n": 3,
+      "x": -12.8,
+      "y": -8.5,
+      "rot": 90,
+      "right_angle": false,
+      "name": "motor_plug_3"
+     },
+     {
+      "k": "chip",
+      "x": 7.5,
+      "y": -3.5,
+      "w": 3,
+      "l": 3,
+      "h": 0.8,
+      "name": "esc_fet_4"
+     },
+     {
+      "k": "jst_gh",
+      "n": 3,
+      "x": 12.8,
+      "y": -8.5,
+      "rot": 90,
+      "right_angle": false,
+      "name": "motor_plug_4"
+     },
+     {
+      "k": "chip",
+      "x": 5,
+      "y": 8,
+      "w": 4,
+      "l": 4,
+      "h": 0.8,
+      "name": "receiver"
+     },
+     {
+      "k": "box",
+      "x": 9,
+      "y": 9,
+      "w": 3,
+      "l": 1.6,
+      "h": 1.0,
+      "color": "#e9e4d8",
+      "name": "rx_antenna"
+     },
+     {
+      "k": "usb_c",
+      "x": 0,
+      "y": -11.5,
+      "rot": 0,
+      "name": "usb"
+     },
+     {
+      "k": "pads",
+      "n": 2,
+      "x": -8,
+      "y": -12.5,
+      "pitch": 3.0,
+      "d": 2.2,
+      "name": "battery_pad"
+     }
+    ],
+    "corner_mm": 2.0,
+    "battery_connector": "xt30"
+   },
+   "estimate": {
+    "length_mm": 30,
+    "width_mm": 30
+   },
+   "note": " Chip and connector positions follow the product photos, not a drawing."
+  },
+  "betafpv-f722-35a-aio": {
+   "name": "BetaFPV F722 35A AIO V2 (BLHeli_32)",
+   "category": "flight_controller",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "board",
+   "source": "https://betafpv.com/products/toothpick-f722-2-6s-aio-brushless-flight-controller-35ablheli_s",
+   "checked": "2026-10-25",
+   "dims": {
+    "holes": {
+     "value": [
+      [
+       13.0,
+       13.0,
+       2.0
+      ],
+      [
+       -13.0,
+       13.0,
+       2.0
+      ],
+      [
+       -13.0,
+       -13.0,
+       2.0
+      ],
+      [
+       13.0,
+       -13.0,
+       2.0
+      ]
+     ],
+     "source": "https://betafpv.com/products/toothpick-f722-2-6s-aio-brushless-flight-controller-35ablheli_s"
+    }
+   },
+   "style": {
+    "pcb_color": "black",
+    "pcb_mm": 1.0,
+    "parts": [
+     {
+      "k": "chip",
+      "x": 0,
+      "y": 0,
+      "w": 7,
+      "l": 7,
+      "h": 0.9,
+      "name": "mcu"
+     },
+     {
+      "k": "chip",
+      "x": -5.5,
+      "y": 4,
+      "w": 3,
+      "l": 3,
+      "h": 0.9,
+      "name": "gyro"
+     },
+     {
+      "k": "led",
+      "x": 6,
+      "y": -9,
+      "w": 1.6,
+      "l": 0.8,
+      "h": 0.5,
+      "color": "#59c2ff"
+     },
+     {
+      "k": "chip",
+      "x": 7.5,
+      "y": 3.5,
+      "w": 3,
+      "l": 3,
+      "h": 0.8,
+      "name": "esc_fet_1"
+     },
+     {
+      "k": "chip",
+      "x": -7.5,
+      "y": 3.5,
+      "w": 3,
+      "l": 3,
+      "h": 0.8,
+      "name": "esc_fet_2"
+     },
+     {
+      "k": "chip",
+      "x": -7.5,
+      "y": -3.5,
+      "w": 3,
+      "l": 3,
+      "h": 0.8,
+      "name": "esc_fet_3"
+     },
+     {
+      "k": "chip",
+      "x": 7.5,
+      "y": -3.5,
+      "w": 3,
+      "l": 3,
+      "h": 0.8,
+      "name": "esc_fet_4"
+     },
+     {
+      "k": "chip",
+      "x": 5,
+      "y": 8,
+      "w": 4,
+      "l": 4,
+      "h": 0.8,
+      "name": "receiver"
+     },
+     {
+      "k": "box",
+      "x": 9,
+      "y": 9,
+      "w": 3,
+      "l": 1.6,
+      "h": 1.0,
+      "color": "#e9e4d8",
+      "name": "rx_antenna"
+     },
+     {
+      "k": "usb_c",
+      "x": 0,
+      "y": -12.5,
+      "rot": 0,
+      "name": "usb"
+     },
+     {
+      "k": "pads",
+      "n": 2,
+      "x": -8,
+      "y": -13.5,
+      "pitch": 3.0,
+      "d": 2.2,
+      "name": "battery_pad"
+     },
+     {
+      "k": "elcap",
+      "d": 5,
+      "h": 10,
+      "x": 10,
+      "y": -9,
+      "name": "capacitor"
+     }
+    ],
+    "corner_mm": 2.0,
+    "battery_connector": "xt60"
+   },
+   "estimate": {
+    "length_mm": 32,
+    "width_mm": 32
+   },
+   "note": " Chip and connector positions follow the product photos, not a drawing."
+  },
+  "betafpv-meteor65-pro-ii": {
+   "name": "BetaFPV Meteor65 Pro II whoop frame",
+   "category": "frame",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "whoop_frame",
+   "source": "https://betafpv.com/products/meteor65-pro-ii-brushless-whoop-frame",
+   "checked": "2026-10-25",
+   "dims": {
+    "wheelbase_mm": {
+     "value": 70,
+     "source": "https://betafpv.com/products/meteor65-pro-ii-brushless-whoop-frame"
+    },
+    "size_mm": {
+     "value": [
+      91.4,
+      91.4,
+      15.4
+     ],
+     "source": "https://betafpv.com/products/meteor65-pro-ii-brushless-whoop-frame"
+    },
+    "mount_mm": {
+     "value": 26,
+     "source": "https://betafpv.com/products/meteor65-pro-ii-brushless-whoop-frame"
+    },
+    "mount_diameter_mm": {
+     "value": 6.6,
+     "source": "https://betafpv.com/products/meteor65-pro-ii-brushless-whoop-frame"
+    }
+   },
+   "style": {
+    "color": "#8f949b"
+   }
+  },
+  "betafpv-meteor75-pro-ii": {
+   "name": "BetaFPV Meteor75 Pro II whoop frame",
+   "category": "frame",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "whoop_frame",
+   "source": "https://betafpv.com/products/meteor75-pro-ii-brushless-whoop-frame",
+   "checked": "2026-10-25",
+   "dims": {
+    "wheelbase_mm": {
+     "value": 80,
+     "source": "https://betafpv.com/products/meteor75-pro-ii-brushless-whoop-frame"
+    },
+    "size_mm": {
+     "value": [
+      108.5,
+      108.5,
+      16.2
+     ],
+     "source": "https://betafpv.com/products/meteor75-pro-ii-brushless-whoop-frame"
+    },
+    "mount_mm": {
+     "value": 26,
+     "source": "https://betafpv.com/products/meteor75-pro-ii-brushless-whoop-frame"
+    },
+    "mount_diameter_mm": {
+     "value": 6.6,
+     "source": "https://betafpv.com/products/meteor75-pro-ii-brushless-whoop-frame"
+    }
+   },
+   "style": {
+    "color": "#8f949b"
+   }
+  },
+  "betafpv-air75-ii": {
+   "name": "BetaFPV Air75 II whoop frame",
+   "category": "frame",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "whoop_frame",
+   "source": "https://betafpv.com/products/air75-ii-brushless-whoop-frame",
+   "checked": "2026-10-25",
+   "dims": {
+    "wheelbase_mm": {
+     "value": 75,
+     "source": "https://betafpv.com/products/air75-ii-brushless-whoop-frame"
+    },
+    "size_mm": {
+     "value": [
+      99.1,
+      99.1,
+      16.2
+     ],
+     "source": "https://betafpv.com/products/air75-ii-brushless-whoop-frame"
+    },
+    "mount_mm": {
+     "value": 25.5,
+     "source": "https://betafpv.com/products/air75-ii-brushless-whoop-frame"
+    },
+    "mount_diameter_mm": {
+     "value": 6.6,
+     "source": "https://betafpv.com/products/air75-ii-brushless-whoop-frame"
+    }
+   },
+   "style": {
+    "color": "#1c1c1f"
+   }
+  },
+  "betafpv-pavo20-pro-ii": {
+   "name": "BetaFPV Pavo20 Pro II frame",
+   "category": "frame",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "whoop_frame",
+   "source": "https://betafpv.com/products/pavo20-pro-ii-brushless-whoop-frame",
+   "checked": "2026-10-25",
+   "dims": {
+    "wheelbase_mm": {
+     "value": 93.9,
+     "source": "https://betafpv.com/products/pavo20-pro-ii-brushless-whoop-frame"
+    },
+    "mount_mm": {
+     "value": 26,
+     "source": "https://betafpv.com/products/pavo20-pro-ii-brushless-whoop-frame"
+    },
+    "mount_diameter_mm": {
+     "value": 9.0,
+     "source": "https://betafpv.com/products/pavo20-pro-ii-brushless-whoop-frame"
+    }
+   },
+   "style": {
+    "color": "#1c1c1f"
+   },
+   "estimate": {
+    "size_mm": [
+     128.4,
+     128.4,
+     24.0
+    ]
+   },
+   "missing": [
+    "size_mm"
+   ],
+   "note": "The page gives wheelbase, FC and motor patterns but not the overall size; ducts are drawn for the 2.2 inch props it takes."
+  },
+  "betafpv-pavo25-v2": {
+   "name": "BetaFPV Pavo25 V2 frame",
+   "category": "frame",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "whoop_frame",
+   "source": "https://betafpv.com/products/pavo25-v2-brushless-whoop-frame",
+   "checked": "2026-10-25",
+   "dims": {
+    "wheelbase_mm": {
+     "value": 112,
+     "source": "https://betafpv.com/products/pavo25-v2-brushless-whoop-frame"
+    },
+    "mount_mm": {
+     "value": 25.5,
+     "source": "https://betafpv.com/products/pavo25-v2-brushless-whoop-frame"
+    },
+    "mount_diameter_mm": {
+     "value": 12.0,
+     "source": "https://betafpv.com/products/pavo25-v2-brushless-whoop-frame"
+    },
+    "duct_id_mm": {
+     "value": 65.5,
+     "source": "https://betafpv.com/products/pavo25-v2-brushless-whoop-frame"
+    }
+   },
+   "style": {
+    "color": "#1c1c1f"
+   },
+   "estimate": {
+    "size_mm": [
+     148.7,
+     148.7,
+     30.0
+    ]
+   },
+   "missing": [
+    "size_mm"
+   ],
+   "note": "Duct diameter 65.5 mm and wheelbase are from the page; overall size is computed from them, height is not given."
+  },
+  "betafpv-pavo35": {
+   "name": "BetaFPV Pavo35 frame",
+   "category": "frame",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "whoop_frame",
+   "source": "https://betafpv.com/products/pavo35-brushless-whoop-frame",
+   "checked": "2026-10-25",
+   "dims": {
+    "wheelbase_mm": {
+     "value": 148,
+     "source": "https://betafpv.com/products/pavo35-brushless-whoop-frame"
+    },
+    "mount_mm": {
+     "value": 25.5,
+     "source": "https://betafpv.com/products/pavo35-brushless-whoop-frame"
+    },
+    "mount_diameter_mm": {
+     "value": 12.0,
+     "source": "https://betafpv.com/products/pavo35-brushless-whoop-frame"
+    },
+    "duct_id_mm": {
+     "value": 92.0,
+     "source": "https://betafpv.com/products/pavo35-brushless-whoop-frame"
+    }
+   },
+   "style": {
+    "color": "#1c1c1f"
+   },
+   "estimate": {
+    "size_mm": [
+     200.7,
+     200.7,
+     36.0
+    ]
+   },
+   "missing": [
+    "size_mm"
+   ],
+   "note": "Duct diameter 92 mm and wheelbase are from the page; overall size is computed from them, height is not given."
+  },
+  "betafpv-aquila20": {
+   "name": "BetaFPV Aquila20 frame",
+   "category": "frame",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "carbon_frame",
+   "source": "https://betafpv.com/products/aquila20-brushless-whoop-frame",
+   "checked": "2026-10-25",
+   "dims": {
+    "wheelbase_mm": {
+     "value": 100,
+     "source": "https://betafpv.com/products/aquila20-brushless-whoop-frame"
+    },
+    "mount_mm": {
+     "value": 26,
+     "source": "https://betafpv.com/products/aquila20-brushless-whoop-frame"
+    },
+    "mount_diameter_mm": {
+     "value": 9.0,
+     "source": "https://betafpv.com/products/aquila20-brushless-whoop-frame"
+    },
+    "motor_bolts": {
+     "value": 3,
+     "source": "https://betafpv.com/products/aquila20-brushless-whoop-frame"
+    }
+   },
+   "style": {
+    "top_plate": false
+   },
+   "estimate": {
+    "arm_thickness_mm": 3.0
+   },
+   "missing": [
+    "arm_thickness_mm"
+   ],
+   "note": "Motor pattern 3 x M1.4 on a 9 mm circle per the page."
+  },
+  "betafpv-x-knight-4": {
+   "name": "BetaFPV X-Knight 4 inch carbon frame",
+   "category": "frame",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "carbon_frame",
+   "source": "https://betafpv.com/products/x-knight-4inch-fpv-racing-carbon-fiber-frame-kit",
+   "checked": "2026-10-25",
+   "dims": {
+    "wheelbase_mm": {
+     "value": 160,
+     "source": "https://betafpv.com/products/x-knight-4inch-fpv-racing-carbon-fiber-frame-kit"
+    },
+    "mount_mm": {
+     "value": 26.5,
+     "source": "https://betafpv.com/products/x-knight-4inch-fpv-racing-carbon-fiber-frame-kit"
+    },
+    "mount_diameter_mm": {
+     "value": 16.97,
+     "source": "https://betafpv.com/products/x-knight-4inch-fpv-racing-carbon-fiber-frame-kit"
+    },
+    "arm_thickness_mm": {
+     "value": 4.0,
+     "source": "https://betafpv.com/products/x-knight-4inch-fpv-racing-carbon-fiber-frame-kit"
+    },
+    "motor_bolts": {
+     "value": 4,
+     "source": "https://betafpv.com/products/x-knight-4inch-fpv-racing-carbon-fiber-frame-kit"
+    },
+    "standoff_mm": {
+     "value": 5.0,
+     "source": "https://betafpv.com/products/x-knight-4inch-fpv-racing-carbon-fiber-frame-kit"
+    }
+   },
+   "style": {
+    "top_plate": true
+   },
+   "note": "12 x 12 mm M2 motor pattern (a 16.97 mm circle) and 8 mm frame height per the page."
+  },
+  "betafpv-x-knight-5": {
+   "name": "BetaFPV X-Knight 5 inch carbon frame",
+   "category": "frame",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "carbon_frame",
+   "source": "https://betafpv.com/products/x-knight-4inch-fpv-racing-carbon-fiber-frame-kit",
+   "checked": "2026-10-25",
+   "dims": {
+    "wheelbase_mm": {
+     "value": 200,
+     "source": "https://betafpv.com/products/x-knight-4inch-fpv-racing-carbon-fiber-frame-kit"
+    },
+    "mount_mm": {
+     "value": 26.5,
+     "source": "https://betafpv.com/products/x-knight-4inch-fpv-racing-carbon-fiber-frame-kit"
+    },
+    "mount_diameter_mm": {
+     "value": 22.63,
+     "source": "https://betafpv.com/products/x-knight-4inch-fpv-racing-carbon-fiber-frame-kit"
+    },
+    "arm_thickness_mm": {
+     "value": 4.0,
+     "source": "https://betafpv.com/products/x-knight-4inch-fpv-racing-carbon-fiber-frame-kit"
+    },
+    "motor_bolts": {
+     "value": 4,
+     "source": "https://betafpv.com/products/x-knight-4inch-fpv-racing-carbon-fiber-frame-kit"
+    },
+    "standoff_mm": {
+     "value": 5.0,
+     "source": "https://betafpv.com/products/x-knight-4inch-fpv-racing-carbon-fiber-frame-kit"
+    }
+   },
+   "style": {
+    "top_plate": true
+   },
+   "note": "16 x 16 mm M3 motor pattern (a 22.6 mm circle) per the page."
+  },
+  "twiglet-2in-carbon": {
+   "name": "Twiglet 2\" carbon toothpick frame",
+   "category": "frame",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "carbon_frame",
+   "source": "https://www.unmannedtechshop.co.uk/products/twiglet-2-toothpick-frame",
+   "checked": "2026-10-25",
+   "dims": {
+    "mount_mm": {
+     "value": 26,
+     "source": "https://www.unmannedtechshop.co.uk/products/twiglet-2-toothpick-frame"
+    },
+    "mount_diameter_mm": {
+     "value": 9.0,
+     "source": "https://www.unmannedtechshop.co.uk/products/twiglet-2-toothpick-frame"
+    },
+    "motor_bolts": {
+     "value": 4,
+     "source": "https://www.unmannedtechshop.co.uk/products/twiglet-2-toothpick-frame"
+    }
+   },
+   "style": {
+    "top_plate": false
+   },
+   "estimate": {
+    "wheelbase_mm": 85,
+    "arm_thickness_mm": 2.5
+   },
+   "missing": [
+    "wheelbase_mm",
+    "arm_thickness_mm"
+   ],
+   "note": "Stack 26 x 26 mm and motor pattern 4 x 2.1 mm on 9 mm (or 3 x 1.6 mm on 6.6 mm) per the page; the wheelbase is not given."
+  },
+  "caddx-ant": {
+   "name": "Caddx Ant 1200TVL nano camera",
+   "category": "camera",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "fpv_camera",
+   "source": "https://www.caddxfpv.com/products/caddx-ant-analog-camera",
+   "checked": "2026-10-25",
+   "dims": {
+    "width_mm": {
+     "value": 14,
+     "source": "https://www.caddxfpv.com/products/caddx-ant-analog-camera"
+    }
+   },
+   "style": {
+    "color": "#1d1e21",
+    "lens_d_mm": 8.0
+   },
+   "estimate": {
+    "height_mm": 12.0,
+    "length_mm": 14.0
+   },
+   "missing": [
+    "height_mm"
+   ],
+   "note": "The page states 14 x 14 mm; depth and the lens are from the 14 mm nano class, not measured."
+  },
+  "betafpv-c03": {
+   "name": "BetaFPV C03 1200TVL micro camera",
+   "category": "camera",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "fpv_camera",
+   "source": "https://betafpv.com/products/c03-fpv-micro-camera",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 11,
+     "source": "https://betafpv.com/products/c03-fpv-micro-camera"
+    },
+    "width_mm": {
+     "value": 15,
+     "source": "https://betafpv.com/products/c03-fpv-micro-camera"
+    },
+    "height_mm": {
+     "value": 14,
+     "source": "https://betafpv.com/products/c03-fpv-micro-camera"
+    }
+   },
+   "style": {
+    "color": "#1d1e21",
+    "lens_d_mm": 7.0
+   },
+   "note": "Dimensions 11 x 15 x 14 mm per the page (depth x width x height), M7 lens."
+  },
+  "betafpv-c04": {
+   "name": "BetaFPV C04 1200TVL camera",
+   "category": "camera",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "fpv_camera",
+   "source": "https://betafpv.com/products/c04-fpv-camera",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 19.0,
+     "source": "https://betafpv.com/products/c04-fpv-camera"
+    },
+    "width_mm": {
+     "value": 14.3,
+     "source": "https://betafpv.com/products/c04-fpv-camera"
+    },
+    "height_mm": {
+     "value": 14.0,
+     "source": "https://betafpv.com/products/c04-fpv-camera"
+    }
+   },
+   "style": {
+    "color": "#1d1e21",
+    "lens_d_mm": 8.0
+   },
+   "note": "Page size 14.3 x 14 x 19 mm read as width x height x depth (a 14 mm mount camera)."
+  },
+  "caddx-ratel-19mm": {
+   "name": "Caddx Ratel 19 mm 1200TVL camera",
+   "category": "camera",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "fpv_camera",
+   "source": "https://betafpv.com/products/caddx-ratel-camera",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 19,
+     "source": "https://betafpv.com/products/caddx-ratel-camera"
+    },
+    "width_mm": {
+     "value": 19,
+     "source": "https://betafpv.com/products/caddx-ratel-camera"
+    },
+    "height_mm": {
+     "value": 19,
+     "source": "https://betafpv.com/products/caddx-ratel-camera"
+    }
+   },
+   "style": {
+    "color": "#1d1e21",
+    "lens_d_mm": 12.0
+   }
+  },
+  "betafpv-a03-vtx": {
+   "name": "BetaFPV A03 400mW 5.8G VTX",
+   "category": "vtx",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "vtx",
+   "source": "https://betafpv.com/products/a03-400mw-5-8g-vtx",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 30.34,
+     "source": "https://betafpv.com/products/a03-400mw-5-8g-vtx"
+    },
+    "width_mm": {
+     "value": 30.34,
+     "source": "https://betafpv.com/products/a03-400mw-5-8g-vtx"
+    },
+    "height_mm": {
+     "value": 4.6,
+     "source": "https://betafpv.com/products/a03-400mw-5-8g-vtx"
+    },
+    "mount_mm": {
+     "value": 26,
+     "source": "https://betafpv.com/products/a03-400mw-5-8g-vtx"
+    }
+   },
+   "style": {
+    "pcb_color": "#18191b"
+   },
+   "note": "30.34 x 30.34 x 4.6 mm, 26 x 26 mm holes, MMCX antenna per the page."
+  },
+  "betafpv-air-vtx": {
+   "name": "BetaFPV Air VTX 25mW",
+   "category": "vtx",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "vtx",
+   "source": "https://betafpv.com/products/air-vtx",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 14,
+     "source": "https://betafpv.com/products/air-vtx"
+    },
+    "width_mm": {
+     "value": 10.5,
+     "source": "https://betafpv.com/products/air-vtx"
+    }
+   },
+   "style": {
+    "pcb_color": "#18191b"
+   },
+   "estimate": {
+    "height_mm": 2.0
+   },
+   "missing": [
+    "height_mm"
+   ],
+   "not_applicable": [
+    "mount_mm"
+   ]
+  },
+  "toothpick-canopy-holder": {
+   "name": "Toothpick canopy and battery holder (TPU)",
+   "category": "canopy",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "canopy",
+   "source": "https://rotorgeeks.com/gatehunter-tpu-canopy-for-14mm-cameras",
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "color": "#d23a2b"
+   },
+   "estimate": {
+    "length_mm": 34,
+    "width_mm": 22,
+    "height_mm": 18
+   },
+   "note": "Gatehunter TPU canopy for 14 mm cameras, 2.6 g per the page; its size is not given."
+  },
+  "m14-bolts": {
+   "name": "M1.4 x 3 mm motor bolts",
+   "category": "hardware",
+   "catalogs": [
+    "parts.json"
+   ],
+   "type": "screw",
+   "source": "https://www.aliexpress.com/item/1005002364568213.html",
+   "checked": "2026-10-25",
+   "dims": {
+    "thread_mm": {
+     "value": 1.4,
+     "source": "https://www.aliexpress.com/item/1005002364568213.html"
+    },
+    "length_mm": {
+     "value": 3.0,
+     "source": "https://www.aliexpress.com/item/1005002364568213.html"
+    }
+   },
+   "style": {
+    "color": "#1d1f22",
+    "drive": "phillips"
+   },
+   "estimate": {
+    "head_d_mm": 2.5,
+    "head_h_mm": 0.8
+   },
+   "note": "One M1.4 x 3 mm screw of the pack."
+  },
+  "adafruit-3405-huzzah32": {
+   "name": "Adafruit HUZZAH32 ESP32 Feather",
+   "category": "controller",
+   "catalogs": [
+    "makers.json"
+   ],
+   "type": "official",
+   "source": "https://www.adafruit.com/product/3405",
+   "checked": "2026-10-25",
+   "dims": {},
+   "official": {
+    "file": "3405-huzzah32-feather.step",
+    "url": "https://github.com/adafruit/Adafruit_CAD_Parts/tree/main/3405%20ESP32%20Feather%20HUZZAH",
+    "author": "Adafruit Industries",
+    "license": "MIT (Adafruit Industries)",
+    "download": "https://raw.githubusercontent.com/adafruit/Adafruit_CAD_Parts/main/3405%20ESP32%20Feather%20HUZZAH/3405%20Adafruit%20HUZZAH32%20ESP32%20Feather.step"
+   },
+   "checks": [
+    {
+     "check": "extent",
+     "nodes": null,
+     "axes": "xy",
+     "expect": [
+      51.0,
+      22.7
+     ],
+     "tol": 0.6
+    }
+   ]
+  },
+  "adafruit-4062-nrf52840": {
+   "name": "Adafruit Feather nRF52840 Express",
+   "category": "controller",
+   "catalogs": [
+    "makers.json"
+   ],
+   "type": "official",
+   "source": "https://www.adafruit.com/product/4062",
+   "checked": "2026-10-25",
+   "dims": {},
+   "official": {
+    "file": "4062-feather-nrf52840.step",
+    "url": "https://github.com/adafruit/Adafruit_CAD_Parts/tree/main/4062%20nRF52840%20Feather",
+    "author": "Adafruit Industries",
+    "license": "MIT (Adafruit Industries)",
+    "download": "https://raw.githubusercontent.com/adafruit/Adafruit_CAD_Parts/main/4062%20nRF52840%20Feather/4062-nRF52830-Feather.step"
+   },
+   "checks": [
+    {
+     "check": "extent",
+     "nodes": null,
+     "axes": "xy",
+     "expect": [
+      51.0,
+      23.0
+     ],
+     "tol": 0.6
+    }
+   ]
+  },
+  "adafruit-5426-qtpy-esp32s3": {
+   "name": "Adafruit QT Py ESP32-S3 (8 MB flash)",
+   "category": "controller",
+   "catalogs": [
+    "makers.json"
+   ],
+   "type": "official",
+   "source": "https://www.adafruit.com/product/5426",
+   "checked": "2026-10-25",
+   "dims": {},
+   "official": {
+    "file": "5426-qt-py-esp32-s3.step",
+    "url": "https://github.com/adafruit/Adafruit_CAD_Parts/tree/main/5426%20QT%20Py%20ESP32-S3",
+    "author": "Adafruit Industries",
+    "license": "MIT (Adafruit Industries)",
+    "download": "https://raw.githubusercontent.com/adafruit/Adafruit_CAD_Parts/main/5426%20QT%20Py%20ESP32-S3/5426%20QT%20Py%20ESP32-S3.step"
+   },
+   "checks": [
+    {
+     "check": "extent",
+     "nodes": null,
+     "axes": "xy",
+     "expect": [
+      17.8,
+      21.7
+     ],
+     "tol": 0.6
+    }
+   ]
+  },
+  "adafruit-2472-bno055": {
+   "name": "Adafruit BNO055 9-DOF absolute orientation IMU",
+   "category": "sensor",
+   "catalogs": [
+    "makers.json"
+   ],
+   "type": "official",
+   "source": "https://www.adafruit.com/product/2472",
+   "checked": "2026-10-25",
+   "dims": {},
+   "official": {
+    "file": "2472-bno055-breakout.step",
+    "url": "https://github.com/adafruit/Adafruit_CAD_Parts/tree/main/2472%20BNO055%20Breakout",
+    "author": "Adafruit Industries",
+    "license": "MIT (Adafruit Industries)",
+    "download": "https://raw.githubusercontent.com/adafruit/Adafruit_CAD_Parts/main/2472%20BNO055%20Breakout/2472%20BNO055%20Breakout.step"
+   },
+   "checks": [
+    {
+     "check": "extent",
+     "nodes": null,
+     "axes": "xy",
+     "expect": [
+      27.0,
+      20.0
+     ],
+     "tol": 0.6
+    }
+   ]
+  },
+  "adafruit-1904-micro-lipo": {
+   "name": "Adafruit Micro-Lipo charger (USB)",
+   "category": "power",
+   "catalogs": [
+    "makers.json"
+   ],
+   "type": "official",
+   "source": "https://www.adafruit.com/product/1904",
+   "checked": "2026-10-25",
+   "dims": {},
+   "official": {
+    "file": "1904-micro-lipo-charger.step",
+    "url": "https://github.com/adafruit/Adafruit_CAD_Parts/tree/main/1904%20MicroUSB%20Lipo%20Charger",
+    "author": "Adafruit Industries",
+    "license": "MIT (Adafruit Industries)",
+    "download": "https://raw.githubusercontent.com/adafruit/Adafruit_CAD_Parts/main/1904%20MicroUSB%20Lipo%20Charger/1904%20MicroUSB%20Lipo%20Charger.step"
+   },
+   "checks": [
+    {
+     "check": "extent",
+     "nodes": null,
+     "axes": "xy",
+     "expect": [
+      21.0,
+      19.0
+     ],
+     "tol": 0.8
+    }
+   ]
+  },
+  "adafruit-3777-tt-motor": {
+   "name": "TT DC Gearbox Motor 200 RPM 3-6 V",
+   "category": "motor",
+   "catalogs": [
+    "makers.json"
+   ],
+   "type": "official",
+   "source": "https://www.adafruit.com/product/3777",
+   "checked": "2026-10-25",
+   "dims": {},
+   "official": {
+    "file": "3777-tt-motor.step",
+    "url": "https://github.com/adafruit/Adafruit_CAD_Parts/tree/main/3777%20TT%20Motor",
+    "author": "Adafruit Industries",
+    "license": "MIT (Adafruit Industries)",
+    "rotate": [
+     0,
+     90,
+     0
+    ],
+    "download": "https://raw.githubusercontent.com/adafruit/Adafruit_CAD_Parts/main/3777%20TT%20Motor/3777%20TT%20Motor.step"
+   },
+   "checks": [
+    {
+     "check": "extent",
+     "nodes": null,
+     "axes": "x",
+     "expect": [
+      70.0
+     ],
+     "tol": 1.0
+    }
+   ]
+  },
+  "adafruit-328-lipo-2500": {
+   "name": "LiPo 3.7 V 2500 mAh",
+   "category": "battery",
+   "catalogs": [
+    "makers.json"
+   ],
+   "type": "official",
+   "source": "https://www.adafruit.com/product/328",
+   "checked": "2026-10-25",
+   "dims": {},
+   "official": {
+    "file": "328-lipo-2500mah.step",
+    "url": "https://github.com/adafruit/Adafruit_CAD_Parts/tree/main/328%202500mAh%20battery",
+    "author": "Adafruit Industries",
+    "license": "MIT (Adafruit Industries)",
+    "download": "https://raw.githubusercontent.com/adafruit/Adafruit_CAD_Parts/main/328%202500mAh%20battery/328%202500mAh%20battery.step"
+   },
+   "checks": []
+  },
+  "adafruit-2011-li-ion-2000": {
+   "name": "Li-ion 3.7 V 2000 mAh",
+   "category": "battery",
+   "catalogs": [
+    "makers.json"
+   ],
+   "type": "official",
+   "source": "https://www.adafruit.com/product/2011",
+   "checked": "2026-10-25",
+   "dims": {},
+   "official": {
+    "file": "2011-li-ion-2000mah.step",
+    "url": "https://github.com/adafruit/Adafruit_CAD_Parts/tree/main/2011%202000mAh%20Battery",
+    "author": "Adafruit Industries",
+    "license": "MIT (Adafruit Industries)",
+    "download": "https://raw.githubusercontent.com/adafruit/Adafruit_CAD_Parts/main/2011%202000mAh%20Battery/2000mAh%20Battery.step"
+   },
+   "checks": []
+  },
+  "adafruit-353-li-ion-6600": {
+   "name": "Li-ion pack 3.7 V 6600 mAh (3 x 18650)",
+   "category": "battery",
+   "catalogs": [
+    "makers.json"
+   ],
+   "type": "official",
+   "source": "https://www.adafruit.com/product/353",
+   "checked": "2026-10-25",
+   "dims": {},
+   "official": {
+    "file": "353-li-ion-6600mah.step",
+    "url": "https://github.com/adafruit/Adafruit_CAD_Parts/tree/main/353%206600mAh%20Battery",
+    "author": "Adafruit Industries",
+    "license": "MIT (Adafruit Industries)",
+    "download": "https://raw.githubusercontent.com/adafruit/Adafruit_CAD_Parts/main/353%206600mAh%20Battery/353%206600mAh%20Battery.step"
+   },
+   "checks": []
+  },
+  "adafruit-4883-pico": {
+   "name": "Raspberry Pi Pico RP2040",
+   "category": "controller",
+   "catalogs": [
+    "makers.json"
+   ],
+   "type": "official",
+   "source": "https://www.adafruit.com/product/4883",
+   "checked": "2026-10-25",
+   "dims": {},
+   "official": {
+    "file": "RaspberryPi_Pico.step",
+    "url": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/blob/master/Module.3dshapes/RaspberryPi_Pico.step",
+    "author": "KiCad library (Peter S. Hollander)",
+    "license": "CC-BY-SA 4.0 with the KiCad library exception",
+    "rotate": [
+     0,
+     0,
+     90
+    ],
+    "download": "https://gitlab.com/api/v4/projects/kicad%2Flibraries%2Fkicad-packages3D/repository/files/Module.3dshapes%2FRaspberryPi_Pico.step/raw?ref=master"
+   },
+   "checks": [
+    {
+     "check": "extent",
+     "nodes": null,
+     "axes": "xy",
+     "expect": [
+      51.0,
+      21.0
+     ],
+     "tol": 1.5
+    }
+   ]
+  },
+  "pico-w": {
+   "name": "Raspberry Pi Pico W",
+   "category": "controller",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "official",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "official": {
+    "file": "RaspberryPi_Pico_W.step",
+    "url": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/blob/master/Module.3dshapes/RaspberryPi_Pico_W.step",
+    "author": "KiCad library (Peter S. Hollander)",
+    "license": "CC-BY-SA 4.0 with the KiCad library exception",
+    "rotate": [
+     0,
+     0,
+     90
+    ],
+    "download": "https://gitlab.com/api/v4/projects/kicad%2Flibraries%2Fkicad-packages3D/repository/files/Module.3dshapes%2FRaspberryPi_Pico_W.step/raw?ref=master"
+   },
+   "checks": [
+    {
+     "check": "extent",
+     "nodes": null,
+     "axes": "xy",
+     "expect": [
+      51.0,
+      21.0
+     ],
+     "tol": 1.5
+    }
+   ]
+  },
+  "pololu-2361-75-1-hp": {
+   "name": "Pololu 75:1 Micro Metal Gearmotor HP 6V",
+   "category": "motor",
+   "catalogs": [
+    "makers.json"
+   ],
+   "type": "micro_gearmotor",
+   "source": "https://www.pololu.com/product/2361",
+   "checked": "2026-10-25",
+   "dims": {
+    "width_mm": {
+     "value": 12.0,
+     "source": "https://www.pololu.com/file/0J949/micro-metal-gearmotors-dimensions.pdf"
+    },
+    "height_mm": {
+     "value": 10.0,
+     "source": "https://www.pololu.com/file/0J949/micro-metal-gearmotors-dimensions.pdf"
+    },
+    "length_mm": {
+     "value": 24.0,
+     "source": "https://www.pololu.com/file/0J949/micro-metal-gearmotors-dimensions.pdf"
+    },
+    "gearbox_mm": {
+     "value": 9.0,
+     "source": "https://www.pololu.com/file/0J949/micro-metal-gearmotors-dimensions.pdf"
+    },
+    "shaft_mm": {
+     "value": 3.0,
+     "source": "https://www.pololu.com/file/0J949/micro-metal-gearmotors-dimensions.pdf"
+    },
+    "shaft_len_mm": {
+     "value": 10.0,
+     "source": "https://www.pololu.com/file/0J949/micro-metal-gearmotors-dimensions.pdf"
+    },
+    "hole_spacing_mm": {
+     "value": 9.0,
+     "source": "https://www.pololu.com/file/0J949/micro-metal-gearmotors-dimensions.pdf"
+    }
+   },
+   "note": "Pololu drawing: 12 x 10 mm gearbox face, 9 mm gearbox, 15 mm motor, 3 mm D shaft 10 mm long, 2 x M1.6 holes 9 mm apart. The catalog's 25 mm includes the rear cap."
+  },
+  "pololu-2364-30-1-mp": {
+   "name": "Pololu 30:1 Micro Metal Gearmotor MP 6V",
+   "category": "motor",
+   "catalogs": [
+    "makers.json"
+   ],
+   "type": "micro_gearmotor",
+   "source": "https://www.pololu.com/product/2364",
+   "checked": "2026-10-25",
+   "dims": {
+    "width_mm": {
+     "value": 12.0,
+     "source": "https://www.pololu.com/file/0J949/micro-metal-gearmotors-dimensions.pdf"
+    },
+    "height_mm": {
+     "value": 10.0,
+     "source": "https://www.pololu.com/file/0J949/micro-metal-gearmotors-dimensions.pdf"
+    },
+    "length_mm": {
+     "value": 24.0,
+     "source": "https://www.pololu.com/file/0J949/micro-metal-gearmotors-dimensions.pdf"
+    },
+    "gearbox_mm": {
+     "value": 9.0,
+     "source": "https://www.pololu.com/file/0J949/micro-metal-gearmotors-dimensions.pdf"
+    },
+    "shaft_mm": {
+     "value": 3.0,
+     "source": "https://www.pololu.com/file/0J949/micro-metal-gearmotors-dimensions.pdf"
+    },
+    "shaft_len_mm": {
+     "value": 10.0,
+     "source": "https://www.pololu.com/file/0J949/micro-metal-gearmotors-dimensions.pdf"
+    },
+    "hole_spacing_mm": {
+     "value": 9.0,
+     "source": "https://www.pololu.com/file/0J949/micro-metal-gearmotors-dimensions.pdf"
+    }
+   },
+   "note": "Pololu drawing: 12 x 10 mm gearbox face, 9 mm gearbox, 15 mm motor, 3 mm D shaft 10 mm long, 2 x M1.6 holes 9 mm apart. The catalog's 25 mm includes the rear cap."
+  },
+  "pololu-3061-10-1-hpcb": {
+   "name": "Pololu 10:1 Micro Metal Gearmotor HPCB 6V",
+   "category": "motor",
+   "catalogs": [
+    "makers.json"
+   ],
+   "type": "micro_gearmotor",
+   "source": "https://www.pololu.com/product/3061",
+   "checked": "2026-10-25",
+   "dims": {
+    "width_mm": {
+     "value": 12.0,
+     "source": "https://www.pololu.com/file/0J949/micro-metal-gearmotors-dimensions.pdf"
+    },
+    "height_mm": {
+     "value": 10.0,
+     "source": "https://www.pololu.com/file/0J949/micro-metal-gearmotors-dimensions.pdf"
+    },
+    "length_mm": {
+     "value": 24.0,
+     "source": "https://www.pololu.com/file/0J949/micro-metal-gearmotors-dimensions.pdf"
+    },
+    "gearbox_mm": {
+     "value": 9.0,
+     "source": "https://www.pololu.com/file/0J949/micro-metal-gearmotors-dimensions.pdf"
+    },
+    "shaft_mm": {
+     "value": 3.0,
+     "source": "https://www.pololu.com/file/0J949/micro-metal-gearmotors-dimensions.pdf"
+    },
+    "shaft_len_mm": {
+     "value": 10.0,
+     "source": "https://www.pololu.com/file/0J949/micro-metal-gearmotors-dimensions.pdf"
+    },
+    "hole_spacing_mm": {
+     "value": 9.0,
+     "source": "https://www.pololu.com/file/0J949/micro-metal-gearmotors-dimensions.pdf"
+    }
+   },
+   "note": "Pololu drawing: 12 x 10 mm gearbox face, 9 mm gearbox, 15 mm motor, 3 mm D shaft 10 mm long, 2 x M1.6 holes 9 mm apart. The catalog's 25 mm includes the rear cap."
+  },
+  "pololu-3485-488-1-20d": {
+   "name": "Pololu 488:1 Metal Gearmotor 20D x 46L mm 12V",
+   "category": "motor",
+   "catalogs": [
+    "makers.json"
+   ],
+   "type": "round_gearmotor",
+   "source": "https://a.pololu-files.com/picture/0J7491.1200.jpg",
+   "checked": "2026-10-25",
+   "dims": {
+    "diameter_mm": {
+     "value": 20.0,
+     "source": "https://a.pololu-files.com/picture/0J7491.1200.jpg"
+    },
+    "can_d_mm": {
+     "value": 20.4,
+     "source": "https://a.pololu-files.com/picture/0J7491.1200.jpg"
+    },
+    "can_flats_mm": {
+     "value": 15.4,
+     "source": "https://a.pololu-files.com/picture/0J7491.1200.jpg"
+    },
+    "gearbox_mm": {
+     "value": 20.5,
+     "source": "https://a.pololu-files.com/picture/0J7491.1200.jpg"
+    },
+    "motor_mm": {
+     "value": 25.1,
+     "source": "https://a.pololu-files.com/picture/0J7491.1200.jpg"
+    },
+    "length_mm": {
+     "value": 45.6,
+     "source": "https://a.pololu-files.com/picture/0J7491.1200.jpg"
+    },
+    "shaft_mm": {
+     "value": 4.0,
+     "source": "https://a.pololu-files.com/picture/0J7491.1200.jpg"
+    },
+    "shaft_len_mm": {
+     "value": 18.0,
+     "source": "https://a.pololu-files.com/picture/0J7491.1200.jpg"
+    },
+    "bushing_h_mm": {
+     "value": 3.0,
+     "source": "https://a.pololu-files.com/picture/0J7491.1200.jpg"
+    },
+    "bushing_d_mm": {
+     "value": 7.0,
+     "source": "https://a.pololu-files.com/picture/0J7491.1200.jpg"
+    },
+    "face_holes": {
+     "value": 2,
+     "source": "https://a.pololu-files.com/picture/0J7491.1200.jpg"
+    },
+    "face_hole_circle_mm": {
+     "value": 15.0,
+     "source": "https://a.pololu-files.com/picture/0J7491.1200.jpg"
+    },
+    "face_hole_thread_mm": {
+     "value": 2.5,
+     "source": "https://a.pololu-files.com/picture/0J7491.1200.jpg"
+    }
+   },
+   "note": "Pololu 20D drawing: 20.0 mm gearbox (L 20.5 mm for 488:1), 25.1 mm motor, 4 mm D shaft 18 mm from the face, 2 x M2.5 7.5 mm either side."
+  },
+  "pololu-4861-4-4-1-25d-enc": {
+   "name": "Pololu 4.4:1 Metal Gearmotor 25D x 63L mm 12V with encoder",
+   "category": "motor",
+   "catalogs": [
+    "makers.json"
+   ],
+   "type": "round_gearmotor",
+   "source": "https://a.pololu-files.com/picture/0J9977.1200.jpg",
+   "checked": "2026-10-25",
+   "dims": {
+    "diameter_mm": {
+     "value": 25.0,
+     "source": "https://a.pololu-files.com/picture/0J9977.1200.jpg"
+    },
+    "can_d_mm": {
+     "value": 24.4,
+     "source": "https://a.pololu-files.com/picture/0J9977.1200.jpg"
+    },
+    "gearbox_mm": {
+     "value": 17.0,
+     "source": "https://a.pololu-files.com/picture/0J9977.1200.jpg"
+    },
+    "motor_mm": {
+     "value": 30.8,
+     "source": "https://a.pololu-files.com/picture/0J9977.1200.jpg"
+    },
+    "encoder_mm": {
+     "value": 14.7,
+     "source": "https://a.pololu-files.com/picture/0J9977.1200.jpg"
+    },
+    "length_mm": {
+     "value": 62.5,
+     "source": "https://a.pololu-files.com/picture/0J9977.1200.jpg"
+    },
+    "shaft_mm": {
+     "value": 4.0,
+     "source": "https://a.pololu-files.com/picture/0J9977.1200.jpg"
+    },
+    "shaft_len_mm": {
+     "value": 12.5,
+     "source": "https://a.pololu-files.com/picture/0J9977.1200.jpg"
+    },
+    "bushing_h_mm": {
+     "value": 2.5,
+     "source": "https://a.pololu-files.com/picture/0J9977.1200.jpg"
+    },
+    "bushing_d_mm": {
+     "value": 7.0,
+     "source": "https://a.pololu-files.com/picture/0J9977.1200.jpg"
+    },
+    "face_holes": {
+     "value": 2,
+     "source": "https://a.pololu-files.com/picture/0J9977.1200.jpg"
+    },
+    "face_hole_circle_mm": {
+     "value": 17.0,
+     "source": "https://a.pololu-files.com/picture/0J9977.1200.jpg"
+    },
+    "face_hole_thread_mm": {
+     "value": 3.0,
+     "source": "https://a.pololu-files.com/picture/0J9977.1200.jpg"
+    }
+   },
+   "style": {
+    "face_hole_start_deg": 90
+   },
+   "note": "Pololu 25D drawing: L 17 mm for 4.4:1, 30.8 mm motor, 14.7 mm encoder, 4 mm D shaft 12.5 mm, 2 x M3 8.5 mm either side."
+  },
+  "pololu-4752-30-1-37d-enc": {
+   "name": "Pololu 30:1 Metal Gearmotor 37D x 68L mm 12V with encoder",
+   "category": "motor",
+   "catalogs": [
+    "makers.json"
+   ],
+   "type": "round_gearmotor",
+   "source": "https://a.pololu-files.com/picture/0J10507.1200.jpg",
+   "checked": "2026-10-25",
+   "dims": {
+    "diameter_mm": {
+     "value": 36.8,
+     "source": "https://a.pololu-files.com/picture/0J10507.1200.jpg"
+    },
+    "can_d_mm": {
+     "value": 34.8,
+     "source": "https://a.pololu-files.com/picture/0J10507.1200.jpg"
+    },
+    "encoder_d_mm": {
+     "value": 34.0,
+     "source": "https://a.pololu-files.com/picture/0J10507.1200.jpg"
+    },
+    "gearbox_mm": {
+     "value": 21.5,
+     "source": "https://a.pololu-files.com/picture/0J10507.1200.jpg"
+    },
+    "motor_mm": {
+     "value": 30.7,
+     "source": "https://a.pololu-files.com/picture/0J10507.1200.jpg"
+    },
+    "encoder_mm": {
+     "value": 15.4,
+     "source": "https://a.pololu-files.com/picture/0J10507.1200.jpg"
+    },
+    "length_mm": {
+     "value": 67.6,
+     "source": "https://a.pololu-files.com/picture/0J10507.1200.jpg"
+    },
+    "shaft_mm": {
+     "value": 6.0,
+     "source": "https://a.pololu-files.com/picture/0J10507.1200.jpg"
+    },
+    "shaft_len_mm": {
+     "value": 22.0,
+     "source": "https://a.pololu-files.com/picture/0J10507.1200.jpg"
+    },
+    "bushing_h_mm": {
+     "value": 6.0,
+     "source": "https://a.pololu-files.com/picture/0J10507.1200.jpg"
+    },
+    "bushing_d_mm": {
+     "value": 12.0,
+     "source": "https://a.pololu-files.com/picture/0J10507.1200.jpg"
+    },
+    "shaft_offset_mm": {
+     "value": 7.0,
+     "source": "https://a.pololu-files.com/picture/0J10507.1200.jpg"
+    },
+    "face_holes": {
+     "value": 6,
+     "source": "https://a.pololu-files.com/picture/0J10507.1200.jpg"
+    },
+    "face_hole_circle_mm": {
+     "value": 31.0,
+     "source": "https://a.pololu-files.com/picture/0J10507.1200.jpg"
+    },
+    "face_hole_thread_mm": {
+     "value": 3.0,
+     "source": "https://a.pololu-files.com/picture/0J10507.1200.jpg"
+    }
+   },
+   "style": {
+    "face_hole_start_deg": 30
+   },
+   "note": "Pololu 37D drawing: 36.8 mm face, L 21.5 mm for 30:1, 30.7 mm motor, 15.4 mm encoder, 6 mm D shaft 22 mm offset 7 mm, 6 x M3 on a 31 mm circle."
+  },
+  "pololu-1200-nema17-48": {
+   "name": "NEMA 17 stepper 42 x 48 mm, 4 V 1.2 A (SOYO)",
+   "category": "motor",
+   "catalogs": [
+    "makers.json"
+   ],
+   "type": "stepper",
+   "source": "https://www.pololu.com/product/1200",
+   "checked": "2026-10-25",
+   "dims": {
+    "face_mm": {
+     "value": 42.3,
+     "source": "https://www.pololu.com/product/1200"
+    },
+    "length_mm": {
+     "value": 48.0,
+     "source": "https://www.pololu.com/product/1200"
+    },
+    "shaft_mm": {
+     "value": 5.0,
+     "source": "https://www.pololu.com/product/1200"
+    },
+    "hole_spacing_mm": {
+     "value": 31.0,
+     "source": "https://a.pololu-files.com/picture/0J2980.1200.jpg"
+    },
+    "shaft_len_mm": {
+     "value": 24.0,
+     "source": "https://a.pololu-files.com/picture/0J2980.1200.jpg"
+    },
+    "boss_d_mm": {
+     "value": 22.0,
+     "source": "https://a.pololu-files.com/picture/0J2980.1200.jpg"
+    }
+   },
+   "style": {
+    "connector": false,
+    "lead_colors": [
+     "wire_red",
+     "wire_blue",
+     "wire_green",
+     "wire_black"
+    ]
+   },
+   "note": "42.3 mm square, 5 mm D shaft per the page; 31 mm M3 hole square, 22 mm boss and 24 mm shaft per Pololu's drawing."
+  },
+  "pololu-2267-nema17-38": {
+   "name": "NEMA 17 stepper 42 x 38 mm, 2.8 V 1.7 A (SOYO)",
+   "category": "motor",
+   "catalogs": [
+    "makers.json"
+   ],
+   "type": "stepper",
+   "source": "https://www.pololu.com/product/2267",
+   "checked": "2026-10-25",
+   "dims": {
+    "face_mm": {
+     "value": 42.3,
+     "source": "https://www.pololu.com/product/2267"
+    },
+    "length_mm": {
+     "value": 38.0,
+     "source": "https://www.pololu.com/product/2267"
+    },
+    "shaft_mm": {
+     "value": 5.0,
+     "source": "https://www.pololu.com/product/2267"
+    },
+    "hole_spacing_mm": {
+     "value": 31.0,
+     "source": "https://a.pololu-files.com/picture/0J2980.1200.jpg"
+    },
+    "shaft_len_mm": {
+     "value": 24.0,
+     "source": "https://a.pololu-files.com/picture/0J2980.1200.jpg"
+    },
+    "boss_d_mm": {
+     "value": 22.0,
+     "source": "https://a.pololu-files.com/picture/0J2980.1200.jpg"
+    }
+   },
+   "style": {
+    "connector": false,
+    "lead_colors": [
+     "wire_red",
+     "wire_blue",
+     "wire_green",
+     "wire_black"
+    ]
+   },
+   "note": "42.3 mm square, 5 mm D shaft per the page; 31 mm M3 hole square, 22 mm boss and 24 mm shaft per Pololu's drawing."
+  },
+  "pololu-2818-fs90": {
+   "name": "FEETECH FS90 micro servo",
+   "category": "servo",
+   "catalogs": [
+    "makers.json"
+   ],
+   "type": "servo",
+   "source": "https://www.pololu.com/product/2818",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 23.2,
+     "source": "https://www.pololu.com/product/2818"
+    },
+    "width_mm": {
+     "value": 12.5,
+     "source": "https://www.pololu.com/product/2818"
+    }
+   },
+   "style": {
+    "color": "#1d1f22"
+   },
+   "estimate": {
+    "overall_height_mm": 26.0,
+    "tab_bottom_mm": 15.0,
+    "tab_span_mm": 32.0
+   },
+   "missing": [
+    "overall_height_mm",
+    "tab_bottom_mm",
+    "tab_span_mm",
+    "hole_spacing_mm"
+   ]
+  },
+  "adafruit-155-sg5010": {
+   "name": "TowerPro SG-5010 standard servo",
+   "category": "servo",
+   "catalogs": [
+    "makers.json"
+   ],
+   "type": "servo",
+   "source": "https://www.adafruit.com/product/155",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 40.6,
+     "source": "https://www.adafruit.com/product/155"
+    },
+    "width_mm": {
+     "value": 20.5,
+     "source": "https://www.adafruit.com/product/155"
+    }
+   },
+   "style": {
+    "color": "#1d1f22"
+   },
+   "estimate": {
+    "overall_height_mm": 44.0,
+    "tab_bottom_mm": 27.0,
+    "tab_span_mm": 54.0
+   },
+   "missing": [
+    "overall_height_mm",
+    "tab_bottom_mm",
+    "tab_span_mm",
+    "hole_spacing_mm"
+   ]
+  },
+  "pololu-1057-hd1501mg": {
+   "name": "Power HD 1501MG high-torque servo",
+   "category": "servo",
+   "catalogs": [
+    "makers.json"
+   ],
+   "type": "servo",
+   "source": "https://www.pololu.com/product/1057",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 40.7,
+     "source": "https://www.pololu.com/product/1057"
+    },
+    "width_mm": {
+     "value": 20.5,
+     "source": "https://www.pololu.com/product/1057"
+    }
+   },
+   "style": {
+    "color": "#1d1f22",
+    "metal_spline": true
+   },
+   "estimate": {
+    "overall_height_mm": 46.0,
+    "tab_bottom_mm": 27.0,
+    "tab_span_mm": 54.0
+   },
+   "missing": [
+    "overall_height_mm",
+    "tab_bottom_mm",
+    "tab_span_mm",
+    "hole_spacing_mm"
+   ]
+  },
+  "pololu-2130-drv8833": {
+   "name": "Pololu DRV8833 dual motor driver carrier",
+   "category": "driver",
+   "catalogs": [
+    "makers.json"
+   ],
+   "type": "board",
+   "source": "https://a.pololu-files.com/picture/0J3865.1200.jpg",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 12.7,
+     "source": "https://a.pololu-files.com/picture/0J3865.1200.jpg"
+    },
+    "width_mm": {
+     "value": 20.32,
+     "source": "https://a.pololu-files.com/picture/0J3865.1200.jpg"
+    },
+    "connector_positions": {
+     "value": true,
+     "source": "https://a.pololu-files.com/picture/0J3865.1200.jpg"
+    }
+   },
+   "style": {
+    "pcb_color": "#2f8a3c",
+    "pcb_mm": 1.6,
+    "parts": [
+     {
+      "k": "pads",
+      "n": 8,
+      "x": -5.08,
+      "y": 0,
+      "pitch": 2.54,
+      "d": 1.6,
+      "along": "y"
+     },
+     {
+      "k": "pads",
+      "n": 8,
+      "x": 5.08,
+      "y": 0,
+      "pitch": 2.54,
+      "d": 1.6,
+      "along": "y"
+     },
+     {
+      "k": "chip",
+      "x": 0,
+      "y": 0,
+      "w": 4.4,
+      "l": 5.0,
+      "h": 1.0
+     }
+    ],
+    "corner_mm": 0.4
+   },
+   "not_applicable": [
+    "holes"
+   ],
+   "note": "0.5 x 0.8 in, two rows of eight 0.1 in pins 0.4 in apart, no mounting holes. Outline, holes and the 0.1 in pin grid from Pololu's dimension photo; positions are read off the photo scaled to the stated outline (about 0.3 mm)."
+  },
+  "pololu-713-tb6612fng": {
+   "name": "Pololu TB6612FNG dual motor driver carrier",
+   "category": "driver",
+   "catalogs": [
+    "makers.json"
+   ],
+   "type": "board",
+   "source": "https://a.pololu-files.com/picture/0J4619.1200.jpg",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 15.24,
+     "source": "https://a.pololu-files.com/picture/0J4619.1200.jpg"
+    },
+    "width_mm": {
+     "value": 20.32,
+     "source": "https://a.pololu-files.com/picture/0J4619.1200.jpg"
+    },
+    "connector_positions": {
+     "value": true,
+     "source": "https://a.pololu-files.com/picture/0J4619.1200.jpg"
+    }
+   },
+   "style": {
+    "pcb_color": "#2f8a3c",
+    "pcb_mm": 1.6,
+    "parts": [
+     {
+      "k": "pads",
+      "n": 8,
+      "x": -6.35,
+      "y": 0,
+      "pitch": 2.54,
+      "d": 1.6,
+      "along": "y"
+     },
+     {
+      "k": "pads",
+      "n": 8,
+      "x": 6.35,
+      "y": 0,
+      "pitch": 2.54,
+      "d": 1.6,
+      "along": "y"
+     },
+     {
+      "k": "chip",
+      "x": 0,
+      "y": 0,
+      "w": 5.3,
+      "l": 6.5,
+      "h": 1.0
+     }
+    ],
+    "corner_mm": 0.4
+   },
+   "not_applicable": [
+    "holes"
+   ],
+   "note": "0.6 x 0.8 in, two rows of eight pins 0.5 in apart, no mounting holes. Outline, holes and the 0.1 in pin grid from Pololu's dimension photo; positions are read off the photo scaled to the stated outline (about 0.3 mm)."
+  },
+  "pololu-1182-a4988": {
+   "name": "Pololu A4988 stepper driver carrier",
+   "category": "driver",
+   "catalogs": [
+    "makers.json"
+   ],
+   "type": "board",
+   "source": "https://a.pololu-files.com/picture/0J10061.1200.jpg",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 15.24,
+     "source": "https://a.pololu-files.com/picture/0J10061.1200.jpg"
+    },
+    "width_mm": {
+     "value": 20.32,
+     "source": "https://a.pololu-files.com/picture/0J10061.1200.jpg"
+    },
+    "connector_positions": {
+     "value": true,
+     "source": "https://a.pololu-files.com/picture/0J10061.1200.jpg"
+    }
+   },
+   "style": {
+    "pcb_color": "#2f8a3c",
+    "pcb_mm": 1.6,
+    "parts": [
+     {
+      "k": "pads",
+      "n": 8,
+      "x": -6.35,
+      "y": 0,
+      "pitch": 2.54,
+      "d": 1.6,
+      "along": "y"
+     },
+     {
+      "k": "pads",
+      "n": 8,
+      "x": 6.35,
+      "y": 0,
+      "pitch": 2.54,
+      "d": 1.6,
+      "along": "y"
+     },
+     {
+      "k": "chip",
+      "x": 0,
+      "y": -2,
+      "w": 5,
+      "l": 5,
+      "h": 0.9
+     },
+     {
+      "k": "trimmer",
+      "x": 2,
+      "y": 6,
+      "d": 3.0,
+      "h": 1.0
+     }
+    ],
+    "corner_mm": 0.4
+   },
+   "not_applicable": [
+    "holes"
+   ],
+   "note": "0.6 x 0.8 in, two rows of eight pins 0.5 in apart, no mounting holes. Outline, holes and the 0.1 in pin grid from Pololu's dimension photo; positions are read off the photo scaled to the stated outline (about 0.3 mm)."
+  },
+  "pololu-2133-drv8825": {
+   "name": "Pololu DRV8825 stepper driver carrier",
+   "category": "driver",
+   "catalogs": [
+    "makers.json"
+   ],
+   "type": "board",
+   "source": "https://a.pololu-files.com/picture/0J4231.1200.jpg",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 15.24,
+     "source": "https://a.pololu-files.com/picture/0J4231.1200.jpg"
+    },
+    "width_mm": {
+     "value": 20.32,
+     "source": "https://a.pololu-files.com/picture/0J4231.1200.jpg"
+    },
+    "connector_positions": {
+     "value": true,
+     "source": "https://a.pololu-files.com/picture/0J4231.1200.jpg"
+    }
+   },
+   "style": {
+    "pcb_color": "#7a3fb0",
+    "pcb_mm": 1.6,
+    "parts": [
+     {
+      "k": "pads",
+      "n": 8,
+      "x": -6.35,
+      "y": 0,
+      "pitch": 2.54,
+      "d": 1.6,
+      "along": "y"
+     },
+     {
+      "k": "pads",
+      "n": 8,
+      "x": 6.35,
+      "y": 0,
+      "pitch": 2.54,
+      "d": 1.6,
+      "along": "y"
+     },
+     {
+      "k": "chip",
+      "x": 0,
+      "y": -2,
+      "w": 5,
+      "l": 5,
+      "h": 0.9
+     },
+     {
+      "k": "trimmer",
+      "x": 2,
+      "y": 6,
+      "d": 3.0,
+      "h": 1.0
+     }
+    ],
+    "corner_mm": 0.4
+   },
+   "not_applicable": [
+    "holes"
+   ],
+   "note": "0.6 x 0.8 in, two rows of eight pins 0.5 in apart, no mounting holes. Outline, holes and the 0.1 in pin grid from Pololu's dimension photo; positions are read off the photo scaled to the stated outline (about 0.3 mm)."
+  },
+  "pololu-2490-vl53l0x": {
+   "name": "Pololu VL53L0X time-of-flight distance sensor (200 cm)",
+   "category": "sensor",
+   "catalogs": [
+    "makers.json"
+   ],
+   "type": "board",
+   "source": "https://a.pololu-files.com/picture/0J7225.1200.jpg",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 12.7,
+     "source": "https://a.pololu-files.com/picture/0J7225.1200.jpg"
+    },
+    "width_mm": {
+     "value": 17.78,
+     "source": "https://a.pololu-files.com/picture/0J7225.1200.jpg"
+    },
+    "height_mm": {
+     "value": 2.2,
+     "source": "https://www.pololu.com/product/2490"
+    },
+    "connector_positions": {
+     "value": true,
+     "source": "https://a.pololu-files.com/picture/0J7225.1200.jpg"
+    },
+    "holes": {
+     "value": [
+      [
+       -3.99,
+       6.35,
+       2.18
+      ],
+      [
+       -3.99,
+       -6.35,
+       2.18
+      ]
+     ],
+     "source": "https://a.pololu-files.com/picture/0J7225.1200.jpg"
+    }
+   },
+   "style": {
+    "pcb_color": "#1d4fa3",
+    "pcb_mm": 0.85,
+    "parts": [
+     {
+      "k": "pads",
+      "n": 7,
+      "x": 4.63,
+      "y": 0,
+      "pitch": 2.54,
+      "d": 1.6,
+      "along": "y"
+     },
+     {
+      "k": "chip",
+      "x": 0,
+      "y": 0,
+      "w": 4.4,
+      "l": 2.4,
+      "h": 1.0,
+      "name": "sensor",
+      "color": "#202020"
+     }
+    ],
+    "corner_mm": 0.4
+   },
+   "note": "0.5 x 0.7 in, two 0.086 in holes 0.5 in apart, seven pins in one row. Outline, holes and the 0.1 in pin grid from Pololu's dimension photo; positions are read off the photo scaled to the stated outline (about 0.3 mm)."
+  },
+  "pololu-3415-vl53l1x": {
+   "name": "Pololu VL53L1X time-of-flight distance sensor (400 cm)",
+   "category": "sensor",
+   "catalogs": [
+    "makers.json"
+   ],
+   "type": "board",
+   "source": "https://a.pololu-files.com/picture/0J7225.1200.jpg",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 12.7,
+     "source": "https://a.pololu-files.com/picture/0J7225.1200.jpg"
+    },
+    "width_mm": {
+     "value": 17.78,
+     "source": "https://a.pololu-files.com/picture/0J7225.1200.jpg"
+    },
+    "height_mm": {
+     "value": 2.2,
+     "source": "https://www.pololu.com/product/3415"
+    },
+    "connector_positions": {
+     "value": true,
+     "source": "https://a.pololu-files.com/picture/0J7225.1200.jpg"
+    },
+    "holes": {
+     "value": [
+      [
+       -3.99,
+       6.35,
+       2.18
+      ],
+      [
+       -3.99,
+       -6.35,
+       2.18
+      ]
+     ],
+     "source": "https://a.pololu-files.com/picture/0J7225.1200.jpg"
+    }
+   },
+   "style": {
+    "pcb_color": "#1d4fa3",
+    "pcb_mm": 0.85,
+    "parts": [
+     {
+      "k": "pads",
+      "n": 7,
+      "x": 4.63,
+      "y": 0,
+      "pitch": 2.54,
+      "d": 1.6,
+      "along": "y"
+     },
+     {
+      "k": "chip",
+      "x": 0,
+      "y": 0,
+      "w": 4.4,
+      "l": 2.4,
+      "h": 1.0,
+      "name": "sensor",
+      "color": "#202020"
+     }
+    ],
+    "corner_mm": 0.4
+   },
+   "note": "0.5 x 0.7 in, two 0.086 in holes 0.5 in apart, seven pins in one row. Outline, holes and the 0.1 in pin grid from Pololu's dimension photo; positions are read off the photo scaled to the stated outline (about 0.3 mm)."
+  },
+  "pololu-2738-minimu9-v5": {
+   "name": "Pololu MinIMU-9 v5 (LSM6DS33 + LIS3MDL)",
+   "category": "sensor",
+   "catalogs": [
+    "makers.json"
+   ],
+   "type": "board",
+   "source": "https://a.pololu-files.com/picture/0J7060.1200.jpg",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 20.32,
+     "source": "https://a.pololu-files.com/picture/0J7060.1200.jpg"
+    },
+    "width_mm": {
+     "value": 12.7,
+     "source": "https://a.pololu-files.com/picture/0J7060.1200.jpg"
+    },
+    "height_mm": {
+     "value": 2.5,
+     "source": "https://www.pololu.com/product/2738"
+    },
+    "connector_positions": {
+     "value": true,
+     "source": "https://a.pololu-files.com/picture/0J7060.1200.jpg"
+    },
+    "holes": {
+     "value": [
+      [
+       -7.49,
+       4.11,
+       2.18
+      ]
+     ],
+     "source": "https://a.pololu-files.com/picture/0J7060.1200.jpg"
+    }
+   },
+   "style": {
+    "pcb_color": "#1d4fa3",
+    "pcb_mm": 1.6,
+    "parts": [
+     {
+      "k": "pads",
+      "n": 5,
+      "x": 8.89,
+      "y": 0.4,
+      "pitch": 2.54,
+      "d": 1.6,
+      "along": "y"
+     },
+     {
+      "k": "pads",
+      "n": 1,
+      "x": 6.35,
+      "y": 0.4,
+      "d": 1.6
+     },
+     {
+      "k": "chip",
+      "x": -1.5,
+      "y": -1.5,
+      "w": 3,
+      "l": 2.5,
+      "h": 0.9
+     },
+     {
+      "k": "chip",
+      "x": 2.5,
+      "y": -1.5,
+      "w": 2,
+      "l": 2,
+      "h": 0.9
+     }
+    ],
+    "corner_mm": 0.4
+   },
+   "note": "0.8 x 0.5 in, one 0.086 in hole, five pins in a column and SA0 beside them. Outline, holes and the 0.1 in pin grid from Pololu's dimension photo; positions are read off the photo scaled to the stated outline (about 0.3 mm)."
+  },
+  "pololu-2850-d24v25f5": {
+   "name": "Pololu 5 V 2.5 A step-down regulator D24V25F5",
+   "category": "power",
+   "catalogs": [
+    "makers.json"
+   ],
+   "type": "board",
+   "source": "https://a.pololu-files.com/picture/0J10003.1200.jpg",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 17.78,
+     "source": "https://a.pololu-files.com/picture/0J10003.1200.jpg"
+    },
+    "width_mm": {
+     "value": 17.78,
+     "source": "https://a.pololu-files.com/picture/0J10003.1200.jpg"
+    },
+    "height_mm": {
+     "value": 8.9,
+     "source": "https://www.pololu.com/product/2850"
+    },
+    "connector_positions": {
+     "value": true,
+     "source": "https://a.pololu-files.com/picture/0J10003.1200.jpg"
+    },
+    "holes": {
+     "value": [
+      [
+       -6.73,
+       -6.73,
+       2.18
+      ],
+      [
+       6.73,
+       6.73,
+       2.18
+      ]
+     ],
+     "source": "https://a.pololu-files.com/picture/0J10003.1200.jpg"
+    }
+   },
+   "style": {
+    "pcb_color": "#2f8a3c",
+    "pcb_mm": 1.6,
+    "parts": [
+     {
+      "k": "pads",
+      "n": 5,
+      "x": 1.98,
+      "y": -7.62,
+      "pitch": 2.54,
+      "d": 1.6
+     },
+     {
+      "k": "inductor",
+      "x": -2.5,
+      "y": 5.5,
+      "w": 5,
+      "l": 5,
+      "h": 3.0
+     },
+     {
+      "k": "elcap",
+      "d": 6.3,
+      "h": 7.3,
+      "x": -3.8,
+      "y": -1.0,
+      "color": "#c4c7cc"
+     },
+     {
+      "k": "elcap",
+      "d": 6.3,
+      "h": 7.3,
+      "x": 3.5,
+      "y": -1.0,
+      "color": "#c4c7cc"
+     }
+    ],
+    "corner_mm": 0.4
+   },
+   "note": "0.7 x 0.7 x 0.35 in, two 0.086 in holes at opposite corners 0.53 in apart both ways, five pins on 0.1 in. Outline, holes and the 0.1 in pin grid from Pololu's dimension photo; positions are read off the photo scaled to the stated outline (about 0.3 mm)."
+  },
+  "pololu-2119-s7v7f5": {
+   "name": "Pololu 5 V step-up/step-down regulator S7V7F5",
+   "category": "power",
+   "catalogs": [
+    "makers.json"
+   ],
+   "type": "board",
+   "source": "https://a.pololu-files.com/picture/0J4102.1200.jpg",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 8.89,
+     "source": "https://a.pololu-files.com/picture/0J4102.1200.jpg"
+    },
+    "width_mm": {
+     "value": 12.07,
+     "source": "https://a.pololu-files.com/picture/0J4102.1200.jpg"
+    },
+    "height_mm": {
+     "value": 2.5,
+     "source": "https://www.pololu.com/product/2119"
+    },
+    "connector_positions": {
+     "value": true,
+     "source": "https://a.pololu-files.com/picture/0J4102.1200.jpg"
+    }
+   },
+   "style": {
+    "pcb_color": "#2f8a3c",
+    "pcb_mm": 0.8,
+    "parts": [
+     {
+      "k": "pads",
+      "n": 3,
+      "x": 0,
+      "y": -4.78,
+      "pitch": 2.54,
+      "d": 1.4
+     },
+     {
+      "k": "inductor",
+      "x": 0,
+      "y": 2.0,
+      "w": 4,
+      "l": 4,
+      "h": 1.7
+     }
+    ],
+    "corner_mm": 0.4
+   },
+   "not_applicable": [
+    "holes"
+   ],
+   "note": "0.35 x 0.475 in, three pins on 0.1 in, no mounting holes. Outline, holes and the 0.1 in pin grid from Pololu's dimension photo; positions are read off the photo scaled to the stated outline (about 0.3 mm)."
+  },
+  "pololu-2992-g2-24v13": {
+   "name": "Pololu G2 high-power motor driver 24v13",
+   "category": "driver",
+   "catalogs": [
+    "makers.json"
+   ],
+   "type": "board",
+   "source": "https://a.pololu-files.com/picture/0J6860.1200.jpg",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 33.02,
+     "source": "https://a.pololu-files.com/picture/0J6860.1200.jpg"
+    },
+    "width_mm": {
+     "value": 20.32,
+     "source": "https://a.pololu-files.com/picture/0J6860.1200.jpg"
+    },
+    "connector_positions": {
+     "value": true,
+     "source": "https://a.pololu-files.com/picture/0J6860.1200.jpg"
+    },
+    "holes": {
+     "value": [
+      [
+       -7.46,
+       8.3,
+       2.18
+      ],
+      [
+       8.25,
+       -7.95,
+       2.18
+      ]
+     ],
+     "source": "https://a.pololu-files.com/picture/0J6860.1200.jpg"
+    }
+   },
+   "style": {
+    "pcb_color": "#2f8a3c",
+    "pcb_mm": 1.6,
+    "parts": [
+     {
+      "k": "pads",
+      "n": 8,
+      "x": 15.24,
+      "y": 0.0,
+      "pitch": 2.54,
+      "d": 1.5,
+      "along": "y"
+     },
+     {
+      "k": "pads",
+      "n": 4,
+      "x": -14.4,
+      "y": 0.45,
+      "pitch": 5.08,
+      "d": 3.0,
+      "along": "y"
+     },
+     {
+      "k": "chip",
+      "x": -1,
+      "y": 3,
+      "w": 5,
+      "l": 5,
+      "h": 1.0
+     },
+     {
+      "k": "chip",
+      "x": -6.0,
+      "y": -3.5,
+      "w": 3.3,
+      "l": 3.3,
+      "h": 1.0,
+      "name": "mosfet_1"
+     },
+     {
+      "k": "chip",
+      "x": -1.5,
+      "y": -3.5,
+      "w": 3.3,
+      "l": 3.3,
+      "h": 1.0,
+      "name": "mosfet_2"
+     },
+     {
+      "k": "chip",
+      "x": 3.0,
+      "y": -3.5,
+      "w": 3.3,
+      "l": 3.3,
+      "h": 1.0,
+      "name": "mosfet_3"
+     },
+     {
+      "k": "chip",
+      "x": 7.5,
+      "y": -3.5,
+      "w": 3.3,
+      "l": 3.3,
+      "h": 1.0,
+      "name": "mosfet_4"
+     }
+    ],
+    "corner_mm": 0.4
+   },
+   "note": "1.3 x 0.8 in, two 0.086 in holes, logic pins on 0.1 in and power pads on 0.2 in. Outline, holes and the 0.1 in pin grid from Pololu's dimension photo; positions are read off the photo scaled to the stated outline (about 0.3 mm)."
+  },
+  "pololu-1420-wheel-60x8": {
+   "name": "Pololu wheel 60 x 8 mm (black)",
+   "category": "wheel",
+   "catalogs": [
+    "makers.json"
+   ],
+   "type": "wheel",
+   "source": "https://www.pololu.com/product/1420",
+   "checked": "2026-10-25",
+   "dims": {
+    "diameter_mm": {
+     "value": 60.0,
+     "source": "https://www.pololu.com/product/1420"
+    },
+    "width_mm": {
+     "value": 8.0,
+     "source": "https://www.pololu.com/product/1420"
+    },
+    "bore_mm": {
+     "value": 3.0,
+     "source": "https://www.pololu.com/product/1420"
+    },
+    "hub_holes_mm": {
+     "value": 12.7,
+     "source": "https://www.pololu.com/product/1420"
+    }
+   },
+   "style": {
+    "rim_color": "#1d1d1f",
+    "tyre_color": "#1b1b1b",
+    "spokes": 6
+   }
+  },
+  "pololu-1432-wheel-80x10": {
+   "name": "Pololu wheel 80 x 10 mm (yellow)",
+   "category": "wheel",
+   "catalogs": [
+    "makers.json"
+   ],
+   "type": "wheel",
+   "source": "https://www.pololu.com/product/1432",
+   "checked": "2026-10-25",
+   "dims": {
+    "diameter_mm": {
+     "value": 80.0,
+     "source": "https://www.pololu.com/product/1432"
+    },
+    "width_mm": {
+     "value": 10.0,
+     "source": "https://www.pololu.com/product/1432"
+    },
+    "bore_mm": {
+     "value": 3.0,
+     "source": "https://www.pololu.com/product/1432"
+    },
+    "hub_holes_mm": {
+     "value": 12.7,
+     "source": "https://www.pololu.com/product/1432"
+    }
+   },
+   "style": {
+    "rim_color": "#f2c230",
+    "tyre_color": "#1b1b1b",
+    "spokes": 6
+   }
+  },
+  "pololu-953-ball-caster": {
+   "name": "Pololu ball caster with 1/2 in metal ball",
+   "category": "wheel",
+   "catalogs": [
+    "makers.json"
+   ],
+   "type": "ball_caster",
+   "source": "https://www.pololu.com/product/953",
+   "checked": "2026-10-25",
+   "dims": {
+    "ball_mm": {
+     "value": 12.7,
+     "source": "https://www.pololu.com/product/953"
+    }
+   },
+   "style": {
+    "length_mm": 22.0,
+    "width_mm": 13.0,
+    "color": "#1d1d1f"
+   },
+   "estimate": {
+    "height_mm": 14.299999999999999,
+    "hole_spacing_mm": 15.2
+   },
+   "missing": [
+    "height_mm",
+    "hole_spacing_mm"
+   ],
+   "note": "1/2 in metal ball; the assembled height is 0.5 to 0.8 in depending on spacers, per the page."
+  },
+  "solarbotics-608zz": {
+   "name": "608ZZ ball bearing 8 x 22 x 7 mm",
+   "category": "bearing",
+   "catalogs": [
+    "makers.json"
+   ],
+   "type": "bearing",
+   "source": "https://solarbotics.com/?p=88381",
+   "checked": "2026-10-25",
+   "dims": {
+    "bore_mm": {
+     "value": 8.0,
+     "source": "https://www.skf.com/group/products/rolling-bearings/ball-bearings/deep-groove-ball-bearings/productid-608-2Z"
+    },
+    "outer_mm": {
+     "value": 22.0,
+     "source": "https://www.skf.com/group/products/rolling-bearings/ball-bearings/deep-groove-ball-bearings/productid-608-2Z"
+    },
+    "width_mm": {
+     "value": 7.0,
+     "source": "https://www.skf.com/group/products/rolling-bearings/ball-bearings/deep-groove-ball-bearings/productid-608-2Z"
+    }
+   },
+   "style": {
+    "shield": "metal"
+   },
+   "note": "608 is an ISO 15 size: 8 x 22 x 7 mm."
+  },
+  "pololu-1076-m3x8": {
+   "name": "Machine screw M3 x 8 mm, Phillips",
+   "category": "hardware",
+   "catalogs": [
+    "makers.json"
+   ],
+   "type": "screw",
+   "source": "https://www.pololu.com/product/1076",
+   "checked": "2026-10-25",
+   "dims": {
+    "thread_mm": {
+     "value": 3.0,
+     "source": "https://www.pololu.com/product/1076"
+    },
+    "length_mm": {
+     "value": 8.0,
+     "source": "https://www.pololu.com/product/1076"
+    },
+    "head_d_mm": {
+     "value": 5.6,
+     "source": "https://www.iso.org/standard/3992.html"
+    },
+    "head_h_mm": {
+     "value": 2.4,
+     "source": "https://www.iso.org/standard/3992.html"
+    }
+   },
+   "style": {
+    "drive": "phillips"
+   },
+   "note": "M3 x 8 mm pan head Phillips per the page; head 5.6 x 2.4 mm per ISO 7045."
+  },
+  "arduino-nano": {
+   "name": "Arduino Nano (A000005)",
+   "category": "controller",
+   "catalogs": [
+    "makers.json",
+    "generic.json"
+   ],
+   "type": "board",
+   "source": "https://store.arduino.cc/products/arduino-nano",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 45.0,
+     "source": "https://store.arduino.cc/products/arduino-nano"
+    },
+    "width_mm": {
+     "value": 18.0,
+     "source": "https://store.arduino.cc/products/arduino-nano"
+    }
+   },
+   "style": {
+    "pcb_color": "#1d6fa5",
+    "pcb_mm": 1.6,
+    "corner_mm": 0.5,
+    "parts": [
+     {
+      "k": "header",
+      "n": 15,
+      "x": 0,
+      "y": -7.62,
+      "side": "bottom"
+     },
+     {
+      "k": "header",
+      "n": 15,
+      "x": 0,
+      "y": 7.62,
+      "side": "bottom"
+     },
+     {
+      "k": "chip",
+      "x": 3,
+      "y": 0,
+      "w": 7,
+      "l": 7,
+      "h": 1.0,
+      "rot": 45,
+      "name": "atmega328p"
+     },
+     {
+      "k": "micro_usb",
+      "x": -20.5,
+      "y": 0,
+      "rot": 90,
+      "name": "usb"
+     },
+     {
+      "k": "button",
+      "x": -6,
+      "y": 0,
+      "w": 3,
+      "l": 6,
+      "h": 2.5
+     },
+     {
+      "k": "header",
+      "n": 3,
+      "rows": 2,
+      "x": 19.5,
+      "y": 0,
+      "along": "y",
+      "pin_up": 6.0
+     },
+     {
+      "k": "crystal",
+      "x": -11,
+      "y": 3,
+      "w": 3.2,
+      "l": 2.5,
+      "h": 0.8
+     }
+    ]
+   },
+   "estimate": {
+    "holes": [
+     [
+      -20.3,
+      -7.6,
+      1.8
+     ],
+     [
+      20.3,
+      -7.6,
+      1.8
+     ],
+     [
+      -20.3,
+      7.6,
+      1.8
+     ],
+     [
+      20.3,
+      7.6,
+      1.8
+     ]
+    ]
+   },
+   "missing": [
+    "holes"
+   ],
+   "note": "18 x 45 mm per the Arduino store; the hole and connector positions are not on that page."
+  },
+  "samsung-35e-18650": {
+   "name": "Samsung INR18650-35E 3500 mAh cell",
+   "category": "battery",
+   "catalogs": [
+    "makers.json"
+   ],
+   "type": "cell",
+   "source": "https://www.18650batterystore.com/products/samsung-35e-18650-3500mah-8a-battery",
+   "checked": "2026-10-25",
+   "dims": {
+    "diameter_mm": {
+     "value": 18.55,
+     "source": "https://www.18650batterystore.com/products/samsung-35e-18650-3500mah-8a-battery"
+    },
+    "length_mm": {
+     "value": 65.25,
+     "source": "https://www.18650batterystore.com/products/samsung-35e-18650-3500mah-8a-battery"
+    }
+   },
+   "style": {
+    "wrap_color": "#2a7bd1",
+    "band_color": "#d7d7d7"
+   },
+   "note": "Maximum size per the shop's datasheet summary; flat top."
+  },
+  "ldrobot-stl06n-lidar": {
+   "name": "LDROBOT STL-06N 360 degree DTOF lidar",
+   "category": "sensor",
+   "catalogs": [
+    "makers.json"
+   ],
+   "type": "enclosure",
+   "source": "https://openelab.io/products/ldrobot-stl06n-mini-dtof-lidar",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 38.59,
+     "source": "https://openelab.io/products/ldrobot-stl06n-mini-dtof-lidar"
+    },
+    "width_mm": {
+     "value": 38.59,
+     "source": "https://openelab.io/products/ldrobot-stl06n-mini-dtof-lidar"
+    },
+    "height_mm": {
+     "value": 33.5,
+     "source": "https://openelab.io/products/ldrobot-stl06n-mini-dtof-lidar"
+    }
+   },
+   "style": {
+    "style": "cylinder",
+    "color": "#1d1d1f",
+    "parts": [
+     {
+      "k": "cyl",
+      "x": 0,
+      "y": 0,
+      "d": 30.0,
+      "h": 14.0,
+      "z0": 19.0,
+      "color": "#2b2b2e",
+      "name": "turret"
+     },
+     {
+      "k": "box",
+      "x": 0,
+      "y": -14.6,
+      "w": 10,
+      "l": 1.2,
+      "h": 6,
+      "z0": 22.0,
+      "color": "#3a1018",
+      "name": "window"
+     }
+    ]
+   },
+   "note": "Body 38.59 x 38.59 x 33.5 mm per the page; turret and window drawn from product photos."
+  },
+  "servo-sg90": {
+   "name": "TowerPro SG90 micro servo",
+   "category": "servo",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "servo",
+   "source": "https://static.rapidonline.com/pdf/37-1330t.pdf",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 22.2,
+     "source": "https://static.rapidonline.com/pdf/37-1330t.pdf"
+    },
+    "width_mm": {
+     "value": 11.8,
+     "source": "https://static.rapidonline.com/pdf/37-1330t.pdf"
+    },
+    "overall_height_mm": {
+     "value": 31.0,
+     "source": "https://static.rapidonline.com/pdf/37-1330t.pdf"
+    },
+    "tab_bottom_mm": {
+     "value": 16.0,
+     "source": "https://static.rapidonline.com/pdf/37-1330t.pdf"
+    },
+    "tab_span_mm": {
+     "value": 32.2,
+     "source": "https://static.rapidonline.com/pdf/37-1330t.pdf"
+    }
+   },
+   "style": {
+    "color": "#2457b5"
+   },
+   "estimate": {
+    "hole_spacing_mm": 27.5
+   },
+   "missing": [
+    "hole_spacing_mm"
+   ]
+  },
+  "servo-sg90-eckstein": {
+   "name": "SG90 micro servo 9 g (Eckstein MO01005)",
+   "category": "servo",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "servo",
+   "source": "https://static.rapidonline.com/pdf/37-1330t.pdf",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 22.2,
+     "source": "https://static.rapidonline.com/pdf/37-1330t.pdf"
+    },
+    "width_mm": {
+     "value": 11.8,
+     "source": "https://static.rapidonline.com/pdf/37-1330t.pdf"
+    },
+    "overall_height_mm": {
+     "value": 31.0,
+     "source": "https://static.rapidonline.com/pdf/37-1330t.pdf"
+    },
+    "tab_bottom_mm": {
+     "value": 16.0,
+     "source": "https://static.rapidonline.com/pdf/37-1330t.pdf"
+    },
+    "tab_span_mm": {
+     "value": 32.2,
+     "source": "https://static.rapidonline.com/pdf/37-1330t.pdf"
+    }
+   },
+   "style": {
+    "color": "#2457b5"
+   },
+   "estimate": {
+    "hole_spacing_mm": 27.5
+   },
+   "missing": [
+    "hole_spacing_mm"
+   ]
+  },
+  "towerpro-sg90": {
+   "name": "TowerPro SG90 micro servo",
+   "category": "servo",
+   "catalogs": [
+    "gripper.json"
+   ],
+   "type": "servo",
+   "source": "https://static.rapidonline.com/pdf/37-1330t.pdf",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 22.2,
+     "source": "https://static.rapidonline.com/pdf/37-1330t.pdf"
+    },
+    "width_mm": {
+     "value": 11.8,
+     "source": "https://static.rapidonline.com/pdf/37-1330t.pdf"
+    },
+    "overall_height_mm": {
+     "value": 31.0,
+     "source": "https://static.rapidonline.com/pdf/37-1330t.pdf"
+    },
+    "tab_bottom_mm": {
+     "value": 16.0,
+     "source": "https://static.rapidonline.com/pdf/37-1330t.pdf"
+    },
+    "tab_span_mm": {
+     "value": 32.2,
+     "source": "https://static.rapidonline.com/pdf/37-1330t.pdf"
+    }
+   },
+   "style": {
+    "color": "#2457b5"
+   },
+   "estimate": {
+    "hole_spacing_mm": 27.5
+   },
+   "missing": [
+    "hole_spacing_mm"
+   ]
+  },
+  "servo-mg996r": {
+   "name": "TowerPro MG996R servo",
+   "category": "servo",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "servo",
+   "source": "https://www.electronicoscaldas.com/datasheet/MG996R_Tower-Pro.pdf",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 40.3,
+     "source": "https://www.electronicoscaldas.com/datasheet/MG996R_Tower-Pro.pdf"
+    },
+    "width_mm": {
+     "value": 20.0,
+     "source": "https://www.electronicoscaldas.com/datasheet/MG996R_Tower-Pro.pdf"
+    },
+    "overall_height_mm": {
+     "value": 47.6,
+     "source": "https://www.electronicoscaldas.com/datasheet/MG996R_Tower-Pro.pdf"
+    },
+    "tab_bottom_mm": {
+     "value": 26.6,
+     "source": "https://www.electronicoscaldas.com/datasheet/MG996R_Tower-Pro.pdf"
+    },
+    "tab_span_mm": {
+     "value": 53.6,
+     "source": "https://www.electronicoscaldas.com/datasheet/MG996R_Tower-Pro.pdf"
+    },
+    "case_height_mm": {
+     "value": 36.6,
+     "source": "https://www.electronicoscaldas.com/datasheet/MG996R_Tower-Pro.pdf"
+    }
+   },
+   "style": {
+    "color": "#1d1f22",
+    "metal_spline": true
+   },
+   "estimate": {
+    "hole_spacing_mm": 49.5
+   },
+   "missing": [
+    "hole_spacing_mm"
+   ]
+  },
+  "towerpro-mg996r": {
+   "name": "TowerPro MG996R servo",
+   "category": "servo",
+   "catalogs": [
+    "gripper.json"
+   ],
+   "type": "servo",
+   "source": "https://www.electronicoscaldas.com/datasheet/MG996R_Tower-Pro.pdf",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 40.3,
+     "source": "https://www.electronicoscaldas.com/datasheet/MG996R_Tower-Pro.pdf"
+    },
+    "width_mm": {
+     "value": 20.0,
+     "source": "https://www.electronicoscaldas.com/datasheet/MG996R_Tower-Pro.pdf"
+    },
+    "overall_height_mm": {
+     "value": 47.6,
+     "source": "https://www.electronicoscaldas.com/datasheet/MG996R_Tower-Pro.pdf"
+    },
+    "tab_bottom_mm": {
+     "value": 26.6,
+     "source": "https://www.electronicoscaldas.com/datasheet/MG996R_Tower-Pro.pdf"
+    },
+    "tab_span_mm": {
+     "value": 53.6,
+     "source": "https://www.electronicoscaldas.com/datasheet/MG996R_Tower-Pro.pdf"
+    },
+    "case_height_mm": {
+     "value": 36.6,
+     "source": "https://www.electronicoscaldas.com/datasheet/MG996R_Tower-Pro.pdf"
+    }
+   },
+   "style": {
+    "color": "#1d1f22",
+    "metal_spline": true
+   },
+   "estimate": {
+    "hole_spacing_mm": 49.5
+   },
+   "missing": [
+    "hole_spacing_mm"
+   ]
+  },
+  "towerpro-mg90s": {
+   "name": "TowerPro MG90S metal gear servo",
+   "category": "servo",
+   "catalogs": [
+    "gripper.json"
+   ],
+   "type": "servo",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "color": "#1d1f22",
+    "metal_spline": true
+   },
+   "estimate": {
+    "length_mm": 22.8,
+    "width_mm": 12.2,
+    "overall_height_mm": 31.0,
+    "tab_bottom_mm": 16.0,
+    "tab_span_mm": 32.2,
+    "hole_spacing_mm": 27.5
+   },
+   "note": "MG90S shares the SG90 case; no MG90S drawing was found, so the SG90 numbers are estimates here."
+  },
+  "servo-mg90s-ws15024-eck": {
+   "name": "Waveshare MG90S micro servo, metal gear (Eckstein WS15024)",
+   "category": "servo",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "servo",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "color": "#1d1f22",
+    "metal_spline": true
+   },
+   "estimate": {
+    "length_mm": 22.8,
+    "width_mm": 12.2,
+    "overall_height_mm": 31.0,
+    "tab_bottom_mm": 16.0,
+    "tab_span_mm": 32.2,
+    "hole_spacing_mm": 27.5
+   },
+   "note": "MG90S shares the SG90 case; no MG90S drawing was found, so the SG90 numbers are estimates here."
+  },
+  "dsservo-ds3218": {
+   "name": "DSSERVO DS3218 20 kg servo",
+   "category": "servo",
+   "catalogs": [
+    "gripper.json"
+   ],
+   "type": "servo",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "color": "#1d1f22",
+    "metal_spline": true
+   },
+   "estimate": {
+    "length_mm": 40.0,
+    "width_mm": 20.0,
+    "overall_height_mm": 47.0,
+    "tab_bottom_mm": 27.0,
+    "tab_span_mm": 54.0,
+    "hole_spacing_mm": 49.5
+   }
+  },
+  "servo-sts3215-c018-eck": {
+   "name": "Feetech STS3215 12 V 30 kg cm serial bus servo, magnetic encoder (Eckstein FT01015)",
+   "category": "servo",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "servo",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "color": "#1d1f22",
+    "metal_spline": true,
+    "cable_colors": [
+     "wire_black",
+     "wire_red",
+     "wire_white"
+    ]
+   },
+   "estimate": {
+    "length_mm": 45.2,
+    "width_mm": 24.7,
+    "overall_height_mm": 35.0,
+    "tab_bottom_mm": 22.0,
+    "tab_span_mm": 45.2,
+    "hole_spacing_mm": 38.0
+   },
+   "note": "STS3215 has no side tabs: it mounts by screws in the case; tabs are drawn flush."
+  },
+  "sensor-hcsr04": {
+   "name": "HC-SR04 ultrasonic distance sensor",
+   "category": "sensor",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "board",
+   "source": "https://cdn.sparkfun.com/datasheets/Sensors/Proximity/HCSR04.pdf",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 45.0,
+     "source": "https://cdn.sparkfun.com/datasheets/Sensors/Proximity/HCSR04.pdf"
+    },
+    "width_mm": {
+     "value": 20.0,
+     "source": "https://cdn.sparkfun.com/datasheets/Sensors/Proximity/HCSR04.pdf"
+    },
+    "height_mm": {
+     "value": 15.0,
+     "source": "https://cdn.sparkfun.com/datasheets/Sensors/Proximity/HCSR04.pdf"
+    }
+   },
+   "style": {
+    "pcb_color": "blue",
+    "parts": [
+     {
+      "k": "transducer",
+      "x": -13.0,
+      "y": 0.5,
+      "d": 16.0,
+      "h": 12.0,
+      "name": "transmitter"
+     },
+     {
+      "k": "transducer",
+      "x": 13.0,
+      "y": 0.5,
+      "d": 16.0,
+      "h": 12.0,
+      "name": "receiver"
+     },
+     {
+      "k": "crystal",
+      "x": 0,
+      "y": 6.0,
+      "w": 10.5,
+      "l": 4.5,
+      "h": 3.5,
+      "name": "crystal"
+     },
+     {
+      "k": "ra_header",
+      "n": 4,
+      "x": 0,
+      "y": -8.5,
+      "name": "pins"
+     }
+    ]
+   },
+   "estimate": {
+    "holes": [
+     [
+      -20.5,
+      -8.0,
+      1.0
+     ],
+     [
+      20.5,
+      -8.0,
+      1.0
+     ],
+     [
+      -20.5,
+      8.0,
+      1.0
+     ],
+     [
+      20.5,
+      8.0,
+      1.0
+     ]
+    ]
+   },
+   "missing": [
+    "holes",
+    "connector_positions"
+   ]
+  },
+  "hc-sr04-sol-333001": {
+   "name": "Soldered HC-SR04 ultrasonic sensor, 2 to 400 cm (Berrybase SOL-333001)",
+   "category": "sensor",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "board",
+   "source": "https://cdn.sparkfun.com/datasheets/Sensors/Proximity/HCSR04.pdf",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 45.0,
+     "source": "https://cdn.sparkfun.com/datasheets/Sensors/Proximity/HCSR04.pdf"
+    },
+    "width_mm": {
+     "value": 20.0,
+     "source": "https://cdn.sparkfun.com/datasheets/Sensors/Proximity/HCSR04.pdf"
+    },
+    "height_mm": {
+     "value": 15.0,
+     "source": "https://cdn.sparkfun.com/datasheets/Sensors/Proximity/HCSR04.pdf"
+    }
+   },
+   "style": {
+    "pcb_color": "blue",
+    "parts": [
+     {
+      "k": "transducer",
+      "x": -13.0,
+      "y": 0.5,
+      "d": 16.0,
+      "h": 12.0,
+      "name": "transmitter"
+     },
+     {
+      "k": "transducer",
+      "x": 13.0,
+      "y": 0.5,
+      "d": 16.0,
+      "h": 12.0,
+      "name": "receiver"
+     },
+     {
+      "k": "crystal",
+      "x": 0,
+      "y": 6.0,
+      "w": 10.5,
+      "l": 4.5,
+      "h": 3.5,
+      "name": "crystal"
+     },
+     {
+      "k": "ra_header",
+      "n": 4,
+      "x": 0,
+      "y": -8.5,
+      "name": "pins"
+     }
+    ]
+   },
+   "estimate": {
+    "holes": [
+     [
+      -20.5,
+      -8.0,
+      1.0
+     ],
+     [
+      20.5,
+      -8.0,
+      1.0
+     ],
+     [
+      -20.5,
+      8.0,
+      1.0
+     ],
+     [
+      20.5,
+      8.0,
+      1.0
+     ]
+    ]
+   },
+   "missing": [
+    "holes",
+    "connector_positions"
+   ]
+  },
+  "rpi4b-1gb-bb": {
+   "name": "Raspberry Pi 4 Model B 1 GB (Berrybase RPI4B-1GB)",
+   "category": "controller",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "board",
+   "source": "https://pip.raspberrypi.com/documents/RP-008343-DS-raspberry-pi-4-mechanical-drawing.pdf",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 85.0,
+     "source": "https://pip.raspberrypi.com/documents/RP-008343-DS-raspberry-pi-4-mechanical-drawing.pdf"
+    },
+    "width_mm": {
+     "value": 56.0,
+     "source": "https://pip.raspberrypi.com/documents/RP-008343-DS-raspberry-pi-4-mechanical-drawing.pdf"
+    },
+    "holes": {
+     "value": [
+      [
+       -39.0,
+       -24.5,
+       2.7
+      ],
+      [
+       19.0,
+       -24.5,
+       2.7
+      ],
+      [
+       -39.0,
+       24.5,
+       2.7
+      ],
+      [
+       19.0,
+       24.5,
+       2.7
+      ]
+     ],
+     "source": "https://pip.raspberrypi.com/documents/RP-008343-DS-raspberry-pi-4-mechanical-drawing.pdf"
+    },
+    "connector_positions": {
+     "value": true,
+     "source": "https://pip.raspberrypi.com/documents/RP-008343-DS-raspberry-pi-4-mechanical-drawing.pdf"
+    },
+    "corner_mm": {
+     "value": 3.0,
+     "source": "https://pip.raspberrypi.com/documents/RP-008343-DS-raspberry-pi-4-mechanical-drawing.pdf"
+    }
+   },
+   "style": {
+    "pcb_color": "green",
+    "pcb_mm": 1.4,
+    "parts": [
+     {
+      "k": "header",
+      "n": 20,
+      "rows": 2,
+      "x": -10.0,
+      "y": 24.5,
+      "pin_up": 6.0,
+      "name": "gpio"
+     },
+     {
+      "k": "usb_c",
+      "x": -31.3,
+      "y": -24.5,
+      "rot": 90,
+      "name": "power_usb_c"
+     },
+     {
+      "k": "hdmi",
+      "x": -16.5,
+      "y": -25.0,
+      "name": "micro_hdmi_0"
+     },
+     {
+      "k": "hdmi",
+      "x": -3.0,
+      "y": -25.0,
+      "name": "micro_hdmi_1"
+     },
+     {
+      "k": "rj45",
+      "x": 33.5,
+      "y": 17.75,
+      "rot": 90,
+      "h": 13.5,
+      "name": "ethernet",
+      "w": 16.0,
+      "l": 21.5
+     },
+     {
+      "k": "usb_a",
+      "x": 34.5,
+      "y": -1.0,
+      "rot": 90,
+      "h": 16.0,
+      "name": "usb_a_stack_1",
+      "w": 13.1,
+      "l": 17.5
+     },
+     {
+      "k": "usb_a",
+      "x": 34.5,
+      "y": -19.0,
+      "rot": 90,
+      "h": 16.0,
+      "name": "usb_a_stack_2",
+      "w": 13.1,
+      "l": 17.5
+     },
+     {
+      "k": "chip",
+      "x": -16.75,
+      "y": 4.5,
+      "w": 15,
+      "l": 15,
+      "h": 2.4,
+      "name": "soc",
+      "color": "#c4c7cc"
+     },
+     {
+      "k": "chip",
+      "x": 3.5,
+      "y": 4.5,
+      "w": 15,
+      "l": 12,
+      "h": 1.2,
+      "name": "ram"
+     },
+     {
+      "k": "cyl",
+      "x": 11.0,
+      "y": -22.0,
+      "d": 6.0,
+      "h": 6.0,
+      "color": "#1d1d1f",
+      "name": "audio_jack"
+     }
+    ]
+   },
+   "note": "Outline, M2.5 hole pattern 58 x 49 mm and the edge connector centres from the Raspberry Pi mechanical drawing; chip sizes are from photos."
+  },
+  "rpi5-4gb": {
+   "name": "Raspberry Pi 5 4 GB",
+   "category": "controller",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "board",
+   "source": "https://pip.raspberrypi.com/documents/RP-008347-DS-raspberry-pi-5-mechanical-drawing.pdf",
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 85.0,
+     "source": "https://pip.raspberrypi.com/documents/RP-008347-DS-raspberry-pi-5-mechanical-drawing.pdf"
+    },
+    "width_mm": {
+     "value": 56.0,
+     "source": "https://pip.raspberrypi.com/documents/RP-008347-DS-raspberry-pi-5-mechanical-drawing.pdf"
+    },
+    "holes": {
+     "value": [
+      [
+       -39.0,
+       -24.5,
+       2.7
+      ],
+      [
+       19.0,
+       -24.5,
+       2.7
+      ],
+      [
+       -39.0,
+       24.5,
+       2.7
+      ],
+      [
+       19.0,
+       24.5,
+       2.7
+      ]
+     ],
+     "source": "https://pip.raspberrypi.com/documents/RP-008347-DS-raspberry-pi-5-mechanical-drawing.pdf"
+    },
+    "connector_positions": {
+     "value": true,
+     "source": "https://pip.raspberrypi.com/documents/RP-008347-DS-raspberry-pi-5-mechanical-drawing.pdf"
+    },
+    "corner_mm": {
+     "value": 3.0,
+     "source": "https://pip.raspberrypi.com/documents/RP-008347-DS-raspberry-pi-5-mechanical-drawing.pdf"
+    }
+   },
+   "style": {
+    "pcb_color": "green",
+    "pcb_mm": 1.4,
+    "parts": [
+     {
+      "k": "header",
+      "n": 20,
+      "rows": 2,
+      "x": -10.0,
+      "y": 24.5,
+      "pin_up": 6.0,
+      "name": "gpio"
+     },
+     {
+      "k": "usb_c",
+      "x": -31.3,
+      "y": -24.5,
+      "rot": 90,
+      "name": "power_usb_c"
+     },
+     {
+      "k": "hdmi",
+      "x": -16.7,
+      "y": -25.0,
+      "name": "micro_hdmi_0"
+     },
+     {
+      "k": "hdmi",
+      "x": -3.3,
+      "y": -25.0,
+      "name": "micro_hdmi_1"
+     },
+     {
+      "k": "rj45",
+      "x": 33.5,
+      "y": -17.8,
+      "rot": 90,
+      "name": "ethernet",
+      "w": 16.0,
+      "l": 21.5
+     },
+     {
+      "k": "usb_a",
+      "x": 34.5,
+      "y": 1.1,
+      "rot": 90,
+      "name": "usb_a_stack_1",
+      "w": 13.1,
+      "l": 17.5
+     },
+     {
+      "k": "usb_a",
+      "x": 34.5,
+      "y": 19.0,
+      "rot": 90,
+      "name": "usb_a_stack_2",
+      "w": 13.1,
+      "l": 17.5
+     },
+     {
+      "k": "chip",
+      "x": -13.5,
+      "y": 4.0,
+      "w": 16,
+      "l": 16,
+      "h": 1.4,
+      "name": "soc"
+     },
+     {
+      "k": "chip",
+      "x": 3.5,
+      "y": 14.0,
+      "w": 10,
+      "l": 10,
+      "h": 1.0,
+      "name": "rp1"
+     },
+     {
+      "k": "jst_sh",
+      "n": 4,
+      "x": 24.0,
+      "y": 22.0,
+      "name": "fan_connector"
+     }
+    ]
+   },
+   "note": "Outline, M2.5 hole pattern 58 x 49 mm and the edge connector centres from the Raspberry Pi mechanical drawing; chip sizes are from photos."
+  },
+  "fan-5v-40mm": {
+   "name": "5 V axial fan 40 x 40 x 10 mm",
+   "category": "fan",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "fan",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "blades": 7
+   },
+   "estimate": {
+    "size_mm": 40.0,
+    "thickness_mm": 10.0,
+    "hole_spacing_mm": 32.0
+   }
+  },
+  "fan-usb-120mm": {
+   "name": "USB 5 V fan 120 x 120 x 25 mm",
+   "category": "fan",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "fan",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "blades": 7,
+    "hole_d_mm": 4.3
+   },
+   "estimate": {
+    "size_mm": 120.0,
+    "thickness_mm": 25.0,
+    "hole_spacing_mm": 105.0
+   }
+  },
+  "rpi5-active-cooler": {
+   "name": "Raspberry Pi 5 Active Cooler",
+   "category": "fan",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "board",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "pcb_color": "#2b2c2f",
+    "pcb_mm": 2.0,
+    "parts": [
+     {
+      "k": "heatsink",
+      "x": 8,
+      "y": 0,
+      "w": 40,
+      "l": 38,
+      "h": 9,
+      "fins": 10,
+      "color": "#3a3c40"
+     },
+     {
+      "k": "fan",
+      "x": -14,
+      "y": 0,
+      "d": 30,
+      "h": 8,
+      "name": "fan"
+     },
+     {
+      "k": "wire",
+      "path": [
+       [
+        -28,
+        10,
+        4
+       ],
+       [
+        -34,
+        10,
+        4
+       ]
+      ],
+      "r": 0.6,
+      "finish": "wire_black"
+     }
+    ]
+   },
+   "estimate": {
+    "length_mm": 60.0,
+    "width_mm": 40.0,
+    "holes": []
+   }
+  },
+  "motor-130-dc": {
+   "name": "130 DC motor 3-6 V",
+   "category": "motor",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "can_motor",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "shaft_len_mm": 8.0
+   },
+   "estimate": {
+    "width_mm": 15.0,
+    "height_mm": 20.0,
+    "length_mm": 25.0,
+    "shaft_mm": 2.0
+   }
+  },
+  "motor-n20-100rpm": {
+   "name": "N20 gear motor 6 V 100 rpm",
+   "category": "motor",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "micro_gearmotor",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "hole_spacing_mm": 9.0
+   },
+   "estimate": {
+    "width_mm": 12.0,
+    "height_mm": 10.0,
+    "length_mm": 24.0,
+    "shaft_mm": 3.0,
+    "shaft_len_mm": 10.0,
+    "gearbox_mm": 9.0
+   },
+   "note": "N20 shares the Pololu micro metal gearmotor face (12 x 10 mm); no drawing for this no-name part, so all numbers are estimates."
+  },
+  "motor-n20-300rpm": {
+   "name": "N20 6 V gear motor 300 rpm",
+   "category": "motor",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "micro_gearmotor",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "hole_spacing_mm": 9.0
+   },
+   "estimate": {
+    "width_mm": 12.0,
+    "height_mm": 10.0,
+    "length_mm": 24.0,
+    "shaft_mm": 3.0,
+    "shaft_len_mm": 10.0,
+    "gearbox_mm": 9.0
+   },
+   "note": "N20 shares the Pololu micro metal gearmotor face (12 x 10 mm); no drawing for this no-name part, so all numbers are estimates."
+  },
+  "motor-tt-gear": {
+   "name": "TT gear motor 3-6 V with wheel",
+   "category": "motor",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "tt_motor",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "wheel_d_mm": 65.0,
+    "wheel_w_mm": 26.0,
+    "gearbox_mm": 45.0
+   },
+   "estimate": {
+    "length_mm": 70.0,
+    "width_mm": 22.0,
+    "height_mm": 37.0,
+    "holes": [
+     [
+      -11,
+      18
+     ],
+     [
+      21,
+      18
+     ]
+    ]
+   }
+  },
+  "stepper-28byj48": {
+   "name": "28BYJ-48 stepper with ULN2003 driver",
+   "category": "motor",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "can_stepper",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "shaft_offset_mm": 8.0
+   },
+   "estimate": {
+    "diameter_mm": 28.0,
+    "height_mm": 19.0,
+    "ear_spacing_mm": 35.0,
+    "shaft_mm": 5.0
+   }
+  },
+  "nema17-17hs4417-bb": {
+   "name": "ACT Nema17 stepper motor 17HS4417, 0.4 N m holding, 1.7 A (Berrybase ACT-17HS4417)",
+   "category": "motor",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "stepper",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 40.0,
+     "source": "https://www.berrybase.de/en/act-motor-nema17-stepper-motor-17hs4417-1.80-step-angle-0.4-nm-holding-torque-1.7a/"
+    },
+    "shaft_mm": {
+     "value": 5.0,
+     "source": "https://www.berrybase.de/en/act-motor-nema17-stepper-motor-17hs4417-1.80-step-angle-0.4-nm-holding-torque-1.7a/"
+    },
+    "face_mm": {
+     "value": 42.3,
+     "source": "https://www.nema.org/standards/view/motion-system-components-for-motion-control-systems"
+    },
+    "hole_spacing_mm": {
+     "value": 31.0,
+     "source": "https://www.nema.org/standards/view/motion-system-components-for-motion-control-systems"
+    }
+   },
+   "style": {
+    "connector": true
+   },
+   "estimate": {
+    "shaft_len_mm": 24.0
+   },
+   "note": "Motor length 40 mm and 5 mm shaft per the shop page; the 42.3 mm face and 31 mm M3 hole square are the NEMA 17 (NEMA ICS 16) mounting."
+  },
+  "dfrobot-fit0185-bb": {
+   "name": "DFRobot metal DC gear motor with encoder, 83 rpm, 131:1, 45 kg cm, 12 V (Berrybase FIT0185)",
+   "category": "motor",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "round_gearmotor",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {
+    "shaft_mm": {
+     "value": 6.0,
+     "source": "https://www.berrybase.de/en/dfrobot-metal-dc-geared-motor-encoder-83rpm-131-1-45kgcm-16cpr-encoder-350ma-idle-12v"
+    }
+   },
+   "style": {
+    "face_holes": 6,
+    "encoder_mm": 14.0,
+    "shaft_offset_mm": 7.0,
+    "shaft_len_mm": 15.5
+   },
+   "estimate": {
+    "diameter_mm": 37.0,
+    "length_mm": 75.0,
+    "face_hole_circle_mm": 31.0,
+    "gearbox_mm": 25.0
+   },
+   "note": "6 mm D output shaft (0.61 in) per the page; body is a 37D class gearmotor, length estimated."
+  },
+  "pump-5v-mini": {
+   "name": "5 V mini submersible water pump",
+   "category": "pump",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "enclosure",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "color": "#1d1d1f",
+    "fillet_mm": 6.0,
+    "parts": [
+     {
+      "k": "cyl",
+      "x": 12,
+      "y": 0,
+      "d": 7.5,
+      "h": 9,
+      "z0": 32,
+      "color": "#1d1d1f",
+      "name": "outlet"
+     }
+    ]
+   },
+   "estimate": {
+    "length_mm": 45,
+    "width_mm": 30,
+    "height_mm": 32
+   }
+  },
+  "tube-silicone-8mm": {
+   "name": "Silicone tube 8 mm, 1 m",
+   "category": "tubing",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "coil",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "loops": 3,
+    "color": "#e9e7df",
+    "rough": 0.3
+   },
+   "estimate": {
+    "coil_d_mm": 90.0,
+    "cord_d_mm": 8.0
+   },
+   "note": "1 m of 8 mm tube, drawn as a coil."
+  },
+  "esp32-devkit": {
+   "name": "ESP32 DevKit C board",
+   "category": "controller",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "board",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "pcb_color": "black",
+    "parts": [
+     {
+      "k": "can",
+      "x": 10,
+      "y": 0,
+      "w": 18,
+      "l": 16,
+      "h": 3.1,
+      "name": "esp32_module"
+     },
+     {
+      "k": "antenna_trace",
+      "x": 23,
+      "y": 0,
+      "w": 6,
+      "l": 16
+     },
+     {
+      "k": "header",
+      "n": 19,
+      "x": -1,
+      "y": -11.43,
+      "side": "bottom"
+     },
+     {
+      "k": "header",
+      "n": 19,
+      "x": -1,
+      "y": 11.43,
+      "side": "bottom"
+     },
+     {
+      "k": "micro_usb",
+      "x": -25,
+      "y": 0,
+      "rot": 90,
+      "name": "usb"
+     },
+     {
+      "k": "button",
+      "x": -20,
+      "y": -7,
+      "w": 3,
+      "l": 4,
+      "h": 2
+     },
+     {
+      "k": "button",
+      "x": -20,
+      "y": 7,
+      "w": 3,
+      "l": 4,
+      "h": 2
+     }
+    ]
+   },
+   "estimate": {
+    "length_mm": 55.0,
+    "width_mm": 28.0,
+    "holes": []
+   }
+  },
+  "esp32-nodemcu-bb": {
+   "name": "ESP32 NodeMCU development board (Berrybase NMCU-ESP32)",
+   "category": "controller",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "board",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "pcb_color": "black",
+    "parts": [
+     {
+      "k": "can",
+      "x": 8,
+      "y": 0,
+      "w": 18,
+      "l": 16,
+      "h": 3.1,
+      "name": "esp32_module"
+     },
+     {
+      "k": "antenna_trace",
+      "x": 20,
+      "y": 0,
+      "w": 6,
+      "l": 16
+     },
+     {
+      "k": "header",
+      "n": 15,
+      "x": -2,
+      "y": -10.16,
+      "side": "bottom"
+     },
+     {
+      "k": "header",
+      "n": 15,
+      "x": -2,
+      "y": 10.16,
+      "side": "bottom"
+     },
+     {
+      "k": "micro_usb",
+      "x": -23,
+      "y": 0,
+      "rot": 90,
+      "name": "usb"
+     }
+    ]
+   },
+   "estimate": {
+    "length_mm": 51.0,
+    "width_mm": 25.0,
+    "holes": []
+   }
+  },
+  "esp32-s3-devkit": {
+   "name": "ESP32-S3 DevKitC-1",
+   "category": "controller",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "board",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "pcb_color": "black",
+    "parts": [
+     {
+      "k": "can",
+      "x": 15,
+      "y": 0,
+      "w": 18,
+      "l": 18,
+      "h": 3.2,
+      "name": "esp32s3_module"
+     },
+     {
+      "k": "antenna_trace",
+      "x": 27,
+      "y": 0,
+      "w": 6,
+      "l": 18
+     },
+     {
+      "k": "header",
+      "n": 22,
+      "x": -2,
+      "y": -11.43,
+      "side": "bottom"
+     },
+     {
+      "k": "header",
+      "n": 22,
+      "x": -2,
+      "y": 11.43,
+      "side": "bottom"
+     },
+     {
+      "k": "usb_c",
+      "x": -29,
+      "y": -5,
+      "rot": 90,
+      "name": "usb_uart"
+     },
+     {
+      "k": "usb_c",
+      "x": -29,
+      "y": 5,
+      "rot": 90,
+      "name": "usb_otg"
+     },
+     {
+      "k": "led",
+      "x": -15,
+      "y": 0,
+      "w": 5,
+      "l": 5,
+      "h": 1.5,
+      "color": "#ffffff",
+      "name": "rgb_led"
+     }
+    ]
+   },
+   "estimate": {
+    "length_mm": 63.0,
+    "width_mm": 26.0,
+    "holes": []
+   }
+  },
+  "nano-ft-anano-bb": {
+   "name": "Arduino Nano compatible board, ATmega328P and FT232RL (Berrybase FT-ANANO)",
+   "category": "controller",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "board",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 45.0,
+     "source": "https://www.berrybase.de/en/arduino-nano-compatible-microcontroller-12-digital-i-o-8-analogue-i-o-6-pwm-pins-5-12v"
+    },
+    "width_mm": {
+     "value": 18.0,
+     "source": "https://www.berrybase.de/en/arduino-nano-compatible-microcontroller-12-digital-i-o-8-analogue-i-o-6-pwm-pins-5-12v"
+    }
+   },
+   "style": {
+    "pcb_color": "#1d6fa5",
+    "parts": [
+     {
+      "k": "header",
+      "n": 15,
+      "x": 0,
+      "y": -7.62,
+      "side": "bottom"
+     },
+     {
+      "k": "header",
+      "n": 15,
+      "x": 0,
+      "y": 7.62,
+      "side": "bottom"
+     },
+     {
+      "k": "chip",
+      "x": 3,
+      "y": 0,
+      "w": 7,
+      "l": 7,
+      "h": 1.0,
+      "rot": 45,
+      "name": "atmega328p"
+     },
+     {
+      "k": "micro_usb",
+      "x": -20.5,
+      "y": 0,
+      "rot": 90,
+      "name": "usb"
+     },
+     {
+      "k": "chip",
+      "x": -10,
+      "y": 0,
+      "w": 5.3,
+      "l": 10,
+      "h": 1.5,
+      "name": "ft232rl"
+     }
+    ]
+   },
+   "estimate": {
+    "holes": [
+     [
+      -20.3,
+      -7.6,
+      1.8
+     ],
+     [
+      20.3,
+      -7.6,
+      1.8
+     ],
+     [
+      -20.3,
+      7.6,
+      1.8
+     ],
+     [
+      20.3,
+      7.6,
+      1.8
+     ]
+    ]
+   },
+   "note": "45 x 18 mm per the shop page (its 18 mm height with headers is not drawn: the headers here are the common 2.54 mm ones)."
+  },
+  "sensor-soil-capacitive": {
+   "name": "Capacitive soil moisture sensor v1.2",
+   "category": "sensor",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "board",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "pcb_color": "black",
+    "parts": [
+     {
+      "k": "chip",
+      "x": 38,
+      "y": 0,
+      "w": 5,
+      "l": 4.4,
+      "h": 1.0
+     },
+     {
+      "k": "jst_ph",
+      "n": 3,
+      "x": 46,
+      "y": 0,
+      "rot": 90
+     }
+    ],
+    "cutouts": [
+     [
+      -35,
+      10,
+      30,
+      4
+     ],
+     [
+      -35,
+      -10,
+      30,
+      4
+     ]
+    ]
+   },
+   "estimate": {
+    "length_mm": 98.0,
+    "width_mm": 23.0,
+    "holes": []
+   }
+  },
+  "led-ws2812-ring-12": {
+   "name": "WS2812B LED ring, 12 LEDs",
+   "category": "light",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "board",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "outline": "ring",
+    "inner_d_mm": 23.0,
+    "pcb_color": "black",
+    "pcb_mm": 1.6,
+    "parts": [
+     {
+      "k": "led",
+      "x": 15.0,
+      "y": 0.0,
+      "w": 5,
+      "l": 5,
+      "h": 1.6,
+      "rot": 0,
+      "color": "#ffffff"
+     },
+     {
+      "k": "led",
+      "x": 12.99,
+      "y": 7.5,
+      "w": 5,
+      "l": 5,
+      "h": 1.6,
+      "rot": 30,
+      "color": "#ffffff"
+     },
+     {
+      "k": "led",
+      "x": 7.5,
+      "y": 12.99,
+      "w": 5,
+      "l": 5,
+      "h": 1.6,
+      "rot": 60,
+      "color": "#ffffff"
+     },
+     {
+      "k": "led",
+      "x": 0.0,
+      "y": 15.0,
+      "w": 5,
+      "l": 5,
+      "h": 1.6,
+      "rot": 90,
+      "color": "#ffffff"
+     },
+     {
+      "k": "led",
+      "x": -7.5,
+      "y": 12.99,
+      "w": 5,
+      "l": 5,
+      "h": 1.6,
+      "rot": 120,
+      "color": "#ffffff"
+     },
+     {
+      "k": "led",
+      "x": -12.99,
+      "y": 7.5,
+      "w": 5,
+      "l": 5,
+      "h": 1.6,
+      "rot": 150,
+      "color": "#ffffff"
+     },
+     {
+      "k": "led",
+      "x": -15.0,
+      "y": 0.0,
+      "w": 5,
+      "l": 5,
+      "h": 1.6,
+      "rot": 180,
+      "color": "#ffffff"
+     },
+     {
+      "k": "led",
+      "x": -12.99,
+      "y": -7.5,
+      "w": 5,
+      "l": 5,
+      "h": 1.6,
+      "rot": 210,
+      "color": "#ffffff"
+     },
+     {
+      "k": "led",
+      "x": -7.5,
+      "y": -12.99,
+      "w": 5,
+      "l": 5,
+      "h": 1.6,
+      "rot": 240,
+      "color": "#ffffff"
+     },
+     {
+      "k": "led",
+      "x": -0.0,
+      "y": -15.0,
+      "w": 5,
+      "l": 5,
+      "h": 1.6,
+      "rot": 270,
+      "color": "#ffffff"
+     },
+     {
+      "k": "led",
+      "x": 7.5,
+      "y": -12.99,
+      "w": 5,
+      "l": 5,
+      "h": 1.6,
+      "rot": 300,
+      "color": "#ffffff"
+     },
+     {
+      "k": "led",
+      "x": 12.99,
+      "y": -7.5,
+      "w": 5,
+      "l": 5,
+      "h": 1.6,
+      "rot": 330,
+      "color": "#ffffff"
+     }
+    ]
+   },
+   "estimate": {
+    "length_mm": 37.0,
+    "width_mm": 37.0,
+    "holes": []
+   }
+  },
+  "led-1w-white": {
+   "name": "1 W white LED on 20 mm star",
+   "category": "light",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "board",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "outline": "disc",
+    "pcb_color": "#c4c7cc",
+    "pcb_mm": 1.5,
+    "parts": [
+     {
+      "k": "dome",
+      "x": 0,
+      "y": 0,
+      "d": 5.5,
+      "lift": 1.0,
+      "color": "#f6f4e8"
+     },
+     {
+      "k": "pads",
+      "n": 2,
+      "x": 0,
+      "y": 6.5,
+      "pitch": 9.0,
+      "d": 3.0
+     }
+    ]
+   },
+   "estimate": {
+    "length_mm": 20.0,
+    "width_mm": 20.0,
+    "holes": []
+   }
+  },
+  "battery-18650": {
+   "name": "Li-ion 18650 cell 3000 mAh",
+   "category": "battery",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "cell",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "wrap_color": "#3a8f4a"
+   },
+   "estimate": {
+    "diameter_mm": 18.0,
+    "length_mm": 65.0
+   }
+  },
+  "battery-holder-18650": {
+   "name": "18650 holder with TP4056 USB-C charger",
+   "category": "battery",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "board",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "pcb_color": "black",
+    "parts": [
+     {
+      "k": "box",
+      "x": 5,
+      "y": 0,
+      "w": 70,
+      "l": 21,
+      "h": 1.0,
+      "color": "#1d1d1f",
+      "name": "holder_floor"
+     },
+     {
+      "k": "cyl",
+      "x": 0,
+      "y": 0,
+      "d": 0.1,
+      "h": 0.1,
+      "name": "spacer"
+     },
+     {
+      "k": "usb_c",
+      "x": -34,
+      "y": 0,
+      "rot": 90,
+      "name": "usb_c"
+     },
+     {
+      "k": "chip",
+      "x": -28,
+      "y": 5,
+      "w": 5,
+      "l": 4,
+      "h": 1.5,
+      "name": "tp4056"
+     }
+    ]
+   },
+   "estimate": {
+    "length_mm": 77.0,
+    "width_mm": 21.0,
+    "holes": []
+   },
+   "note": "Holder with a TP4056 USB-C charger; one 18650 cell sits in it (not included)."
+  },
+  "battery-aa-4x": {
+   "name": "4 x AA battery holder with switch",
+   "category": "battery",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "cell_pack",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "cells": 4,
+    "cell_d_mm": 14.5,
+    "cell_len_mm": 50.5,
+    "gap_mm": 0.0,
+    "holder": true,
+    "holder_len_mm": 56.5,
+    "holder_w_mm": 62.0,
+    "holder_h_mm": 16.0,
+    "wall_mm": 1.2,
+    "wrap_color": "#c9a227"
+   },
+   "estimate": {
+    "length_mm": 56.5,
+    "width_mm": 62.0,
+    "height_mm": 16.0
+   },
+   "note": "Four AA cells side by side across 62 mm, 56.5 mm along the cells."
+  },
+  "battery-holder-4xaa-bb-11448": {
+   "name": "Battery holder for 4 x AA with snap connection (Berrybase 11448)",
+   "category": "hardware",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "cell_pack",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 56.5,
+     "source": "https://www.berrybase.de/en/battery-holder-for-4x-mignon-aa-with-push-button-connection"
+    },
+    "width_mm": {
+     "value": 62.0,
+     "source": "https://www.berrybase.de/en/battery-holder-for-4x-mignon-aa-with-push-button-connection"
+    },
+    "height_mm": {
+     "value": 16.0,
+     "source": "https://www.berrybase.de/en/battery-holder-for-4x-mignon-aa-with-push-button-connection"
+    }
+   },
+   "style": {
+    "cells": 4,
+    "cell_d_mm": 14.5,
+    "cell_len_mm": 50.5,
+    "holder": true,
+    "holder_len_mm": 56.5,
+    "holder_w_mm": 62.0,
+    "holder_h_mm": 16.0,
+    "wall_mm": 1.2,
+    "wrap_color": "#c9a227",
+    "empty": true
+   },
+   "note": "62 x 16 x 56.5 mm per the shop page: four AA side by side across 62 mm, 56.5 mm along the cells. Shown without cells."
+  },
+  "varta-aa-4pack-bb": {
+   "name": "Varta High Energy alkaline AA batteries, pack of 4 (Berrybase)",
+   "category": "battery",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "cell_pack",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "cells": 4,
+    "cell_d_mm": 14.5,
+    "cell_len_mm": 50.5,
+    "wrap_color": "#1d1d1f",
+    "band_color": "#d7262b"
+   },
+   "estimate": {
+    "length_mm": 58.0,
+    "width_mm": 57.0,
+    "height_mm": 14.5
+   },
+   "note": "Four loose AA cells side by side."
+  },
+  "battery-holder-3x18650-bhea-bb": {
+   "name": "Battery holder for 3 x 18650 with connection cable (Berrybase BHEA-3K18650)",
+   "category": "hardware",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "cell_pack",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 77.0,
+     "source": "https://www.berrybase.de/en/batteriehalter-fuer-3x-18650-mit-anschlusskabel-einzelausgang"
+    },
+    "width_mm": {
+     "value": 59.0,
+     "source": "https://www.berrybase.de/en/batteriehalter-fuer-3x-18650-mit-anschlusskabel-einzelausgang"
+    },
+    "height_mm": {
+     "value": 21.0,
+     "source": "https://www.berrybase.de/en/batteriehalter-fuer-3x-18650-mit-anschlusskabel-einzelausgang"
+    }
+   },
+   "style": {
+    "cells": 3,
+    "cell_d_mm": 18.5,
+    "cell_len_mm": 65.0,
+    "gap_mm": 1.5,
+    "holder": true,
+    "holder_len_mm": 77.0,
+    "holder_w_mm": 59.0,
+    "holder_h_mm": 21.0,
+    "wall_mm": 1.5,
+    "empty": true
+   },
+   "estimate": {},
+   "note": "About 77 x 59 x 21 mm per the shop page; shown without cells."
+  },
+  "battery-holder-2x18650-bh-bb": {
+   "name": "Battery holder for 2 x 18650 in series with connection cable (Berrybase BH-2K18650)",
+   "category": "hardware",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "cell_pack",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 76.0,
+     "source": "https://www.berrybase.de/en/battery-holder-for-2x-18650-with-connection-cable"
+    },
+    "width_mm": {
+     "value": 41.0,
+     "source": "https://www.berrybase.de/en/battery-holder-for-2x-18650-with-connection-cable"
+    },
+    "height_mm": {
+     "value": 20.0,
+     "source": "https://www.berrybase.de/en/battery-holder-for-2x-18650-with-connection-cable"
+    }
+   },
+   "style": {
+    "cells": 2,
+    "cell_d_mm": 18.5,
+    "cell_len_mm": 65.0,
+    "gap_mm": 1.5,
+    "holder": true,
+    "holder_len_mm": 76.0,
+    "holder_w_mm": 41.0,
+    "holder_h_mm": 20.0,
+    "wall_mm": 1.5,
+    "empty": true
+   },
+   "estimate": {},
+   "note": "76 x 41 x 20 mm per the shop page; shown without cells."
+  },
+  "molicel-m35a-2s-bb": {
+   "name": "Two Molicel INR18650-M35A cells, 2S 7.2 V 3450 mAh (Berrybase)",
+   "category": "battery",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "cell_pack",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "cells": 2,
+    "cell_d_mm": 18.3,
+    "cell_len_mm": 65.1,
+    "shrink": true,
+    "shrink_color": "#2b7a3d"
+   },
+   "estimate": {
+    "length_mm": 70,
+    "width_mm": 37,
+    "height_mm": 19
+   },
+   "note": "Built from Molicel INR18650-M35A cells (18.3 x 65.1 mm per the shop page); the pack wrap size is the catalog's estimate."
+  },
+  "molicel-m35a-3s-bb": {
+   "name": "Three Molicel INR18650-M35A cells, 3S 10.8 V 3450 mAh (Berrybase)",
+   "category": "battery",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "cell_pack",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "cells": 3,
+    "cell_d_mm": 18.3,
+    "cell_len_mm": 65.1,
+    "shrink": true,
+    "shrink_color": "#2b7a3d"
+   },
+   "estimate": {
+    "length_mm": 70,
+    "width_mm": 56,
+    "height_mm": 19
+   },
+   "note": "Built from Molicel INR18650-M35A cells (18.3 x 65.1 mm per the shop page); the pack wrap size is the catalog's estimate."
+  },
+  "lipo-1s-1000": {
+   "name": "LiPo 1S 1000 mAh",
+   "category": "battery",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "lipo_pack",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "wrap_color": "#c9ccd1",
+    "label_color": "#2f6fd1",
+    "lead_len_mm": 30
+   },
+   "estimate": {
+    "length_mm": 50.0,
+    "width_mm": 34.0,
+    "height_mm": 6.0,
+    "connector": "ph2.0"
+   }
+  },
+  "lipo-2s-1500": {
+   "name": "2S 7.4 V 1500 mAh LiPo 25C",
+   "category": "battery",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "lipo_pack",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "wrap_color": "#20242b",
+    "label_color": "#2f6fd1",
+    "lead_len_mm": 40,
+    "balance_lead": true,
+    "cells": 2
+   },
+   "estimate": {
+    "length_mm": 70.0,
+    "width_mm": 35.0,
+    "height_mm": 18.0,
+    "connector": "xt60"
+   }
+  },
+  "powerbank-10000": {
+   "name": "USB power bank 10000 mAh",
+   "category": "battery",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "enclosure",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "color": "#2b2c2f",
+    "fillet_mm": 6.0,
+    "parts": [
+     {
+      "k": "usb_c",
+      "x": -50.0,
+      "y": -10,
+      "rot": 90,
+      "z0": 8,
+      "name": "usb_c"
+     },
+     {
+      "k": "usb_a",
+      "x": -46.0,
+      "y": 12,
+      "rot": 90,
+      "w": 12.5,
+      "l": 13.0,
+      "h": 5.5,
+      "z0": 8,
+      "name": "usb_a"
+     }
+    ]
+   },
+   "estimate": {
+    "length_mm": 100.0,
+    "width_mm": 65.0,
+    "height_mm": 22.0
+   }
+  },
+  "usb-c-cable": {
+   "name": "USB-C cable and 5 V 2 A wall adapter",
+   "category": "power",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "coil",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "loops": 4,
+    "color": "#1f1f21",
+    "ends": [
+     [
+      8.3,
+      12.0,
+      3.5,
+      "metal"
+     ]
+    ]
+   },
+   "estimate": {
+    "coil_d_mm": 70.0,
+    "cord_d_mm": 3.5
+   },
+   "note": "Cable and wall adapter; drawn as the coiled cable."
+  },
+  "mosfet-module": {
+   "name": "MOSFET switch module IRF520",
+   "category": "driver",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "board",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "pcb_color": "red",
+    "parts": [
+     {
+      "k": "box",
+      "x": 0,
+      "y": 3,
+      "w": 10,
+      "l": 4.5,
+      "h": 9.0,
+      "color": "#1d1d1f",
+      "name": "irf520"
+     },
+     {
+      "k": "terminal",
+      "n": 2,
+      "x": -12,
+      "y": -3,
+      "rot": 90
+     },
+     {
+      "k": "header",
+      "n": 3,
+      "x": 12,
+      "y": 0,
+      "along": "y"
+     }
+    ]
+   },
+   "estimate": {
+    "length_mm": 34.0,
+    "width_mm": 20.0,
+    "holes": [
+     [
+      -14,
+      -7,
+      3.0
+     ],
+     [
+      14,
+      7,
+      3.0
+     ]
+    ]
+   }
+  },
+  "drv8833-driver": {
+   "name": "DRV8833 dual motor driver",
+   "category": "driver",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "board",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "pcb_color": "purple",
+    "parts": [
+     {
+      "k": "chip",
+      "x": 0,
+      "y": 0,
+      "w": 4.4,
+      "l": 5.0,
+      "h": 1.0
+     },
+     {
+      "k": "pads",
+      "n": 6,
+      "x": 0.0,
+      "y": -6.35,
+      "pitch": 2.54,
+      "d": 1.6,
+      "along": "x"
+     },
+     {
+      "k": "pads",
+      "n": 6,
+      "x": 0.0,
+      "y": 6.35,
+      "pitch": 2.54,
+      "d": 1.6,
+      "along": "x"
+     }
+    ]
+   },
+   "estimate": {
+    "length_mm": 18.0,
+    "width_mm": 16.0,
+    "holes": []
+   }
+  },
+  "tb6612-driver": {
+   "name": "TB6612FNG dual motor driver",
+   "category": "driver",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "board",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "pcb_color": "red",
+    "parts": [
+     {
+      "k": "chip",
+      "x": 0,
+      "y": 0,
+      "w": 5.3,
+      "l": 6.5,
+      "h": 1.0
+     },
+     {
+      "k": "pads",
+      "n": 8,
+      "x": -8.0,
+      "y": 0,
+      "pitch": 2.54,
+      "d": 1.6,
+      "along": "y"
+     },
+     {
+      "k": "pads",
+      "n": 8,
+      "x": 8.0,
+      "y": 0,
+      "pitch": 2.54,
+      "d": 1.6,
+      "along": "y"
+     }
+    ]
+   },
+   "estimate": {
+    "length_mm": 20.0,
+    "width_mm": 20.0,
+    "holes": []
+   }
+  },
+  "switch-rocker": {
+   "name": "Mini rocker switch 15 x 10 mm",
+   "category": "switch",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "rocker_switch",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "estimate": {
+    "length_mm": 15.0,
+    "width_mm": 10.0,
+    "height_mm": 12.0
+   }
+  },
+  "bearing-608": {
+   "name": "608ZZ ball bearing 8 x 22 x 7 mm",
+   "category": "bearing",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "bearing",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {
+    "bore_mm": {
+     "value": 8.0,
+     "source": "https://www.skf.com/group/products/rolling-bearings/ball-bearings/deep-groove-ball-bearings/productid-608-2Z"
+    },
+    "outer_mm": {
+     "value": 22.0,
+     "source": "https://www.skf.com/group/products/rolling-bearings/ball-bearings/deep-groove-ball-bearings/productid-608-2Z"
+    },
+    "width_mm": {
+     "value": 7.0,
+     "source": "https://www.skf.com/group/products/rolling-bearings/ball-bearings/deep-groove-ball-bearings/productid-608-2Z"
+    }
+   },
+   "style": {
+    "shield": "metal"
+   },
+   "note": "608 is an ISO 15 size: 8 x 22 x 7 mm."
+  },
+  "magnet-neodymium-10x3": {
+   "name": "Neodymium disc magnet 10 x 3 mm",
+   "category": "magnet",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "disc",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {
+    "diameter_mm": {
+     "value": 10.0,
+     "source": "https://www.supermagnete.de/eng/search?search=10x3"
+    },
+    "height_mm": {
+     "value": 3.0,
+     "source": "https://www.supermagnete.de/eng/search?search=10x3"
+    }
+   },
+   "style": {
+    "color": "#c9ccd1",
+    "metal": 1.0,
+    "rough": 0.25
+   },
+   "note": "10 x 3 mm disc per the product name on the shop page."
+  },
+  "rubber-feet-10mm": {
+   "name": "Self-adhesive rubber feet 10 x 3 mm",
+   "category": "hardware",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "disc",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "shape": "dome",
+    "color": "#1b1b1b",
+    "rough": 0.9
+   },
+   "estimate": {
+    "diameter_mm": 10.0,
+    "height_mm": 3.0
+   }
+  },
+  "m3-screw-set": {
+   "name": "M3 screw and nut set",
+   "category": "hardware",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "screw",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "drive": "hex"
+   },
+   "estimate": {
+    "thread_mm": 3.0,
+    "length_mm": 10.0,
+    "head_d_mm": 5.6,
+    "head_h_mm": 2.4
+   },
+   "note": "One M3 x 10 mm screw of the set."
+  },
+  "m3-hardware-set": {
+   "name": "M3 screws, nuts and axle bolts",
+   "category": "hardware",
+   "catalogs": [
+    "gripper.json"
+   ],
+   "type": "screw",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "drive": "phillips"
+   },
+   "estimate": {
+    "thread_mm": 3.0,
+    "length_mm": 12.0,
+    "head_d_mm": 5.6,
+    "head_h_mm": 2.4
+   },
+   "note": "One M3 x 12 mm screw of the set."
+  },
+  "heat-inserts-m3": {
+   "name": "M3 heat-set inserts, 10 pieces",
+   "category": "hardware",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "insert",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "kind": "insert"
+   },
+   "estimate": {
+    "outer_mm": 4.6,
+    "length_mm": 5.7,
+    "bore_mm": 3.0
+   },
+   "note": "One insert of the pack of 10."
+  },
+  "steel-rod-8mm": {
+   "name": "Steel rod 8 mm, 300 mm",
+   "category": "hardware",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "disc",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {
+    "diameter_mm": {
+     "value": 8.0,
+     "source": "https://www.amazon.de/s?k=stahlwelle+8mm"
+    },
+    "height_mm": {
+     "value": 300.0,
+     "source": "https://www.amazon.de/s?k=stahlwelle+8mm"
+    }
+   },
+   "style": {
+    "shape": "rod",
+    "color": "#b9bcc0",
+    "metal": 1.0,
+    "rough": 0.3
+   },
+   "estimate": {}
+  },
+  "usb-c-breakout-sol-333011": {
+   "name": "Soldered USB-C socket breakout, THT pins",
+   "category": "power",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "board",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 22.0,
+     "source": "https://www.berrybase.de/en/soldered-usb-c-buchse-breakout-board-tht-pins"
+    },
+    "width_mm": {
+     "value": 22.0,
+     "source": "https://www.berrybase.de/en/soldered-usb-c-buchse-breakout-board-tht-pins"
+    }
+   },
+   "style": {
+    "pcb_color": "black",
+    "parts": [
+     {
+      "k": "usb_c",
+      "x": 0,
+      "y": 6,
+      "name": "usb_c"
+     },
+     {
+      "k": "pads",
+      "n": 6,
+      "x": 0.0,
+      "y": -8,
+      "pitch": 2.54,
+      "d": 1.6,
+      "along": "x"
+     }
+    ]
+   },
+   "estimate": {
+    "holes": []
+   }
+  },
+  "usb-c-psu-5v3a": {
+   "name": "USB-C power supply 5.1 V 5 A (27 W)",
+   "category": "power",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "wall_adapter",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "color": "#f2f2f0"
+   },
+   "estimate": {
+    "length_mm": 60.0,
+    "width_mm": 45.0,
+    "height_mm": 30.0
+   }
+  },
+  "rpi-psu-5v1-3a-bb": {
+   "name": "Official Raspberry Pi USB-C power supply 5.1 V 3.0 A, EU, black (Berrybase RPI4NT3AB)",
+   "category": "power",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "wall_adapter",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "color": "#1f1f21"
+   },
+   "estimate": {
+    "length_mm": 60.0,
+    "width_mm": 40.0,
+    "height_mm": 30.0
+   }
+  },
+  "psu-12v5a-gfd-a9-eck": {
+   "name": "Gaofande 12 V 5 A EU wall power adapter GFD-A9 (Eckstein CP07074)",
+   "category": "power",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "wall_adapter",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "color": "#1f1f21"
+   },
+   "estimate": {
+    "length_mm": 110.0,
+    "width_mm": 50.0,
+    "height_mm": 32.0
+   }
+  },
+  "usb-c-socket-panel": {
+   "name": "USB-C panel-mount socket",
+   "category": "hardware",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "enclosure",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "color": "#2b2c2f",
+    "fillet_mm": 1.0,
+    "parts": [
+     {
+      "k": "usb_c",
+      "x": 0,
+      "y": 0,
+      "z0": 10,
+      "rot": 0,
+      "name": "usb_c"
+     }
+    ]
+   },
+   "estimate": {
+    "length_mm": 20.0,
+    "width_mm": 12.0,
+    "height_mm": 10.0
+   }
+  },
+  "oled-096": {
+   "name": "0.96 inch OLED display I2C",
+   "category": "sensor",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "board",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "pcb_color": "blue",
+    "parts": [
+     {
+      "k": "display",
+      "x": 0,
+      "y": -1,
+      "w": 26.0,
+      "l": 19.0,
+      "h": 1.4,
+      "active": [
+       22.0,
+       11.0
+      ],
+      "ay": 1.0
+     },
+     {
+      "k": "header",
+      "n": 4,
+      "x": 0,
+      "y": 12.0,
+      "side": "bottom"
+     }
+    ]
+   },
+   "estimate": {
+    "length_mm": 27.0,
+    "width_mm": 27.0,
+    "holes": [
+     [
+      -11.5,
+      -11.5,
+      2.0
+     ],
+     [
+      11.5,
+      -11.5,
+      2.0
+     ],
+     [
+      -11.5,
+      11.5,
+      2.0
+     ],
+     [
+      11.5,
+      11.5,
+      2.0
+     ]
+    ]
+   }
+  },
+  "bme280": {
+   "name": "BME280 temperature, humidity and pressure sensor",
+   "category": "sensor",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "board",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "pcb_color": "purple",
+    "parts": [
+     {
+      "k": "chip",
+      "x": 2,
+      "y": -1,
+      "w": 2.5,
+      "l": 2.5,
+      "h": 0.9,
+      "color": "#b9bcc0"
+     },
+     {
+      "k": "pads",
+      "n": 4,
+      "x": 0.0,
+      "y": -4.5,
+      "pitch": 2.54,
+      "d": 1.6,
+      "along": "x"
+     }
+    ]
+   },
+   "estimate": {
+    "length_mm": 15.0,
+    "width_mm": 12.0,
+    "holes": [
+     [
+      0,
+      3.5,
+      2.5
+     ]
+    ]
+   }
+  },
+  "gy87-mpu6050-bb": {
+   "name": "GY-87 MPU-6050 accelerometer and gyroscope, HMC5883L, BMP180 (Berrybase GY-87)",
+   "category": "sensor",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "board",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 22.0,
+     "source": "https://www.berrybase.de/en/gy-87-mpu-6050-acceleration-sensor-gyroscope-hmc5883l-magnetic-field-meter-bmp180-barometer"
+    },
+    "width_mm": {
+     "value": 17.0,
+     "source": "https://www.berrybase.de/en/gy-87-mpu-6050-acceleration-sensor-gyroscope-hmc5883l-magnetic-field-meter-bmp180-barometer"
+    }
+   },
+   "style": {
+    "pcb_color": "blue",
+    "parts": [
+     {
+      "k": "chip",
+      "x": -3,
+      "y": 0,
+      "w": 4,
+      "l": 4,
+      "h": 0.9
+     },
+     {
+      "k": "chip",
+      "x": 3,
+      "y": 0,
+      "w": 3,
+      "l": 3,
+      "h": 0.9
+     },
+     {
+      "k": "chip",
+      "x": 0,
+      "y": -4,
+      "w": 3.6,
+      "l": 3.6,
+      "h": 0.9,
+      "color": "#b9bcc0"
+     },
+     {
+      "k": "pads",
+      "n": 8,
+      "x": 0.0,
+      "y": -7.0,
+      "pitch": 2.54,
+      "d": 1.6,
+      "along": "x"
+     }
+    ]
+   },
+   "estimate": {
+    "holes": [
+     [
+      -8.5,
+      6,
+      3.0
+     ],
+     [
+      8.5,
+      6,
+      3.0
+     ]
+    ]
+   }
+  },
+  "pir-hcsr505-bb": {
+   "name": "HC-SR505 Mini PIR motion sensor (Berrybase HC-SR505)",
+   "category": "sensor",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "board",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 23.0,
+     "source": "https://www.berrybase.de/en/hc-sr505-mini-pir-sensor-infrared-motion-detector"
+    },
+    "width_mm": {
+     "value": 10.0,
+     "source": "https://www.berrybase.de/en/hc-sr505-mini-pir-sensor-infrared-motion-detector"
+    },
+    "lens_d_mm": {
+     "value": 10.0,
+     "source": "https://www.berrybase.de/en/hc-sr505-mini-pir-sensor-infrared-motion-detector"
+    }
+   },
+   "style": {
+    "pcb_color": "green",
+    "parts": [
+     {
+      "k": "dome",
+      "x": 0,
+      "y": 0,
+      "d": 10.0,
+      "lift": 8.0
+     },
+     {
+      "k": "wire",
+      "path": [
+       [
+        0,
+        -3,
+        -0.5
+       ],
+       [
+        0,
+        -3,
+        -8
+       ]
+      ],
+      "r": 0.4
+     }
+    ],
+    "outline": "rect"
+   },
+   "estimate": {
+    "holes": []
+   },
+   "note": "Board about 23 x 10 mm and 10 mm lens per the shop page."
+  },
+  "rpi-ai-camera-bb": {
+   "name": "Raspberry Pi AI Camera, Sony IMX500 (Berrybase RPI-AICAM)",
+   "category": "camera",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "board",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 25.0,
+     "source": "https://www.berrybase.de/en/raspberry-pi-ai-camera"
+    },
+    "width_mm": {
+     "value": 24.0,
+     "source": "https://www.berrybase.de/en/raspberry-pi-ai-camera"
+    },
+    "height_mm": {
+     "value": 11.9,
+     "source": "https://www.berrybase.de/en/raspberry-pi-ai-camera"
+    }
+   },
+   "style": {
+    "pcb_color": "green",
+    "parts": [
+     {
+      "k": "box",
+      "x": 0,
+      "y": 2,
+      "w": 12,
+      "l": 12,
+      "h": 5.0,
+      "color": "#1d1d1f",
+      "name": "sensor_block"
+     },
+     {
+      "k": "lens",
+      "x": 0,
+      "y": 2,
+      "d": 9.0,
+      "h": 5.3,
+      "dz": 5.0,
+      "name": "lens"
+     }
+    ]
+   },
+   "estimate": {
+    "holes": [
+     [
+      -10.5,
+      -10.0,
+      2.2
+     ],
+     [
+      10.5,
+      -10.0,
+      2.2
+     ],
+     [
+      -10.5,
+      2.5,
+      2.2
+     ],
+     [
+      10.5,
+      2.5,
+      2.2
+     ]
+    ]
+   },
+   "note": "25 x 24 x 11.9 mm per the shop page."
+  },
+  "m5stack-timer-camera-u082x": {
+   "name": "M5Stack Timer Camera X, ESP32 PSRAM, OV3660 3 MP (Berrybase M5-U082-X)",
+   "category": "controller",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "enclosure",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 48.0,
+     "source": "https://www.berrybase.de/en/m5stack-timer-camera-esp32-psram"
+    },
+    "width_mm": {
+     "value": 24.0,
+     "source": "https://www.berrybase.de/en/m5stack-timer-camera-esp32-psram"
+    },
+    "height_mm": {
+     "value": 15.0,
+     "source": "https://www.berrybase.de/en/m5stack-timer-camera-esp32-psram"
+    }
+   },
+   "style": {
+    "color": "#f2f2f0",
+    "fillet_mm": 2.0,
+    "parts": [
+     {
+      "k": "lens",
+      "x": 10,
+      "y": -12.0,
+      "d": 8,
+      "h": 1.5,
+      "z0": 7.5,
+      "name": "lens"
+     }
+    ]
+   },
+   "note": "48 x 24 x 15 mm per the shop page."
+  },
+  "bus-servo-board-ws25514-eck": {
+   "name": "Waveshare Serial Bus Servo Driver Board for ST/SC servos (Eckstein WS25514)",
+   "category": "driver",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "board",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "pcb_color": "blue",
+    "parts": [
+     {
+      "k": "chip",
+      "x": 0,
+      "y": 0,
+      "w": 7,
+      "l": 7,
+      "h": 1.0
+     },
+     {
+      "k": "barrel",
+      "x": -16,
+      "y": 0,
+      "rot": 90
+     },
+     {
+      "k": "usb_c",
+      "x": 18,
+      "y": 8,
+      "rot": 90
+     },
+     {
+      "k": "header",
+      "n": 3,
+      "x": 6,
+      "y": -10,
+      "along": "y"
+     },
+     {
+      "k": "header",
+      "n": 3,
+      "x": 10,
+      "y": -10,
+      "along": "y"
+     }
+    ]
+   },
+   "estimate": {
+    "length_mm": 42.0,
+    "width_mm": 33.0,
+    "holes": [
+     [
+      -18,
+      -13.5,
+      3.0
+     ],
+     [
+      18,
+      -13.5,
+      3.0
+     ],
+     [
+      -18,
+      13.5,
+      3.0
+     ],
+     [
+      18,
+      13.5,
+      3.0
+     ]
+    ]
+   }
+  },
+  "pca9685-grove-se108020102-bb": {
+   "name": "seeed Grove 16-channel PWM driver, PCA9685 (Berrybase SE-108020102)",
+   "category": "driver",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "board",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "pcb_color": "blue",
+    "parts": [
+     {
+      "k": "chip",
+      "x": 0,
+      "y": 6,
+      "w": 7.8,
+      "l": 10,
+      "h": 1.0,
+      "name": "pca9685"
+     },
+     {
+      "k": "header",
+      "n": 3,
+      "x": -19.0,
+      "y": -10,
+      "along": "y"
+     },
+     {
+      "k": "header",
+      "n": 3,
+      "x": -16.46,
+      "y": -10,
+      "along": "y"
+     },
+     {
+      "k": "header",
+      "n": 3,
+      "x": -13.92,
+      "y": -10,
+      "along": "y"
+     },
+     {
+      "k": "header",
+      "n": 3,
+      "x": -11.379999999999999,
+      "y": -10,
+      "along": "y"
+     },
+     {
+      "k": "header",
+      "n": 3,
+      "x": -8.84,
+      "y": -10,
+      "along": "y"
+     },
+     {
+      "k": "header",
+      "n": 3,
+      "x": -6.300000000000001,
+      "y": -10,
+      "along": "y"
+     },
+     {
+      "k": "header",
+      "n": 3,
+      "x": -3.76,
+      "y": -10,
+      "along": "y"
+     },
+     {
+      "k": "header",
+      "n": 3,
+      "x": -1.2199999999999989,
+      "y": -10,
+      "along": "y"
+     },
+     {
+      "k": "header",
+      "n": 3,
+      "x": 1.3200000000000003,
+      "y": -10,
+      "along": "y"
+     },
+     {
+      "k": "header",
+      "n": 3,
+      "x": 3.8599999999999994,
+      "y": -10,
+      "along": "y"
+     },
+     {
+      "k": "header",
+      "n": 3,
+      "x": 6.399999999999999,
+      "y": -10,
+      "along": "y"
+     },
+     {
+      "k": "header",
+      "n": 3,
+      "x": 8.940000000000001,
+      "y": -10,
+      "along": "y"
+     },
+     {
+      "k": "header",
+      "n": 3,
+      "x": 11.48,
+      "y": -10,
+      "along": "y"
+     },
+     {
+      "k": "header",
+      "n": 3,
+      "x": 14.020000000000003,
+      "y": -10,
+      "along": "y"
+     },
+     {
+      "k": "header",
+      "n": 3,
+      "x": 16.560000000000002,
+      "y": -10,
+      "along": "y"
+     },
+     {
+      "k": "header",
+      "n": 3,
+      "x": 19.1,
+      "y": -10,
+      "along": "y"
+     },
+     {
+      "k": "jst_ph",
+      "n": 4,
+      "x": 22,
+      "y": 10,
+      "rot": 90
+     }
+    ]
+   },
+   "estimate": {
+    "length_mm": 60.0,
+    "width_mm": 40.0,
+    "holes": [
+     [
+      -27,
+      -17,
+      3.0
+     ],
+     [
+      27,
+      -17,
+      3.0
+     ],
+     [
+      -27,
+      17,
+      3.0
+     ],
+     [
+      27,
+      17,
+      3.0
+     ]
+    ]
+   }
+  },
+  "pca9685-driver": {
+   "name": "PCA9685 16-channel servo driver",
+   "category": "driver",
+   "catalogs": [
+    "gripper.json"
+   ],
+   "type": "board",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "pcb_color": "blue",
+    "parts": [
+     {
+      "k": "chip",
+      "x": 0,
+      "y": 6,
+      "w": 7.8,
+      "l": 10,
+      "h": 1.0,
+      "name": "pca9685"
+     },
+     {
+      "k": "header",
+      "n": 3,
+      "x": -19.0,
+      "y": -6,
+      "along": "y"
+     },
+     {
+      "k": "header",
+      "n": 3,
+      "x": -16.46,
+      "y": -6,
+      "along": "y"
+     },
+     {
+      "k": "header",
+      "n": 3,
+      "x": -13.92,
+      "y": -6,
+      "along": "y"
+     },
+     {
+      "k": "header",
+      "n": 3,
+      "x": -11.379999999999999,
+      "y": -6,
+      "along": "y"
+     },
+     {
+      "k": "header",
+      "n": 3,
+      "x": -8.84,
+      "y": -6,
+      "along": "y"
+     },
+     {
+      "k": "header",
+      "n": 3,
+      "x": -6.300000000000001,
+      "y": -6,
+      "along": "y"
+     },
+     {
+      "k": "header",
+      "n": 3,
+      "x": -3.76,
+      "y": -6,
+      "along": "y"
+     },
+     {
+      "k": "header",
+      "n": 3,
+      "x": -1.2199999999999989,
+      "y": -6,
+      "along": "y"
+     },
+     {
+      "k": "header",
+      "n": 3,
+      "x": 1.3200000000000003,
+      "y": -6,
+      "along": "y"
+     },
+     {
+      "k": "header",
+      "n": 3,
+      "x": 3.8599999999999994,
+      "y": -6,
+      "along": "y"
+     },
+     {
+      "k": "header",
+      "n": 3,
+      "x": 6.399999999999999,
+      "y": -6,
+      "along": "y"
+     },
+     {
+      "k": "header",
+      "n": 3,
+      "x": 8.940000000000001,
+      "y": -6,
+      "along": "y"
+     },
+     {
+      "k": "header",
+      "n": 3,
+      "x": 11.48,
+      "y": -6,
+      "along": "y"
+     },
+     {
+      "k": "header",
+      "n": 3,
+      "x": 14.020000000000003,
+      "y": -6,
+      "along": "y"
+     },
+     {
+      "k": "header",
+      "n": 3,
+      "x": 16.560000000000002,
+      "y": -6,
+      "along": "y"
+     },
+     {
+      "k": "header",
+      "n": 3,
+      "x": 19.1,
+      "y": -6,
+      "along": "y"
+     },
+     {
+      "k": "terminal",
+      "n": 2,
+      "x": 0,
+      "y": 10,
+      "pitch": 3.5
+     }
+    ]
+   },
+   "estimate": {
+    "length_mm": 62.5,
+    "width_mm": 25.4,
+    "holes": [
+     [
+      -28.6,
+      -9.5,
+      2.5
+     ],
+     [
+      28.6,
+      -9.5,
+      2.5
+     ],
+     [
+      -28.6,
+      9.5,
+      2.5
+     ],
+     [
+      28.6,
+      9.5,
+      2.5
+     ]
+    ]
+   }
+  },
+  "buck-regu5a-bb": {
+   "name": "Step-down module 4-38 V to 1.25-36 V, 5 A, screw terminals (Berrybase REGU5A)",
+   "category": "power",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "board",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 61.7,
+     "source": "https://www.berrybase.de/en/step-down-netzteilmodul-4-38v-1-25-36v-5a-mit-schraubklemmen"
+    },
+    "width_mm": {
+     "value": 26.2,
+     "source": "https://www.berrybase.de/en/step-down-netzteilmodul-4-38v-1-25-36v-5a-mit-schraubklemmen"
+    },
+    "height_mm": {
+     "value": 15.0,
+     "source": "https://www.berrybase.de/en/step-down-netzteilmodul-4-38v-1-25-36v-5a-mit-schraubklemmen"
+    }
+   },
+   "style": {
+    "pcb_color": "blue",
+    "parts": [
+     {
+      "k": "inductor",
+      "x": 0,
+      "y": 0,
+      "w": 12,
+      "l": 12,
+      "h": 7
+     },
+     {
+      "k": "elcap",
+      "d": 8,
+      "h": 13.4,
+      "x": -15,
+      "y": 5
+     },
+     {
+      "k": "elcap",
+      "d": 8,
+      "h": 13.4,
+      "x": 15,
+      "y": 5
+     },
+     {
+      "k": "terminal",
+      "n": 2,
+      "x": -24,
+      "y": -5,
+      "rot": 90
+     },
+     {
+      "k": "terminal",
+      "n": 2,
+      "x": 24,
+      "y": -5,
+      "rot": 90
+     },
+     {
+      "k": "pot",
+      "x": 0,
+      "y": -9
+     },
+     {
+      "k": "heatsink",
+      "x": 8,
+      "y": -6,
+      "w": 8,
+      "l": 8,
+      "h": 4,
+      "fins": 4
+     }
+    ]
+   },
+   "estimate": {
+    "holes": [
+     [
+      -27.5,
+      -10,
+      3.0
+     ],
+     [
+      27.5,
+      10,
+      3.0
+     ]
+    ]
+   },
+   "note": "61.7 x 26.2 x 15.0 mm per the shop page."
+  },
+  "buck-5v3a-cp06086-eck": {
+   "name": "DC-DC step-down regulator 6-20 V to 5 V 3 A (Eckstein CP06086)",
+   "category": "power",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "board",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "pcb_color": "green",
+    "parts": [
+     {
+      "k": "inductor",
+      "x": 2,
+      "y": 0,
+      "w": 8,
+      "l": 8,
+      "h": 4
+     },
+     {
+      "k": "chip",
+      "x": -8,
+      "y": 3,
+      "w": 3,
+      "l": 3,
+      "h": 1.0
+     },
+     {
+      "k": "pads",
+      "n": 2,
+      "x": -12,
+      "y": -5,
+      "pitch": 4,
+      "d": 2.0
+     },
+     {
+      "k": "pads",
+      "n": 2,
+      "x": 12,
+      "y": -5,
+      "pitch": 4,
+      "d": 2.0
+     }
+    ]
+   },
+   "estimate": {
+    "length_mm": 30.0,
+    "width_mm": 18.0,
+    "holes": []
+   }
+  },
+  "a4988-qita-eck": {
+   "name": "A4988 StepStick stepper motor driver (Eckstein, QITA)",
+   "category": "driver",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "board",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "pcb_color": "green",
+    "parts": [
+     {
+      "k": "pads",
+      "n": 8,
+      "x": -6.35,
+      "y": 0,
+      "pitch": 2.54,
+      "d": 1.6,
+      "along": "y"
+     },
+     {
+      "k": "pads",
+      "n": 8,
+      "x": 6.35,
+      "y": 0,
+      "pitch": 2.54,
+      "d": 1.6,
+      "along": "y"
+     },
+     {
+      "k": "chip",
+      "x": 0,
+      "y": -2,
+      "w": 5,
+      "l": 5,
+      "h": 0.9
+     },
+     {
+      "k": "heatsink",
+      "x": 0,
+      "y": -2,
+      "w": 9,
+      "l": 9,
+      "h": 5,
+      "fins": 5,
+      "color": "#c4c7cc"
+     },
+     {
+      "k": "trimmer",
+      "x": 2,
+      "y": 6,
+      "d": 3.0,
+      "h": 1.0
+     }
+    ]
+   },
+   "estimate": {
+    "length_mm": 20.0,
+    "width_mm": 15.0,
+    "holes": []
+   }
+  },
+  "l298n-mod-bb": {
+   "name": "L298N dual H-bridge motor driver module (Berrybase MOD-L298N)",
+   "category": "driver",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "board",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {
+    "length_mm": {
+     "value": 43.0,
+     "source": "https://www.berrybase.de/en/l298n-dual-h-bridge-motor-driver-module"
+    },
+    "width_mm": {
+     "value": 43.0,
+     "source": "https://www.berrybase.de/en/l298n-dual-h-bridge-motor-driver-module"
+    },
+    "height_mm": {
+     "value": 27.0,
+     "source": "https://www.berrybase.de/en/l298n-dual-h-bridge-motor-driver-module"
+    }
+   },
+   "style": {
+    "pcb_color": "red",
+    "parts": [
+     {
+      "k": "heatsink",
+      "x": 0,
+      "y": 10,
+      "w": 23,
+      "l": 16,
+      "h": 25,
+      "fins": 6,
+      "color": "#1d1d1f",
+      "rot": 0
+     },
+     {
+      "k": "terminal",
+      "n": 2,
+      "x": -17,
+      "y": 0,
+      "rot": 90
+     },
+     {
+      "k": "terminal",
+      "n": 2,
+      "x": 17,
+      "y": 0,
+      "rot": 90
+     },
+     {
+      "k": "terminal",
+      "n": 3,
+      "x": 0,
+      "y": -17
+     },
+     {
+      "k": "header",
+      "n": 6,
+      "x": 0,
+      "y": -10
+     },
+     {
+      "k": "elcap",
+      "d": 6.3,
+      "h": 11,
+      "x": -8,
+      "y": -5
+     },
+     {
+      "k": "elcap",
+      "d": 6.3,
+      "h": 11,
+      "x": 8,
+      "y": -5
+     }
+    ]
+   },
+   "estimate": {
+    "holes": [
+     [
+      -18.5,
+      -18.5,
+      3.0
+     ],
+     [
+      18.5,
+      -18.5,
+      3.0
+     ],
+     [
+      -18.5,
+      18.5,
+      3.0
+     ],
+     [
+      18.5,
+      18.5,
+      3.0
+     ]
+    ]
+   },
+   "note": "43 x 43 x 27 mm per the shop page."
+  },
+  "rplidar-c1-mybotshop": {
+   "name": "SLAMTEC RPLIDAR C1 360 degree laser scanner, 12 m (MYBOTSHOP)",
+   "category": "sensor",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "enclosure",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "style": "box",
+    "color": "#1d1d1f",
+    "fillet_mm": 5.0,
+    "parts": [
+     {
+      "k": "cyl",
+      "x": 0,
+      "y": 0,
+      "d": 44.0,
+      "h": 18.0,
+      "z0": 23.3,
+      "color": "#2b2b2e",
+      "name": "turret"
+     }
+    ]
+   },
+   "estimate": {
+    "length_mm": 55.6,
+    "width_mm": 55.6,
+    "height_mm": 23.3
+   }
+  },
+  "ball-caster": {
+   "name": "Ball caster 3/4 inch",
+   "category": "hardware",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "ball_caster",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "length_mm": 30.0,
+    "width_mm": 20.0
+   },
+   "estimate": {
+    "ball_mm": 19.05,
+    "height_mm": 20.0,
+    "hole_spacing_mm": 24.0
+   }
+  },
+  "ball-caster-po953-eck": {
+   "name": "Pololu ball caster with 1/2 inch metal ball (Eckstein PO953)",
+   "category": "hardware",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "ball_caster",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {
+    "ball_mm": {
+     "value": 12.7,
+     "source": "https://www.pololu.com/product/953"
+    }
+   },
+   "style": {
+    "length_mm": 22.0,
+    "width_mm": 13.0
+   },
+   "estimate": {
+    "height_mm": 14.3,
+    "hole_spacing_mm": 15.2
+   },
+   "note": "Pololu ball caster with 1/2 in ball (same part as pololu-953-ball-caster)."
+  },
+  "wheels-65mm-pair": {
+   "name": "65 mm rubber wheels (pair)",
+   "category": "hardware",
+   "catalogs": [
+    "generic.json"
+   ],
+   "type": "wheel",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "rim_color": "#f2c230",
+    "tyre_color": "#1b1b1b",
+    "spokes": 6,
+    "tyre_mm": 6.0
+   },
+   "estimate": {
+    "diameter_mm": 65.0,
+    "width_mm": 27.0,
+    "bore_mm": 5.4
+   },
+   "note": "One wheel of the pair (TT motor wheel)."
+  },
+  "pads-tpu-printed": {
+   "name": "Printed TPU finger pads",
+   "category": "pads",
+   "catalogs": [
+    "gripper.json"
+   ],
+   "type": "pad",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "color": "#2b2b2b",
+    "ridges": 5
+   },
+   "estimate": {
+    "length_mm": 25.0,
+    "width_mm": 15.0,
+    "height_mm": 2.0
+   }
+  },
+  "pads-silicone": {
+   "name": "Silicone grip pads 30 x 20 mm",
+   "category": "pads",
+   "catalogs": [
+    "gripper.json"
+   ],
+   "type": "pad",
+   "source": null,
+   "checked": "2026-10-25",
+   "dims": {},
+   "style": {
+    "color": "#d7262b"
+   },
+   "estimate": {
+    "length_mm": 30.0,
+    "width_mm": 20.0,
+    "height_mm": 2.0
+   }
+  }
+ }
+}
