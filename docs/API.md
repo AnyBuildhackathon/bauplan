@@ -24,7 +24,7 @@ It has no OpenAPI page; FastAPI's generated docs are turned off on purpose for t
 
 | Method | Path | Purpose | Limit | Spec |
 | --- | --- | --- | --- | --- |
-| `GET` | `/api/health` | Status: `mode` (`claude` or `mock`), `busy`, `run` (the [run](events.md#run) status), `access` (`open` or `required`). Always public. | | [Learning mode](events.md#learning-mode) |
+| `GET` | `/api/health` | Status: `mode` (`claude` or `mock`), `provider` (`api`, `subscription` or `mock`), `busy`, `run` (the [run](events.md#run) status), `access` (`open` or `required`). Always public. | | [Learning mode](events.md#learning-mode) |
 | `GET` | `/api/status` | Independent partner availability and NVIDIA SSH/GPU connection, including the last Isaac run. Requires the normal access session. | | [Partner status](events.md#partner-status-and-director-mode) |
 | `GET` | `/api/bench` | Saved live and mock benchmark results: `{ok, runs}`; missing runs are omitted. | | [Bench](events.md#http) |
 | `POST` | `/api/prompt` | Send a typed or spoken (`voice: true`) message; starts or continues a build, answers an open question, or operates the dashboard (`status: ui`). | build | [HTTP](events.md#http) |
@@ -90,7 +90,7 @@ It has no OpenAPI page; FastAPI's generated docs are turned off on purpose for t
 | Method | Path | Purpose | Limit | Spec |
 | --- | --- | --- | --- | --- |
 | `POST` | `/api/explain` | Explain one decision (`swap`, `part`, `requirement`, `sim`, `param`) with computed facts and a formula. | explain | [Learning mode](events.md#learning-mode) |
-| `GET` | `/api/settings` | Orchestrator and sub-agent models, effort levels and delegation. | | [Settings](events.md#settings) |
+| `GET` | `/api/settings` | Where Claude runs (API key or local subscription), orchestrator and sub-agent models, effort levels and delegation. | | [Settings](events.md#settings) |
 | `POST` | `/api/settings` | Change any of those for the next request. | | [Settings](events.md#settings) |
 | `GET` | `/api/training/browser` | The latest browser training job. | | [Learning mode](events.md#learning-mode) |
 | `POST` | `/api/training/{job_id}/claim` | One dashboard tab claims a queued browser training job. | | [Learning mode](events.md#learning-mode) |

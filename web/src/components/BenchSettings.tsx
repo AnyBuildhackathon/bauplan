@@ -2,12 +2,14 @@
 // these toggles add the rest (agent steps, tool cards, all metrics,
 // learning mode), show which speech recognition listens, switch the mic from
 // hands-free to push-to-talk. In live mode it also holds the bench's model settings:
-// which Claude orchestrates, which runs the sub-agents, how hard each one thinks
-// (effort), and whether the orchestrator delegates. GET/POST /api/settings.
+// where Claude runs (the API key or the local Claude Code subscription), which Claude
+// orchestrates, which runs the sub-agents, how hard each one thinks (effort), and
+// whether the orchestrator delegates. GET/POST /api/settings.
 import { useEffect, useRef, useState } from "react";
 import { SlidersHorizontal } from "lucide-react";
 import { useSource } from "../events/source";
 import { apiFetch } from "../lib/api";
+import { usePartners } from "../lib/partners";
 import { useUi, type Display } from "../lib/ui";
 import { useBenchResults } from "../views/BenchResults";
 
@@ -47,6 +49,10 @@ interface Settings {
   delegation: boolean;
   models: { id: string; label: string }[];
   efforts: string[];
+  /** Where Claude runs as asked: auto, api or subscription; `provider` says what runs and why. */
+  llm_provider: string;
+  provider: { requested: string; active: "api" | "subscription" | "mock"; detail: string };
+  providers: { id: string; label: string }[];
 }
 
 function Select({ label, value, options, onChange }: { label: string; value: string; options: { value: string; label: string }[]; onChange: (v: string) => void }) {
@@ -112,14 +118,24 @@ export function BenchSettings() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(patch),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setSettings((await res.json()) as Settings);
+      if (!res.ok) {
+        // A refused choice says why, e.g. the subscription on a public server.
+        const body = (await res.json().catch(() => null)) as { detail?: string } | null;
+        throw new Error(body?.detail ?? `HTTP ${res.status}`);
+      }
+      const next = (await res.json()) as Settings;
+      setSettings(next);
+      // The top bar names the provider at once, not at the next status poll.
+      usePartners.setState((s) => ({
+        partners: s.partners.map((p) => (p.id === "claude" ? { ...p, provider: next.provider.active, detail: next.provider.detail } : p)),
+      }));
     } catch (err) {
       setError(`Not saved (${err instanceof Error ? err.message : "error"}).`);
     }
   };
 
   const models = settings?.models.map((m) => ({ value: m.id, label: m.label })) ?? [];
+  const providers = settings?.providers?.map((p) => ({ value: p.id, label: p.label })) ?? [];
   const efforts = settings?.efforts.map((e) => ({ value: e, label: e })) ?? [];
   return (
     <div ref={ref} className="relative">
@@ -171,6 +187,13 @@ export function BenchSettings() {
                 <p className="text-[14px] text-muted">{error ?? "Loading models …"}</p>
               ) : (
                 <>
+                  {settings.provider && (
+                    <>
+                      <h3 className="eyebrow mb-1">Claude</h3>
+                      <Select label="Runs on" value={settings.llm_provider} options={providers} onChange={(v) => void change({ llm_provider: v })} />
+                      <p className="mb-3 text-[12px] leading-snug text-muted">{settings.provider.detail}</p>
+                    </>
+                  )}
                   <h3 className="eyebrow mb-1">Orchestrator</h3>
                   <Select label="Model" value={settings.orchestrator_model} options={models} onChange={(v) => void change({ orchestrator_model: v })} />
                   <Select label="Effort" value={settings.orchestrator_effort} options={efforts} onChange={(v) => void change({ orchestrator_effort: v })} />

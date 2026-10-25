@@ -7,6 +7,10 @@ tools its job needs, works in its own short loop and reports back; the orchestra
 the report and integrates it. Every agent streams as an `agent` event: who, which model, what
 job, status, rounds, tokens and cost, plus who delegated it, when it ran, the tool it runs now
 and its tool calls so far, which the Agents tab draws as a live graph.
+
+On the local Claude Code subscription (`provider.py`) the same calls run through
+`subscription.py`: an agent's loop runs in Claude Code with its tools on an in-process MCP
+server, and `billing` says "subscription" instead of a cost.
 """
 
 from __future__ import annotations
@@ -18,7 +22,7 @@ import time
 import uuid
 from contextlib import suppress
 
-from pai_agent import settings
+from pai_agent import provider, settings
 from pai_agent.context import Ctx
 from pai_agent.run_control import RunStopped
 
@@ -78,6 +82,8 @@ class AgentRun:
         self.ended_at: float | None = None
         self.tool: str | None = None
         self.calls: list[dict] = []
+        # "subscription" when Claude Code runs it on the local login: tokens count, cost does not.
+        self.billing = provider.billing()
 
     async def emit(self, status: str, summary: str = "") -> None:
         now = round(time.time(), 3)
@@ -102,6 +108,7 @@ class AgentRun:
                 "output_tokens": self.usage.get("output_tokens", 0),
                 "cache_read_tokens": self.usage.get("cache_read_tokens", 0),
                 "cost_usd": self.cost(),
+                "billing": self.billing,
                 "summary": summary,
                 "sent_at": now,
                 "parent": self.parent,
@@ -131,7 +138,12 @@ class AgentRun:
         settings.add_usage(self.usage, settings.usage_of(response))
 
     def cost(self) -> float:
+        if self.billing == "subscription":
+            return 0.0
         return settings.cost_usd(self.model, self.usage)
+
+    def cost_label(self) -> str:
+        return "subscription" if self.billing == "subscription" else f"${self.cost():.3f}"
 
 
 _CLIENT = None
@@ -152,8 +164,12 @@ def _client():
 
 
 def create_message(model: str, effort: str, **kwargs):
-    """One Messages call with adaptive thinking and the chosen effort."""
+    """One Messages call with adaptive thinking and the chosen effort; one Claude Code round on the subscription."""
 
+    if provider.active() == "subscription":
+        from pai_agent import subscription
+
+        return subscription.create_message(model, effort, **kwargs)
     return _client().messages.create(model=model, thinking={"type": "adaptive"}, output_config={"effort": effort}, **kwargs)
 
 
@@ -222,7 +238,7 @@ async def run_subagent(ctx: Ctx, role: str, task: str) -> dict:
     """Runs one bounded job with the role's tools only and returns its report."""
 
     from pai_agent.references import build_context
-    from pai_agent.tools.registry import SCHEMAS, call_tool
+    from pai_agent.tools.registry import SCHEMAS
 
     spec = ROLES[role]
     config = settings.current()
@@ -236,46 +252,16 @@ async def run_subagent(ctx: Ctx, role: str, task: str) -> dict:
     )
     calls = run.calls
     await run.emit("running")
-    report = ""
     try:
-        for _round in range(MAX_ROUNDS):
-            await ctx.checkpoint()
-            response = await asyncio.to_thread(
-                create_message,
-                run.model,
-                run.effort,
-                max_tokens=8000,
-                system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
-                tools=tools,
-                messages=messages,
-            )
-            run.count(response)
-            blocks = list(response.content)
-            messages.append({"role": "assistant", "content": [_dump(block) for block in blocks]})
-            uses = [block for block in blocks if getattr(block, "type", None) == "tool_use"]
-            text = " ".join(str(block.text).strip() for block in blocks if getattr(block, "type", None) == "text" and str(block.text).strip())
-            if text:
-                report = text
-            await run.emit("running", (calls[-1]["detail"] if calls else "thinking")[:120])
-            if not uses:
-                break
-            results = []
-            for block in uses:
-                raw = block.input if isinstance(block.input, dict) else {}
-                await run.use(block.name)
-                result = await call_tool(ctx, block.name, raw)
-                run.called(block.name, result)
-                results.append(
-                    {
-                        "type": "tool_result",
-                        "tool_use_id": block.id,
-                        "content": json.dumps(result, ensure_ascii=False, default=str)[:12000],
-                        "is_error": result.get("ok") is False,
-                    }
-                )
-            messages.append({"role": "user", "content": results})
+        if run.billing == "subscription":
+            from pai_agent.subscription import run_agent
+
+            outcome = await run_agent(ctx, run, system=system, prompt=messages[0]["content"], schemas=tools, max_turns=MAX_ROUNDS)
+            if not outcome["ok"]:
+                raise RuntimeError(outcome["error"])
+            report = outcome["text"]
         else:
-            report = (report + " " if report else "") + "Stopped after " + str(MAX_ROUNDS) + " rounds."
+            report = await _api_rounds(ctx, run, system, tools, messages)
     except RunStopped:
         await run.emit("done", "stopped by the user")
         raise
@@ -286,14 +272,63 @@ async def run_subagent(ctx: Ctx, role: str, task: str) -> dict:
     await run.emit("done", report[:240])
     return {
         "ok": True,
-        "detail": run.label + ": " + str(len(calls)) + " tool call(s), " + f"${run.cost():.3f}",
+        "detail": run.label + ": " + str(len(calls)) + " tool call(s), " + run.cost_label(),
         "agent": role,
         "model": run.model,
         "report": report,
         "tool_calls": calls,
         "tokens": run.usage,
         "cost_usd": run.cost(),
+        "billing": run.billing,
     }
+
+
+async def _api_rounds(ctx: Ctx, run: AgentRun, system: str, tools: list[dict], messages: list[dict]) -> str:
+    """The sub-agent's own loop on the Messages API; returns its report."""
+
+    from pai_agent.tools.registry import call_tool
+
+    calls = run.calls
+    report = ""
+    for _round in range(MAX_ROUNDS):
+        await ctx.checkpoint()
+        response = await asyncio.to_thread(
+            create_message,
+            run.model,
+            run.effort,
+            max_tokens=8000,
+            system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
+            tools=tools,
+            messages=messages,
+        )
+        run.count(response)
+        blocks = list(response.content)
+        messages.append({"role": "assistant", "content": [_dump(block) for block in blocks]})
+        uses = [block for block in blocks if getattr(block, "type", None) == "tool_use"]
+        text = " ".join(str(block.text).strip() for block in blocks if getattr(block, "type", None) == "text" and str(block.text).strip())
+        if text:
+            report = text
+        await run.emit("running", (calls[-1]["detail"] if calls else "thinking")[:120])
+        if not uses:
+            break
+        results = []
+        for block in uses:
+            raw = block.input if isinstance(block.input, dict) else {}
+            await run.use(block.name)
+            result = await call_tool(ctx, block.name, raw)
+            run.called(block.name, result)
+            results.append(
+                {
+                    "type": "tool_result",
+                    "tool_use_id": block.id,
+                    "content": json.dumps(result, ensure_ascii=False, default=str)[:12000],
+                    "is_error": result.get("ok") is False,
+                }
+            )
+        messages.append({"role": "user", "content": results})
+    else:
+        report = (report + " " if report else "") + "Stopped after " + str(MAX_ROUNDS) + " rounds."
+    return report
 
 
 async def delegate(ctx: Ctx, args: dict) -> dict:

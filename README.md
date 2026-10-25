@@ -172,8 +172,8 @@ In mock mode the first request builds drone version 1 to your budget; the change
 
 ### Mock mode
 
-Without `ANTHROPIC_API_KEY`, the backend runs scripted stories through the same tools that Claude calls: the drone from a typed request and a typed change, the phone stand (a tip-over failure fixed by a wider base), the robot gripper (an SG90 servo that drops the can, replaced by an MG996R) and the reference builds.
-The top bar says whether Claude is live or the mock runs.
+Without `ANTHROPIC_API_KEY` and without a logged-in local Claude Code (see `PAI_LLM_PROVIDER`), the backend runs scripted stories through the same tools that Claude calls: the drone from a typed request and a typed change, the phone stand (a tip-over failure fixed by a wider base), the robot gripper (an SG90 servo that drops the can, replaced by an MG996R) and the reference builds.
+The top bar says whether Claude runs on the API key, on the local subscription, or the mock runs.
 `PAI_FORCE_MOCK=1` forces the mock even with a key.
 
 ### Real FreeCAD in the open window (optional)
@@ -200,7 +200,8 @@ Every variable is optional.
 
 | Variable | Purpose |
 | --- | --- |
-| `ANTHROPIC_API_KEY` | Enables Claude; empty runs the mock. Also enables live shop prices. |
+| `ANTHROPIC_API_KEY` | Enables Claude; empty runs the local Claude Code subscription when logged in, else the mock. Also enables live shop prices. |
+| `PAI_LLM_PROVIDER` | Where Claude runs: `auto` (default: the key, else a logged-in local Claude Code, else the mock), `api`, or `subscription` (Claude Code on this machine, billed to its plan; refused when `ANYBUILD_ACCESS_CODE` is set). Also in Settings. |
 | `ANTHROPIC_MODEL` | Orchestrator model when `PAI_ORCHESTRATOR_MODEL` is unset (default `claude-opus-5-5`). |
 | `PAI_ORCHESTRATOR_MODEL`, `PAI_ORCHESTRATOR_EFFORT` | Orchestrator model and effort (`low` to `max`, default `high`). |
 | `PAI_SUBAGENT_MODEL`, `PAI_SUBAGENT_EFFORT` | Sub-agent model (default `claude-sonnet-5-5`) and effort (default `medium`). |

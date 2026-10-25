@@ -1,7 +1,8 @@
 """Which Claude runs where: the orchestrator, the sub-agents it delegates to, and what they cost.
 
 Defaults come from the environment and can be changed at runtime through POST /api/settings
-(the settings control in the dashboard). Never holds or logs a key.
+(the settings control in the dashboard), including `llm_provider`: the API key, the local Claude
+Code subscription or auto (`provider.py`). Never holds or logs a key.
 """
 
 from __future__ import annotations
@@ -59,12 +60,30 @@ def update(body: dict) -> dict:
             changes[key] = value
     if "delegation" in body:
         changes["delegation"] = bool(body["delegation"])
+    if "llm_provider" in body:
+        from pai_agent import provider
+
+        provider.choose(body["llm_provider"])
+        provider.subscription_status(refresh=True)
     _overrides.update(changes)
     return public()
 
 
 def public() -> dict:
-    return {**current(), "models": [{"id": m, "label": MODEL_LABELS[m]} for m in MODELS], "efforts": list(EFFORTS)}
+    from pai_agent import provider
+
+    return {
+        **current(),
+        "models": [{"id": m, "label": MODEL_LABELS[m]} for m in MODELS],
+        "efforts": list(EFFORTS),
+        "llm_provider": provider.requested(),
+        "provider": provider.describe(),
+        "providers": [
+            {"id": "auto", "label": "Auto"},
+            {"id": "api", "label": "API key"},
+            {"id": "subscription", "label": "My Claude subscription (local)"},
+        ],
+    }
 
 
 def label(model: str) -> str:

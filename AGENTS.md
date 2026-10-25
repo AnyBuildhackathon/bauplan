@@ -107,7 +107,7 @@ cd desktop && npm install && npm run dev
 
 ### Mock Mode Triggers
 
-Without an Anthropic key, the backend runs in mock mode automatically.
+Without an Anthropic key and without a logged-in local Claude Code (`PAI_LLM_PROVIDER=auto`, the default), the backend runs in mock mode automatically; `PAI_FORCE_MOCK=1` forces it.
 Trigger the first drone build with a typed request:
 
 ```bash
@@ -191,7 +191,7 @@ Configure environment variables in `agent/.env` or the operating system shell.
 Existing shell variables take precedence over `agent/.env`.
 Never commit `.env` files or secret keys to the repository.
 
-- `ANTHROPIC_API_KEY`: Activates live Claude tool execution; when unset, the mock story runs.
+- `ANTHROPIC_API_KEY`: Activates live Claude tool execution; when unset, the local Claude Code subscription runs if logged in (`PAI_LLM_PROVIDER`: `auto`, `api` or `subscription`), else the mock story.
 - `ANTHROPIC_MODEL`: Specifies the orchestrator's Claude model identifier when `PAI_ORCHESTRATOR_MODEL` is unset; defaults to `claude-opus-5-5`.
 - `PAI_FORCE_MOCK`: Set to `1` to force mock story execution even when an API key is present.
 - `DEMO_PACE_S`: Introduces pause delays between steps in seconds; defaults to `0`.

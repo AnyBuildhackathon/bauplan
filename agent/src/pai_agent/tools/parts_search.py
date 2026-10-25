@@ -4,6 +4,10 @@ Claude with Anthropic's server-side web search finds each part at a real shop (E
 and returns price, currency, shop, URL and availability. Results sit in a short in-memory
 cache. Without ANTHROPIC_API_KEY, or when a search fails, the line keeps its catalog price
 and is labelled "catalog".
+
+On the local Claude Code subscription (`provider.py`) Claude Code's own WebSearch and WebFetch
+do the search instead, one search for the whole bill of materials, and every answer passes the
+same validation (`_clean`); what it does not find in time stays "catalog".
 """
 
 from __future__ import annotations
@@ -16,6 +20,7 @@ import re
 import time
 from datetime import datetime, timezone
 
+from pai_agent import provider
 from pai_agent.env import load_env, model_name
 
 log = logging.getLogger(__name__)
@@ -40,9 +45,13 @@ _ANSWER = (
 )
 
 
+# One search on the subscription covers every line, inside bom_build's time budget.
+_LOCAL_TIMEOUT_S = 100.0
+
+
 def live_prices_enabled() -> bool:
     load_env()
-    return bool(os.environ.get("ANTHROPIC_API_KEY", "").strip())
+    return provider.active() == "subscription" or bool(os.environ.get("ANTHROPIC_API_KEY", "").strip())
 
 
 def _version(model: str) -> tuple[str, float]:
@@ -110,6 +119,16 @@ def _ask_claude(request: dict, deadline: float) -> str:
             break
         messages = messages + [{"role": "assistant", "content": [block.model_dump(exclude_none=True) for block in response.content]}]
     return text
+
+
+def _ask(request: dict, deadline: float) -> str:
+    """The search's final text, from the API's web search or from Claude Code's on the subscription."""
+
+    if provider.active() == "subscription":
+        from pai_agent.subscription import ask_web
+
+        return ask_web(request["model"], request["system"], request["messages"][0]["content"], deadline)
+    return _ask_claude(request, deadline)
 
 
 def _parse(text: str) -> dict | None:
@@ -188,7 +207,7 @@ async def find_price(item: dict) -> dict | None:
     quote = None
     try:
         deadline = time.monotonic() + _TIMEOUT_S
-        text = await asyncio.wait_for(asyncio.to_thread(_ask_claude, _request(item, model_name()), deadline), _TIMEOUT_S)
+        text = await asyncio.wait_for(asyncio.to_thread(_ask, _request(item, model_name()), deadline), _TIMEOUT_S)
         quote = _clean(_parse(text), item)
         if quote is None:
             log.info("no usable live price for %s", item["name"])
@@ -214,12 +233,70 @@ def catalog_line(item: dict) -> dict:
     return {"price_source": "catalog", **item, "currency": "EUR", "availability": "unknown"}
 
 
+def _searched(item: dict) -> bool:
+    # Printed parts (no shop page, or an STL path) are not searched.
+    return item.get("shop") != "printed" and str(item.get("url") or "").startswith(("http://", "https://"))
+
+
+def _fresh(item: dict) -> bool:
+    cached = _CACHE.get(item["name"].strip().lower())
+    return cached is not None and time.monotonic() - cached[0] < (_CACHE_TTL_S if cached[1] else _FAILED_TTL_S)
+
+
+def _batch_request(items: list[dict], model: str) -> dict:
+    lines = [
+        str(index) + ". " + item["name"] + ", quantity " + str(item["qty"])
+        + (", catalog shop hint " + str(item["shop"]) if item.get("shop") else "")
+        + ", catalog sample price per piece " + f"{float(item['unit_price_eur']):.2f}" + " EUR"
+        for index, item in enumerate(items, 1)
+    ]
+    prompt = (
+        "Parts:\n" + "\n".join(lines) + "\n\n"
+        + "Find where to buy each part now. For each one return part (its number above), price (per piece, in the shop's currency), "
+        + "currency (ISO code), price_eur (per piece converted to EUR), pack_qty, shop, url (the product page), and availability "
+        + "(in_stock, out_of_stock or unknown). For a part you cannot find exactly, return {\"part\": n, \"found\": false}.\n"
+        + 'Answer with {"parts": [...]}, one entry per part, each shaped like: ' + _ANSWER
+    )
+    return {"model": model, "system": _SYSTEM, "messages": [{"role": "user", "content": prompt}]}
+
+
+async def _search_all(items: list[dict]) -> None:
+    """On the subscription: one Claude Code web search for every line without a fresh quote; fills the cache."""
+
+    if not items:
+        return
+    from pai_agent.subscription import ask_web
+
+    request = _batch_request(items, model_name())
+    answers: dict[int, dict] = {}
+    try:
+        deadline = time.monotonic() + _LOCAL_TIMEOUT_S
+        turns = min(24, 4 + 2 * len(items))
+        text = await asyncio.wait_for(
+            asyncio.to_thread(ask_web, request["model"], request["system"], request["messages"][0]["content"], deadline, turns),
+            _LOCAL_TIMEOUT_S + 5,
+        )
+        parsed = _parse(text) or {}
+        for answer in parsed.get("parts") or []:
+            if isinstance(answer, dict) and str(answer.get("part", "")).isdigit():
+                answers[int(answer["part"])] = answer
+    except Exception as exc:
+        log.warning("live price search on the subscription failed: %s", exc)
+    for index, item in enumerate(items, 1):
+        quote = _clean(answers.get(index), item)
+        if quote is None:
+            log.info("no usable live price for %s", item["name"])
+        _CACHE[item["name"].strip().lower()] = (time.monotonic(), quote)
+
+
 async def live_lines(items: list[dict]) -> list[dict]:
     """Every BOM line with a live quote where one was found, else its catalog price."""
 
+    if provider.active() == "subscription":
+        await _search_all([item for item in items if _searched(item) and not _fresh(item)])
+
     async def one(item: dict) -> dict:
-        # Printed parts (no shop page, or an STL path) are not searched.
-        if item.get("shop") == "printed" or not str(item.get("url") or "").startswith(("http://", "https://")):
+        if not _searched(item):
             return catalog_line(item)
         quote = await find_price(item)
         if quote is None:

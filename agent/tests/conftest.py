@@ -10,6 +10,18 @@ def pytest_configure(config) -> None:
 
 
 @pytest.fixture(autouse=True)
+def _provider(monkeypatch):
+    """Tests run on the API provider: without a key that is the mock, never this machine's Claude subscription."""
+
+    from pai_agent import provider
+
+    monkeypatch.setenv("PAI_LLM_PROVIDER", "api")
+    provider.reset_choice()
+    yield
+    provider.reset_choice()
+
+
+@pytest.fixture(autouse=True)
 def _sessions(request, tmp_path, monkeypatch):
     if request.node.get_closest_marker("history") is None:
         monkeypatch.setattr("pai_agent.session.Session.save_chat", lambda self: None)

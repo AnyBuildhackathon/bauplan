@@ -13,4 +13,8 @@ def voice_model() -> str:
 
 
 def enabled() -> bool:
-    return bool(os.environ.get("ANTHROPIC_API_KEY", "").strip())
+    """Claude writes the explanations with the API key or on the local subscription (`provider.py`)."""
+
+    from pai_agent.provider import active
+
+    return active() != "mock"

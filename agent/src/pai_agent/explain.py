@@ -20,6 +20,7 @@ import math
 import re
 
 from pai_agent import speech
+from pai_agent.provider import active
 from pai_agent.state import BuildState
 
 log = logging.getLogger(__name__)
@@ -555,6 +556,17 @@ def cache_key(kind: str, target_id: str, facts: dict) -> str:
     return kind + ":" + target_id + ":" + hashlib.sha256(raw.encode()).hexdigest()[:12]
 
 
+async def _local(prompt: str):
+    """The same call on the local Claude Code subscription; a process per call, so it gets more time."""
+
+    from pai_agent import subscription
+
+    return await asyncio.to_thread(
+        subscription.create_message, speech.voice_model(), "low", system=_SYSTEM,
+        messages=[{"role": "user", "content": prompt}], thinking=False, timeout=_TIMEOUT_S + 30,
+    )
+
+
 def _anthropic():
     global _client
     if _client is None:
@@ -567,14 +579,17 @@ def _anthropic():
 async def _haiku(title: str, facts_json: str, formula: str, draft: str) -> str | None:
     prompt = f"Decision: {title}\nFacts: {facts_json}\nFormula: {formula}\nDraft: {draft}"
     try:
-        async with asyncio.timeout(_TIMEOUT_S):
-            message = await _anthropic().messages.create(
-                model=speech.voice_model(),
-                max_tokens=220,
-                thinking={"type": "disabled"},
-                system=_SYSTEM,
-                messages=[{"role": "user", "content": prompt}],
-            )
+        if active() == "subscription":
+            message = await _local(prompt)
+        else:
+            async with asyncio.timeout(_TIMEOUT_S):
+                message = await _anthropic().messages.create(
+                    model=speech.voice_model(),
+                    max_tokens=220,
+                    thinking={"type": "disabled"},
+                    system=_SYSTEM,
+                    messages=[{"role": "user", "content": prompt}],
+                )
     except Exception as exc:
         log.info("explanation failed: %s", type(exc).__name__)
         return None

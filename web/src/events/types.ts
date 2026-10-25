@@ -520,6 +520,8 @@ export interface AgentRunEvent {
   output_tokens: number;
   cache_read_tokens: number;
   cost_usd: number;
+  /** "subscription" when it ran on the local Claude Code login: the plan pays, cost_usd is 0. Older backends omit it. */
+  billing?: "api" | "subscription";
   /** What it is doing now, or its report when done. */
   summary: string;
   /** Server time in epoch seconds when this report was sent. Older backends omit it and the fields below. */

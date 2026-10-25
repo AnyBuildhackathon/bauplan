@@ -66,7 +66,8 @@ flowchart LR
 | --- | --- | --- |
 | HTTP API | `agent/src/pai_agent/app.py` | FastAPI routes, CORS, the access gate (`access.py`), the SSE stream and static file serving. |
 | Session | `agent/src/pai_agent/session.py` | The single bench: starts runs, holds the `BuildState` (`state.py`), versions (`versions.py`), open questions and order tasks, and refuses a second build while one runs. |
-| Orchestrator | `agent/src/pai_agent/orchestrator.py` | The Claude tool-use loop with Mechanic's system prompt; without `ANTHROPIC_API_KEY` it runs the scripted mock stories through the same tools. |
+| Orchestrator | `agent/src/pai_agent/orchestrator.py` | The Claude tool-use loop with Mechanic's system prompt; without Claude (`provider.py`) it runs the scripted mock stories through the same tools. |
+| Subscription | `agent/src/pai_agent/provider.py`, `subscription.py` | Picks the API key, the local Claude Code subscription or the mock; on the subscription every Claude call runs in Claude Code through the Claude Agent SDK, with the app's tools on an in-process MCP server and no API key in its environment. |
 | Sub-agents | `agent/src/pai_agent/agents.py` | Bounded jobs on a smaller model: CAD scripts, parts, checks, pricing. |
 | Tool registry | `agent/src/pai_agent/tools/registry.py` | One schema list and one dispatch for Claude and the mock, with per-tool timeouts (`timeouts.py`). |
 | Event bus | `agent/src/pai_agent/bus.py` | In-memory fan-out; a late subscriber gets the backlog, then a `replayed` marker, then live events. |

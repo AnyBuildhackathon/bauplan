@@ -43,6 +43,8 @@ export interface AgentTeamRun {
   from: number;
   to: number | null;
   costUsd: number;
+  /** "subscription" when the run went through the local Claude Code login. */
+  billing: "api" | "subscription";
   tokens: number;
 }
 
@@ -72,7 +74,7 @@ export function useAgentRuns(): AgentTeamRun[] {
     }
     const all = [...nodes.values()];
     const leads = all.filter((n) => n.ev.role === "orchestrator");
-    const runs: AgentTeamRun[] = leads.map((lead) => ({ lead, subs: [], from: 0, to: null, costUsd: 0, tokens: 0 }));
+    const runs: AgentTeamRun[] = leads.map((lead) => ({ lead, subs: [], from: 0, to: null, costUsd: 0, billing: "api", tokens: 0 }));
     const solo: AgentNode[] = [];
     for (const node of all) {
       if (node.ev.role === "orchestrator") continue;
@@ -86,12 +88,13 @@ export function useAgentRuns(): AgentTeamRun[] {
       if (run) run.subs.push(node);
       else solo.push(node);
     }
-    if (solo.length) runs.push({ lead: null, subs: solo, from: 0, to: null, costUsd: 0, tokens: 0 });
+    if (solo.length) runs.push({ lead: null, subs: solo, from: 0, to: null, costUsd: 0, billing: "api", tokens: 0 });
     for (const run of runs) {
       const members = run.lead ? [run.lead, ...run.subs] : run.subs;
       run.from = Math.min(...members.map((n) => n.seen));
       run.to = members.some((n) => n.end === null) ? null : Math.max(...members.map((n) => n.end ?? 0));
       run.costUsd = members.reduce((sum, n) => sum + n.ev.cost_usd, 0);
+      run.billing = members.some((n) => n.ev.billing === "subscription") ? "subscription" : "api";
       run.tokens = members.reduce((sum, n) => sum + n.ev.input_tokens + n.ev.output_tokens + n.ev.cache_read_tokens, 0);
     }
     return runs.sort((a, b) => a.from - b.from);
@@ -151,7 +154,7 @@ export function shortName(ev: AgentRunEvent): string {
 }
 
 export const fmtTokens = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : String(n));
-export const fmtCost = (usd: number) => `$${usd.toFixed(usd < 0.1 ? 3 : 2)}`;
+export const fmtCost = (usd: number, billing?: string) => (billing === "subscription" ? "subscription" : `$${usd.toFixed(usd < 0.1 ? 3 : 2)}`);
 export function fmtSeconds(ms: number): string {
   const s = Math.max(0, ms) / 1000;
   if (s < 60) return `${s.toFixed(s < 10 ? 1 : 0)} s`;

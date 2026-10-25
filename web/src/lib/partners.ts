@@ -8,6 +8,8 @@ export interface PartnerStatus {
   label: string;
   state: "live" | "offline" | "mock";
   detail: string;
+  /** The Claude row only: which Claude runs, the API key, the local subscription or the mock. */
+  provider?: "api" | "subscription" | "mock";
 }
 
 export interface IntegrationStatus {
