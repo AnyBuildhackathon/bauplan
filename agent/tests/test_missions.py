@@ -247,6 +247,9 @@ def test_mock_fly_hunter_flies_its_missions(monkeypatch, request):
     assert [m["mission"] for m in missions] == ["speed_run", "turn", "chase"]
     assert [m["result"] for m in missions] == ["pass", "pass", "fail"]
     assert "camera" in missions[2]["why"]
+    # The camera loses the chase on the reference controller: the hardware check fails, so nothing is trained.
+    assert all(m["controller"] == "reference" for m in missions)
     rows = {r["id"]: r for r in state.requirements}
     assert {"top_speed", "turn_rate", "chase_time"} <= set(rows) and rows["top_speed"]["source"] == "proposed"
+    assert not any(e.get("type") == "training" for e in ctx.bus.events) and state.validated is None
     assert state.versions and state.finished

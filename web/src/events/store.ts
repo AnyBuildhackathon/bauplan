@@ -158,7 +158,7 @@ export type ChatItem =
   | { kind: "bom"; id: string; seq: number; at: number; count: number; total: number; numbers: ResultNumber[]; performance?: ResultNumber[] }
   /** The one requirements card; it reads the live requirements from the store. */
   | { kind: "requirements"; id: string; seq: number; at: number }
-  | { kind: "training"; id: string; seq: number; at: number; status: TrainingEvent["status"]; detail: string }
+  | { kind: "training"; id: string; seq: number; at: number; status: TrainingEvent["status"]; detail: string; source?: "backend" }
   | { kind: "question"; id: string; seq: number; at: number; questionId: string }
   | { kind: "version"; id: string; seq: number; at: number; n: number }
   | { kind: "agent"; id: string; seq: number; at: number; agentId: string }
@@ -635,6 +635,15 @@ export const useSession = create<SessionState>((set, get) => ({
       case "training": {
         // Browser training is narrated by its tool card and Mechanic, not the Isaac Lab card.
         if ((ev as { source?: string }).source === "browser") return set({ log, browserTraining: { ...ev, at } });
+        // Training on the missions (train_controller, MuJoCo on the backend): its own chat card, not Isaac Lab's panel.
+        if ((ev as { source?: string }).source === "backend") {
+          const last = [...s.chat].reverse().find((c): c is Extract<ChatItem, { kind: "training" }> => c.kind === "training" && c.source === "backend");
+          const detail = `${formatSteps(ev.step)} runs · score ${ev.reward.toLocaleString("en-GB", { maximumFractionDigits: 1 })}`;
+          const card = { kind: "training" as const, id: nextId("training"), seq, at, status: ev.status, detail, source: "backend" as const };
+          // One card per training run: its generations update it in place.
+          const chat = last && last.status === "running" ? s.chat.map((c) => (c === last ? { ...card, id: last.id } : c)) : [...s.chat, card];
+          return set({ log, chat });
+        }
         const prev = s.training;
         let chat = s.chat;
         if (!prev || prev.status !== ev.status) {

@@ -6,6 +6,10 @@ The limit is the user's when they typed a number (their words quoted), otherwise
 one and the row says so. Every mission emits a `mission` event with its replay for the
 Simulation tab, and the result names what limits the build, so a failed mission points at the
 part to swap or the dimension to change; a missed chase names the camera's detection range and delay.
+
+simulate_mission flies the reference controller, the same for every build: the hardware check.
+train_controller (train_loop.py) flies the same missions again with the trained gains through
+`fly_missions`, each event carrying the reference result beside the trained one.
 """
 
 from __future__ import annotations
@@ -139,25 +143,45 @@ def _parse(args: dict) -> tuple[list[dict], str | None]:
     return entries, None
 
 
-async def simulate_mission(ctx: Ctx, args: dict) -> dict:
-    if ctx.state.product != "drone":
-        return _fail("simulate_mission flies drones. For this product use its own checks.")
-    entries, problem = _parse(args)
-    if problem:
-        return _fail(problem)
-    try:
-        metrics = compute(ctx.state)
-        geo = geometry(ctx.state)
-        frame = airframe(geo, ctx.state.selected)
-    except (PhysicsError, AirframeError) as exc:
-        return _fail(str(exc))
+def build_key(frame: dict) -> str:
+    """What a mission result belongs to: the chosen parts and the arm, so a swapped part or a new arm is flown again.
+
+    The mass is left out: the frame's CAD mass replaces its catalog estimate after the missions,
+    a change of a tenth of a gram. Whoever keeps a result across a mass change compares it (train_loop).
+    """
+
+    parts = ",".join(f"{k}={v}" for k, v in sorted(frame["parts"].items()))
+    return f"{parts}|arm {frame['geo']['arm_length_mm']:.1f}"
+
+
+def airframe_of(state) -> tuple[dict, dict, dict]:
+    """physics_calc's metrics, the geometry and the mission airframe of the chosen drone."""
+
+    metrics = compute(state)
+    geo = geometry(state)
+    return metrics, geo, airframe(geo, state.selected)
+
+
+async def fly_missions(ctx: Ctx, entries: list[dict], metrics: dict, geo: dict, frame: dict, gains: dict | None = None) -> list[dict]:
+    """Flies each mission, emits its `mission` event and keeps its outcome in state.missions.
+
+    Without gains it is the hardware check (the reference controller); with gains the trained
+    controller flies, and each event and row carries the reference controller's result beside it.
+    """
+
     state = ctx.state
+    key = build_key(frame)
+    controller = "reference" if gains is None else "trained"
     results = []
     for entry in entries:
         mission = entry["mission"]
         row = _ensure_row(state, mission, entry)
+        previous = state.missions.get(mission) or {}
+        reference = previous if previous.get("controller", "reference") == "reference" else previous.get("reference")
+        if gains is None or not reference or reference.get("build") != key:
+            reference = None
         # One MuJoCo flight at a time, off the event loop.
-        outcome = await asyncio.to_thread(run, frame, mission)
+        outcome = await asyncio.to_thread(run, frame, mission, gains)
         limit = _limit(row)
         passed = passes(outcome, limit)
         state.mission_run += 1
@@ -165,8 +189,12 @@ async def simulate_mission(ctx: Ctx, args: dict) -> dict:
         why = _why(mission, outcome, frame, metrics)
         spec = MISSIONS[mission]
         value = value_of(outcome)
-        numbers = {k: v for k, v in outcome.items() if k not in {"series", "poses", "target", "wind", "mission"}}
-        state.missions[mission] = {"result": "pass" if passed else "fail", "value": value, "limit": limit, "requirement": row["id"], "summary": summary, "why": why, "metrics": numbers}
+        numbers = {k: v for k, v in outcome.items() if k not in {"series", "poses", "target", "wind", "mission", "controller"}}
+        kept = {"result": "pass" if passed else "fail", "value": value, "limit": limit, "requirement": row["id"], "summary": summary, "why": why, "metrics": numbers, "controller": controller, "build": key}
+        compare = {"value": reference["value"], "result": reference["result"], "summary": reference["summary"]} if reference else None
+        if reference:
+            kept["reference"] = reference
+        state.missions[mission] = kept
         event = {
             "type": "mission",
             "run": state.mission_run,
@@ -185,22 +213,43 @@ async def simulate_mission(ctx: Ctx, args: dict) -> dict:
             "poses": outcome.get("poses", []),
             "parts": frame["parts"],
             "mass_g": round(geo["total_mass_g"], 1),
+            "controller": controller,
+            "reference": compare,
         }
         if outcome.get("target"):
             event["target"] = outcome["target"]
         if outcome.get("wind"):
             event["wind"] = outcome["wind"]
         await ctx.emit(event)
-        results.append({"mission": mission, "result": event["result"], "value": value, "unit": spec["unit"], "limit": limit, "requirement": row["id"], "source": row.get("source"), "summary": summary, "why": why, **numbers})
+        results.append({"mission": mission, "result": event["result"], "value": value, "unit": spec["unit"], "limit": limit, "requirement": row["id"], "source": row.get("source"), "summary": summary, "why": why, "controller": controller, **({"reference": compare} if compare else {}), **numbers})
+    return results
+
+
+async def simulate_mission(ctx: Ctx, args: dict) -> dict:
+    if ctx.state.product != "drone":
+        return _fail("simulate_mission flies drones. For this product use its own checks.")
+    entries, problem = _parse(args)
+    if problem:
+        return _fail(problem)
+    try:
+        metrics, geo, frame = airframe_of(ctx.state)
+    except (PhysicsError, AirframeError) as exc:
+        return _fail(str(exc))
+    results = await fly_missions(ctx, entries, metrics, geo, frame)
     failed = [r["mission"] for r in results if r["result"] == "fail"]
     detail = ", ".join(MISSIONS[r["mission"]]["label"] + " " + r["result"] for r in results)
     return {
         "ok": True,
         "detail": detail,
         "result": "fail" if failed else "pass",
+        "controller": "reference",
         "missions": results,
         "mass_g": round(geo["total_mass_g"], 1),
         "thrust_to_weight": metrics["thrust_to_weight"],
         "pitch_speed_kmh": round(frame["pitch_speed"] * 3.6, 1),
-        "next": "On a fail: swap the part named in why (parts_search with select_id) or change a dimension, physics_calc, then simulate_mission again with the failed missions, and say why it changed." if failed else "",
+        "next": (
+            "On a fail: swap the part named in why (parts_search with select_id) or change a dimension, physics_calc, then simulate_mission again with the failed missions, and say why it changed."
+            if failed
+            else "The hardware check passed on the reference controller. Now train_controller: it trains the gains on these missions and flies them again with the trained controller, which decides."
+        ),
     }

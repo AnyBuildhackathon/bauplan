@@ -34,11 +34,15 @@ The airframe (`airframe`) comes from the parts, nothing is a fixed constant of o
 - Not modelled: prop wash between rotors, the vortex ring state, motor heating, the drone's own
   sensor noise (it knows its own position and attitude exactly).
 
-The flight controller is the same for every build: a geometric attitude controller whose
+The reference flight controller is the same for every build: a geometric attitude controller whose
 bandwidth follows the motor lag (0.8 / lag, at most 28 rad/s: half the 1.6 / lag where a PD loop
 on a lagging motor goes unstable, a gain margin of 2), mixing with attitude priority, thrust tilt
-limited to 70 degrees, and per-mission outer loops on position or velocity. A build only differs
-by its parts, so a heavier or weaker build measurably loses speed, turns slower or misses the chase.
+limited to 70 degrees, and per-mission outer loops on position or velocity. Flown with it, a build
+only differs by its parts, so a heavier or weaker build measurably loses speed, turns slower or
+misses the chase: the hardware check.
+
+A mission can instead fly a gain set (`gains`), the seven gains the trainer and the firmware use
+(`GAIN_KEYS`, see `Controller`), so the trained controller is judged on the same missions.
 
 All missions are deterministic: fixed start, fixed seed for the target's dodges and the wind.
 """
@@ -72,6 +76,10 @@ CAPTURE_M = 0.12
 CLOSING_MS = 3.0
 CHASE_S = 8.0
 CHASE_FLIES = 5
+
+
+# The trained controller's gains, as web/src/sim/drone.ts exports them and stress.ControllerGains reads them.
+GAIN_KEYS = ("kp_z", "ki_z", "kd_z", "kp_xy", "kd_xy", "kp_att", "kd_att")
 
 
 class AirframeError(ValueError):
@@ -179,10 +187,117 @@ def _vee(m: np.ndarray) -> np.ndarray:
     return np.array([m[2, 1], m[0, 2], m[1, 0]])
 
 
+def _cross(a, b) -> np.ndarray:
+    """a x b for two 3-vectors, as np.cross computes it, without its per-call overhead."""
+
+    return np.array([a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]])
+
+
+def gain_set(raw: dict | None) -> dict[str, float] | None:
+    """The seven gains from a training result, as floats; None when any is missing, negative or not a number."""
+
+    if not isinstance(raw, dict):
+        return None
+    out = {}
+    for key in GAIN_KEYS:
+        value = raw.get(key)
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
+            return None
+        out[key] = float(value)
+    return out
+
+
+class Controller:
+    """The flight controller of one flight: the reference (no gains) or a gain set.
+
+    The gains are in the training module's exported units: height and position in 1/s^2, 1/s^3
+    and 1/s, attitude in N m/rad and N m s/rad, divided here by the build's own roll and pitch
+    inertia. Yaw keeps the reference loop, as no trained gain covers it. With gains every outer
+    loop is one cascaded PID, a = kp (p_ref - p) + ki (integral) + kd (v_ref - v); a mission that
+    commands a velocity (the dash, the turn, the chase) goes through kd alone, the velocity loop
+    of that cascade.
+    """
+
+    def __init__(self, gains: dict | None = None) -> None:
+        if gains is None:
+            self.gains = None
+        else:
+            self.gains = gain_set(gains)
+            if self.gains is None:
+                raise AirframeError("A gain set needs " + ", ".join(GAIN_KEYS) + " as numbers of at least 0.")
+        self.name = "reference" if self.gains is None else "trained"
+        self.z_int = 0.0
+        self.p_int = np.zeros(3)
+        self.v_int = np.zeros(2)
+
+    def rates(self, inertia: np.ndarray, tau: float) -> tuple[np.ndarray, np.ndarray]:
+        """Attitude stiffness and damping per body axis, in 1/s^2 and 1/s."""
+
+        # tau * k_r < k_w keeps the loop stable on a lagging motor (omega < 1.6 / tau); half of that.
+        omega = min(28.0, 0.8 / tau)
+        k_r = np.full(3, omega * omega)
+        k_w = np.full(3, 1.6 * omega)
+        if self.gains:
+            axes = np.diag(inertia)[:2]
+            k_r[:2] = self.gains["kp_att"] / axes
+            k_w[:2] = self.gains["kd_att"] / axes
+        return k_r, k_w
+
+    def altitude(self, z: float, pos: np.ndarray, vel: np.ndarray) -> float:
+        error = z - float(pos[2])
+        if self.gains is None:
+            self.z_int = float(np.clip(self.z_int + error * DT, -2.0, 2.0))
+            return 6.0 * error - 4.5 * float(vel[2]) + 2.0 * self.z_int
+        g = self.gains
+        # Clamped so the integral cannot wind up past half the weight, as in the browser trainer.
+        cap = 0.5 * GRAVITY / max(g["ki_z"], 1e-6)
+        self.z_int = float(np.clip(self.z_int + error * DT, -cap, cap))
+        return g["kp_z"] * error - g["kd_z"] * float(vel[2]) + g["ki_z"] * self.z_int
+
+    def hold(self, target: np.ndarray, pos: np.ndarray, vel: np.ndarray) -> np.ndarray:
+        """Hold a point: the reference PID on all three axes, else position PD and the height PID."""
+
+        error = target - pos
+        if self.gains is None:
+            self.p_int = np.clip(self.p_int + error * DT, -2.0, 2.0)
+            return 5.0 * error + 3.6 * (np.zeros(3) - vel) + 2.0 * self.p_int
+        g = self.gains
+        xy = g["kp_xy"] * error[:2] - g["kd_xy"] * vel[:2]
+        return np.array([xy[0], xy[1], self.altitude(float(target[2]), pos, vel)])
+
+    def lateral(self, error: float, v: float) -> float:
+        """Hold a line sideways (the speed run's y)."""
+
+        if self.gains is None:
+            return 3.0 * error - 2.0 * v
+        return self.gains["kp_xy"] * error - self.gains["kd_xy"] * v
+
+    def dash(self, v_target: float, v: float) -> float:
+        """Accelerate along a line toward a speed it never reaches (the speed run)."""
+
+        return (3.0 if self.gains is None else self.gains["kd_xy"]) * (v_target - v)
+
+    def track(self, v_target: np.ndarray, v: np.ndarray) -> np.ndarray:
+        """Fly a horizontal velocity (the turn before and after it pulls)."""
+
+        if self.gains is None:
+            self.v_int = np.clip(self.v_int + (v_target - v) * DT, -3.0, 3.0)
+            return 4.0 * (v_target - v) + 1.5 * self.v_int
+        return self.gains["kd_xy"] * (v_target - v)
+
+    def pursue(self, v_target: np.ndarray, vel: np.ndarray) -> np.ndarray:
+        """Fly a 3D velocity (the chase's guidance)."""
+
+        if self.gains is None:
+            return 10.0 * (v_target - vel)
+        g = self.gains
+        return np.array([g["kd_xy"], g["kd_xy"], g["kd_z"]]) * (v_target - vel)
+
+
 class _Flight:
     """One MuJoCo flight: the plant (thrust, lag, drag) and the flight controller."""
 
-    def __init__(self, frame: dict, wind=None) -> None:
+    def __init__(self, frame: dict, wind=None, controller: Controller | None = None) -> None:
         import mujoco
 
         self.mujoco = mujoco
@@ -203,10 +318,8 @@ class _Flight:
         mix = np.vstack([np.ones(4), self.r[:, 1], -self.r[:, 0], -self.spin * frame["kq"]])
         self.unmix = np.linalg.inv(mix)
         self.thrust = np.full(4, self.mass * GRAVITY / 4)
-        # tau * k_r < k_w keeps the loop stable on a lagging motor (omega < 1.6 / tau); half of that.
-        omega = min(28.0, 0.8 / frame["tau"])
-        self.k_r = omega * omega
-        self.k_w = 1.6 * omega
+        self.controller = controller or Controller()
+        self.k_r, self.k_w = self.controller.rates(self.inertia, frame["tau"])
         self.t = 0.0
         self.peak_rate = 0.0
         self.saturated = 0.0
@@ -285,13 +398,13 @@ class _Flight:
 
         # Attitude: point the thrust along the force, nose kept to world +y or to `heading`.
         b3 = force / max(float(np.linalg.norm(force)), 1e-9)
-        b2 = np.cross(b3, np.array([1.0, 0.0, 0.0])) if heading is None else heading - (heading @ b3) * b3
+        b2 = _cross(b3, (1.0, 0.0, 0.0)) if heading is None else heading - (heading @ b3) * b3
         b2 /= max(float(np.linalg.norm(b2)), 1e-9)
-        b1 = np.cross(b2, b3)
+        b1 = _cross(b2, b3)
         target = np.column_stack([b1, b2, b3])
         e_r = 0.5 * _vee(target.T @ rot - rot.T @ target)
         alpha = -self.k_r * e_r - self.k_w * w_b
-        torque = self.inertia @ alpha + np.cross(w_b, self.inertia @ w_b)
+        torque = self.inertia @ alpha + _cross(w_b, self.inertia @ w_b)
         collective = max(float(force @ rot[:, 2]), 0.0)
 
         # Mixing with attitude priority: shift the four commands together before clipping.
@@ -335,26 +448,6 @@ class _Flight:
 # -- outer loops ---------------------------------------------------------------------------------
 
 
-class _Hold:
-    """PID on position, the same gains for every build."""
-
-    def __init__(self, kp: float = 5.0, kd: float = 3.6, ki: float = 2.0) -> None:
-        self.kp, self.kd, self.ki = kp, kd, ki
-        self.integral = np.zeros(3)
-
-    def __call__(self, flight: _Flight, target: np.ndarray, v_target: np.ndarray | None = None) -> np.ndarray:
-        error = target - flight.pos
-        self.integral = np.clip(self.integral + error * DT, -2.0, 2.0)
-        v_ref = np.zeros(3) if v_target is None else v_target
-        return self.kp * error + self.kd * (v_ref - flight.vel) + self.ki * self.integral
-
-
-def _altitude(flight: _Flight, z: float, integral: list[float]) -> float:
-    error = z - float(flight.pos[2])
-    integral[0] = float(np.clip(integral[0] + error * DT, -2.0, 2.0))
-    return 6.0 * error - 4.5 * float(flight.vel[2]) + 2.0 * integral[0]
-
-
 def _sample(flight: _Flight, poses: list, every: int, step: int) -> None:
     if step % every == 0:
         poses.append(flight.pose())
@@ -364,18 +457,18 @@ def _trajectory(poses: list) -> list[list[float]]:
     return [p[0:4] for p in poses]
 
 
-def speed_run(frame: dict, duration: float = 8.0) -> dict:
+def speed_run(frame: dict, duration: float = 8.0, gains: dict | None = None) -> dict:
     """Full throttle along +x from a hover, height held: the top speed and the time to reach it."""
 
-    flight = _Flight(frame)
+    ctl = Controller(gains)
+    flight = _Flight(frame, controller=ctl)
     poses: list = []
     speeds: list[tuple[float, float]] = []
     every = round(SAMPLE_S / DT)
-    z_int = [0.0]
     crashed = False
     for step in range(round(duration / DT)):
-        v = flight.vel
-        accel = np.array([3.0 * (120.0 - v[0]), 3.0 * (0.0 - flight.pos[1]) - 2.0 * v[1], _altitude(flight, START_Z, z_int)])
+        pos, v = flight.pos, flight.vel
+        accel = np.array([ctl.dash(120.0, v[0]), ctl.lateral(0.0 - pos[1], v[1]), ctl.altitude(START_Z, pos, v)])
         flight.step(accel)
         _sample(flight, poses, every, step)
         if step % every == 0:
@@ -401,7 +494,7 @@ def speed_run(frame: dict, duration: float = 8.0) -> dict:
     }
 
 
-def turn(frame: dict, speed: float = TURN_SPEED, duration: float = 4.0) -> dict:
+def turn(frame: dict, speed: float = TURN_SPEED, duration: float = 4.0, gains: dict | None = None) -> dict:
     """At `speed` along +x, from 1 s a hard 90 degree turn to +y: turn rate and overshoot.
 
     The turn pulls all the sideways acceleration the build has while holding its speed and
@@ -409,12 +502,11 @@ def turn(frame: dict, speed: float = TURN_SPEED, duration: float = 4.0) -> dict:
     straightens out on +y and the overshoot is how far its course swings past.
     """
 
-    flight = _Flight(frame)
+    ctl = Controller(gains)
+    flight = _Flight(frame, controller=ctl)
     flight.set_velocity([speed, 0.0, 0.0])
     poses: list = []
     every = round(SAMPLE_S / DT)
-    z_int = [0.0]
-    v_int = np.zeros(2)
     start = 1.0
     headings: list[tuple[float, float]] = []
     crashed = False
@@ -425,14 +517,13 @@ def turn(frame: dict, speed: float = TURN_SPEED, duration: float = 4.0) -> dict:
         turned = turned or heading >= 90.0
         if flight.t < start or turned:
             target = np.array([speed, 0.0]) if flight.t < start else np.array([0.0, speed])
-            v_int = np.clip(v_int + (target - v) * DT, -3.0, 3.0)
-            horizontal = 4.0 * (target - v) + 1.5 * v_int
+            horizontal = ctl.track(target, v)
         else:
             along = v / max(float(np.linalg.norm(v)), 1e-6)
             left = np.array([-along[1], along[0]])
             # Ask for far more than any build has: the thrust limit decides how hard it turns.
             horizontal = 80.0 * left + 4.0 * (speed - float(np.linalg.norm(v))) * along
-        flight.step(np.array([horizontal[0], horizontal[1], _altitude(flight, START_Z, z_int)]))
+        flight.step(np.array([horizontal[0], horizontal[1], ctl.altitude(START_Z, flight.pos, flight.vel)]))
         _sample(flight, poses, every, step)
         if step % every == 0:
             headings.append((round(flight.t, 3), round(math.degrees(math.atan2(flight.vel[1], flight.vel[0])), 2)))
@@ -468,11 +559,11 @@ def _hold_wind(t: float) -> np.ndarray:
     return np.array([x, y, z])
 
 
-def hold(frame: dict, duration: float = 6.0) -> dict:
+def hold(frame: dict, duration: float = 6.0, gains: dict | None = None) -> dict:
     """Hold a point at 1.5 m through gusting side wind and a downdraft: the worst and RMS error."""
 
-    flight = _Flight(frame, wind=_hold_wind)
-    control = _Hold()
+    ctl = Controller(gains)
+    flight = _Flight(frame, wind=_hold_wind, controller=ctl)
     target = np.array([0.0, 0.0, START_Z])
     poses: list = []
     errors: list[tuple[float, float]] = []
@@ -480,7 +571,7 @@ def hold(frame: dict, duration: float = 6.0) -> dict:
     every = round(SAMPLE_S / DT)
     crashed = False
     for step in range(round(duration / DT)):
-        flight.step(control(flight, target))
+        flight.step(ctl.hold(target, flight.pos, flight.vel))
         _sample(flight, poses, every, step)
         if step % every == 0:
             errors.append((round(flight.t, 3), round(float(np.linalg.norm(flight.pos - target)) * 100.0, 2)))
@@ -624,8 +715,9 @@ def _fix(flight: _Flight, camera: dict, az: float, el: float, pixels: float, rng
     return flight.pos + ray * distance, cov
 
 
-def _chase_one(frame: dict, fly: list[np.ndarray], record: bool, seed: int = 0) -> dict:
-    flight = _Flight(frame)
+def _chase_one(frame: dict, fly: list[np.ndarray], record: bool, seed: int = 0, gains: dict | None = None) -> dict:
+    ctl = Controller(gains)
+    flight = _Flight(frame, controller=ctl)
     camera = frame["camera"]
     rng = random.Random(1000 + seed)
     tracker = _Tracker(fly[0], 0.5)
@@ -695,7 +787,7 @@ def _chase_one(frame: dict, fly: list[np.ndarray], record: bool, seed: int = 0) 
             want = psi + SEARCH_YAW * DT
         turn_by = (want - psi + math.pi) % (2 * math.pi) - math.pi
         psi += float(np.clip(turn_by, -YAW_RATE * DT, YAW_RATE * DT))
-        flight.step(10.0 * (v_des - flight.vel), heading=np.array([math.cos(psi), math.sin(psi), 0.0]))
+        flight.step(ctl.pursue(v_des, flight.vel), heading=np.array([math.cos(psi), math.sin(psi), 0.0]))
         if flight.crashed():
             crashed = True
             break
@@ -716,7 +808,7 @@ def _chase_one(frame: dict, fly: list[np.ndarray], record: bool, seed: int = 0) 
     }
 
 
-def chase(frame: dict, flies: int = CHASE_FLIES, duration: float = CHASE_S, speed: float = TARGET_SPEED) -> dict:
+def chase(frame: dict, flies: int = CHASE_FLIES, duration: float = CHASE_S, speed: float = TARGET_SPEED, gains: dict | None = None) -> dict:
     """Chase five flies, each dodging its own way; capture is within 12 cm. The median capture time counts.
 
     One fly alone is a coin toss: a dodge at the right moment saves it. Over five, a build that
@@ -726,14 +818,14 @@ def chase(frame: dict, flies: int = CHASE_FLIES, duration: float = CHASE_S, spee
 
     tries = []
     for seed in range(flies):
-        tries.append(_chase_one(frame, _fly_path(seed, duration, speed), record=False, seed=seed))
+        tries.append(_chase_one(frame, _fly_path(seed, duration, speed), record=False, seed=seed, gains=gains))
     times = sorted(t["capture_s"] if t["capture_s"] is not None else math.inf for t in tries)
     median = times[len(times) // 2]
     caught = sum(1 for t in tries if t["capture_s"] is not None)
     # Replay the fly closest to the median: the typical chase, not the luckiest one.
     order = sorted(range(flies), key=lambda i: (tries[i]["capture_s"] if tries[i]["capture_s"] is not None else math.inf, tries[i]["closest_cm"]))
     shown = order[len(order) // 2]
-    replay = _chase_one(frame, _fly_path(shown, duration, speed), record=True, seed=shown)
+    replay = _chase_one(frame, _fly_path(shown, duration, speed), record=True, seed=shown, gains=gains)
     missed = [t["closest_cm"] for t in tries if t["capture_s"] is None]
     return {
         "crashed": any(t["crashed"] for t in tries),
@@ -767,11 +859,14 @@ def _median(values: list) -> float | None:
 RUNNERS = {"speed_run": speed_run, "turn": turn, "hold": hold, "chase": chase}
 
 
-def run(frame: dict, mission: str) -> dict:
+def run(frame: dict, mission: str, gains: dict | None = None) -> dict:
+    """One mission, flown with the reference controller, or with `gains` (the trained controller)."""
+
     if mission not in RUNNERS:
         raise AirframeError("mission must be one of " + ", ".join(RUNNERS) + ".")
-    out = RUNNERS[mission](frame)
+    out = RUNNERS[mission](frame, gains=gains)
     out["mission"] = mission
+    out["controller"] = "reference" if gains is None else "trained"
     out["mass_g"] = round(frame["geo"]["total_mass_g"], 1)
     return out
 

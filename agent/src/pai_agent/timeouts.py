@@ -33,6 +33,8 @@ BUDGET_S = {
     # The browser runs wait for a dashboard tab: claim, run and stall limits sit inside this.
     "train_in_browser": 320.0,
     "stress_test": 320.0,
+    # Training on the missions stops itself after PAI_TRAIN_BACKEND_S (120 s); the validation flights and 50 stress worlds follow.
+    "train_controller": 600.0,
     # Isaac bounds its SSH job with ISAAC_TIMEOUT_S (900 s training, 300 s tests) plus copies.
     "isaac_train": 1200.0,
     "isaac_lab_train": 1200.0,

@@ -53,6 +53,19 @@ test("fly hunter: the request picks mission tests, each a requirement, replayed 
   await expect(page.getByText("Distance to the fly")).toBeVisible();
 });
 
+test("racing drone: the hardware check passes, the controller trains on the missions, and the trained run decides", async ({ page }) => {
+  // Training on the missions, the re-flight and 50 stress worlds take about a minute on the backend.
+  test.setTimeout(240_000);
+  await freshBench(page);
+  await ask(page, "Build me a racing drone");
+  await expect(page.getByText(/Missions · \d of 2 passed/)).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByText(/On the missions, MuJoCo/).first()).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByText(/Missions · trained controller · 2 of 2 passed/)).toBeVisible({ timeout: 150_000 });
+  await expect(page.getByText(/Reference controller: /).first()).toBeVisible();
+  await expect(page.getByText(/the firmware writes exactly these gains/).first()).toBeVisible({ timeout: 60_000 });
+  await idle(page, 120_000);
+});
+
 test("robot gripper from a chat request: the grip test holds and the BOM closes", async ({ page }) => {
   await freshBench(page);
   await ask(page, GRIPPER);
