@@ -190,6 +190,18 @@ cp -R freecad-mcp/addon/FreeCADMCP "$HOME/Library/Application Support/FreeCAD/v1
 Then open the `MCP Addon` workbench in FreeCAD and select `Toggle Auto Start`.
 `FREECAD_GUI=launch` opens FreeCAD automatically; `FREECAD_GUI=off` forces headless runs.
 
+### SparkBench circuits (optional)
+
+`circuit_design` designs the circuit of an ESP32 or Raspberry Pi Pico build with [SparkBench](https://github.com/dennisonbertram/sparkbench): real pins, a KiCad schematic, MicroPython firmware run in its simulator, and its acceptance tests.
+Install it once; it needs Node.js 20 or newer and the network:
+
+```bash
+bash agent/scripts/setup_sparkbench.sh
+```
+
+It lands in `~/.cache/anybuild/sparkbench/<commit>`; without it the tool says SparkBench is not installed and the run goes on.
+How it runs is in [agent/sparkbench/README.md](agent/sparkbench/README.md).
+
 ## Configuration
 
 Put settings in `agent/.env` or the shell; shell variables win.
@@ -248,7 +260,8 @@ Tokens are cached until they expire, results for a day, each provider stays insi
 | `PAI_TOOL_TIMEOUT_S`, `PAI_TIMEOUT_<TOOL>`, `PAI_MODEL_TIMEOUT_S`, `PAI_MODEL_ROUND_MAX_S` | Time limits per tool call, per silent model stream and per model round (see `agent/src/pai_agent/timeouts.py`). |
 | `PAI_TRAIN_TIMEOUT_S`, `PAI_TRAIN_CLAIM_TIMEOUT_S`, `PAI_TRAIN_STALL_S` | Time limits for browser training jobs. |
 | `PAI_SLICER` | Optional slicer executable path; `off` uses labelled estimates. |
-| `PAI_CACHE` | `0` turns off reuse of identical FreeCAD and Blender results. |
+| `PAI_CACHE` | `0` turns off reuse of identical FreeCAD, Blender and SparkBench results. |
+| `SPARKBENCH_DIR` | The SparkBench checkout for `circuit_design` (default `~/.cache/anybuild/sparkbench/<commit>`). |
 | `PAI_WARM` | `0` skips warming slow imports at start. |
 | `DEMO_PACE_S` | Pause between steps in seconds, for stage pacing (default `0`). |
 | `PORT` | Backend port (default `8100`). |

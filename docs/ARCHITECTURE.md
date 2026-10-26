@@ -145,6 +145,7 @@ Paths are relative to `agent/src/pai_agent/` unless they start with `web/`.
    The model never sets a row to met; it can only change the design and let the checks run again.
 10. **The fix loop.** On a failed check Claude calls `cad_update` (`tools/product.py`), which rebuilds that part with the new parameter, reassembles and reruns every check that ran before (`rerun_checks`), or swaps a bought part with `part_pick`.
 11. **Deliverables.** `blender_render` (`tools/blender.py`) renders the assembly, `safety_check` (`tools/safety.py`) runs right before `bom_build` (`tools/bom.py`), which emits the bill of materials with a `price_source` per line, then `print_prep` and, for products with electronics, `electronics_plan`.
+    A build with an ESP32 or a Raspberry Pi Pico then gets `circuit_design` (`tools/circuit.py`): SparkBench, run headless in Node.js (`sparkbench.py`, `agent/sparkbench/bridge.ts`), wires it to real pins, checks it, runs its MicroPython in a simulator and writes the KiCad schematic.
     For every product, the drone included, `call_tool` hands a successful `bom_build` to `versions.after_tool`, which commits the build as a version with its diff to the previous one.
 12. **Back in the browser.** `web/src/events/source.ts` receives every event over `GET /api/events` and `web/src/events/store.ts` folds it into state; the chat, the Model, CAD and Simulation tabs and the requirement cards re-render from that store.
 

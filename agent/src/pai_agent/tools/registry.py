@@ -28,6 +28,7 @@ from pai_agent.tools.gripper import catalog_search, grip_calc, product_brief, si
 from pai_agent.tools.firmware import firmware, refresh_after_training
 from pai_agent.tools.electronics import electronics_plan
 from pai_agent.tools.safety import SCHEMA as SAFETY_SCHEMA, safety_check
+from pai_agent.tools.circuit import SCHEMA as CIRCUIT_SCHEMA, circuit_design
 from pai_agent.tools.isaac import isaac_lab_status, isaac_lab_train, isaac_sim_render, isaac_test, isaac_train, ssh_setting
 from pai_agent.tools.usd import product_usd
 from pai_agent.tools.ask import ask_user
@@ -89,6 +90,7 @@ TOOLS = {
     "firmware": firmware,
     "electronics_plan": electronics_plan,
     "safety_check": safety_check,
+    "circuit_design": circuit_design,
     "ui_point_at": ui_point_at,
     "ui_draw": ui_draw,
     "mascot_say": mascot_say,
@@ -138,6 +140,7 @@ _STEP = {
     "material_pick": "cad",
     "fem_check": "simulation",
     "train_in_browser": "training",
+    "circuit_design": "simulation",
 }
 
 SCHEMAS = [
@@ -784,6 +787,7 @@ SCHEMAS = [
     },
     BUILD_GUIDE_SCHEMA,
     SAFETY_SCHEMA,
+    CIRCUIT_SCHEMA,
     {
         "name": "firmware",
         "description": "Generates the firmware and wiring table from the chosen parts: a Betaflight CLI configuration for a drone (motor order, rates, trained PID gains, else defaults), an Arduino sketch for a servo product. Call it after bom_build. explanation is your one or two sentences for the team; the file itself comes from a fixed template.",
@@ -961,7 +965,7 @@ async def _advance(ctx: Ctx, name: str, result: dict, started: bool) -> None:
         return
     if name in {"simulate_drone", "simulate_grip", "simulate_assembly", "simulate_mission"}:
         await ctx.step("simulation", "done" if result.get("result") == "pass" else "failed")
-    elif name in {"check_tip_over", "check_deflection", "check_torque", "check_runtime", "check_power", "check_thermal", "check_rollover", "fem_check"}:
+    elif name in {"check_tip_over", "check_deflection", "check_torque", "check_runtime", "check_power", "check_thermal", "check_rollover", "fem_check", "circuit_design"}:
         await ctx.step("simulation", "done" if result.get("result") == "pass" else "failed")
     elif name == "check_totals":
         await ctx.step("teile", "done" if result.get("result") == "pass" else "failed")

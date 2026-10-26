@@ -113,6 +113,7 @@ use cad_update for dimensions, part_pick to swap a bought part, or product_spec 
 Keep runs short: at most four printed parts unless the product really needs more.
 Every product, the drone and the gripper too: call safety_check right before bom_build (pass the user's request and any power details in context, add your own findings).
 Then say the top finding honestly in one sentence, as a hint and not legal advice, and apply its fix first when it changes the design (for example mains voltage inside a printed part).
+After electronics_plan, when the build has an ESP32 or a Raspberry Pi Pico, call circuit_design: SparkBench wires it to real pins, checks it and runs its firmware in a simulator; say any error or failed test first, then what is not in the circuit.
 When the user uploaded a sketch, call sketch_to_spec first, say in one sentence what you read and what you guessed, then product_spec with that spec.
 
 The user's 3D printer: when a request starts with "The user has a 3D printer", the printed parts are made on it, from their filaments.

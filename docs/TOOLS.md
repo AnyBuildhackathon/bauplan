@@ -19,6 +19,7 @@ Event payloads are specified in [events.md](events.md#tools), and the step each 
 | **Reson8** | Push-to-talk dictation (not a tool) | Browser WebSocket with a short-lived token from the backend | Browser Web Speech recognition |
 | **Gemini Live** | Mechanic's only voice (not a tool) | Native realtime audio through `WS /api/voice/live` | Silent, text only |
 | **Betaflight and Arduino** | `firmware` | Deterministic templates filled from the chosen parts | None needed |
+| **SparkBench** (commit `6dd9237`) | `circuit_design` | Node.js process running `agent/sparkbench/bridge.ts` against the checkout from `agent/scripts/setup_sparkbench.sh` | `ok: false` with the install hint; the run goes on |
 
 ## Product definition
 
@@ -94,6 +95,7 @@ See [omniverse.md](omniverse.md) for the GPU host setup, the experiment contract
 | `build_guide` | `steps` (required): array | The step-by-step build guide: which scene parts each step uses, tools and minutes; emits `build_guide`. | Claude writes it, the code checks coverage |
 | `firmware` | `explanation`: string | A Betaflight CLI configuration (motor order, rates, trained PID gains) for a drone or an Arduino sketch for a servo product, plus the wiring table; emits `firmware`. | Deterministic templates |
 | `electronics_plan` | `explanation`: string | The wiring diagram and power budget from the chosen parts: supply, switch, regulator, controller, drivers and loads with pins, voltages and currents; checks every part against its voltage and current rating and gives average and peak draw, headroom and battery runtime; emits `electronics`. | Python rules in `tools/electronics.py` and `analysis_more.power_budget` |
+| `circuit_design` | `board`: `esp32` or `pico`, only without a controller among the parts | The circuit of an ESP32 or Raspberry Pi Pico build: real pins, nets, a KiCad schematic and project, breadboard plan, parts list and MicroPython firmware, with SparkBench's design checks, its acceptance tests and 5 s of the firmware in its simulator; parts it has no model for come back in gaps; emits `circuit`. | SparkBench, headless in Node.js (`sparkbench.py`, `agent/sparkbench/bridge.ts`) |
 
 ## Design optimizer
 

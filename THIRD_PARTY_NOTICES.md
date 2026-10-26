@@ -62,6 +62,13 @@ These files are output of AnyBuild's own pipeline and are MIT licensed with the 
 - `agent/runs/fallback/omniverse.mp4`: the recorded Omniverse fallback, a browser replay with synthetic values, labelled as recorded in the app (see [docs/omniverse.md](docs/omniverse.md)).
 - `docs/assets/screenshots/*.jpg`: screenshots of the AnyBuild dashboard.
 
+## SparkBench, installed separately
+
+The `circuit_design` tool runs [SparkBench](https://github.com/dennisonbertram/sparkbench) by Dennison Bertram, under the MIT License ("Copyright (c) 2026 Dennison Bertram"), at commit `6dd92371aeb2ae6cc5c2dbe04a1fc84a448d315a`.
+None of its code is in the repository: `agent/scripts/setup_sparkbench.sh` clones it into `~/.cache/anybuild/sparkbench/<commit>`, and `agent/sparkbench/bridge.ts`, AnyBuild's own code, imports its modules from there.
+The circuit files it makes for a build (schematic, breadboard plan, KiCad project, netlist, SPICE deck, parts list, build guide and MicroPython firmware) come from its generators; the driver files in the firmware are copied from its parts library, whose driver code adapted from other projects keeps its own license, as SparkBench's README says.
+Its optional native ESP32 helper (`native/esp32/helper`, GPL-2.0-or-later, it downloads QEMU) is never built, run or shipped: the setup installs SparkBench's npm packages without their install scripts, and the bridge does not touch it.
+
 ## Runtime dependencies
 
 Libraries, fonts and external applications are not copied into the repository; they are installed by the package managers or separately.

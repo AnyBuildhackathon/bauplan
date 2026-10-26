@@ -45,6 +45,7 @@ Tests run with pytest (`agent/tests/`) and standalone smoke scripts (`agent/scri
 | NVIDIA Isaac Sim | 5.1.0 | NVIDIA Isaac Sim license terms | Drone wind, payload and hover experiments on a GPU host. |
 | NVIDIA Isaac Lab | 2.3.0 | BSD-3-Clause | Reference Crazyflie training (`Isaac-Quadcopter-Direct-v0`) with RSL-RL. |
 | PrusaSlicer / OrcaSlicer | Optional installed CLI, not pinned | AGPL-3.0 | Slice print-ready parts; mesh estimates when absent. |
+| SparkBench | Commit `6dd9237`, pinned in `agent/scripts/setup_sparkbench.sh` | MIT | `circuit_design`: ESP32 and Raspberry Pi Pico circuits with real pins, KiCad schematic, MicroPython firmware run in its simulator, acceptance tests. Runs headless in Node.js through `agent/sparkbench/bridge.ts` and tsx 4.23.15 (MIT). |
 | Tailscale Funnel | current | Tailscale terms | Publishes the local backend over HTTPS for the public web app. |
 
 AnyBuild calls these applications as separate processes and does not link or redistribute them.

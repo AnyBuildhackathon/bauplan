@@ -136,6 +136,7 @@ Each event has a `type`; every stream begins with `reset`, then the backlog, the
 | `print` | Per-part print time, filament, cost, orientation, warnings and G-code when sliced; otherwise labelled estimates. | [print](events.md#print) |
 | `build_guide` | The step-by-step build guide for the current bill of materials. | [build_guide](events.md#build_guide) |
 | `firmware` | Betaflight CLI or Arduino sketch and the wiring table. | [firmware](events.md#firmware) |
+| `circuit` | SparkBench's circuit of an ESP32 or Pico build: pins, nets, KiCad and firmware files, design checks, acceptance tests, the simulation and the gaps to the real build. | [circuit](events.md#circuit) |
 | `version` | A finished build with its trigger, numbers and difference to the last version. | [version](events.md#version) |
 | `mascot` | Mechanic's expression and speech bubble. | [mascot](events.md#mascot) |
 | `point` | The 3D pointer flies to a scene part. | [point](events.md#point) |
