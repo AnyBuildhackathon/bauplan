@@ -5,17 +5,21 @@ a grip-force calculation, a MuJoCo grip test, the CAD part (cad_part with the
 gripper template or a script Claude writes), a Blender render and the bill of materials.
 
 Grip force: one servo drives the left gear, which meshes with the right one, so the
-servo torque closes both fingers: torque = 2 * F * lever, where the lever is the
-distance from the gear axis to the pad centre. The servo holds about 70 % of its
-stall torque. Friction from both pads, 2 * mu * F, has to carry the object.
+servo torque closes both fingers. The servo holds about 70 % of its stall torque. The
+fingers swing on the gear axes, so the pads tilt and meet the object with their tips:
+torque = 2 * F * lever, where the lever runs from the gear axis to the pad tip at the
+angle the fingers close to on this object. Friction from both pads has to carry the
+object, and its drag pulls the tips further shut (grip_sim.hold_n).
 """
 
 from __future__ import annotations
 
 import asyncio
 import json
+import math
 
 from pai_agent.context import Ctx
+from pai_agent.grip_sim import Fingers, contact, hold_n, squeeze_n
 from pai_agent.paths import DATA_DIR
 from pai_agent.requirements import attribute, keep_user_limits
 from pai_agent.tools.parts_search import unit_price_eur
@@ -26,6 +30,8 @@ MIN_SAFETY = 2.0
 FILAMENT_EUR_PER_G = 0.025
 # Until cad_part weighs the printed parts, the gripper body is this estimate.
 BODY_ESTIMATE_G = 60.0
+# Until the part sets its own, the jaws open at least this much wider than the object.
+JAW_MARGIN_MM = 10.0
 CATEGORIES = ("servo", "pads", "hardware", "driver")
 PRODUCTS = {"drone": "Micro drone", "gripper": "Robot gripper"}
 
@@ -237,13 +243,24 @@ async def catalog_search(ctx: Ctx, args: dict) -> dict:
     }
 
 
-def finger_lever_mm(state) -> float:
-    """Gear axis to pad centre. The pads cover the outer 45 % of the finger."""
+def jaw_opening_mm(width_mm: float) -> float:
+    """The template's jaw opening, widened for an object that does not fit it."""
 
-    finger = 70.0
-    if state.part and "finger_length_mm" in state.part.get("params", {}):
-        finger = float(state.part["params"]["finger_length_mm"])
-    return finger * 0.775
+    return max(Fingers.opening_mm, width_mm + JAW_MARGIN_MM)
+
+
+def finger_geometry(state) -> Fingers:
+    """The built part's fingers; what it does not set, the template's, open wide enough for the object."""
+
+    brief = state.brief or {"object_width_mm": 66.0}
+    params = (state.part or {}).get("params") or {}
+    return Fingers.from_params({"jaw_opening_mm": jaw_opening_mm(float(brief["object_width_mm"])), **params})
+
+
+def hold_torque_nm(servo: dict) -> float:
+    """What the servo holds against: 70 % of its stall torque."""
+
+    return float(servo["stall_torque_kgcm"]) * GRAVITY / 100.0 * HOLD_FRACTION
 
 
 def compute_grip(state) -> dict:
@@ -253,13 +270,14 @@ def compute_grip(state) -> dict:
     servo = state.selected["servo"]
     pads = state.selected["pads"]
     brief = state.brief or {"object_mass_g": 200.0, "object_width_mm": 66.0}
-    lever_m = finger_lever_mm(state) / 1000.0
-    torque_nm = float(servo["stall_torque_kgcm"]) * GRAVITY / 100.0
-    force_n = torque_nm * HOLD_FRACTION / (2 * lever_m)
+    fingers = finger_geometry(state)
+    tip = contact(fingers, float(brief["object_width_mm"]))
+    torque_nm = hold_torque_nm(servo)
     mu = float(pads["friction"])
-    hold_n = 2 * mu * force_n
+    force_n = squeeze_n(torque_nm, tip) if tip else 0.0
+    hold = hold_n(torque_nm, mu, tip) if tip else 0.0
     load_n = float(brief["object_mass_g"]) / 1000.0 * GRAVITY
-    safety = hold_n / load_n
+    safety = hold / load_n
     body_g = float(state.frame_mass_g) if state.frame_mass_g is not None else BODY_ESTIMATE_G
     weight = body_g
     price = body_g * FILAMENT_EUR_PER_G
@@ -269,10 +287,9 @@ def compute_grip(state) -> dict:
             continue  # Printed with the body; its mass is in the CAD weight.
         weight += float(part["mass_g"]) * int(part["bom_qty"])
         price += unit_price_eur(part) * int(part["bom_qty"])
-    opening = 76.0
-    if state.part and "jaw_opening_mm" in state.part.get("params", {}):
-        opening = float(state.part["params"]["jaw_opening_mm"])
     warnings = []
+    if tip is None:
+        warnings.append(f"The object is {float(brief['object_width_mm']):g} mm wide, but the jaws open only {fingers.opening_mm:g} mm.")
     if servo.get("gear") == "nylon" and safety < MIN_SAFETY:
         warnings.append("Nylon gears strip when they hold near stall for long.")
     if state.frame_mass_g is None:
@@ -281,11 +298,12 @@ def compute_grip(state) -> dict:
         "weight_g": round(weight, 1),
         "price_eur": round(price, 2),
         "grip_force_n": round(force_n, 2),
-        "hold_force_n": round(hold_n, 2),
+        "hold_force_n": round(hold, 2),
         "safety_factor": round(safety, 2),
-        "max_payload_g": round(hold_n / MIN_SAFETY / GRAVITY * 1000.0, 0),
-        "opening_mm": opening,
-        "lever_mm": round(lever_m * 1000.0, 1),
+        "max_payload_g": round(hold / MIN_SAFETY / GRAVITY * 1000.0, 0),
+        "opening_mm": fingers.opening_mm,
+        "lever_mm": round(tip.lever_mm, 1) if tip else None,
+        "closing_deg": round(math.degrees(tip.angle_rad), 1) if tip else None,
         "friction": mu,
         "warnings": warnings,
     }
@@ -374,17 +392,32 @@ async def simulate_grip(ctx: Ctx, args: dict) -> dict:
     from pai_agent.grip_sim import run_grip
 
     brief = ctx.state.brief or {"object_mass_g": 200.0, "object_width_mm": 66.0}
+    servo = ctx.state.selected["servo"]
     outcome = await asyncio.to_thread(
-        run_grip, float(brief["object_mass_g"]), float(brief["object_width_mm"]), metrics["grip_force_n"], metrics["friction"]
+        run_grip,
+        float(brief["object_mass_g"]),
+        float(brief["object_width_mm"]),
+        hold_torque_nm(servo),
+        metrics["friction"],
+        finger_geometry(ctx.state),
+        MIN_SAFETY,
     )
     ctx.state.sim_run += 1
-    servo = ctx.state.selected["servo"]["name"]
-    if outcome["result"] == "pass":
-        summary = f"{servo}: {metrics['grip_force_n']:.1f} N per finger, the object stays put through lift and shake ({outcome['slip_mm']:.1f} mm slip)."
-    elif outcome["dropped"]:
-        summary = f"{servo}: only {metrics['grip_force_n']:.1f} N per finger, the object slides out when the arm lifts."
+    force = f"{metrics['grip_force_n']:.1f} N per finger"
+    failed_at = outcome["failed_at"]
+    if failed_at is None:
+        summary = f"{servo['name']}: {force}, the object stays put through lift and shake ({outcome['slip_mm']:.1f} mm slip) and holds {MIN_SAFETY:g}x its weight."
+    elif failed_at == "fit":
+        summary = f"{servo['name']}: the object is {float(brief['object_width_mm']):g} mm wide, but the jaws open only {metrics['opening_mm']:g} mm."
+    elif failed_at == "lift":
+        summary = f"{servo['name']}: only {force}, the object slides out when the arm lifts."
+    elif failed_at == "shake":
+        summary = f"{servo['name']}: {force}, the object slips {outcome['slip_mm']:.0f} mm when the arm shakes."
     else:
-        summary = f"{servo}: {metrics['grip_force_n']:.1f} N per finger, the object slips {outcome['slip_mm']:.0f} mm when the arm shakes."
+        summary = (
+            f"{servo['name']}: {force}, the object holds through lift and shake ({outcome['slip_mm']:.1f} mm slip) "
+            f"but slides out at {MIN_SAFETY:g}x its weight, too little margin for a real arm."
+        )
     ctx.state.last_sim = {"result": outcome["result"], "summary": summary, "slip_mm": outcome["slip_mm"]}
     await ctx.emit(
         {
@@ -406,8 +439,10 @@ async def simulate_grip(ctx: Ctx, args: dict) -> dict:
         "detail": "Grip test " + str(ctx.state.sim_run) + ": " + outcome["result"],
         "result": outcome["result"],
         "summary": summary,
+        "failed_at": failed_at,
         "slip_mm": outcome["slip_mm"],
         "dropped": outcome["dropped"],
+        "squeeze_n": outcome["squeeze_n"],
         "safety_factor": metrics["safety_factor"],
     }
 

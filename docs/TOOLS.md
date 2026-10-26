@@ -74,8 +74,8 @@ Known gap: with delegation on, `check_power`, `check_thermal` and `check_rollove
 | `simulate_assembly` | `mode`: `push` or `drop`; `force_n`, `drop_height_mm`: number; `push_point_mm`: array | Push test (settles within the stability limit or tips) or drop test (peak load in g) of the whole assembly as one rigid body; emits `sim` with the trajectory for the replay. | MuJoCo (`rigid_sim.py`) |
 | `simulate_drone` | none | Drone hover with a downdraft gust: pass when it holds the hover, fail when too heavy; emits `sim`. | MuJoCo |
 | `physics_calc` | none | Drone mass, thrust-to-weight, estimated flight time and price from the chosen parts; emits `metrics`. | Python |
-| `grip_calc` | none | Gripper finger force, holding force with pad friction and safety factor (needs 2x). | Python |
-| `simulate_grip` | none | The pads squeeze, the arm lifts 15 cm and shakes; pass when the object stays within 10 mm; emits `sim`. | MuJoCo (`grip_sim.py`) |
+| `grip_calc` | none | Gripper finger force at the pad tips, holding force with pad friction and safety factor (needs 2x). | Python (`grip_sim.contact`, `hold_n`) |
+| `simulate_grip` | none | The CAD fingers swing shut on their gears with the servo's torque, the arm lifts 15 cm and shakes, then the object is pulled with its weight once more; pass when the object stays within 10 mm and holds twice its weight; emits `sim`. | MuJoCo (`grip_sim.py`) |
 | `train_in_browser` | none | Tunes the controller in 1,024 MuJoCo simulations (64 candidates over 16 generations, evolution strategy) in the open dashboard and returns the best gains and score; emits `training`. | MuJoCo WebAssembly in the browser |
 | `stress_test` | `gains`: object | Flies the best controller in 50 randomized worlds (mass, motor strength, gusts, sensor noise) and returns the robustness score and the weakest point; emits `stress`. | MuJoCo WebAssembly in the browser |
 | `isaac_test` | `scenario`: `wind`, `payload` or `hover`; `wind_m_s`, `payload_g`, `duration_s`: number | Video and JSON measurements of the exported drone in Isaac Sim, or a recorded illustrative result; emits `omniverse`. | NVIDIA Isaac Sim over SSH |

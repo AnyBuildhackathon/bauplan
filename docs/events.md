@@ -410,8 +410,9 @@ It passes when the drone never drops below 0.2 m after the gust and holds 0.35 m
 
 `kind` is `grip` for the gripper test (absent for the drone).
 Then `trajectory` z is how far the object has risen, `hand` is `[[t, z], ...]` for the hand, and the event also carries `object_width_mm`, `payload_g`, `force_n` (per finger) and `slip_mm`.
-The pads squeeze with the finger force, the hand lifts 15 cm from 0.4 s to 1.4 s, holds, and shakes ±1.5 cm at 2.5 Hz from 2.0 s to 2.8 s.
-It passes when the object never lags the hand by more than 10 mm.
+The fingers are hinges on the template's gear axes, coupled like the gears, and the servo's holding torque closes them on a cube as wide as `object_width_mm`, so the pad tips touch it at half its height, or higher on a cube taller than the pads are long.
+The hand lifts 15 cm from 0.4 s to 1.4 s, holds, and shakes ±1.5 cm at 2.5 Hz from 2.0 s to 2.8 s; from 3.2 s to 3.5 s a pull of the object's weight once more builds up and holds until 4.0 s.
+It passes when the object never lags the hand by more than 10 mm, so it has to hold twice its weight.
 
 `kind` is `rigid` for the MuJoCo test of a whole assembled product (`simulate_assembly`).
 The assembly is one rigid body: the convex hull of all its bodies collides with the floor, its mass and centre of mass come from the CAD masses, the picked parts and the external loads.
@@ -824,7 +825,9 @@ Without `ANTHROPIC_API_KEY` only templates and passed scripts build.
 
 `product_brief` picks `drone` or `gripper`; for the gripper it takes `object_mass_g`, `object_width_mm`, `max_weight_g`, `budget_eur` and `quote` and emits the requirements `payload`, `opening`, `weight`, `budget` and `printable`.
 `catalog_search` reads `agent/data/catalogs/gripper.json` (`servo`, `pads`, `hardware`, `driver`).
-`grip_calc` gives the finger force `0.7 × stall torque / (2 × lever)`, where the lever runs from the gear axis to the pad centre, the holding force `2 × μ × F`, and the safety factor against the object weight; 2× is the requirement.
+`grip_calc` gives the finger force `0.7 × stall torque / (2 × lever)`, where the lever runs from the gear axis to the pad tip: the fingers swing on their gears, so the pads tilt and touch the object with their tips (`lever_mm`, and `closing_deg` for how far each finger swings shut).
+The holding force is `μ × 0.7 × stall torque / (lever − μ × offset)`, where the offset runs across from the gear axis to the object's face: the object's weight drags the tips further shut.
+The safety factor is the holding force against the object weight; 2× is the requirement.
 `simulate_grip` runs the MuJoCo grip test above.
 
 `train_in_browser` queues a browser training job and waits until a dashboard tab finishes it; the result carries `best_params`, `best_metrics`, `best_score`, and `curve`.
@@ -864,8 +867,9 @@ A prompt with the word "stress" ("stress test it") runs `stress_test` on the cur
 Once a build has finished, "robust" asks for it too ("how robust is it?").
 Reset starts the story over.
 A prompt that asks for a gripper (`gripper`, `claw`, `end effector`) plays the gripper story instead.
-Mechanic turns the request into checks, tries the 2.49 € SG90 first: 1.1 N per finger is a safety of 0.9×, and in MuJoCo the can slides out when the arm lifts.
-The swap to the MG996R gives 6.0 N per finger and passes with 0.4 mm slip.
+Mechanic turns the request into checks, tries the 2.49 € SG90 first: 0.9 N per finger is a safety of 0.9×, and in MuJoCo the can slides out when the arm lifts.
+The swap to the MG996R gives 4.5 N per finger, a safety of 4.8×, and passes with no measurable slip.
+An object the MG996R cannot hold at twice its weight, such as a 400 g cube 40 mm wide, steps up to the DS3218.
 FreeCAD builds the gripper headless from the library template with the servo pocket sized for the MG996R (58 g PLA), Blender renders it, and the bill of materials comes to 18.65 € and 128 g.
 The drone and gripper stories call `firmware` right after `bom_build`: the drone gets a Betaflight CLI file, the gripper an Arduino sketch.
 Both call `safety_check` right before `bom_build`: the drone gets the EU class C0 note (under 250 g, register the operator, no remote ID) and the lithium battery shipping note, the gripper the pinch-point warning with a gear cover and a firmware travel limit as the fix.

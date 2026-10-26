@@ -209,8 +209,8 @@ Publishing shares the bench with its spec, parts, CAD files, renders and version
 ## The robot gripper worked example
 
 The second built-in product is a parametric two-finger robot gripper, chosen because it has moving parts, a real physics question (does it hold the object while the arm moves?) and a parts choice that changes the CAD.
-`product_brief` turns the request into checks, `catalog_search` picks servo, pads, hardware and driver from `agent/data/catalogs/gripper.json`, `grip_calc` computes finger force and grip safety, `simulate_grip` lifts and shakes the object in MuJoCo, and `cad_part` builds the gripper from `agent/freecad/library/gripper.py` with the servo pocket sized for the chosen servo, then `blender_render` and `bom_build`.
-In the mock, the SG90 servo drops the can and the MG996R holds it.
+`product_brief` turns the request into checks, `catalog_search` picks servo, pads, hardware and driver from `agent/data/catalogs/gripper.json`, `grip_calc` computes finger force and grip safety, `simulate_grip` lifts, shakes and pulls the object in MuJoCo with the template's fingers swinging on their gears, and `cad_part` builds the gripper from `agent/freecad/library/gripper.py` with the servo pocket sized for the chosen servo, then `blender_render` and `bom_build`.
+In the mock, the SG90 servo drops the can and the MG996R holds it; a heavier object that the MG996R cannot hold at twice its weight steps up to the DS3218.
 
 ## The drone worked example
 
@@ -257,7 +257,7 @@ Without a GLB (the CadQuery fallback) the studio places simple parts around the 
 ## Simulation and training
 
 - **Closed-form checks** (`analysis.py`, `analysis_more.py`): totals, tip-over angle and push, beam deflection and stress safety, torque margin, battery runtime, power headroom, enclosure temperature and vehicle roll-over.
-- **MuJoCo on the backend:** `simulate_drone` (hover with a downdraft gust), `simulate_assembly` (push or drop test of any assembly as one rigid body with the real centre of mass) and `simulate_grip` (lift and shake for the gripper).
+- **MuJoCo on the backend:** `simulate_drone` (hover with a downdraft gust), `simulate_assembly` (push or drop test of any assembly as one rigid body with the real centre of mass) and `simulate_grip` (lift, shake and a pull at twice the weight for the gripper).
 - **MuJoCo in the browser:** `train_in_browser` tunes the controller across 1,024 simulations (64 candidates over 16 generations, evolution strategy) and `stress_test` flies the result in 50 randomized worlds; the backend queues the job, one dashboard tab claims it through `/api/training/*` or `/api/stress/*`, and progress returns as `training` and `stress` events.
 - **NVIDIA Isaac Sim and Isaac Lab:** `product_usd` exports the assembly as USD, `isaac_test` runs wind, payload or hover experiments and `isaac_train` trains the reference Crazyflie task on a GPU host over SSH; without a host, a clearly labelled recorded result stands in.
 

@@ -297,7 +297,7 @@ def _drone_plan(ctx: Ctx, args: dict) -> StressPlan:
 
 
 def _gripper_plan(state) -> StressPlan:
-    from pai_agent.tools.gripper import compute_grip
+    from pai_agent.tools.gripper import compute_grip, finger_geometry, hold_torque_nm
     from pai_agent.tools.stress_grip import (
         grip_row,
         grip_weakest,
@@ -312,6 +312,8 @@ def _gripper_plan(state) -> StressPlan:
     brief = state.brief or {"object_mass_g": 200.0, "object_width_mm": 66.0}
     payload = float(brief["object_mass_g"])
     width = float(brief["object_width_mm"])
+    torque = hold_torque_nm(state.selected["servo"])
+    fingers = finger_geometry(state)
     return StressPlan(
         product="gripper",
         base={
@@ -324,7 +326,7 @@ def _gripper_plan(state) -> StressPlan:
             "safety_factor": metrics["safety_factor"],
         },
         worlds=sample_grip_worlds(WORLDS, SEED),
-        run=lambda world: run_grip_world(payload, width, metrics["grip_force_n"], metrics["friction"], world),
+        run=lambda world: run_grip_world(payload, width, torque, metrics["friction"], world, fingers),
         row=grip_row,
         weakest=grip_weakest,
         replay_keys=("hand",),

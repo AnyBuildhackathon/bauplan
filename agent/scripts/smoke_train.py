@@ -94,7 +94,7 @@ def _gripper() -> None:
         time.sleep(0.3)
     job = _wait_job(lambda j: j["status"] == "queued" and j["product"] == "gripper")
     spec = job["spec"]
-    if spec.get("nominal") or spec.get("payload_g") != 200 or not 5.5 < spec.get("max_force_n", 0) < 6.5 or spec.get("friction") != 0.8:
+    if spec.get("nominal") or spec.get("payload_g") != 200 or not 4.0 < spec.get("max_force_n", 0) < 5.0 or spec.get("friction") != 0.8:
         raise SystemExit("Gripper spec does not come from the build: " + json.dumps(spec))
     _post("/api/training/" + job["job_id"] + "/claim", {"client": "tab-a"})
     grasp = {"squeeze": 0.368, "grip_force_n": 2.19, "ramp_ms": 265, "settle_ms": 1, "lift_ms": 416, "cycle_ms": 681}

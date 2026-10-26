@@ -2,9 +2,10 @@
 
 Each world draws its own payload mass (+-15 %), servo strength (-25..0 %), pad
 friction (-40..+10 %, dusty, oily or worn pads), how hard the arm shakes (1-2x
-the nominal 1.5 cm; the 2.5 Hz stays, so the shake still ends on a full cycle), and noise on the squeeze force (slow servo
-jitter up to 15 %). A world is survived when the object never lags the hand by more than
-10 mm, the same line as the single grip test.
+the nominal 1.5 cm; the 2.5 Hz stays, so the shake still ends on a full cycle), and noise on the servo torque (slow servo
+jitter up to 15 %). The worlds stand in for the single test's pull at twice the weight, so
+each one ends after the shake. A world is survived when the object never lags the hand by
+more than 10 mm, the same line as the single grip test.
 """
 
 from __future__ import annotations
@@ -13,7 +14,7 @@ import math
 import random
 from dataclasses import dataclass
 
-from pai_agent.grip_sim import _DT, _DURATION, _LIFT, _LIFT_M, _SHAKE, _SHAKE_HZ, _SHAKE_M, _SLIP_LIMIT_M, _model
+from pai_agent.grip_sim import _DT, _LIFT, _SHAKE_M, _SHAKEN, _SLIP_LIMIT_M, Fingers, Rig, _hand_z, contact
 
 _SAMPLE_EVERY = 20
 _JITTER_S = 0.05
@@ -44,53 +45,31 @@ def sample_grip_worlds(n: int, seed: int) -> list[GripWorld]:
     ]
 
 
-def _hand_z(t: float, world: GripWorld) -> float:
-    if t < _LIFT[0]:
-        return 0.0
-    if t < _LIFT[1]:
-        u = (t - _LIFT[0]) / (_LIFT[1] - _LIFT[0])
-        return _LIFT_M * (1 - math.cos(math.pi * u)) / 2
-    if _SHAKE[0] <= t < _SHAKE[1]:
-        return _LIFT_M + _SHAKE_M * world.shake_scale * math.sin(2 * math.pi * _SHAKE_HZ * (t - _SHAKE[0]))
-    return _LIFT_M
-
-
-def run_grip_world(payload_g: float, width_mm: float, force_n: float, friction: float, world: GripWorld) -> dict:
-    import mujoco
-
-    model = mujoco.MjModel.from_xml_string(
-        _model(payload_g * world.mass_scale / 1000.0, width_mm / 1000.0, friction * world.friction_scale)
-    )
-    data = mujoco.MjData(model)
-    mujoco.mj_forward(model, data)
-    obj = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "object")
-    hand_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "hand")
-    base_hand = float(data.xpos[hand_id][2])
-    obj_z0 = float(data.xpos[obj][2])
+def run_grip_world(payload_g: float, width_mm: float, torque_nm: float, friction: float, world: GripWorld, fingers: Fingers = Fingers()) -> dict:
+    tip = contact(fingers, width_mm)
+    if tip is None:
+        return {"pass": False, "reason": "dropped", "slip_mm": 0.0, "margin": -1.0, "trajectory": [], "hand": []}
+    rig = Rig(payload_g * world.mass_scale, width_mm, friction * world.friction_scale, fingers, tip)
     rng = random.Random(world.i * 7919)
-    squeeze_n = force_n * world.servo_scale
+    hold = torque_nm * world.servo_scale
     trajectory: list[list[float]] = []
     hand: list[list[float]] = []
     max_slip = 0.0
     jitter = 0.0
     # Servo jitter is slow: first-order filtered noise with a 50 ms time constant.
     blend = _DT / _JITTER_S
-    for step in range(int(_DURATION / _DT)):
+    for step in range(int(_SHAKEN / _DT)):
         t = step * _DT
         jitter += blend * (rng.gauss(0, world.noise) * math.sqrt(2 / blend) - jitter)
-        squeeze = min(1.0, t / 0.2) * squeeze_n * max(0.0, 1 + jitter)
-        data.ctrl[0] = squeeze
-        data.ctrl[1] = squeeze
-        data.ctrl[2] = _hand_z(t, world)
-        mujoco.mj_step(model, data)
-        lifted = float(data.xpos[hand_id][2]) - base_hand
-        rise = float(data.xpos[obj][2]) - obj_z0
+        rig.step(min(1.0, t / 0.2) * hold * max(0.0, 1 + jitter), _hand_z(t, _SHAKE_M * world.shake_scale))
+        lifted = rig.lifted()
+        rise = rig.rise()
         if t >= _LIFT[0]:
             max_slip = max(max_slip, lifted - rise)
         if step % _SAMPLE_EVERY == 0:
             trajectory.append([round(t, 3), 0.0, 0.0, round(rise, 4)])
             hand.append([round(t, 3), round(lifted, 4)])
-    final_slip = (float(data.xpos[hand_id][2]) - base_hand) - (float(data.xpos[obj][2]) - obj_z0)
+    final_slip = rig.lifted() - rig.rise()
     finite = all(math.isfinite(v) for row in trajectory for v in row)
     if not finite or final_slip > 0.05:
         reason = "dropped"

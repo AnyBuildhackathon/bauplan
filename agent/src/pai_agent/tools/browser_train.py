@@ -26,7 +26,7 @@ GENERATIONS = 16
 # Nominal small drone for a run before anything is built (the mock v1: 36.7 g, 4 x 1102 motors).
 _NOMINAL = {"weight_g": 36.7, "thrust_g": 4 * 28.0, "arm_length_mm": 36.0}
 # Nominal gripper: the brief's 200 g, 66 mm part, an MG996R on the 70 mm finger, printed TPU pads.
-_NOMINAL_GRIP = {"payload_g": 200.0, "width_mm": 66.0, "max_force_n": 5.95, "friction": 0.8}
+_NOMINAL_GRIP = {"payload_g": 200.0, "width_mm": 66.0, "max_force_n": 4.5, "friction": 0.8}
 
 # job_id -> job record; a reset makes a new session id, which orphans older jobs.
 _JOBS: dict[str, dict] = {}

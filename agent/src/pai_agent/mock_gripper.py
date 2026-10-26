@@ -2,9 +2,10 @@
 
 The brief asks for a gripper that holds a 200 g can. The cheap SG90 is tried first:
 the numbers say it is too weak, and the MuJoCo grip test shows the can sliding out
-when the arm lifts. The swap to the MG996R passes. Then the part is built in
-FreeCAD headless (servo pocket sized for the MG996R), rendered in Blender, weighed
-again and put into a bill of materials.
+when the arm lifts. The swap to the MG996R passes; an object it cannot hold at twice
+its weight steps up to the DS3218. Then the part is built in FreeCAD headless (servo
+pocket sized for the chosen servo), rendered in Blender, weighed again and put into a
+bill of materials.
 """
 
 from __future__ import annotations
@@ -13,9 +14,11 @@ import re
 
 from pai_agent.context import Ctx
 from pai_agent.mock_story import _beat, _need, _safety, _say
+from pai_agent.tools.gripper import jaw_opening_mm
 from pai_agent.tools.registry import call_tool
 
 GRIPPER_WORDS = re.compile(r"\b(gripper|greifer|claw|robot ?hand|end ?effector)\b", re.IGNORECASE)
+SERVO_NAMES = {"towerpro-sg90": "SG90", "towerpro-mg996r": "MG996R", "dsservo-ds3218": "DS3218"}
 
 
 def wants_gripper(text: str) -> bool:
@@ -76,7 +79,20 @@ async def run_gripper_mock(ctx: Ctx, text: str) -> None:
         )
         calc = await _need(ctx, "grip_calc", {})
         sim = await _need(ctx, "simulate_grip", {})
-    await _say(ctx, "freut_sich", "Holds through lift and shake.", sim["summary"])
+    if sim["result"] == "fail":
+        await _say(ctx, "besorgt", "Still slips. More torque.", sim["summary"] + " I swap to the DS3218: 19 kg cm, twice the MG996R.")
+        await _need(
+            ctx,
+            "catalog_search",
+            {"category": "servo", "select_id": "dsservo-ds3218", "reason": "Twice the torque of the MG996R for 7.00 € more."},
+        )
+        calc = await _need(ctx, "grip_calc", {})
+        sim = await _need(ctx, "simulate_grip", {})
+    if sim["result"] == "pass":
+        await _say(ctx, "freut_sich", "Holds through lift and shake.", sim["summary"])
+    else:
+        await _say(ctx, "besorgt", "No servo here holds it.", sim["summary"] + " There is no stronger servo in the catalog, so I build it with this one. Silicone pads or a lighter object would help.")
+    servo = SERVO_NAMES[ctx.state.selected["servo"]["id"]]
 
     await _beat()
     await ctx.step("cad", "running")
@@ -84,7 +100,7 @@ async def run_gripper_mock(ctx: Ctx, text: str) -> None:
         ctx,
         "erklaert",
         "Now the part in FreeCAD.",
-        "Now the body in FreeCAD, headless: palm with wrist flange, two meshing gears, fingers with TPU pads. The servo pocket follows the MG996R.",
+        f"Now the body in FreeCAD, headless: palm with wrist flange, two meshing gears, fingers with TPU pads. The servo pocket follows the {servo}.",
     )
     cad = await _need(
         ctx,
@@ -94,7 +110,7 @@ async def run_gripper_mock(ctx: Ctx, text: str) -> None:
             "template": "gripper",
             "description": "Two-finger gear gripper for a robot arm",
             "material": "PLA",
-            "params": {"jaw_opening_mm": max(76.0, numbers["object_width_mm"] + 10), "finger_length_mm": 70},
+            "params": {"jaw_opening_mm": jaw_opening_mm(numbers["object_width_mm"]), "finger_length_mm": 70},
         },
     )
     await _need(ctx, "ui_point_at", {"target": "viewport", "label": f"Printed parts {cad['mass_g']:.0f} g"})

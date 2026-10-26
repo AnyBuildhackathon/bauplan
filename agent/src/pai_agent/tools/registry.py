@@ -689,12 +689,12 @@ SCHEMAS = [
     },
     {
         "name": "grip_calc",
-        "description": "Gripper numbers from the chosen parts and the CAD finger length: finger force, holding force with pad friction, safety factor against the object weight (needs 2x), weight and sample price.",
+        "description": "Gripper numbers from the chosen parts and the CAD fingers: finger force at the pad tips (the fingers swing on their gears), holding force with pad friction, safety factor against the object weight (needs 2x), weight and sample price.",
         "input_schema": {"type": "object", "properties": {}},
     },
     {
         "name": "simulate_grip",
-        "description": "MuJoCo grip test: the pads squeeze the object with the finger force, the arm lifts it 15 cm and shakes it. pass means it stays within 10 mm, fail means it slips or drops.",
+        "description": "MuJoCo grip test with the CAD fingers swinging on their gears, driven by the servo: the pads close on the object, the arm lifts it 15 cm and shakes it, then the object is pulled with its weight once more. pass means it stays within 10 mm and holds twice its weight, fail means it slips or drops.",
         "input_schema": {"type": "object", "properties": {}},
     },
     {
