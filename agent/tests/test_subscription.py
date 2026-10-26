@@ -324,6 +324,32 @@ def test_a_failing_tool_comes_back_as_an_error_the_model_reads(fake_cli, tmp_pat
     assert json.loads(fake.results[0]["content"][0]["text"])["ok"] is False
 
 
+def test_cad_views_picture_reaches_claude_code_as_mcp_image_content(fake_cli, tmp_path):
+    import base64
+    import struct
+
+    from pai_agent import assembly as asm
+    from pai_agent.mesh_export import stls_to_glb
+    from pai_agent.tools.registry import SCHEMAS
+
+    asm.write_stl(tmp_path / "part-block.stl", asm.box_triangles([30.0, 20.0, 10.0], (0.0, 0.0, 5.0), asm.rotation(None)))
+    stls_to_glb([("Block", tmp_path / "part-block.stl", "#ff8a3d")], tmp_path / "part-block.glb")
+    ctx = _ctx(tmp_path)
+    ctx.state.product = "gripper"
+    ctx.state.part = {"name": "Block", "parts": [{"name": "Block", "reference": False}]}
+    ctx.state.stl_path = str(tmp_path / "part-block.stl")
+    fake = fake_cli["fake"] = FakeClaude([("cad_view", {"view": "iso"})])
+    run = AgentRun(ctx, "orchestrator", "Orchestrator", "claude-opus-5-5", "high", "build")
+    schemas = [schema for schema in SCHEMAS if schema["name"] == "cad_view"]
+    asyncio.run(subscription.run_agent(ctx, run, system="Mechanic", prompt="Look at it.", schemas=schemas, max_turns=40))
+    # The SDK's in-process server passes the picture on as MCP image content, next to the JSON that names the parts.
+    text, image = fake.results[0]["content"]
+    assert json.loads(text["text"])["parts"] == [{"number": 1, "name": "Block", "color": "orange"}]
+    assert image["type"] == "image" and image["mimeType"] == "image/png"
+    png = base64.b64decode(image["data"])
+    assert png[:8] == b"\x89PNG\r\n\x1a\n" and struct.unpack(">II", png[16:24]) == (1024, 768)
+
+
 def test_the_agent_event_says_subscription_instead_of_a_cost(fake_cli, tmp_path):
     ctx = _ctx(tmp_path)
     fake_cli["fake"] = FakeClaude([])

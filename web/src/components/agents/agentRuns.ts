@@ -134,6 +134,8 @@ export const roleIcon = (role: string): LucideIcon => ROLE_ICON[role] ?? Cpu;
 
 /** The software behind a tool name, for the chip on a working node. */
 export function toolInfo(tool: string): { label: string; icon: LucideIcon } {
+  // Mechanic looking at his model: VTK renders it, not FreeCAD.
+  if (tool === "cad_view") return { label: "VTK", icon: Eye };
   if (tool === "freecad" || tool.startsWith("cad_")) return { label: tool === "cad_part" ? "Script" : "FreeCAD", icon: DraftingCompass };
   if (tool.startsWith("blender")) return { label: "Blender", icon: Camera };
   if (tool.startsWith("simulate") || tool.startsWith("stress") || tool === "physics_calc") return { label: "MuJoCo", icon: Rocket };

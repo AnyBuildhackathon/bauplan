@@ -47,7 +47,7 @@ flowchart LR
     B -->|SSE event stream| W
     B --> O[Orchestrator<br/>Claude Opus 5.5]
     O -->|delegate| S[Sub-agents<br/>Claude Sonnet 5.5]
-    O --> T[47 tools]
+    O --> T[55 tools]
     S --> T
     T --> FC[FreeCAD]
     T --> MJ[MuJoCo]
@@ -90,9 +90,9 @@ A good reading order:
 ### Anthropic Claude
 
 Claude is the engineer.
-The orchestrator runs on Claude Opus 5.5 with adaptive thinking and a configurable effort level, and it drives the whole bench through 47 tools with the Messages API tool-use loop (`agent/src/pai_agent/orchestrator.py`).
+The orchestrator runs on Claude Opus 5.5 with adaptive thinking and a configurable effort level, and it drives the whole bench through 55 tools with the Messages API tool-use loop (`agent/src/pai_agent/orchestrator.py`).
 It delegates bounded jobs to Claude Sonnet 5.5 sub-agents that see only the tools their job needs (`agent/src/pai_agent/agents.py`).
-Claude writes the FreeCAD Python for every generated part and repairs it from FreeCAD's error messages, reads hand sketches with vision, and finds live shop prices with server-side web search.
+Claude writes the FreeCAD Python for every generated part and repairs it from FreeCAD's error messages, looks at a render of its own model to catch a part that floats or a hole in the wrong place, reads hand sketches with vision, and finds live shop prices with server-side web search.
 Claude Haiku 5.5 writes the learning-mode explanations, using only numbers the tools produced.
 
 ### Reson8
@@ -394,7 +394,7 @@ cd web && npm run typecheck && npm run e2e             # type check and Playwrig
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Components, one request through the code, orchestrator and sub-agents, CAD pipeline, simulation, voice loop, event stream, fallbacks, security, design decisions. |
 | [docs/API.md](docs/API.md) | Every HTTP endpoint and SSE event, with auth and rate limits. |
 | [docs/events.md](docs/events.md) | The authoritative wire format of every request, response and event. |
-| [docs/TOOLS.md](docs/TOOLS.md) | All 53 agent tools with inputs, outputs and the software behind them. |
+| [docs/TOOLS.md](docs/TOOLS.md) | All 55 agent tools with inputs, outputs and the software behind them. |
 | [docs/GEMINI_LIVE.md](docs/GEMINI_LIVE.md) | The Gemini Live voice agent: configuration, protocol, transcripts and measured latency. |
 | [docs/FRAMEWORKS.md](docs/FRAMEWORKS.md) | Frameworks, services and applications with versions and licenses. |
 | [docs/omniverse.md](docs/omniverse.md) | NVIDIA Isaac Sim and Isaac Lab experiments on a GPU host. |

@@ -288,6 +288,7 @@ const TOOL_ALIASES: Record<string, string> = {
   part_pick: "Parts",
   assemble: "Assembly",
   cad_update: "FreeCAD",
+  cad_view: "Model view",
   check_totals: "Analysis",
   check_tip_over: "Analysis",
   check_deflection: "Analysis",

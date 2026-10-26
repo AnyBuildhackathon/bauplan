@@ -34,6 +34,7 @@ from types import SimpleNamespace
 from pai_agent import provider
 from pai_agent.paths import RUNS_DIR
 from pai_agent.run_control import RunStopped
+from pai_agent.tools.view import mcp_content
 
 log = logging.getLogger(__name__)
 
@@ -234,7 +235,8 @@ def _tool_block(block) -> SimpleNamespace:
 
 
 def _payload(result: dict, heard: list[str]) -> dict:
-    content = [{"type": "text", "text": json.dumps(result, ensure_ascii=False, default=str)}]
+    # The JSON, and cad_view's picture as MCP image content, which Claude Code hands the model as an image.
+    content = mcp_content(result)
     content += [{"type": "text", "text": "The person said while you worked: " + text} for text in heard]
     return {"content": content, "is_error": result.get("ok") is False}
 

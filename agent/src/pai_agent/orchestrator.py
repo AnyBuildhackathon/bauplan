@@ -7,7 +7,8 @@ engineering flow for any product and the worked drone and gripper flows, plus th
 schemas from `tools/registry.py`. `_lead_loop` then runs up to 40 rounds: each round's text is
 shown in the chat, each tool call goes through `call_tool`, and the JSON results go back as
 `tool_result` blocks (`is_error` when the tool returned `ok: false`, so the model reads the
-error and retries with corrected arguments).
+error and retries with corrected arguments); `cad_view`'s picture of the model rides along as
+an image block, and only the newest two pictures stay in the history.
 
 Design decisions:
 - The model plans and decides, the tools compute. The prompt forbids stating any number,
@@ -57,6 +58,7 @@ from pai_agent.tools.registry import DELEGATED, SCHEMAS, call_tool
 from pai_agent.tools.robouse_trial import run_trial_mock, wants_trial
 from pai_agent.tools.stress import run_stress_mock, wants_stress
 from pai_agent.tools.ui import control_list
+from pai_agent.tools.view import api_content, drop_old_images
 
 log = logging.getLogger(__name__)
 
@@ -100,6 +102,7 @@ When they named no number for something the product needs, propose a sensible li
    search words, require for the fields this part must have stated (a camera that must see something: fov_deg, resolution_px, fps); select it.
    Only when that fails, pass an honest estimate. Say when a part's numbers are estimated (its confidence).
 4. assemble, read the warnings (a part that floats, a part without position) and fix them with placements.
+   Then look at the model once with cad_view and fix what looks wrong (a part that floats, sits crooked or inside another, a hole in the wrong place, a missing part) with placements, cad_update or cad_part, then look again; at most two rounds.
 5. The checks, right after the first assembly and before you tune anything: check_totals, then the ones your requirements need
    (check_tip_over, check_deflection, check_torque, check_runtime, check_power, check_thermal, check_rollover, simulate_assembly). Every check says pass or fail against the requirements.
 6. On a fail: say which requirement failed and why in one sentence, point at it with ui_point_at, then change one parameter with cad_update
@@ -414,7 +417,7 @@ def _results(tool_uses: list, outcomes: list[dict]) -> list[dict]:
         {
             "type": "tool_result",
             "tool_use_id": block.id,
-            "content": json.dumps(result, ensure_ascii=False, default=str),
+            "content": api_content(result),
             "is_error": result.get("ok") is False,
         }
         for block, result in zip(tool_uses, [*outcomes, *[_STOPPED] * (len(tool_uses) - len(outcomes))])
@@ -470,6 +473,7 @@ async def _lead_loop(ctx: Ctx, lead, delegation: bool, messages: list[dict]) -> 
     await lead.emit("running", "plans the build")
     for _round in range(40):
         await ctx.checkpoint()
+        drop_old_images(messages)
         try:
             response = await stream_round(
                 lead.model,

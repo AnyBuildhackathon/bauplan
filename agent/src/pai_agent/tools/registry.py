@@ -46,6 +46,7 @@ from pai_agent.tools.simulate import simulate_drone
 from pai_agent.tools.stress import stress_test
 from pai_agent.tools.train_loop import train_controller
 from pai_agent.tools.ui import mascot_say, ui_control, ui_draw, ui_point_at
+from pai_agent.tools.view import SCHEMA as CAD_VIEW_SCHEMA, cad_view
 
 TOOLS = {
     "ask_user": ask_user,
@@ -65,6 +66,7 @@ TOOLS = {
     "part_pick": part_pick,
     "assemble": assemble,
     "cad_update": cad_update,
+    "cad_view": cad_view,
     "check_totals": check_totals,
     "check_tip_over": check_tip_over,
     "check_deflection": check_deflection,
@@ -518,6 +520,7 @@ SCHEMAS = [
             "required": ["part_id", "params"],
         },
     },
+    CAD_VIEW_SCHEMA,
     {
         "name": "check_totals",
         "description": "Mass (product without external loads), cost (printed parts at filament cost plus bought parts) and size against the mass, cost and size requirements.",

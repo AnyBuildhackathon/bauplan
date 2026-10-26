@@ -1,7 +1,7 @@
 # Agent tools
 
 Claude builds products by calling tools; it never invents a number that a tool did not compute.
-The backend registers 53 tools in `agent/src/pai_agent/tools/registry.py`, with one schema list (`SCHEMAS`) and one dispatch (`call_tool`) shared by Claude and the offline mock.
+The backend registers 55 tools in `agent/src/pai_agent/tools/registry.py`, with one schema list (`SCHEMAS`) and one dispatch (`call_tool`) shared by Claude and the offline mock.
 This document lists every tool with its inputs, what it returns and emits, and the external software behind it.
 The inputs below are generated from `SCHEMAS`; "(required)" marks required fields.
 Event payloads are specified in [events.md](events.md#tools), and the step each tool lights up on the dashboard is in `_STEP` in the registry.
@@ -13,6 +13,7 @@ Event payloads are specified in [events.md](events.md#tools), and the step each 
 | **Anthropic Claude** (Opus 5.5, Sonnet 5.5, Haiku 5.5) | Orchestrator, sub-agents, `cad_part` script writing, `sketch_to_spec` (vision), `bom_build` live prices (server-side web search), learning-mode explanations | Anthropic Python SDK, Messages API with tool use, adaptive thinking and effort | Scripted mock stories through the same tools |
 | **FreeCAD 1.1** | `cad_frame`, `cad_part`, `cad_update`, `POST /api/cad/open` | GUI over the [freecad-mcp](https://github.com/neka-nat/freecad-mcp) XML-RPC add-on on port 9875, or headless `freecadcmd` in a sandbox | CadQuery (frame) or a marked placeholder block (generated parts) |
 | **CadQuery 2.8** (OpenCascade) | `cad_frame` fallback | Python library | None needed |
+| **VTK 9.6** (BSD-3-Clause, comes with CadQuery's OCP) | `cad_view` | Offscreen OpenGL render of the build's GLB in its own process, `python -m pai_agent.view_render` | `ok: false` with the reason; the run goes on |
 | **Blender 5** | `blender_render`, `product_usd`, `scene_object` (GLB) | Headless `blender -b -P agent/blender/studio.py` (Cycles with Metal GPU, or EEVEE); `agent/src/pai_agent/simready/blender_glb.py` turns a SimReady USD into a textured GLB | Recorded still `agent/runs/fallback/render.png`; an untextured GLB in the materials' base colours for `scene_object` |
 | **NVIDIA SimReady assets** (Hugging Face dataset `nvidia/simready-assets`, CC BY 4.0) | `scene_object`, `GET /api/objects` | Packages fetched one by one at a pinned revision, license-checked and verified against their SHA-256 bill of materials; read with usd-core (OpenUSD); offline catalogue in `agent/data/simready/index.json` | The catalogue and cached objects work offline; an uncached object needs the network or `PAI_SIMREADY_MIRROR` |
 | **CoACD 1.0** | `scene_object` for containers | Convex decomposition in its own process, `python -m pai_agent.simready.decompose` | One convex hull per collision mesh, with a warning |
@@ -42,6 +43,7 @@ Event payloads are specified in [events.md](events.md#tools), and the step each 
 | `cad_frame` | `arm_length_mm`, `thickness_mm`, `motor_spacing_mm` (all required): number | The full drone assembly: `frame.FCStd`, STEP, STL and a GLB with one node per scene part and PBR materials, plus the FreeCAD mass of the carbon frame; emits `cad` stage by stage when the GUI is open. | FreeCAD GUI or headless, CadQuery fallback |
 | `cad_update` | `part_id` (required): string; `params` (required): object | Rebuilds one printed part from the same script, reassembles, and reruns every check that ran before; returns the new results. | FreeCAD headless |
 | `assemble` | `placements`: object | One model with mass, cost, centre of mass, size and footprint, and warnings such as floating parts. | Python mesh math in `assembly.py` and `mesh_export.py` |
+| `cad_view` | `view`: `sheet`, `iso`, `iso_below`, `front`, `back`, `left`, `right`, `top` or `bottom`; `direction`: number array; `only`, `hide`: string arrays; `section`: `{axis, at_mm}`; `color`: `parts`, `overhang` or `stress`; `numbers`: boolean | One 1024 x 768 PNG of the build as it stands, handed to Claude as an image next to the JSON: every part by number and colour, the grid size, what was hidden or cut, and with `overhang` the overhanging area per printed part in its print pose. | VTK offscreen (`view_render.py`) |
 | `product_usd` | none | Exports the current drone assembly as USD with per-part masses in kilograms. | Blender |
 
 ## Parts and pricing
