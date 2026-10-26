@@ -1,0 +1,46 @@
+{
+  "commands": [
+    {"command": "file.new", "params": {"name": "Two-finger gripper"}},
+    {"command": "parameters.add", "params": {"name": "jaw_opening", "expression": "50 mm", "favorite": true, "comment": "Gap between the pads as built"}},
+    {"command": "parameters.add", "params": {"name": "finger_length", "expression": "60 mm", "favorite": true, "comment": "Gear axle to fingertip, along -Y"}},
+    {"command": "parameters.add", "params": {"name": "gear_radius", "expression": "8 mm", "comment": "Pitch radius of the two meshing gears; the axles sit at x = -8 and 8 mm, where the joints are"}},
+    {"command": "parameters.add", "params": {"name": "finger_width", "expression": "8 mm"}},
+    {"command": "parameters.add", "params": {"name": "finger_thickness", "expression": "5 mm"}},
+    {"command": "parameters.add", "params": {"name": "gear_thickness", "expression": "6 mm"}},
+    {"command": "parameters.add", "params": {"name": "pad_thickness", "expression": "3 mm"}},
+    {"command": "parameters.add", "params": {"name": "pad_length", "expression": "18 mm"}},
+    {"command": "parameters.add", "params": {"name": "palm_width", "expression": "76 mm"}},
+    {"command": "parameters.add", "params": {"name": "plate", "expression": "4 mm"}},
+    {"command": "parameters.add", "params": {"name": "finger_x", "expression": "jaw_opening / 2 + pad_thickness + finger_width / 2", "comment": "Centre line of each finger's long bar"}},
+
+    {"command": "component.create", "params": {"name": "Palm"}},
+    {"command": "solid.box", "params": {"corner": ["-palm_width / 2", -12, "-plate"], "length": "palm_width", "width": 26, "height": "plate", "body_name": "Palm plate"}},
+    {"command": "solid.box", "params": {"corner": ["-palm_width / 2", 14, "-plate"], "length": "palm_width", "width": 6, "height": "plate + 14 mm", "body_name": "Wrist flange"}},
+    {"command": "solid.cylinder", "params": {"base": ["-gear_radius", 0, "-plate"], "radius": 2, "height": "plate + gear_thickness + 1 mm", "operation": "new", "body_name": "Axle L"}},
+    {"command": "solid.cylinder", "params": {"base": ["gear_radius", 0, "-plate"], "radius": 2, "height": "plate + gear_thickness + 1 mm", "operation": "new", "body_name": "Axle R"}},
+    {"command": "appearance.assign", "params": {"components": ["Palm"], "color": "#4a5563"}},
+    {"command": "component.activate", "params": {"component": "root"}},
+
+    {"command": "component.create", "params": {"name": "Finger L"}},
+    {"command": "solid.cylinder", "params": {"base": ["-gear_radius", 0, 0], "radius": "gear_radius", "height": "gear_thickness", "operation": "new", "body_name": "Gear L"}},
+    {"command": "solid.box", "params": {"corner": ["-finger_x - finger_width / 2", "-finger_width / 2", 0], "length": "finger_x + finger_width / 2 - 1.5 * gear_radius", "width": "finger_width", "height": "finger_thickness", "body_name": "Root bar L"}},
+    {"command": "solid.box", "params": {"corner": ["-finger_x - finger_width / 2", "-finger_length", 0], "length": "finger_width", "width": "finger_length + finger_width / 2", "height": "finger_thickness", "body_name": "Finger bar L"}},
+    {"command": "solid.box", "params": {"corner": ["-jaw_opening / 2 - pad_thickness", "-finger_length", 0], "length": "pad_thickness", "width": "pad_length", "height": "finger_thickness", "body_name": "Pad L"}},
+    {"command": "appearance.assign", "params": {"components": ["Finger L"], "color": "#328bd3"}},
+    {"command": "component.activate", "params": {"component": "root"}},
+
+    {"command": "component.create", "params": {"name": "Finger R"}},
+    {"command": "solid.cylinder", "params": {"base": ["gear_radius", 0, 0], "radius": "gear_radius", "height": "gear_thickness", "operation": "new", "body_name": "Gear R"}},
+    {"command": "solid.box", "params": {"corner": ["1.5 * gear_radius", "-finger_width / 2", 0], "length": "finger_x + finger_width / 2 - 1.5 * gear_radius", "width": "finger_width", "height": "finger_thickness", "body_name": "Root bar R"}},
+    {"command": "solid.box", "params": {"corner": ["finger_x - finger_width / 2", "-finger_length", 0], "length": "finger_width", "width": "finger_length + finger_width / 2", "height": "finger_thickness", "body_name": "Finger bar R"}},
+    {"command": "solid.box", "params": {"corner": ["jaw_opening / 2", "-finger_length", 0], "length": "pad_thickness", "width": "pad_length", "height": "finger_thickness", "body_name": "Pad R"}},
+    {"command": "appearance.assign", "params": {"components": ["Finger R"], "color": "#e3ab4b"}},
+    {"command": "component.activate", "params": {"component": "root"}},
+
+    {"command": "occurrence.ground", "params": {"occurrence": "Palm:1", "grounded": true}},
+    {"command": "joint.create", "params": {"name": "Finger L pivot", "type": "revolute", "flip": true, "limits": [[-30, 20]], "a": {"occurrence": "Palm", "point": [-8, 0, 0], "z": [0, 0, 1]}, "b": {"occurrence": "Finger L", "point": [-8, 0, 0], "z": [0, 0, 1]}}},
+    {"command": "joint.create", "params": {"name": "Finger R pivot", "type": "revolute", "flip": true, "limits": [[-20, 30]], "a": {"occurrence": "Palm", "point": [8, 0, 0], "z": [0, 0, 1]}, "b": {"occurrence": "Finger R", "point": [8, 0, 0], "z": [0, 0, 1]}}},
+    {"command": "joint.gear", "params": {"a": "Finger L pivot", "b": "Finger R pivot", "ra": "gear_radius", "rb": "gear_radius"}},
+    {"command": "motion.study", "params": {"name": "Open and close", "steps": 30, "keys": [{"joint": "Finger L pivot", "points": [[0, 0], [10, -30], [20, 20], [30, 0]]}]}}
+  ]
+}

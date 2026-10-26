@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import time
 
-from pai_agent import distributors
+from pai_agent import distributors, solidcraft
 from pai_agent.context import Ctx
 from pai_agent.timeouts import limit, timed_out
 from pai_agent.requirements import refresh_requirements
@@ -32,6 +32,7 @@ from pai_agent.tools.safety import SCHEMA as SAFETY_SCHEMA, safety_check
 from pai_agent.tools.circuit import SCHEMA as CIRCUIT_SCHEMA, circuit_design
 from pai_agent.tools.robouse_trial import SCHEMA as ROBOUSE_TRIAL_SCHEMA, robouse_trial
 from pai_agent.tools.scene_object import SCHEMA as SCENE_OBJECT_SCHEMA, scene_object
+from pai_agent.tools.solidcraft_part import EXPORT_SCHEMA as EXPORT_URDF_SCHEMA, SCHEMA as SOLIDCRAFT_PART_SCHEMA, export_urdf, solidcraft_part
 from pai_agent.tools.isaac import isaac_lab_status, isaac_lab_train, isaac_sim_render, isaac_test, isaac_train, ssh_setting
 from pai_agent.tools.usd import product_usd
 from pai_agent.tools.ask import ask_user
@@ -59,6 +60,8 @@ TOOLS = {
     "train_controller": train_controller,
     "cad_frame": cad_frame,
     "cad_part": cad_part,
+    "solidcraft_part": solidcraft_part,
+    "export_urdf": export_urdf,
     "product_brief": product_brief,
     "product_spec": product_spec,
     "sketch_to_spec": sketch_to_spec,
@@ -115,6 +118,9 @@ _STEP = {
     "physics_calc": "teile",
     "cad_frame": "cad",
     "cad_part": "cad",
+    "solidcraft_part": "cad",
+    # The robot description is CAD output; its MuJoCo check has no run to show in the Simulation tab.
+    "export_urdf": "cad",
     "product_brief": "meeting",
     "product_spec": "meeting",
     "sketch_to_spec": "meeting",
@@ -803,6 +809,8 @@ SCHEMAS = [
     SAFETY_SCHEMA,
     CIRCUIT_SCHEMA,
     SCENE_OBJECT_SCHEMA,
+    SOLIDCRAFT_PART_SCHEMA,
+    EXPORT_URDF_SCHEMA,
     {
         "name": "firmware",
         "description": "Generates the firmware and wiring table from the chosen parts: a Betaflight CLI configuration for a drone (motor order, rates, trained PID gains, else defaults), an Arduino sketch for a servo product. Call it after bom_build. explanation is your one or two sentences for the team; the file itself comes from a fixed template.",
@@ -941,7 +949,7 @@ def _running_detail(name: str, args: dict) -> str:
         return str(args.get("state", ""))
     if name == "ui_control":
         return str(args.get("control", ""))
-    if name in {"cad_part", "cad_update", "part_pick", "material_pick", "fem_check"}:
+    if name in {"cad_part", "solidcraft_part", "cad_update", "part_pick", "material_pick", "fem_check"}:
         return str(args.get("part_id") or args.get("name") or "")
     if name == "product_spec":
         return str(args.get("name", ""))
@@ -1001,7 +1009,7 @@ async def _advance(ctx: Ctx, name: str, result: dict, started: bool) -> None:
         await ctx.step("training", "done" if result.get("result") == "pass" else "failed")
     elif name == "isaac_lab_status" and result.get("training_status") == "done":
         await ctx.step("training", "done")
-    elif name in {"blender_render", "isaac_sim_render", "cad_frame", "cad_part", "cad_update", "assemble", "product_brief", "product_spec", "sketch_to_spec", "reference_load", "part_pick", "bom_build", "print_prep", "material_pick"}:
+    elif name in {"blender_render", "isaac_sim_render", "cad_frame", "cad_part", "solidcraft_part", "export_urdf", "cad_update", "assemble", "product_brief", "product_spec", "sketch_to_spec", "reference_load", "part_pick", "bom_build", "print_prep", "material_pick"}:
         await ctx.step(step, "done")
 
 
@@ -1084,6 +1092,9 @@ async def emit_connections(publish) -> None:
         ("isaac_lab_train", isaac_status, isaac_detail),
         ("isaac_sim_render", isaac_status, isaac_detail),
     )
+    if solidcraft.engine() == "solidcraft":
+        why = solidcraft.missing()
+        rows += (("solidcraft_part", "offline" if why else "connected", why or "SolidCraft " + solidcraft.VERSION + " for parts with joints and their robot description"),)
     for name, status, detail in rows:
         await publish({"type": "tool", "name": name, "status": status, "detail": detail})
 

@@ -18,6 +18,10 @@ DEFAULT_S = 120.0
 BUDGET_S = {
     # FreeCAD: up to three script attempts plus the simplified-block fallback.
     "cad_part": 300.0,
+    # SolidCraft: up to three script attempts, two runs of about a second each per attempt.
+    "solidcraft_part": 300.0,
+    # SolidCraft writes the URDF in a second; MuJoCo reads it and drives the motion study in a few more.
+    "export_urdf": 120.0,
     # A change reruns every check, the FEM too.
     "cad_update": 480.0,
     "cad_frame": 200.0,
@@ -66,7 +70,7 @@ BUDGET_S = {
 }
 
 # The tools whose time is mostly Claude's: slower on the subscription (`provider.py`).
-CLAUDE_BOUND = {"cad_part", "cad_update", "bom_build", "part_pick", "parts_search", "delegate", "sketch_to_spec", "optimize_design"}
+CLAUDE_BOUND = {"cad_part", "solidcraft_part", "cad_update", "bom_build", "part_pick", "parts_search", "delegate", "sketch_to_spec", "optimize_design"}
 
 # What takes over when the tool's own fallback did not get there in time.
 FALLBACKS = {
@@ -82,6 +86,8 @@ LABELS = {
     "cad_part": "FreeCAD",
     "cad_update": "FreeCAD",
     "cad_frame": "FreeCAD",
+    "solidcraft_part": "SolidCraft",
+    "export_urdf": "SolidCraft",
     "blender_render": "Blender",
     "product_usd": "Blender",
     "simulate_drone": "MuJoCo",

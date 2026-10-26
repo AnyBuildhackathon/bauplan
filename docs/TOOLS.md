@@ -1,7 +1,7 @@
 # Agent tools
 
 Claude builds products by calling tools; it never invents a number that a tool did not compute.
-The backend registers 55 tools in `agent/src/pai_agent/tools/registry.py`, with one schema list (`SCHEMAS`) and one dispatch (`call_tool`) shared by Claude and the offline mock.
+The backend registers 57 tools in `agent/src/pai_agent/tools/registry.py`, with one schema list (`SCHEMAS`) and one dispatch (`call_tool`) shared by Claude and the offline mock.
 This document lists every tool with its inputs, what it returns and emits, and the external software behind it.
 The inputs below are generated from `SCHEMAS`; "(required)" marks required fields.
 Event payloads are specified in [events.md](events.md#tools), and the step each tool lights up on the dashboard is in `_STEP` in the registry.
@@ -24,6 +24,7 @@ Event payloads are specified in [events.md](events.md#tools), and the step each 
 | **Gemini Live** | Mechanic's only voice (not a tool) | Native realtime audio through `WS /api/voice/live` | Silent, text only |
 | **Betaflight and Arduino** | `firmware` | Deterministic templates filled from the chosen parts | None needed |
 | **SparkBench** (commit `6dd9237`) | `circuit_design` | Node.js process running `agent/sparkbench/bridge.ts` against the checkout from `agent/scripts/setup_sparkbench.sh` | `ok: false` with the install hint; the run goes on |
+| **SolidCraft 0.23.0** (MIT OR Apache-2.0) | `solidcraft_part`, `export_urdf`, offered with `PAI_CAD_ENGINE=solidcraft` | `solidcraft-cli run` and `snapshot` from `agent/scripts/setup_solidcraft.sh`, in a scratch folder with a scrubbed environment and `sandbox-exec` on macOS; MuJoCo reads its URDF (`solidcraft.py`, `solidcraft_mjcf.py`) | `ok: false` with the install hint |
 
 ## Product definition
 
@@ -45,6 +46,8 @@ Event payloads are specified in [events.md](events.md#tools), and the step each 
 | `assemble` | `placements`: object | One model with mass, cost, centre of mass, size and footprint, and warnings such as floating parts. | Python mesh math in `assembly.py` and `mesh_export.py` |
 | `cad_view` | `view`: `sheet`, `iso`, `iso_below`, `front`, `back`, `left`, `right`, `top` or `bottom`; `direction`: number array; `only`, `hide`: string arrays; `section`: `{axis, at_mm}`; `color`: `parts`, `overhang` or `stress`; `numbers`: boolean | One 1024 x 768 PNG of the build as it stands, handed to Claude as an image next to the JSON: every part by number and colour, the grid size, what was hidden or cut, and with `overhang` the overhanging area per printed part in its print pose. | VTK offscreen (`view_render.py`) |
 | `product_usd` | none | Exports the current drone assembly as USD with per-part masses in kilograms. | Blender |
+| `solidcraft_part` | `name` (required): string; `description`: string; `params`: object; `material`: `ABS`, `ALUMINIUM`, `ASA`, `NYLON`, `PETG`, `PLA`, `STEEL` or `TPU`; `template`: `four_bar` or `two_finger_gripper`; `script`: object | A part or a mechanism built from a SolidCraft command script (a template, `script`, or one the CAD agent writes from SolidCraft's skills and fixes from SolidCraft's error, up to three attempts): STEP, STL, GLB and the `.solidcraft` design, mass and volume for the material, bounding box, bodies per part, joints, motion links, motion studies, the parameters that became sliders, and SolidCraft's picture as an image for Claude; emits `cad`. Only with `PAI_CAD_ENGINE=solidcraft`. | SolidCraft headless (`solidcraft-cli`), sandboxed |
+| `export_urdf` | `effort`, `velocity`: number | The last SolidCraft design as URDF (SolidCraft's exporter) and MJCF (MuJoCo's reading of it with each loop closed by an equality, motion links as joint couplings, qpos0 as built), then a MuJoCo run of its motion study: every joint present and moving, loop gaps, deviation from SolidCraft's poses, every link's mass against SolidCraft's measure; `result` pass needs all of them, masses within 1 %. Only with `PAI_CAD_ENGINE=solidcraft`. | SolidCraft headless, MuJoCo |
 
 ## Parts and pricing
 

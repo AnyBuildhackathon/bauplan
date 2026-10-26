@@ -74,6 +74,7 @@ flowchart LR
 | Voice | `agent/src/pai_agent/gemini_live.py`, `voice.py` | The Gemini Live gateway (Mechanic's only voice) and Reson8 token vending. |
 | Engineering core | `spec.py`, `analysis.py`, `analysis_more.py`, `rigid_sim.py`, `grip_sim.py`, `assembly.py` | Spec validation, closed-form checks, MuJoCo rigid-body tests and the assembly model. |
 | CAD runners | `freecad_run.py`, `cad_script.py`, `agent/freecad/` | FreeCAD in the open window over `freecad-mcp`, headless `freecadcmd` in a sandbox, CadQuery as the last fallback. |
+| SolidCraft | `solidcraft.py`, `solidcraft_mjcf.py`, `agent/solidcraft/` | With `PAI_CAD_ENGINE=solidcraft`: parts and mechanisms in headless `solidcraft-cli`, their URDF, and the MJCF MuJoCo makes of it with the loops closed. |
 | Rendering | `agent/blender/studio.py`, `tools/blender.py` | Headless Blender studio renders of the assembled GLB. |
 | Library and community | `references.py`, `community.py`, `agent/data/references/`, `agent/data/community/` | Known reference builds, saved projects, the published feed and remixes. |
 | Cache and warm-up | `cache.py`, `warm.py` | Reuse identical FreeCAD and Blender results and pre-load slow imports at start. |
@@ -247,6 +248,7 @@ flowchart TD
 - `cad_part` builds any part from a description: Claude writes FreeCAD Python, the script is checked before it runs (only `FreeCAD`, `Part` and `math` imports, no file access), runs headless in a fresh temp directory without the backend's environment, and on macOS `sandbox-exec` blocks network access and writes outside that directory.
   A failed script returns to Claude with the error, up to three attempts.
 - Identical inputs reuse earlier results from `agent/runs/cache/` (`PAI_CACHE=0` turns that off).
+- With `PAI_CAD_ENGINE=solidcraft`, parts that move on joints go to SolidCraft instead: `solidcraft_part` runs a SolidCraft command script in `solidcraft-cli` (a library template, Claude's script written from SolidCraft's own skills, or one passed in), and `export_urdf` writes its URDF and the MJCF MuJoCo makes of it, with the loops closed, checked against SolidCraft's motion study ([agent/solidcraft/README.md](../agent/solidcraft/README.md)).
 - In the open FreeCAD window, `cad_frame` builds stage by stage (frame, motors, propellers, flight controller, canopy and camera, battery and strap, antenna), exports, and captures a viewport snapshot; the chat shows each stage, and a step that does not answer within 12 seconds falls back to headless `freecadcmd`.
 
 ### Drone model and studio render
@@ -347,8 +349,9 @@ The reasons behind the main choices, for a reviewer who wants to know why the co
 | Path | Contents |
 | --- | --- |
 | `agent/src/pai_agent/` | Backend package: API, session, orchestrator, sub-agents, engineering core, voice. |
-| `agent/src/pai_agent/tools/` | The 55 agent tools, see [TOOLS.md](TOOLS.md). |
+| `agent/src/pai_agent/tools/` | The 57 agent tools, see [TOOLS.md](TOOLS.md). |
 | `agent/freecad/` | FreeCAD build scripts, the part harness, parametric library parts and downloaded part models. |
+| `agent/solidcraft/` | SolidCraft's skills for the CAD agent and the library of SolidCraft designs (four-bar, two-finger gripper). |
 | `agent/blender/` | The Blender studio scene script. |
 | `agent/data/` | Part catalogs, reference builds, community seeds, the sample sketch. |
 | `agent/scripts/` | Smoke tests, the demo recorder, profiling and seeding scripts. |

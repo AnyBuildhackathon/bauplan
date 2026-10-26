@@ -46,7 +46,10 @@ export default defineConfig({
         PAI_ASK_TIMEOUT_S: "2",
         // A busy host can spend minutes in Blender; mock UI checks use its existing still fallback.
         // Robo Use off: the gripper's trial is the recorded one, the same on every machine, and nothing runs a model.
-        ...(live ? {} : { PAI_FORCE_MOCK: "1", PAI_WARM: "0", FREECAD_GUI: "off", PAI_TIMEOUT_BLENDER_RENDER: "15", PAI_ROBOUSE_BIN: "off" }),
+        // SolidCraft as the CAD engine: only a request that names a linkage or SolidCraft reaches it (solidcraft.spec.ts).
+        ...(live
+          ? {}
+          : { PAI_FORCE_MOCK: "1", PAI_WARM: "0", FREECAD_GUI: "off", PAI_TIMEOUT_BLENDER_RENDER: "15", PAI_ROBOUSE_BIN: "off", PAI_CAD_ENGINE: "solidcraft" }),
       },
       reuseExistingServer: false,
       timeout: 120_000,

@@ -79,3 +79,6 @@ class BuildState:
     # NVIDIA SimReady objects in the scene (scene_object) by id: role, placement, size, mass and their
     # MJCF and GLB files in the session. Context for the build, never in the bill of materials.
     objects: dict[str, dict] = field(default_factory=dict)
+    # The last SolidCraft design (solidcraft_part): its script and parameter values, material, sliders, motion studies,
+    # the bodies that got the build material, its files in the session and the CAD build it was (cad_builds).
+    solidcraft: dict | None = None

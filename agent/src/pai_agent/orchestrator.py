@@ -21,6 +21,8 @@ Design decisions:
   a cheaper sub-agent model with only the tools they need (`agents.py`).
 - Several `cad_part` calls in one round run concurrently (`_PARALLEL`): each printed part's
   script is written by its own CAD agent, so a four-part product does not wait four times.
+- The CAD engine is FreeCAD. `PAI_CAD_ENGINE=solidcraft` adds SolidCraft for parts that move on
+  joints: its two tools (`tools/solidcraft_part.py`) and a paragraph on when to use them.
 - The system prompt and tool list are identical every round and marked for prompt caching.
 - Every model call has a timeout (`PAI_MODEL_TIMEOUT_S`) and the loop a round limit, so a
   stuck model ends the run with a message instead of freezing the stage.
@@ -30,9 +32,9 @@ tools to `subscription.lead_loop`, which runs the loop in Claude Code with the t
 in-process MCP server and continues the conversation through its session id.
 
 Without a key, the same entry points route by keywords to deterministic mock runners
-(`mock_story.py`, `mock_product.py`, `mock_gripper.py`, `mock_lamp.py`, `mock_categories.py`)
-that call the very same tools through the same `call_tool`, so offline runs exercise the real
-CAD, MuJoCo and Blender code paths.
+(`mock_story.py`, `mock_product.py`, `mock_gripper.py`, `mock_lamp.py`, `mock_categories.py`,
+`mock_solidcraft.py`) that call the very same tools through the same `call_tool`, so offline runs
+exercise the real CAD, MuJoCo and Blender code paths.
 """
 
 from __future__ import annotations
@@ -43,12 +45,13 @@ import logging
 import re
 
 from pai_agent.context import Ctx
-from pai_agent import settings
+from pai_agent import settings, solidcraft
 from pai_agent.env import claude_enabled
 from pai_agent.mock_categories import NAMES as CATEGORY_NAMES, RUNS as CATEGORY_RUNS, wants_category
 from pai_agent.mock_gripper import run_gripper_mock, wants_gripper
 from pai_agent.mock_lamp import run_lamp_mock, wants_lamp
 from pai_agent.mock_product import run_product_mock, wants_product
+from pai_agent.mock_solidcraft import run_solidcraft_mock, wants_solidcraft
 from pai_agent.mock_story import run_mock, run_mock_followup
 from pai_agent.run_control import RunStopped
 from pai_agent.scene import STEPS
@@ -56,6 +59,7 @@ from pai_agent.tools.browser_train import run_mock_training
 from pai_agent.tools.optimize import run_optimize_mock, run_pick_mock, wants_optimize, wants_pick
 from pai_agent.tools.registry import DELEGATED, SCHEMAS, call_tool
 from pai_agent.tools.robouse_trial import run_trial_mock, wants_trial
+from pai_agent.tools.solidcraft_part import NAMES as SOLIDCRAFT_TOOLS
 from pai_agent.tools.stress import run_stress_mock, wants_stress
 from pai_agent.tools.ui import control_list
 from pai_agent.tools.view import api_content, drop_old_images
@@ -191,6 +195,15 @@ Read each report before you act on it. You keep product_spec, assemble, cad_upda
 For the drone and the gripper, work with their own tools as described above; delegation is for the general product flow.
 """
 
+_SOLIDCRAFT = """
+SolidCraft is the CAD engine here for anything whose parts move on joints: a gripper, a linkage, an arm, a leg, a hinge, a slide.
+Build it with solidcraft_part: describe each part, the joint between each pair (where it sits, its axis, its range) and the joint that drives it;
+the CAD agent writes SolidCraft's script with a motion study. template four_bar and two_finger_gripper are tested designs.
+solidcraft_part returns SolidCraft's picture: look at it and fix what is wrong with solidcraft_part again, at most two rounds.
+Then export_urdf writes the robot description (URDF for Isaac Sim and ROS, MJCF for MuJoCo) and runs it in MuJoCo through the motion study;
+say whether every joint moved, the loops stayed closed and the masses match SolidCraft's. The printed parts of a product spec stay with cad_part in FreeCAD.
+"""
+
 
 async def _first(ctx: Ctx) -> bool:
     first = not ctx.state.started
@@ -225,6 +238,9 @@ async def run_prompt(ctx: Ctx, text: str, messages: list[dict], voice: bool = Fa
             return
         if wants_optimize(text) and ctx.state.product == "drone" and not wants_gripper(text) and (ctx.state.selected or _DRONE.search(text)):
             await run_optimize_mock(ctx, text)
+            return
+        if wants_solidcraft(text):
+            await run_solidcraft_mock(ctx, text)
             return
         if wants_gripper(text) and not (ctx.state.product == "gripper" and ctx.state.finished):
             await run_gripper_mock(ctx, text)
@@ -358,15 +374,17 @@ _PARALLEL = {"cad_part"}
 
 
 def _system(delegation: bool) -> list[dict]:
-    text = _SYSTEM.replace("{controls}", control_list()) + (_DELEGATION if delegation else "")
+    text = _SYSTEM.replace("{controls}", control_list()) + (_DELEGATION if delegation else "") + (_SOLIDCRAFT if solidcraft.engine() == "solidcraft" else "")
     # The prompt and the tool list are the same every round; caching them keeps rounds fast.
     return [{"type": "text", "text": text, "cache_control": {"type": "ephemeral"}}]
 
 
 def _tools(delegation: bool) -> list[dict]:
+    # SolidCraft's tools join only when it is the CAD engine (PAI_CAD_ENGINE=solidcraft); FreeCAD is the default.
+    hidden = set() if solidcraft.engine() == "solidcraft" else SOLIDCRAFT_TOOLS
     if delegation:
-        return [schema for schema in SCHEMAS if schema["name"] not in DELEGATED]
-    return [schema for schema in SCHEMAS if schema["name"] != "delegate"]
+        return [schema for schema in SCHEMAS if schema["name"] not in DELEGATED and schema["name"] not in hidden]
+    return [schema for schema in SCHEMAS if schema["name"] != "delegate" and schema["name"] not in hidden]
 
 
 async def _run_claude(ctx: Ctx, text: str, messages: list[dict]) -> None:

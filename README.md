@@ -204,6 +204,20 @@ bash agent/scripts/setup_sparkbench.sh
 It lands in `~/.cache/anybuild/sparkbench/<commit>`; without it the tool says SparkBench is not installed and the run goes on.
 How it runs is in [agent/sparkbench/README.md](agent/sparkbench/README.md).
 
+### SolidCraft mechanisms (optional)
+
+With `PAI_CAD_ENGINE=solidcraft`, Mechanic designs parts that move on joints (a gripper, a linkage, an arm) in [SolidCraft](https://github.com/tangency-labs/solidcraft), parametric CAD with joints and motion studies, and writes their robot description: URDF from SolidCraft and MJCF for MuJoCo with the loops closed, checked in MuJoCo against SolidCraft's own motion study.
+FreeCAD stays the default engine and keeps the printed parts of a product spec.
+Install the pinned `solidcraft-cli` once; it needs the network:
+
+```bash
+bash agent/scripts/setup_solidcraft.sh
+```
+
+It lands in `~/.cache/anybuild/solidcraft/0.23.0`; without it the tools say SolidCraft is not installed.
+With the switch and without a key, "Build a four-bar linkage" or "Design a two-finger gripper in SolidCraft" runs a library design through both tools.
+How it runs is in [agent/solidcraft/README.md](agent/solidcraft/README.md).
+
 ## Configuration
 
 Put settings in `agent/.env` or the shell; shell variables win.
@@ -265,6 +279,8 @@ Tokens are cached until they expire, results for a day, each provider stays insi
 | `PAI_ROBOUSE_BIN` | The `anybuild-robouse` command for Robo Use trials of the gripper (default: the bridge's own environment, then `PATH`); `off` shows the recorded trial. |
 | `PAI_CACHE` | `0` turns off reuse of identical FreeCAD, Blender and SparkBench results. |
 | `SPARKBENCH_DIR` | The SparkBench checkout for `circuit_design` (default `~/.cache/anybuild/sparkbench/<commit>`). |
+| `PAI_CAD_ENGINE` | `freecad` (default) or `solidcraft`: adds `solidcraft_part` and `export_urdf` for parts that move on joints. |
+| `SOLIDCRAFT_CLI`, `SOLIDCRAFT_DIR` | The `solidcraft-cli` 0.23.0 binary, or the folder `agent/scripts/setup_solidcraft.sh` installs it into (default `~/.cache/anybuild/solidcraft/0.23.0`). |
 | `PAI_WARM` | `0` skips warming slow imports at start. |
 | `DEMO_PACE_S` | Pause between steps in seconds, for stage pacing (default `0`). |
 | `PORT` | Backend port (default `8100`). |

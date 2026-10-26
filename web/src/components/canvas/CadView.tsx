@@ -24,7 +24,7 @@ import { IntroTurn } from "./IntroTurn";
 import { StudioOverlay } from "../studio/StudioOverlay";
 import { StudioRig } from "../studio/StudioRig";
 
-export const CAD_SOURCE_LABEL = { freecad: "FreeCAD", cadquery: "CadQuery" } as const;
+export const CAD_SOURCE_LABEL = { freecad: "FreeCAD", cadquery: "CadQuery", solidcraft: "SolidCraft" } as const;
 
 /** Generated parts are millimetres with Z up, like FreeCAD; the drone's GLB is metres with Y up (docs/events.md). */
 const MM = 0.001;
@@ -309,8 +309,8 @@ function ParamSlider({
   );
 }
 
-/** The FreeCAD script behind a generated part, so everyone can see what Claude wrote. */
-function ScriptPanel({ url, onClose }: { url: string; onClose: () => void }) {
+/** The script behind a generated part (FreeCAD Python, or SolidCraft's command script), so everyone can see what Claude wrote. */
+function ScriptPanel({ url, title, onClose }: { url: string; title: string; onClose: () => void }) {
   const [code, setCode] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   useEffect(() => {
@@ -327,7 +327,7 @@ function ScriptPanel({ url, onClose }: { url: string; onClose: () => void }) {
     <div className="absolute inset-0 z-20 flex flex-col bg-[#16171b]/95 backdrop-blur">
       <div className="flex shrink-0 items-center gap-3 px-4 py-2.5">
         <FileCode2 className="h-4 w-4 text-white/70" />
-        <span className="text-[14px] font-bold text-white">FreeCAD script</span>
+        <span className="text-[14px] font-bold text-white">{title}</span>
         <span className="text-[13px] font-semibold text-white/50">runs headless in a sandbox</span>
         <button type="button" onClick={onClose} className="ml-auto rounded-full p-1.5 text-white/70 hover:bg-white/10" aria-label="Close script">
           <X className="h-4 w-4" />
@@ -439,7 +439,9 @@ export function CadView() {
             <FileCode2 className="h-3.5 w-3.5" /> Script
           </button>
         )}
-        {script && showScript && <ScriptPanel url={script} onClose={() => setShowScript(false)} />}
+        {script && showScript && (
+          <ScriptPanel url={script} title={cad.source === "solidcraft" ? "SolidCraft script" : "FreeCAD script"} onClose={() => setShowScript(false)} />
+        )}
       </div>
 
       <div className="scroll-soft min-h-0 overflow-y-auto border-l border-line bg-card/70 px-4 py-3.5">

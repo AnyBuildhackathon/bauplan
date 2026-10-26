@@ -308,18 +308,20 @@ export interface CadParam {
   /** Display name; an assembly names the part, e.g. "Base plate · depth". */
   label?: string;
 }
-/** A CAD part as FreeCAD or CadQuery built it. File URLs are served by the backend under /files/. */
+/** A CAD part as FreeCAD, CadQuery or SolidCraft built it. File URLs are served by the backend under /files/. */
 export interface CadEvent {
   type: "cad";
-  source: "freecad" | "cadquery";
+  source: "freecad" | "cadquery" | "solidcraft";
   tree: CadNode[];
   params: Record<string, CadParam>;
   glb_url: string | null;
   stl_url: string | null;
   step_url: string | null;
   view_png_url: string | null;
-  /** A generated part: the FreeCAD script that built it (cad_part). */
+  /** A generated part: the script that built it, FreeCAD Python (cad_part) or SolidCraft's command script (solidcraft_part). */
   script_url?: string | null;
+  /** A SolidCraft design (solidcraft_part): the .solidcraft file, which opens in SolidCraft with its timeline. */
+  design_url?: string | null;
   part?: {
     name: string;
     material: string;

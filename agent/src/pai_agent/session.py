@@ -330,7 +330,14 @@ class Session:
 
     async def _update_params(self, body: dict) -> dict:
         from pai_agent.tools.cad import apply_param_body, cad_frame
+        from pai_agent.tools.solidcraft_part import is_current, rebuild_solidcraft
 
+        if is_current(self.state):
+            # The CAD tab shows a SolidCraft design: its parameters rebuild it through SolidCraft's timeline.
+            try:
+                return await rebuild_solidcraft(self._ctx(auto_steps=False), {str(body["name"]): body.get("value")} if "name" in body else dict(body))
+            except (TypeError, ValueError) as exc:
+                return {"ok": False, "error": str(exc), "detail": str(exc)}
         if self.state.product == "generic":
             return await self._update_generic(body)
         if self._part_is_current():
@@ -398,9 +405,12 @@ class Session:
 
     async def open_current(self) -> dict:
         from pai_agent.freecad_run import FreeCADFailed, open_in_freecad
+        from pai_agent.tools.solidcraft_part import is_current
 
         names = ("frame.FCStd", "frame.step", "frame.stl")
-        if self.state.product == "generic":
+        if is_current(self.state):
+            names = (self.state.solidcraft["files"]["step"],)
+        elif self.state.product == "generic":
             names = tuple("part-" + part_id + ".step" for part_id in self.state.built) or ("assembly.stl",)
         elif self._part_is_current():
             names = (Path(self.state.stl_path).with_suffix(".step").name,)
@@ -413,7 +423,7 @@ class Session:
             except (FreeCADFailed, OSError) as exc:
                 return {"ok": False, "detail": str(exc)}
             return {"ok": True, "path": name}
-        return {"ok": False, "detail": "Noch kein Rahmen."}
+        return {"ok": False, "detail": "No CAD model to open yet."}
 
     async def reset(self) -> None:
         # A new chat ends the voice too; the next Talk starts fresh on the new project.

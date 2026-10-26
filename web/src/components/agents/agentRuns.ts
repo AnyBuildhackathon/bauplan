@@ -136,6 +136,7 @@ export const roleIcon = (role: string): LucideIcon => ROLE_ICON[role] ?? Cpu;
 export function toolInfo(tool: string): { label: string; icon: LucideIcon } {
   // Mechanic looking at his model: VTK renders it, not FreeCAD.
   if (tool === "cad_view") return { label: "VTK", icon: Eye };
+  if (tool === "solidcraft" || tool === "solidcraft_part" || tool === "export_urdf") return { label: "SolidCraft", icon: DraftingCompass };
   if (tool === "freecad" || tool.startsWith("cad_")) return { label: tool === "cad_part" ? "Script" : "FreeCAD", icon: DraftingCompass };
   if (tool.startsWith("blender")) return { label: "Blender", icon: Camera };
   if (tool.startsWith("simulate") || tool.startsWith("stress") || tool === "physics_calc") return { label: "MuJoCo", icon: Rocket };
@@ -149,7 +150,7 @@ export function toolInfo(tool: string): { label: string; icon: LucideIcon } {
 /** A short name for a node: "CAD · frame" for a part's CAD agent, else the label without "agent". */
 export function shortName(ev: AgentRunEvent): string {
   if (ev.role === "cad") {
-    const part = ev.task.replace(/^FreeCAD script for (the )?/i, "");
+    const part = ev.task.replace(/^(FreeCAD|SolidCraft) script for (the )?/i, "");
     return part && part !== ev.task ? `CAD · ${part}` : ev.label;
   }
   return ev.label.replace(/ agent$/i, "");

@@ -58,10 +58,11 @@ A value outside the limits is HTTP 400 and does not emit `cad`; while Mechanic i
 When the newest CAD build is a generated part (`cad_part`), the same call reruns that part's script with the new value, no model call needed, and any name from its `params` works within its slider limits.
 For a product built from a spec, the slider names are `{part_id}.{param}` (such as `base.depth_mm`): that part is rebuilt from its script, the product is reassembled and every check that ran before runs again.
 For the gripper, `grip_calc` then runs again, so a longer finger shows up as a lower finger force.
+When the newest CAD build is a SolidCraft design (`solidcraft_part`), the same call runs its script again followed by one `parameters.change`, as moving the parameter in SolidCraft does: the timeline rebuilds, and the faces and edges the script picked, the joints among them, follow the geometry; any slider name works within its limits.
 
 `POST /api/cad/open` opens the current part in the FreeCAD app.
 The response is `{"ok": true, "path": "frame.FCStd"}` when the app launches, or `{"ok": false, "detail": "..."}` when there is no part or no FreeCAD app.
-It prefers `frame.FCStd`, then STEP, then STL.
+It prefers `frame.FCStd`, then STEP, then STL; a SolidCraft design opens as its STEP.
 
 `GET /api/voice` returns `{"gemini_live": true, "stt": "reson8"|"browser", "realtime_url": "...", "turns_url": "...", "language": "en", "phrases": [...], "custom_model_id": null}`.
 `gemini_live` says whether Mechanic's only voice, Gemini Live (`WS /api/voice/live`, see [GEMINI_LIVE.md](GEMINI_LIVE.md)), is configured.
@@ -581,7 +582,7 @@ The CAD builds its motors, propellers, pack and board from the same numbers; the
 
 ### cad
 
-`source` is `freecad` or `cadquery`.
+`source` is `freecad`, `cadquery` or `solidcraft`.
 `tree` is `[{id, label, children}]`; a row of standard parts also has `nodes` (see below).
 A FreeCAD drone build has the tree `Drone` with `Printed parts` (`X-frame`, `Canopy with antenna tube`, `Battery holder`), then the motors, propellers, flight controller stack, FPV camera, battery and strap, and receiver antenna, each labelled with the chosen part's name.
 Its GLB is the whole drone, Y-up in metres with the nose at -Z, one node per part target below plus `canopy`, `camera`, `battery_strap`, and `antenna`; each propeller node is a child of its motor and spins about its own origin, and the `battery` node's extras carry `size_mm`.
@@ -602,6 +603,10 @@ The standard parts it holds (`fasteners` of `cad_part`: screws, nuts, washers, h
 Its GLB has one node per body and one per standard part, in steel or brass; a material named `pai:#rrggbb` carries that body's color.
 Generated parts are Z-up, like FreeCAD.
 A `pai:#rrggbbaa` material is see-through with that alpha, used for external loads such as the phone a stand holds.
+
+A SolidCraft design from `solidcraft_part` has the tree design, then one node per part (component) with its bodies, and a GLB with one node per body in that body's colour, Z-up in millimetres like a generated part.
+Its `params` are the design's favourite parameters that are plain lengths or angles (else all such, at most eight), each with `unit` `mm` (half to double the value) or `deg` (90 degrees either way).
+`script_url` is the SolidCraft command script that built it, a slider's `parameters.change` at its end (`/files/{session}/solidcraft-{name}.json`), `design_url` the `.solidcraft` design, which opens in SolidCraft with its timeline, `view_png_url` is `null`, and `part` is as for `cad_part`.
 
 A whole product built from a spec sends `assembly: true`.
 Its tree is the product with one node per assembly and one per part (`(bought)` and `(load)` mark bought parts and loads, each label ends in its mass and material or its catalog name).
@@ -964,7 +969,7 @@ Closing buttons are tagged `{control}:close`, and `look:3d` is the 3D switch of 
 
 ## Tools
 
-`ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `simulate_mission`, `stress_test`, `cad_frame`, `cad_part`, `product_brief`, `product_spec`, `sketch_to_spec`, `reference_load`, `delegate`, `part_pick`, `assemble`, `cad_update`, `cad_view`, `check_totals`, `check_tip_over`, `check_deflection`, `check_torque`, `check_runtime`, `check_power`, `check_thermal`, `check_rollover`, `simulate_assembly`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `robouse_trial`, `blender_render`, `bom_build`, `print_prep`, `build_guide`, `firmware`, `electronics_plan`, `circuit_design`, `safety_check`, `scene_object`, `ui_point_at`, `ui_draw`, `ui_control`, `mascot_say`, `train_in_browser`, `train_controller`, `optimize_design`, `optimize_apply`, `material_pick`, `fem_check`.
+`ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `simulate_mission`, `stress_test`, `cad_frame`, `cad_part`, `solidcraft_part`, `export_urdf`, `product_brief`, `product_spec`, `sketch_to_spec`, `reference_load`, `delegate`, `part_pick`, `assemble`, `cad_update`, `cad_view`, `check_totals`, `check_tip_over`, `check_deflection`, `check_torque`, `check_runtime`, `check_power`, `check_thermal`, `check_rollover`, `simulate_assembly`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `robouse_trial`, `blender_render`, `bom_build`, `print_prep`, `build_guide`, `firmware`, `electronics_plan`, `circuit_design`, `safety_check`, `scene_object`, `ui_point_at`, `ui_draw`, `ui_control`, `mascot_say`, `train_in_browser`, `train_controller`, `optimize_design`, `optimize_apply`, `material_pick`, `fem_check`.
 
 `material_pick` takes `part_id` (none for the drone frame), `max_temp_c`, `outdoor`, `impact`, `flex` and optionally `material` and `reason`; it chooses among the filaments the user's printer prints (every material without a printer): heat and flex rule a material out (heat deflection temperature at least 5 °C over `max_temp_c`), then outdoor UV and impact toughness rank, then stiffness and strength, then the spool price. It returns `material`, a one-sentence `reason`, `meets_needs`, `rejected` with why, and the data sheet `properties` and `source`; the part's mass follows the density and every check runs again.
 `fem_check` takes `part_id` and optionally `cases` (`[{name, region, force_n}]`, newtons in the assembly frame, or `[{name, loads: [{region, force_n} or {region, pressure_mpa}], gravity_g}]`), `fixed` (the held region), `infill_pct` and `walls`; a region is `{face_id: n or [n, ...]}`, `{face: x_min ... z_max}`, `{near: [x, y, z], radius_mm}` or `{box: [x0, y0, z0, x1, y1, z1]}`. Without cases a spec part is held on its lowest face and loaded by each external load within 40 mm at twice its weight (else a 10 N press on its top), plus its own weight; the drone frame is held at the stack, with all four motors at full thrust and a crash on one motor at 10 g. It emits the `fem` event, stores its result as a check (rerun by `cad_update`, by `cad_frame` for the drone and by `material_pick`) and judges the `strength` requirement.
@@ -1027,6 +1032,15 @@ The script sees `Part`, `App`, `Vector`, `math` and `P` (the params) and sets `s
 It is checked statically (only `FreeCAD`, `Part` and `math` imports, no file access, no dunder attributes), then runs in `freecadcmd` in a fresh temp directory with a scrubbed environment and a 60 s timeout; on macOS `sandbox-exec` also denies network access and writes outside that directory.
 The result has `mass_g` (printed bodies, from each body's material density), `volume_mm3`, `bbox_mm`, per-body `parts` and the `attempts`.
 Without `ANTHROPIC_API_KEY` only templates and passed scripts build.
+
+`solidcraft_part` and `export_urdf` are offered to Claude only with `PAI_CAD_ENGINE=solidcraft` (the default is `freecad`); without `solidcraft-cli` 0.23.0 (`agent/scripts/setup_solidcraft.sh`) both return `ok: false` with the install hint.
+`solidcraft_part` builds a part or a mechanism from `name`, `description`, `params` (parameter values by name, in the parameter's own unit, applied as one `parameters.change` after the script), `material`, and `template` (`four_bar`, SolidCraft's Chebyshev linkage example; `two_finger_gripper`) or `script` (`{"commands": [{"command", "params"}]}`, the commands SolidCraft's interface runs).
+Without either, the CAD agent writes the script from SolidCraft's skills `solidcraft-modeling` and `solidcraft-mechanisms` (`agent/solidcraft/skills`); SolidCraft's error (`step N (command): ...`) goes back to it for a fix, up to three attempts.
+A script may only model, assemble, move and measure: any other namespace (`file`, `doc`, `render`, `view`, `canvas`, ...) and any parameter named `path`, `dir` or `file` is refused before it runs.
+It runs twice in `solidcraft-cli` in a fresh temp directory with a scrubbed environment and a 60 s limit (on macOS inside `sandbox-exec`, no network, writes only there): once to list its bodies, then with the build material on every body the script left at SolidCraft's default.
+The result has `design` (the name `file.new` gives it), `mass_g`, `volume_mm3`, `bbox_mm`, `parts` (components with their bodies and whether they are grounded), `bodies`, `joints` (type, the two parts, values with units and limits), `motion_links`, `motion_studies`, `sliders` and `attempts`; SolidCraft's 1024 x 768 iso picture goes to Claude as an image, as for `cad_view`.
+`export_urdf` takes optional `effort` and `velocity` (the URDF joint limits) and exports the last design: SolidCraft's URDF with one STL mesh per part, then MJCF (`mj_saveLastXML`) in which each joint that closes a loop is a MuJoCo joint on a frame of its first part, welded to its second part (a ball joint closes with a `connect`), each motion link is an equality joint coupling, every joint's `ref` is its value as built, and the parts do not collide with each other.
+It then drives the design's first motion study in MuJoCo (gravity off) and returns `result` (`pass` when every check holds), `checks` (`all_joints`, `loops_closed` within 0.01 mm, `mass_within_1pct` against SolidCraft's measure per part and in total, `as_built` centres of mass within 0.1 mm, `follows_study` every part within 0.1 mm of SolidCraft's poses), `joints` (in the URDF, in MuJoCo, closing a loop, travel), `loops_closed`, `couplings`, `deviation_mm`, `loop_gap_mm`, `masses`, `total_mass_g`, `files` (`urdf`, `mjcf`, `meshes`) and `warnings` (no actuators: a URDF carries no drives; convex-hull collisions).
 
 `product_brief` picks `drone` or `gripper`; for the gripper it takes `object_mass_g`, `object_width_mm`, `max_weight_g`, `budget_eur` and `quote` and emits the requirements `payload`, `opening`, `weight`, `budget` and `printable`.
 `catalog_search` reads `agent/data/catalogs/gripper.json` (`servo`, `pads`, `hardware`, `driver`).

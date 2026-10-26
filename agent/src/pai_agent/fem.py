@@ -281,7 +281,8 @@ def mesh(geometry: Path, work: Path, h: float, gmsh: str, refine: tuple[list[flo
     for attempt in range(3):
         (work / "mesh.geo").write_text(_geo(local, h, refine), encoding="utf-8")
         try:
-            done = subprocess.run([gmsh, "mesh.geo", "-3", "-o", "mesh.msh", "-v", "1", "-nt", "2"], cwd=work, capture_output=True, text=True, timeout=TIMEOUT_S)
+            # One thread: gmsh meshes the same way every time, so the same part gives the same stress and mesh check.
+            done = subprocess.run([gmsh, "mesh.geo", "-3", "-o", "mesh.msh", "-v", "1", "-nt", "1"], cwd=work, capture_output=True, text=True, timeout=TIMEOUT_S)
         except subprocess.TimeoutExpired as exc:
             raise FemFailed(f"gmsh ran past {TIMEOUT_S} s meshing it at {h:g} mm.") from exc
         if done.returncode != 0 or not (work / "mesh.msh").is_file():

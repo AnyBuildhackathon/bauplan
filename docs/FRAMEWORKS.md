@@ -66,6 +66,7 @@ It has its own environment because Robo Use pins an older MuJoCo than the backen
 | NVIDIA Isaac Lab | 2.3.0 | BSD-3-Clause | Reference Crazyflie training (`Isaac-Quadcopter-Direct-v0`) with RSL-RL. |
 | PrusaSlicer / OrcaSlicer | Optional installed CLI, not pinned | AGPL-3.0 | Slice print-ready parts; mesh estimates when absent. |
 | SparkBench | Commit `6dd9237`, pinned in `agent/scripts/setup_sparkbench.sh` | MIT | `circuit_design`: ESP32 and Raspberry Pi Pico circuits with real pins, KiCad schematic, MicroPython firmware run in its simulator, acceptance tests. Runs headless in Node.js through `agent/sparkbench/bridge.ts` and tsx 4.23.15 (MIT). |
+| SolidCraft (`solidcraft-cli`) | 0.23.0, pinned in `agent/scripts/setup_solidcraft.sh` | MIT OR Apache-2.0 | With `PAI_CAD_ENGINE=solidcraft`: `solidcraft_part` builds parts and mechanisms from command scripts (timeline, joints, motion links, motion studies), `export_urdf` writes their URDF, which MuJoCo turns into MJCF. |
 | Tailscale Funnel | current | Tailscale terms | Publishes the local backend over HTTPS for the public web app. |
 
 AnyBuild calls these applications as separate processes and does not link or redistribute them.

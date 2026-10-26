@@ -94,6 +94,15 @@ None of its code is in the repository: `agent/scripts/setup_sparkbench.sh` clone
 The circuit files it makes for a build (schematic, breadboard plan, KiCad project, netlist, SPICE deck, parts list, build guide and MicroPython firmware) come from its generators; the driver files in the firmware are copied from its parts library, whose driver code adapted from other projects keeps its own license, as SparkBench's README says.
 Its optional native ESP32 helper (`native/esp32/helper`, GPL-2.0-or-later, it downloads QEMU) is never built, run or shipped: the setup installs SparkBench's npm packages without their install scripts, and the bridge does not touch it.
 
+## SolidCraft, installed separately, and its skills
+
+The `solidcraft_part` and `export_urdf` tools (with `PAI_CAD_ENGINE=solidcraft`) run [SolidCraft](https://github.com/tangency-labs/solidcraft)'s `solidcraft-cli` 0.23.0, "Copyright (c) 2026 SolidCraft contributors", licensed MIT OR Apache-2.0.
+The CLI is not in the repository: `agent/scripts/setup_solidcraft.sh` downloads the release, checks its SHA-256 and keeps it, with its licence texts, its NOTICE and the licences of its dependencies (`THIRD-PARTY-LICENSES.txt`), in `~/.cache/anybuild/solidcraft/0.23.0`; AnyBuild runs it as a separate program.
+Five files in `agent/solidcraft/` are SolidCraft's, copied unchanged from tag `v0.23.0` and used under the MIT License: the skills `solidcraft-modeling` and `solidcraft-mechanisms` (`SKILL.md` and `reference.md` each), the CAD agent's instructions, and the example `library/chebyshev-motion-trace.json`.
+The MIT License text is in [agent/solidcraft/LICENSE-SolidCraft](agent/solidcraft/LICENSE-SolidCraft); `agent/solidcraft/README.md` lists which files are SolidCraft's and which are AnyBuild's.
+`agent/tests/fixtures/solidcraft/` holds what SolidCraft exported for that example and for the worked example of the mechanisms skill.
+"Works with SolidCraft" describes compatibility; SolidCraft's name and logo are not AnyBuild's branding.
+
 ## Runtime dependencies
 
 Libraries, fonts and external applications are not copied into the repository; they are installed by the package managers or separately.
