@@ -74,7 +74,10 @@ async def _lifespan(app: FastAPI):
     session = Session()
     app.state.session = session
     await session.bootstrap()
-    from pai_agent import provider
+    from pai_agent import adapters, provider
+
+    # Each check adapter's last run comes from the live event stream (GET /api/adapters).
+    app.state.adapter_runs = asyncio.create_task(adapters.watch(session.bus))
 
     # Which Claude runs, said once: a subscription refused on a public server says why here too.
     llm = await asyncio.to_thread(provider.describe)
@@ -84,6 +87,7 @@ async def _lifespan(app: FastAPI):
     if warm.enabled():
         app.state.warm = asyncio.create_task(asyncio.to_thread(warm.warm))
     yield
+    app.state.adapter_runs.cancel()
     await session.shutdown()
 
 
@@ -152,6 +156,15 @@ async def status(request: Request) -> dict:
     last = session.state.omniverse_result
     isaac = {**isaac, "last_run": {key: last.get(key) for key in ("job_id", "mode", "status", "source", "stage", "detail")} if last else None}
     return {"partners": [*partners, {"id": "isaac", "label": "NVIDIA Isaac", "state": isaac["state"], "detail": isaac["detail"]}], "isaac": isaac}
+
+
+@app.get("/api/adapters")
+async def adapters_list() -> list[dict]:
+    """The engine behind every check: installed or not, how to install it, and its last run on this machine."""
+
+    from pai_agent import adapters
+
+    return await adapters.report()
 
 
 @app.post("/api/prompt")

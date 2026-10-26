@@ -270,6 +270,53 @@ A `tab` URL parameter gets the same initial grace period.
 Director preserves browsing in other main views and uses a short canvas fade that respects reduced-motion preferences.
 The top bar contains partner status and Settings; the versions are in the Logbook.
 
+### Check adapters
+
+`GET /api/adapters` answers a list with one row per engine behind AnyBuild's checks, so a person sees what this machine can check and what is missing; the dashboard shows it under Settings → Check adapters (or with `?adapters`).
+It requires the same access session as other API routes and never starts a tool: it reads PATH, the usual application and bin folders and version files, so it answers within milliseconds.
+Each row is:
+
+```json
+{
+  "id": "calculix",
+  "name": "CalculiX and gmsh",
+  "domain": "mechanics",
+  "provides": ["FEM of printed parts"],
+  "remote": false,
+  "available": true,
+  "version": null,
+  "path": "/Applications/FreeCAD.app/Contents/Resources/bin/ccx",
+  "detail": "Meshes each printed part with gmsh and solves its load cases in CalculiX; both ship with FreeCAD 1.1.4.",
+  "install_hint": "Comes with FreeCAD (`brew install --cask freecad`), next to freecadcmd; `PAI_CCX` and `PAI_GMSH` name other executables.",
+  "last": {"at": 1792970692, "pass": true, "summary": "FEM of Base plate passed: safety 3.1x, needs 2x"}
+}
+```
+
+The rows come in this order, grouped by `domain`: `mechanics` (`freecad`, `calculix`, `blender`), `electronics` (`sparkbench`, `kicad`, `ngspice`, `freerouting`, `node`), `simulation` (`mujoco`, `robouse`, `isaac`) and `manufacturing` (`slicer`).
+`provides` names the checks and outputs the engine gives, such as `ERC` and `DRC` for `kicad`.
+`remote` is `true` for an engine on another machine, the Isaac GPU host, whose `available` means reachable; the dashboard shows Connected or Offline there, Installed or Missing for the others.
+`available` is `true` when the engine is where the code that runs it looks, `false` when it is not, and `null` while the Isaac SSH probe still runs; the dashboard then asks again after a few seconds.
+`version` comes from files (the Info.plist of the app the tool ships in, a Homebrew or nvm folder, a package's dist-info, the jar's name, SparkBench's commit), else `null`; `path` is where the engine was found, with the home folder as `~`, else `null`.
+`detail` says in one or two English sentences what the engine does here or what happens without it, and `install_hint` how to install it, with commands in backticks.
+
+Each engine is looked up the way the code that runs it looks:
+
+- `freecad`: `freecadcmd` as `cad_part` finds it, plus the open FreeCAD window (freecad-mcp at `FREECAD_MCP_URL`, a local port check, skipped with `FREECAD_GUI=off`); either one makes it available.
+- `calculix`: gmsh and `ccx` as `fem_check` finds them (`PAI_GMSH`, `PAI_CCX`, PATH, next to `freecadcmd`).
+- `blender`: as `blender_render` finds it.
+- `slicer`: PrusaSlicer or OrcaSlicer as `print_prep` finds it (`PAI_SLICER`).
+- `kicad`, `ngspice`, `freerouting`: where SparkBench's server finds them: `KICAD_CLI`, then `KiCad.app` from `KICAD_APP`, `~/Applications`, `/Applications/KiCad` or `/Applications`, then PATH and `/opt/homebrew/bin`, `/usr/local/bin`, `/usr/bin`; ngspice on PATH or in those folders; `FREEROUTING_JAR` or `~/.cache/sparkbench/freerouting/freerouting-2.5.0.jar`, with Java 21 or later from `JAVA`, Homebrew's OpenJDK or `/usr/lib/jvm/default-java`, never PATH.
+  KiCad before 8 and Java before 21 count as missing.
+- `sparkbench` and `node`: as `circuit_design` finds them ([circuit](#circuit), `agent/src/pai_agent/sparkbench.py`): the checkout at `SPARKBENCH_DIR` or `~/.cache/anybuild/sparkbench/<commit>` with its npm packages, the bridge's own `tsx`, and Node.js on PATH or in Homebrew's folders; `detail` names what is missing.
+- `mujoco`: the Python package in the backend environment.
+- `robouse`: `anybuild-robouse` in the bridge's own environment (`anybuild-robouse/.venv`), else on PATH; Robo Use without the bridge counts as missing.
+- `isaac`: a GPU host in `RUNPOD_SSH_HOST` or `ISAAC_SSH_HOST` that passes the SSH `nvidia-smi` probe of [Partner status](#partner-status-and-director-mode); the row reuses that probe's 15 s cache, waits at most 0.2 s for a new one and answers the last known state meanwhile.
+
+`last` is the adapter's latest run on this machine, or `null`: `at` in Unix seconds, `pass`, and `summary`, one English line.
+The backend records runs from the live event stream, never from a backlog or a reopened chat, in `agent/runs/adapters.json` (not committed), so they outlast a reset and a restart.
+A run is a `cad` event of a part or the drone (`source: "freecad"` passes; `cadquery` fails, while FreeCAD is installed), a `render` (the recorded still fails, while Blender is installed), a `sim` or `mission` result (MuJoCo), a `fem` result (CalculiX), a `print` plan the slicer made (a part's `slicer_error` fails it; an estimate without a slicer is no run), a `circuit` (SparkBench, its `ok`) and a live, finished `omniverse` result.
+KiCad, ngspice, Freerouting and Robo Use have no run until the tools that run them publish their results.
+
 ### Access
 
 With `ANYBUILD_ACCESS_CODE` set on the backend, every route except `GET /api/health` and `POST /api/access` (including `GET /api/events`, the voice routes and `/files/`) needs a session, else HTTP 401 with `{"detail": "...", "access": "required"}`.

@@ -6,7 +6,8 @@
 // orchestrates, which runs the sub-agents, how hard each one thinks (effort), and
 // whether the orchestrator delegates, and the parts exploration switch (estimated part
 // numbers allowed, labelled, for a test build). GET/POST /api/settings. The 3D printer
-// section sets the user's printer and filaments (lib/printer.ts).
+// section sets the user's printer and filaments (lib/printer.ts). Evaluation opens the
+// AnyBuild Bench results and the check adapters, the engines each check runs on.
 import { useEffect, useRef, useState } from "react";
 import { SlidersHorizontal } from "lucide-react";
 import { useSource } from "../events/source";
@@ -14,6 +15,7 @@ import { apiFetch } from "../lib/api";
 import { usePartners } from "../lib/partners";
 import { useUi, type Display } from "../lib/ui";
 import { useBenchResults } from "../views/BenchResults";
+import { AdaptersDialog, useAdapters } from "./adapters/AdaptersDialog";
 import { PrinterPicker } from "./print/PrinterPicker";
 
 const DISPLAY: { key: keyof Display; label: string; hint: string; control?: string }[] = [
@@ -40,6 +42,27 @@ function Toggle({ label, hint, on, onChange, control }: { label: string; hint?: 
       <span className={`relative h-6 w-10 shrink-0 rounded-full transition ${on ? "bg-accent" : "bg-track"}`}>
         <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-[left] ${on ? "left-[18px]" : "left-0.5"}`} />
       </span>
+    </button>
+  );
+}
+
+/** A row that closes Settings and opens a drawer or dialog of its own. */
+function PanelLink({ label, hint, onOpen }: { label: string; hint: string; onOpen: () => void }) {
+  const setOpen = useUi((s) => s.setSettingsOpen);
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        setOpen(false);
+        onOpen();
+      }}
+      className="flex w-full items-center gap-3 py-1.5 text-left"
+    >
+      <span className="min-w-0 flex-1">
+        <span className="block text-[14px] font-semibold text-ink">{label}</span>
+        <span className="block text-[12px] text-muted">{hint}</span>
+      </span>
+      <span className="text-[13px] font-bold text-link">Open</span>
     </button>
   );
 }
@@ -174,20 +197,8 @@ export function BenchSettings() {
           <h3 className="eyebrow mt-3 mb-1 border-t border-line pt-3">3D printer</h3>
           <PrinterPicker />
           <h3 className="eyebrow mt-3 mb-1 border-t border-line pt-3">Evaluation</h3>
-          <button
-            type="button"
-            onClick={() => {
-              setOpen(false);
-              useBenchResults.getState().setOpen(true);
-            }}
-            className="flex w-full items-center gap-3 py-1.5 text-left"
-          >
-            <span className="min-w-0 flex-1">
-              <span className="block text-[14px] font-semibold text-ink">AnyBuild Bench results</span>
-              <span className="block text-[12px] text-muted">Pass rate and cost over 20 product prompts</span>
-            </span>
-            <span className="text-[13px] font-bold text-link">Open</span>
-          </button>
+          <PanelLink label="AnyBuild Bench results" hint="Pass rate and cost over 20 product prompts" onOpen={() => useBenchResults.getState().setOpen(true)} />
+          <PanelLink label="Check adapters" hint="Installed and missing engines per check" onOpen={() => useAdapters.getState().setOpen(true)} />
           {live && (
             <div className="mt-3 border-t border-line pt-3">
               {!settings ? (
@@ -235,6 +246,7 @@ export function BenchSettings() {
           )}
         </div>
       )}
+      <AdaptersDialog />
     </div>
   );
 }

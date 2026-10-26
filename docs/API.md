@@ -26,6 +26,7 @@ It has no OpenAPI page; FastAPI's generated docs are turned off on purpose for t
 | --- | --- | --- | --- | --- |
 | `GET` | `/api/health` | Status: `mode` (`claude` or `mock`), `provider` (`api`, `subscription` or `mock`), `busy`, `run` (the [run](events.md#run) status), `access` (`open` or `required`). Always public. | | [Learning mode](events.md#learning-mode) |
 | `GET` | `/api/status` | Independent partner availability and NVIDIA SSH/GPU connection, including the last Isaac run. Requires the normal access session. | | [Partner status](events.md#partner-status-and-director-mode) |
+| `GET` | `/api/adapters` | The engine behind every check (FreeCAD, CalculiX, Blender, SparkBench, KiCad, ngspice, Freerouting, Node.js, MuJoCo, Robo Use, Isaac, the slicer): installed or not, version, path, install hint and last run on this machine. Reads files only, never starts a tool. | | [Check adapters](events.md#check-adapters) |
 | `GET` | `/api/bench` | Saved live and mock benchmark results: `{ok, runs}`; missing runs are omitted. | | [Bench](events.md#http) |
 | `POST` | `/api/prompt` | Send a typed or spoken (`voice: true`) message; starts or continues a build, answers an open question, or operates the dashboard (`status: ui`). | build | [HTTP](events.md#http) |
 | `POST` | `/api/sketch` | Start a new product from a photo of a hand sketch (PNG, JPEG or WebP up to 8 MB, base64 or data URL). | build | [HTTP](events.md#http) |
