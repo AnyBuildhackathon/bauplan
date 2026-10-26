@@ -104,3 +104,64 @@ colors = {
 }
 materials = {"Pad L": "TPU", "Pad R": "TPU"}
 reference = ["Servo"]
+
+# Kinematics for simulation exports (pai_agent/mjcf_export.py), in the frame above.
+# Each finger turns with its gear about the gear axle. A joint's value is the opening angle: 0 where the pad tips
+# meet on the centre line, CLOSE in the pose built above. The right finger turns the other way about Z, so the
+# meshing gears make it follow the left one 1:1, and the servo turns the left one.
+GAP = OPEN / 2.0 - R  # gear axle to the inner pad face, across
+CLOSE = math.degrees(math.atan2(GAP, L) + math.asin(R / math.hypot(GAP, L)))
+joints = {
+    "finger_l": {
+        "type": "hinge",
+        "parts": ["Gear L", "Finger L", "Pad L"],
+        "pivot_mm": [-R, 0.0, Z0],
+        "axis": [0.0, 0.0, 1.0],
+        "range_deg": [0.0, CLOSE],
+        "ref_deg": CLOSE,
+        "drive": "Servo",
+    },
+    "finger_r": {
+        "type": "hinge",
+        "parts": ["Gear R", "Finger R", "Pad R"],
+        "pivot_mm": [R, 0.0, Z0],
+        "axis": [0.0, 0.0, -1.0],
+        "range_deg": [0.0, CLOSE],
+        "ref_deg": CLOSE,
+        "follows": "finger_l",
+        "ratio": 1.0,
+    },
+}
+
+
+def bar_box(a, b, width, height, z):
+    """The collision box of bar(): its length plus the round caps."""
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    return {
+        "type": "box",
+        "center_mm": [(a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0, z + height / 2.0],
+        "half_mm": [(math.hypot(dx, dy) + width) / 2.0, width / 2.0, height / 2.0],
+        "yaw_deg": math.degrees(math.atan2(dy, dx)),
+    }
+
+
+def finger_boxes(side):
+    pivot = (side * R, 0.0)
+    xo = side * (OPEN / 2.0 + PAD + FW / 2.0)
+    return [bar_box(pivot, (xo, L * 0.35), FW, T, ZF), bar_box((xo, L * 0.35), (xo, L), FW, T, ZF)]
+
+
+# The grasp point between the pad centres, the direction the fingers point and the direction they close.
+tool = {"point_mm": [0.0, L * 0.775, ZF + T / 2.0], "approach": [0.0, 1.0, 0.0], "closing": [1.0, 0.0, 0.0]}
+# Collision boxes where a part's bounding box fits badly; the gears never touch anything, their coupling stands in.
+collision = {
+    "Palm": [
+        {"type": "box", "center_mm": [0.0, 14.0 - depth / 2.0, PLATE / 2.0], "half_mm": [width / 2.0, depth / 2.0, PLATE / 2.0]},
+        {"type": "box", "center_mm": [0.0, 14.0 - depth - PLATE / 2.0, 2.0], "half_mm": [18.0, PLATE / 2.0, 18.0]},
+    ],
+    "Gear L": [],
+    "Gear R": [],
+    "Finger L": finger_boxes(-1),
+    "Finger R": finger_boxes(1),
+}
+grip_surfaces = ["Pad L", "Pad R"]

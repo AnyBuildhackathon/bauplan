@@ -123,7 +123,8 @@ def _write_script(description: str, params: dict, previous: str | None, error: s
 
     from pai_agent.agents import create_message
 
-    example = library_script("gripper")
+    # The template's simulation data (joints, tool, collision) is not part of the script contract, so the example stops before it.
+    example = library_script("gripper").split("# Kinematics for simulation exports")[0].rstrip() + "\n"
     prompt = (
         context
         + "Part to build: " + description + "\nParameters P (mm): " + repr(params) + "\n\n"
@@ -334,6 +335,8 @@ async def cad_part(ctx: Ctx, args: dict) -> dict:
         "parts": build.parts,
         "mass_g": build.mass_g,
         "bbox_mm": build.bbox_mm,
+        # Joints, tool frame and collision shapes of a template that can be simulated (pai_agent/mjcf_export.py).
+        "sim": build.sim,
     }
     state.frame_mass_g = build.mass_g
     state.stl_path = build.stl.relative_to(REPO_ROOT).as_posix()

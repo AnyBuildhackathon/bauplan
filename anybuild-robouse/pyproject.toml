@@ -1,0 +1,29 @@
+[project]
+name = "anybuild-robouse"
+version = "0.1.0"
+description = "Robo Use benchmark tasks for grippers designed in AnyBuild: a plugin backend, a task generator and a trial runner"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11,<3.14"
+# Only the simulator extra: `robouse[llm]` would pull a proprietary LiteLLM component, and the anybuild-gripper backend
+# reaches into the tabletop scene of exactly this release (see src/anybuild_robouse/backend.py).
+dependencies = ["robouse[sim]==0.6.1", "numpy>=1.24", "pyyaml>=6"]
+
+[project.scripts]
+anybuild-robouse = "anybuild_robouse.cli:main"
+
+[project.entry-points."robouse.backends"]
+anybuild-gripper = "anybuild_robouse.backend:AnyBuildGripperBackend"
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/anybuild_robouse"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -336,6 +336,24 @@ Results go to `agent/bench/results/live.json` or `mock.json`; open them in the a
 The mock row is **not a result of the live agent**: it replays the recorded mock stories for the five products the mock knows, on a machine without FreeCAD, where printed parts fall back to simplified CadQuery blocks and come out too heavy.
 A live run with a key is the measurement that counts.
 
+## Robo Use trials for a designed gripper
+
+[Robo Use](https://github.com/benchflow-ai/robouse) runs robotics benchmarks for coding agents and judges the physical end state.
+`anybuild-robouse/` puts a gripper designed in AnyBuild into Robo Use's tabletop scene and turns the gripper brief into a task: put a cube of the brief's width and mass into a bowl.
+It runs in its own environment (Robo Use pins MuJoCo 3.3.0):
+
+```bash
+cd agent && uv run python scripts/export_gripper_mjcf.py --out /tmp/hand.xml     # the template as MJCF, needs FreeCAD
+cd anybuild-robouse && uv sync
+uv run anybuild-robouse task --hand /tmp/hand.xml --mass-g 200 --width-mm 66 --out runs/tasks   # or --example
+uv run anybuild-robouse trial runs/tasks/anybuild-gripper-cube-66mm-200g-in-bowl --harness oracle --out runs/trials
+```
+
+`task` writes the task folder and runs `robouse tasks check` on it: the reference solution must score 1 and the no-op control 0.
+`trial` prints the reward, the verdict, the trial folder and its video; `--harness claude-code` lets Claude Code drive the gripper and starts only with `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN` set.
+The export writes one self-contained MJCF file from the FreeCAD build: the parts as meshes, collision boxes, the finger hinges and gear coupling the template declares, and the catalog servo as a position actuator limited to its holding torque.
+[anybuild-robouse/README.md](anybuild-robouse/README.md) has the details.
+
 ## Testing
 
 ```bash
@@ -344,6 +362,7 @@ cd agent && uv run python scripts/smoke_sse.py         # drone request and chang
 cd agent && uv run python scripts/smoke_product.py     # any-product flow
 cd agent && uv run python scripts/smoke_cad_part.py    # generated FreeCAD part, no network
 cd agent && uv run python scripts/smoke_community.py   # publish and remix round trip
+cd anybuild-robouse && uv run pytest                   # Robo Use bridge: backend, tasks, trials (own environment)
 cd web && npm run typecheck && npm run e2e             # type check and Playwright flows
 ```
 

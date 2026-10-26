@@ -35,6 +35,17 @@ AnyBuild's own code is MIT licensed (see [LICENSE](../LICENSE)); third-party mod
 
 Tests run with pytest (`agent/tests/`) and standalone smoke scripts (`agent/scripts/smoke_*.py`).
 
+## Robo Use bridge (`anybuild-robouse/`, its own uv environment)
+
+Versions from `anybuild-robouse/uv.lock`.
+It has its own environment because Robo Use pins an older MuJoCo than the backend.
+
+| Package | Version | License | Role |
+| --- | --- | --- | --- |
+| robouse (`sim` extra only) | 0.6.1 | Apache-2.0 AND MIT AND CC-BY-4.0 | Robo Use: the tabletop scene, the episode server that judges trials, `robouse tasks check` and the agent harnesses. The `llm` extra, which pulls a proprietary LiteLLM component, is not installed. |
+| mujoco | 3.3.0 | Apache-2.0 | Physics of the Robo Use trials, pinned by robouse. |
+| pyyaml | 6.0.3 | MIT | Writes the generated tasks' `task.md`. |
+
 ## Engineering applications (installed separately)
 
 | Application | Version used | License | Role |

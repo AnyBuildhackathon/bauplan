@@ -75,6 +75,8 @@ class PartBuild:
     stl: Path
     step: Path
     glb: Path
+    # What a template declares for simulation (joints, tool, collision, grip_surfaces); see pai_agent/mjcf_export.py.
+    sim: dict | None = None
 
 
 def density(material: str | None) -> float:
@@ -211,6 +213,7 @@ def run_script(
             stl=stl,
             step=step,
             glb=glb,
+            sim=result.get("sim"),
         )
     finally:
         shutil.rmtree(work, ignore_errors=True)
@@ -236,7 +239,7 @@ def run_script_cached(
         if cache.restore("parts", entry, targets) is not None:
             parts = [{**row, "stl": row["stl"].replace("part", stem, 1)} for row in meta["parts"]]
             (out_dir / (stem + ".py")).write_text(source, encoding="utf-8")
-            return PartBuild(parts, meta["bbox_mm"], meta["volume_mm3"], meta["mass_g"], out_dir / (stem + ".stl"), out_dir / (stem + ".step"), out_dir / (stem + ".glb")), True
+            return PartBuild(parts, meta["bbox_mm"], meta["volume_mm3"], meta["mass_g"], out_dir / (stem + ".stl"), out_dir / (stem + ".step"), out_dir / (stem + ".glb"), meta.get("sim")), True
     build = run_script(source, params, out_dir, stem, material, expected_mm=expected_mm)
     files = {"part.stl": build.stl, "part.step": build.step, "part.glb": build.glb}
     rows = []
@@ -244,7 +247,7 @@ def run_script_cached(
         cached_name = "part" + row["stl"][len(stem):]
         files[cached_name] = out_dir / row["stl"]
         rows.append({**row, "stl": cached_name})
-    cache.store("parts", entry, files, {"parts": rows, "bbox_mm": build.bbox_mm, "volume_mm3": build.volume_mm3, "mass_g": build.mass_g})
+    cache.store("parts", entry, files, {"parts": rows, "bbox_mm": build.bbox_mm, "volume_mm3": build.volume_mm3, "mass_g": build.mass_g, "sim": build.sim})
     return build, False
 
 

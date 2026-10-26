@@ -39,7 +39,7 @@ The public web app is at https://anybuild-demo.vercel.app and talks to the live 
 
 ## Repository Map
 
-The repository is structured into five main directories:
+The repository is structured into six main directories:
 
 - `agent/`: Python backend, Claude tool definitions, physics simulation, and CAD generation.
   - `agent/src/pai_agent/app.py`: FastAPI application server, SSE event stream, and HTTP endpoints.
@@ -68,6 +68,7 @@ The repository is structured into five main directories:
   - `docs/TEAMMATE_PROMPTS.md`: Copy-paste task prompts and port configurations for teammate agent sessions.
 - `runpod/`: Cloud GPU infrastructure scripts.
   - `runpod/setup.sh`: Setup script for NVIDIA Isaac Sim 6.2 and Isaac Lab 3.0 on an RTX 4090 pod.
+- `anybuild-robouse/`: Robo Use bridge in its own uv environment: plugin backend, task generator and trial runner for AnyBuild grippers.
 
 ## Running Locally
 

@@ -211,6 +211,8 @@ Publishing shares the bench with its spec, parts, CAD files, renders and version
 
 The second built-in product is a parametric two-finger robot gripper, chosen because it has moving parts, a real physics question (does it hold the object while the arm moves?) and a parts choice that changes the CAD.
 `product_brief` turns the request into checks, `catalog_search` picks servo, pads, hardware and driver from `agent/data/catalogs/gripper.json`, `grip_calc` computes finger force and grip safety, `simulate_grip` lifts, shakes and pulls the object in MuJoCo with the template's fingers swinging on their gears, and `cad_part` builds the gripper from `agent/freecad/library/gripper.py` with the servo pocket sized for the chosen servo, then `blender_render` and `bom_build`.
+The template also declares its kinematics next to its parts (the finger hinges, the gear coupling, the tool frame and collision boxes), so `pai_agent/mjcf_export.py` can write the built gripper as one MuJoCo MJCF file with the catalog servo as its actuator (`agent/scripts/export_gripper_mjcf.py`).
+`anybuild-robouse/` runs that file in Robo Use's tabletop benchmark, in its own environment; the app does not call it yet.
 In the mock, the SG90 servo drops the can and the MG996R holds it; a heavier object that the MG996R cannot hold at twice its weight steps up to the DS3218.
 
 ## The drone worked example

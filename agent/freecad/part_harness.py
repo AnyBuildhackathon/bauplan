@@ -5,10 +5,13 @@ starts `freecadcmd part_harness.py` there with PAI_PART_DIR pointing at it. The
 script sees Part, App (FreeCAD), Vector, math and P (the parameters, mm) and has
 to leave a solid in `shape`, or several named solids in `parts`. Optional:
 `colors` (name to hex), `materials` (name to material) and `reference` (names
-that are shown but not printed, such as a bought servo).
+that are shown but not printed, such as a bought servo). Templates that can be
+simulated also set `joints`, `tool`, `collision` and `grip_surfaces` (plain
+numbers, lists and dicts, read by pai_agent/mjcf_export.py).
 
 Writes one STL per part, part.step (all printed parts), part.stl (all printed
-parts) and result.json with volume and bounding box per part. Never raises:
+parts) and result.json with volume and bounding box per part, plus those
+simulation fields under `sim`. Never raises:
 every failure lands in result.json as `error` plus the traceback tail, so the
 agent can read it and fix the script.
 """
@@ -19,6 +22,7 @@ import traceback
 
 OUT = os.environ.get("PAI_PART_DIR", "")
 ALLOWED_MODULES = {"FreeCAD", "Part", "math"}
+SIM_KEYS = ("joints", "tool", "collision", "grip_surfaces")
 SAFE_BUILTINS = (
     "abs all any bool dict enumerate float int isinstance len list max min "
     "pow range reversed round set sorted str sum tuple zip ValueError Exception print"
@@ -137,7 +141,15 @@ def main():
     for _shape, mesh in printed:
         merged.addMesh(mesh)
     merged.write(os.path.join(OUT, "part.stl"))
-    _write({"ok": True, "parts": rows, "bbox_mm": _bbox(compound), "volume_mm3": round(float(compound.Volume), 2)})
+    sim = {}
+    for key in SIM_KEYS:
+        if scope.get(key) is None:
+            continue
+        try:
+            sim[key] = json.loads(json.dumps(scope[key]))
+        except (TypeError, ValueError) as exc:
+            raise ValueError("`" + key + "` must hold only numbers, strings, lists and dicts.") from exc
+    _write({"ok": True, "parts": rows, "bbox_mm": _bbox(compound), "volume_mm3": round(float(compound.Volume), 2), **({"sim": sim} if sim else {})})
 
 
 if OUT:
