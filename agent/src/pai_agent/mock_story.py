@@ -111,7 +111,8 @@ async def _thicken_until_strong(ctx: Ctx, cad: dict, arm: float) -> dict:
                 "freut_sich" if row["result"] == "pass" else "besorgt",
                 f"Now {row['safety']:.1f}x." + (" Holds." if row["result"] == "pass" else ""),
                 f"FEM again at {thickness:g} mm: safety {row['safety']:.1f}x in the {row['governing']} case, "
-                + ("it holds." if row["result"] == "pass" else f"still under {row['limit']:g}x."),
+                + ("it holds." if row["result"] == "pass" else f"still under {row['limit']:g}x.")
+                + "".join(" " + note for note in row.get("notes") or []),
             )
     return cad
 

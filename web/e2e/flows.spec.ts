@@ -20,6 +20,8 @@ test("drone reference: Library, Rebuild, v1 with every check met", async ({ page
 });
 
 test("typed drone request: the requirements card is built from the prompt, a typed change builds v2", async ({ page }) => {
+  // Two builds with their mission flights, each allowed 60 s below; the suite's 90 s would cut the second short on a busy machine.
+  test.setTimeout(240_000);
   await freshBench(page);
   await ask(page, "I want to build a drone that hunts flies under 150 euros");
   await expect(page.getByText("Version 1", { exact: false }).first()).toBeAttached({ timeout: 60_000 });
@@ -85,6 +87,8 @@ test("phone stand from scratch: the tap check fails, the fix makes it pass, a re
   await idle(page);
   await expect(tap).toHaveAttribute("data-state", "ok");
   await expect(bomButton(page)).toContainText("€");
+  // The run is over, so no step is left running: the chat offers the next changes.
+  await expect(page.locator('[data-target="follow_ups"]')).toBeVisible();
   await page.locator('[data-target~="look:render"]').first().dispatchEvent("click");
   await expect(page.getByText(/Studio|Recorded, Blender is offline/).first()).toBeVisible();
 });

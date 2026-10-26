@@ -776,10 +776,13 @@ SCHEMAS = [
             "The material is weakened for the print: modulus and strength scale with the plastic share of the section (walls solid, core at infill_pct, default 25 %), "
             "and the tension across the layers is judged against the interlayer strength along the print direction from print_prep. "
             "Without cases, the loads come from the spec: held on its lowest face, each external load near it pressing at its position with 2x its weight "
-            "(else a 10 N press on top); for the drone frame (part_id frame) held at the stack, full motor thrust on all four mounts, and a crash on one motor at 10 g. "
-            "cases overrides them: [{name, region, force_n: [fx, fy, fz]}] in N in the assembly frame (Z up, a weight is negative Z); region is {face: z_min...}, "
-            "{near: [x, y, z] mm, radius_mm} or {box: [x0, y0, z0, x1, y1, z1]}; fixed is the held region the same way. "
-            "Returns max von Mises stress, deflection, the safety factor (needs 2x unless the user set a strength requirement), which case governs and where. "
+            "(else a 10 N press on top), plus the part's own weight; for the drone frame (part_id frame) held at the stack, full motor thrust on all four mounts, and a crash on one motor at 10 g. "
+            "cases overrides them: [{name, region, force_n: [fx, fy, fz]}] in N in the assembly frame (Z up, a weight is negative Z), or [{name, loads: [{region, force_n} or {region, pressure_mpa}], gravity_g}] "
+            "for several loads, a pressure (positive pushes on the face) and the part's own weight at gravity_g times g. "
+            "A region is {face_id: n or [n, ...]} (the part's CAD faces; results name the faces every hold and load landed on), {face: z_min...} (the faces on that side), "
+            "{near: [x, y, z] mm, radius_mm} (a patch round the point) or {box: [x0, y0, z0, x1, y1, z1]}; fixed is the held region the same way. A force spreads over its region by area. "
+            "Returns max von Mises stress, deflection, the safety factor (needs 2x unless the user set a strength requirement), which case governs and where, and self_check: "
+            "held against every motion, the reactions balancing the loads, the peak on a finer mesh. A part that is not held fails with the free motion named; notes flag a peak that depends on the mesh. "
             "Judges the strength requirement, reruns after cad_update, and shows the stress-coloured part on the Simulation tab. On a fail, follow the hint and run it again."
         ),
         "input_schema": {

@@ -1,5 +1,5 @@
-"""The user's 3D printer: FEM against the analytic cantilever, the material choice limited to the printer,
-print planning per printer, the settings round trip, and the offline phone stand with a printer set."""
+"""The user's 3D printer: the material choice limited to the printer, print planning per printer, the
+settings round trip, and the offline phone stand with a printer set (the FEM itself: test_fem.py)."""
 
 import asyncio
 from pathlib import Path
@@ -18,36 +18,6 @@ def _no_printer():
 
 
 needs_fem = pytest.mark.skipif(fem.find_tools() is None, reason="gmsh and CalculiX (FreeCAD's FEM tools) are not installed")
-
-
-@needs_fem
-def test_fem_cantilever_matches_beam_theory(tmp_path):
-    import cadquery as cq
-
-    step = tmp_path / "beam.step"
-    cq.exporters.export(cq.Workplane().box(100, 10, 10, centered=False), str(step))
-    props = {"modulus_mpa": 2000.0, "poisson": 0.35, "strength_mpa": 40.0, "z_strength_mpa": 20.0}
-    result = fem.analyse(step, None, props, {"face": "x_min"}, [{"name": "tip", "region": {"face": "x_max"}, "force_n": [0, 0, -10]}], [0, 0, 1], tmp_path / "w", 3.0, tmp_path / "beam.glb")
-    case = result["cases"][0]
-    # delta = F L^3 / (3 E I) = 2.0 mm, sigma = F L c / I = 6.0 MPa at the root.
-    assert case["max_deflection_mm"] == pytest.approx(2.0, rel=0.03)
-    assert case["max_von_mises_mpa"] == pytest.approx(6.0, rel=0.05)
-    assert case["safety_in_plane"] == pytest.approx(40.0 / case["max_von_mises_mpa"], rel=0.01)
-    assert (tmp_path / "beam.glb").read_bytes()[:4] == b"glTF"
-
-
-@needs_fem
-def test_fem_judges_tension_across_layers_with_the_interlayer_strength(tmp_path):
-    import cadquery as cq
-
-    step = tmp_path / "beam.step"
-    cq.exporters.export(cq.Workplane().box(100, 10, 10, centered=False), str(step))
-    props = {"modulus_mpa": 2000.0, "poisson": 0.35, "strength_mpa": 40.0, "z_strength_mpa": 10.0}
-    # Printed upright along X: the bending stress runs across the layers.
-    upright = fem.analyse(step, None, props, {"face": "x_min"}, [{"name": "tip", "region": {"face": "x_max"}, "force_n": [0, 0, -10]}], [1, 0, 0], tmp_path / "w", 3.0)
-    case = upright["cases"][0]
-    assert case["governs"] == "layers"
-    assert case["safety"] < case["safety_in_plane"]
 
 
 def test_material_choice_only_from_what_the_printer_prints():
@@ -136,6 +106,8 @@ def test_offline_phone_stand_with_a_printer(monkeypatch):
     fem_events = [e for e in events if e["type"] == "fem"]
     assert {e["part_id"] for e in fem_events} == {"back-rest", "base"}
     assert all(e["material"] in {"PLA", "PETG"} and e["safety"] > 0 for e in fem_events)
+    # Each result checked itself: held, the reactions balancing the loads, the peak on a finer mesh.
+    assert all(e["self_check"].startswith("Self-check: held against every motion") and e["checks"]["equilibrium"]["error_pct"] < 0.1 for e in fem_events)
     assert all(Path(session.state.directory, e["glb_url"].split("/")[-1].split("?")[0]).is_file() for e in fem_events)
     plan = [e for e in events if e["type"] == "print"][-1]
     assert plan["printer"] == "Bambu Lab P1S"

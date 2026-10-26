@@ -571,8 +571,14 @@ export const useSession = create<SessionState>((set, get) => ({
       }
       case "remix":
         return set({ log, remixedFrom: { id: ev.id, title: ev.title, author: ev.author } });
-      case "run":
-        return set({ log, run: ev.status });
+      case "run": {
+        if (ev.status !== "idle") return set({ log, run: ev.status });
+        // A run that ended leaves no step running: a step a story never marked done would keep the chat
+        // working after the build, without its follow-ups and with the stall notice 45 s later.
+        const steps = { ...s.steps };
+        for (const id of STEP_IDS) if (steps[id].status === "running") steps[id] = { ...steps[id], status: "done" };
+        return set({ log, run: ev.status, steps });
+      }
       case "agent": {
         // One card per agent, updated in place as it reports tokens, cost and its result.
         const known = !!s.agents[ev.id];

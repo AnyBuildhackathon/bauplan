@@ -8,13 +8,17 @@ crashes, bending on purpose), only among the filaments the user's printer prints
 real loads, derived from the spec when the call names none:
 - any product: the part is held where it rests (its lowest face), and each external load near it
   (the phone, the water, the pot) presses at its own position with twice its weight, as when it is
-  set down; without one nearby, a 10 N press on its top;
+  set down; without one nearby, a 10 N press on its top; every case adds the part's own weight;
 - the drone frame: held at the centre stack, all four motors at full thrust, and a crash that lands
   on one motor at `CRASH_G` times the drone's weight.
+Mechanic's own cases may spread a force or a pressure over the part's CAD faces (`face_id`, the
+faces a `near` patch touched are named in the result) and add its weight with `gravity_g`.
 The printed modulus and strengths follow the infill, the walls and the print direction. The result
 is stored like every check (state.checks, key fem:<part>), judges the `strength` requirement (a
 minimum safety factor, proposed at 2x when the user set none), reruns after cad_update, and its
-stress-coloured model goes to the Simulation tab as a `fem` event.
+stress-coloured model goes to the Simulation tab as a `fem` event. It carries the FEM's self-checks:
+a part that is not held fails with the free motion named, the reactions balance the loads, and a
+peak that moves by more than 15 % with smaller elements round it comes with a note.
 """
 
 from __future__ import annotations
@@ -183,46 +187,84 @@ def default_loads(state, geo: dict) -> tuple[dict, list[dict], list[str]]:
         if geo["bbox"] is not None and _distance_to_box(part["position_mm"], geo["bbox"]) > NEAR_MM:
             continue
         force = DYNAMIC * float(part["mass_g"]) / 1000.0 * GRAVITY
-        cases.append({"name": part["name"].lower() + " set down", "region": {"near": list(part["position_mm"])}, "force_n": [0, 0, -force]})
+        cases.append({"name": part["name"].lower() + " set down", "loads": [{"region": {"near": list(part["position_mm"])}, "force_n": [0, 0, -force]}], "gravity_g": 1.0})
         notes.append(f"{part['name']}: {part['mass_g']:.0f} g set down on it, {DYNAMIC:g}x its weight, {force:.1f} N.")
     if not cases:
-        cases.append({"name": f"{PRESS_N:g} N press on top", "region": {"face": "z_max"}, "force_n": [0, 0, -PRESS_N]})
+        cases.append({"name": f"{PRESS_N:g} N press on top", "loads": [{"region": {"face": "z_max"}, "force_n": [0, 0, -PRESS_N]}], "gravity_g": 1.0})
         notes.append(f"No load rests on it: a {PRESS_N:g} N press on its top (proposed by Mechanic).")
+    notes.append("Each case adds the part's own weight.")
     return fixed, cases, notes
 
 
 def _clean_region(raw: object) -> dict:
     if not isinstance(raw, dict):
-        raise ValueError("A region is {face: z_min|z_max|x_min|x_max|y_min|y_max}, {near: [x, y, z], radius_mm}, or {box: [x0, y0, z0, x1, y1, z1]} in mm.")
+        raise ValueError(
+            "A region is {face_id: n or [n, ...]} (the part's CAD faces, as a result names them), {face: z_min|z_max|x_min|x_max|y_min|y_max}, "
+            "{near: [x, y, z], radius_mm}, or {box: [x0, y0, z0, x1, y1, z1]} in mm."
+        )
+    if "face_id" in raw:
+        ids = raw["face_id"] if isinstance(raw["face_id"], list) else [raw["face_id"]]
+        try:
+            faces = [int(float(v)) for v in ids if float(v) == int(float(v))]
+        except (TypeError, ValueError):
+            faces = []
+        if not faces or len(faces) != len(ids) or min(faces) < 1:
+            raise ValueError("face_id is a face number of the part (1 or more), or a list of them, as a fem_check result names them.")
+        return {"face_id": faces}
     if "face" in raw:
         face = str(raw["face"]).lower()
         if face not in {a + "_" + e for a in "xyz" for e in ("min", "max")}:
             raise ValueError("face must be x_min, x_max, y_min, y_max, z_min or z_max.")
+        if raw.get("depth_mm") is not None and float(raw["depth_mm"]) <= 0:
+            raise ValueError("depth_mm must be more than 0 mm.")
         return {"face": face, **({"depth_mm": float(raw["depth_mm"])} if raw.get("depth_mm") else {})}
     if "near" in raw:
         point = [float(v) for v in raw["near"]]
         if len(point) != 3:
             raise ValueError("near must be three numbers in mm.")
+        if raw.get("radius_mm") is not None and float(raw["radius_mm"]) <= 0:
+            raise ValueError("radius_mm must be more than 0 mm.")
         return {"near": point, **({"radius_mm": float(raw["radius_mm"])} if raw.get("radius_mm") else {})}
     if "box" in raw:
         box = [float(v) for v in raw["box"]]
         if len(box) != 6:
             raise ValueError("box must be six numbers: x0, y0, z0, x1, y1, z1 in mm.")
         return {"box": box}
-    raise ValueError("A region needs face, near or box.")
+    raise ValueError("A region needs face_id, face, near or box.")
+
+
+def _clean_load(raw: object, where: str) -> dict:
+    if not isinstance(raw, dict):
+        raise ValueError(where + " must be an object.")
+    region = _clean_region(raw.get("region"))
+    if raw.get("pressure_mpa") is not None:
+        return {"region": region, "pressure_mpa": float(raw["pressure_mpa"])}
+    force = raw.get("force_n")
+    if not isinstance(force, list) or len(force) != 3:
+        raise ValueError(where + ".force_n must be [fx, fy, fz] in N; Z is up, so a weight is negative Z. Or give pressure_mpa (positive pushes on the face).")
+    return {"region": region, "force_n": [float(v) for v in force]}
 
 
 def _clean_cases(raw: object) -> list[dict]:
     if not isinstance(raw, list) or not raw:
-        raise ValueError("cases must be a list of {name, region, force_n: [fx, fy, fz]} in N.")
+        raise ValueError("cases must be a list of {name, region, force_n: [fx, fy, fz]} in N, or {name, loads: [{region, force_n} or {region, pressure_mpa}], gravity_g}.")
     cases = []
     for index, case in enumerate(raw[:4]):
+        where = "cases[" + str(index) + "]"
         if not isinstance(case, dict):
-            raise ValueError("cases[" + str(index) + "] must be an object.")
-        force = case.get("force_n")
-        if not isinstance(force, list) or len(force) != 3:
-            raise ValueError("cases[" + str(index) + "].force_n must be [fx, fy, fz] in N; Z is up, so a weight is negative Z.")
-        cases.append({"name": str(case.get("name") or "case " + str(index + 1)), "region": _clean_region(case.get("region")), "force_n": [float(v) for v in force]})
+            raise ValueError(where + " must be an object.")
+        items = case.get("loads")
+        if items is not None and not isinstance(items, list):
+            raise ValueError(where + ".loads must be a list of {region, force_n} or {region, pressure_mpa}.")
+        if items is None and (case.get("region") is not None or case.get("force_n") is not None or case.get("pressure_mpa") is not None):
+            items = [case]
+        loads = [_clean_load(item, where + (".loads[" + str(i) + "]" if case.get("loads") is not None else "")) for i, item in enumerate((items or [])[:6])]
+        gravity = float(case.get("gravity_g") or 0.0)
+        if not 0.0 <= gravity <= 100.0:
+            raise ValueError(where + ".gravity_g is the part's own weight as a multiple of g, from 0 to 100.")
+        if not loads and not gravity:
+            raise ValueError(where + " needs a force_n, a pressure_mpa, loads or gravity_g.")
+        cases.append({"name": str(case.get("name") or "case " + str(index + 1)), "loads": loads, **({"gravity_g": gravity} if gravity else {})})
     return cases
 
 
@@ -247,6 +289,29 @@ def _limit(ctx: Ctx, part_id: str) -> float:
     return max([float(r.get("min", MIN_SAFETY)) for r in rows] or [MIN_SAFETY])
 
 
+def _findings(result: dict, limit: float) -> tuple[list[str], str]:
+    """The self-check notes worth telling, and the FEM's own checks in one line.
+
+    A peak that moves with the mesh only matters near the limit: when the safety factor from either
+    mesh is under twice the limit, more refinement could still turn the verdict; far above it neither does.
+    """
+
+    notes = list(result["notes"])
+    checks = result["checks"]
+    mesh = checks["mesh"]
+    line = f"Self-check: held against every motion, the reactions balance the loads to {checks['equilibrium']['error_pct']:.2f} %"
+    if mesh.get("change_pct") is None:
+        return notes, line + "."
+    line += f", the peak moves {abs(mesh['change_pct']):.0f} % with {mesh['element_size_mm']:.2g} mm elements round it"
+    if mesh["ok"]:
+        return notes, line + "."
+    finer = result["safety"] / (1 + mesh["change_pct"] / 100)
+    if min(result["safety"], finer) < 2 * limit:
+        return notes, line + ", so it depends on the mesh."
+    notes.remove(mesh["text"])
+    return notes, line + ", but the part is far stronger than it needs either way."
+
+
 async def fem_check(ctx: Ctx, args: dict) -> dict:
     state = ctx.state
     part_id = str(args.get("part_id") or ("frame" if state.product == "drone" else ""))
@@ -257,9 +322,9 @@ async def fem_check(ctx: Ctx, args: dict) -> dict:
         if args.get("fixed") is not None:
             fixed = _clean_region(args["fixed"])
             notes[0] = "Held at " + ", ".join(f"{k} {v}" for k, v in fixed.items()) + "."
-        if args.get("cases") is not None:
+        custom = args.get("cases") is not None
+        if custom:
             cases = _clean_cases(args["cases"])
-            notes = notes[:1] + [f"{c['name'].capitalize()}: {math.hypot(*c['force_n']):.1f} N." for c in cases]
     except ValueError as exc:
         return _fail(str(exc))
     if fem.find_tools() is None:
@@ -289,13 +354,20 @@ async def fem_check(ctx: Ctx, args: dict) -> dict:
                 shutil.rmtree(work, ignore_errors=True)
     except fem.FemUnavailable as exc:
         return _fail(str(exc))
+    except fem.FemUnheld as exc:
+        # No safety factor for a part that would fly away: say what moves, so the hold can be fixed.
+        return _fail("FEM on " + geo["name"] + " stopped before solving. " + str(exc), free_motions=exc.motions, hint="Call fem_check again with fixed on the faces that really hold it.")
     except (fem.FemFailed, ValueError, TimeoutError) as exc:
         return _fail("FEM on " + geo["name"] + " failed: " + str(exc))
     except Exception as exc:  # noqa: BLE001 - a solver crash must not end the build
         return _fail("FEM on " + geo["name"] + " failed: " + type(exc).__name__ + ": " + str(exc)[:160])
+    # The lines stay short for the Stress pane; the faces each hold and load landed on are in `held` and the cases' `loads`.
+    if custom:
+        notes = notes[:1] + [c["name"][:1].upper() + c["name"][1:] + f": {math.hypot(*c['force_n']):.1f} N." for c in result["cases"]]
     requirement = _ensure_requirement(ctx)
     limit = _limit(ctx, geo["part_id"])
     outcome = "pass" if result["safety"] >= limit else "fail"
+    findings, self_check = _findings(result, limit)
     worst = next(c for c in result["cases"] if c["name"] == result["governing"])
     stored = {
         "part_id": geo["part_id"],
@@ -314,6 +386,8 @@ async def fem_check(ctx: Ctx, args: dict) -> dict:
         "governs": worst["governs"],
         "limit": limit,
         "result": outcome,
+        "self_check": self_check,
+        "notes": findings,
     }
     state.checks["fem:" + geo["part_id"]] = {**stored, "tool": "fem_check", "args": dict(args)}
     session = state.session_id
@@ -323,6 +397,7 @@ async def fem_check(ctx: Ctx, args: dict) -> dict:
             **stored,
             "cases": result["cases"],
             "loads": notes,
+            "checks": result["checks"],
             "glb_url": "/files/" + session + "/" + glb.name + "?build=" + str(n) + "-" + str(len(fem_rows(state))),
             "scale_mpa": result["scale_mpa"],
             "nodes": result["nodes"],
@@ -341,6 +416,8 @@ async def fem_check(ctx: Ctx, args: dict) -> dict:
         f"{outcome}: {geo['name']} in {props['material']} ({fill * 100:.0f} % plastic), worst case {result['governing']}: "
         f"{result['max_von_mises_mpa']:.1f} MPa, bends {result['max_deflection_mm']:.2f} mm, safety {result['safety']:.1f}x (needs {limit:g}x, weakest {weak})"
     )
+    if findings:
+        detail += "; " + str(len(findings)) + " self-check note" + ("s" if len(findings) > 1 else "")
     out = {
         "ok": True,
         "detail": detail,
@@ -348,6 +425,8 @@ async def fem_check(ctx: Ctx, args: dict) -> dict:
         **stored,
         "cases": result["cases"],
         "loads": notes,
+        "held": result["held"],
+        "checks": result["checks"],
         "mesh": {"nodes": result["nodes"], "elements": result["elements"], "element_size_mm": result["element_size_mm"], "solver": result["solver"]},
         "requirement": requirement["id"],
     }
@@ -357,6 +436,8 @@ async def fem_check(ctx: Ctx, args: dict) -> dict:
             f"Most stressed at {worst['hot_spot_mm']} mm. Try {thicken} (bending stress falls with the square of the thickness), "
             "pick a stronger material with material_pick, or print it so the layers run along the load (print_prep orientations), then fem_check again."
         )
+    if findings:
+        out["hint"] = ((out.get("hint") or "") + " Tell the user the self-check notes with the safety factor.").strip()
     return out
 
 

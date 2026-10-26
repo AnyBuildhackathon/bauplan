@@ -50,6 +50,7 @@ async def printed_parts(ctx: Ctx, parts: list[tuple[str, dict]], cases: dict[str
             f"{result['part_name']}: {safety} safety.",
             f"FEM on the {result['part_name'].lower()} in {result['material']}: worst case {result['governing']}, {worst['max_von_mises_mpa']:.1f} MPa, "
             f"it bends {worst['max_deflection_mm']:.2f} mm, safety {safety} against {result['limit']:g}x. "
-            + ("It holds." if result["result"] == "pass" else "Not enough. The plastic needs more section where it is most stressed."),
+            + ("It holds." if result["result"] == "pass" else "Not enough. The plastic needs more section where it is most stressed.")
+            + "".join(" " + note for note in result["notes"]),
         )
     return results

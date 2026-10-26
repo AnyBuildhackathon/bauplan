@@ -1,6 +1,7 @@
 // Simulation tab, Stress pane: the FEM of each printed part (`fem` events) on its real shape,
 // coloured by von Mises stress from blue (none) to red (the printed strength), with the
-// worst load case, the safety factor against the requirement, the deflection and the loads.
+// worst load case, the safety factor against the requirement, the deflection, the loads and
+// the FEM's self-check, its notes (a peak that depends on the mesh) in the fail ink.
 import { OrbitControls } from "@react-three/drei";
 import { Canvas, useLoader, useThree } from "@react-three/fiber";
 import { Suspense, useLayoutEffect, useMemo, useState } from "react";
@@ -137,8 +138,13 @@ export function FemView() {
         <p className="mt-1.5 text-[12px] leading-snug text-muted">
           {run.material} at {fmtNum(run.fill * 100, 0)} % plastic ({run.walls} walls, {fmtNum(run.infill_pct, 0)} % infill)
           {run.governs === "layers" ? ", weakest across the layers" : ""}. {run.loads.join(" ")} {run.solver}, {run.nodes.toLocaleString("en-US")} nodes
-          {run.printer ? `, printed on your ${run.printer}` : ""}.
+          {run.printer ? `, printed on your ${run.printer}` : ""}.{run.self_check ? ` ${run.self_check}` : ""}
         </p>
+        {run.notes?.map((note) => (
+          <p key={note} className="mt-1 text-[12px] font-semibold leading-snug text-fail-ink">
+            {note}
+          </p>
+        ))}
       </div>
     </div>
   );

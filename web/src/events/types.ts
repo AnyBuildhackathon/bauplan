@@ -662,6 +662,10 @@ export interface FemEvent {
   solver: string;
   printer: string | null;
   hot_spot_mm: number[];
+  /** The FEM's own checks in one line: held against every motion, reactions balancing the loads, the peak on a finer mesh. */
+  self_check?: string;
+  /** What to tell with the safety factor: a peak that depends on the mesh, load straight into the support, a loose body left out. */
+  notes?: string[];
 }
 /** A printer profile from the backend's store, with the maker's spec page. */
 export interface PrinterProfile {

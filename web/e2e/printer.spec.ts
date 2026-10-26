@@ -10,6 +10,8 @@ test.afterEach(async ({ page }) => {
 });
 
 test("3D printer: the prompt button sets the printer, the phone stand gets FEM and printer prices", async ({ page }) => {
+  // The build with FreeCAD, MuJoCo and CalculiX may take the 180 s the idle wait below allows; the suite's 90 s would cut it short.
+  test.setTimeout(240_000);
   await freshBench(page);
   await page.locator('[data-target="printer_button"]').first().click();
   await page.getByRole("switch", { name: /I have a 3D printer/ }).click();
@@ -36,4 +38,6 @@ test("3D printer: the prompt button sets the printer, the phone stand gets FEM a
   await page.locator('[data-target~="sim:stress"]').first().click();
   await expect(page.getByRole("button", { name: /Back rest ·/ })).toBeVisible();
   await expect(page.getByText(/CalculiX/).first()).toBeVisible();
+  // The FEM checked itself: held, the reactions balance the loads, the peak on a finer mesh.
+  await expect(page.getByText(/Self-check: held against every motion, the reactions balance the loads/).first()).toBeVisible();
 });
