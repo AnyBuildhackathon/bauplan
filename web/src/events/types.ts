@@ -635,6 +635,9 @@ export interface PrintPart {
   /** Overhangs need supports in this pose; support_g is the support plastic in the grams. */
   supports?: boolean;
   support_g?: number;
+  /** The thinnest wall the surface check measured, and the axis of the part that needs clearly less support up; null without one. */
+  wall_mm?: number | null;
+  better_up?: string | null;
 }
 /** Print plan from print_prep: a headless slicer when installed, else an estimate from the mesh. */
 export interface PrintEvent {
@@ -695,6 +698,79 @@ export interface FemEvent {
   self_check?: string;
   /** What to tell with the safety factor: a peak that depends on the mesh, load straight into the support, a loose body left out. */
   notes?: string[];
+}
+export type AnalysisCheck = "overhang" | "thickness" | "clearance";
+/** One check of the surface checks: its limit, unit, which side is critical and the GLB attribute with its values. */
+export interface AnalysisCheckInfo {
+  label: string;
+  limit: number;
+  unit: "deg" | "mm";
+  critical: "above" | "below";
+  attribute: string;
+  /** Overhang: the value of a face on the bed. */
+  bed?: number;
+  /** Thickness: the value where no ray came out. */
+  unread?: number;
+  /** Clearance: how far it looks (that value means as far or farther), and how close counts as touching. */
+  range?: number;
+  touch?: number;
+}
+/** Critical samples that share an edge; count says how many spots of the same area, size and worst value. */
+export interface AnalysisSpot {
+  count: number;
+  area_mm2: number;
+  size_mm: number[];
+  worst: number;
+  at_mm: number[];
+  centers_mm: number[][];
+  /** Clearance: the other part the spot is close to. */
+  with?: string | null;
+  /** Spots that need no fix: smaller than one sample, the taper of a sharp edge, the wedge where two parts meet. */
+  speck?: boolean;
+  taper?: boolean;
+  contact?: boolean;
+}
+export interface AnalysisSummary {
+  min: number | null;
+  max: number | null;
+  /** Everything past the limit, as the colours show it. */
+  critical_mm2: number;
+  /** What needs a fix: without specks, the tapers of sharp edges and the wedges where parts meet at an angle. */
+  finding_mm2: number;
+  worst?: { value: number; at_mm: number[]; with?: string | null };
+  spots: AnalysisSpot[];
+  spot_count: number;
+  overlap_mm2?: number;
+  unread_mm2?: number;
+  up?: number[];
+  by_axis_mm2?: Record<string, number>;
+  better?: { axis: string; up: number[]; critical_mm2: number; pose: string | null } | null;
+}
+export interface AnalysisPart {
+  /** The model GLB's node the layer lies over. */
+  node: string;
+  part_id: string | null;
+  name: string;
+  pose: string;
+  samples: number;
+  spacing_mm: number;
+  overhang?: AnalysisSummary;
+  thickness?: AnalysisSummary;
+  clearance?: AnalysisSummary;
+}
+/** The surface checks of the printed parts (surface_check, print_prep): numbers, places and the colour layer's GLB. */
+export interface AnalysisEvent {
+  type: "analysis";
+  source: "surface_check" | "print_prep";
+  /** The build it ran on: the model's glb_url carries the same ?build=. */
+  build: number;
+  glb_url: string;
+  frame: string;
+  checks: Partial<Record<AnalysisCheck, AnalysisCheckInfo>>;
+  parts: AnalysisPart[];
+  result: "pass" | "fail";
+  summary: string;
+  seconds?: number;
 }
 /** A printer profile from the backend's store, with the maker's spec page. */
 export interface PrinterProfile {
@@ -868,6 +944,7 @@ export type AgentEvent =
   | BuildGuideEvent
   | PrintEvent
   | FemEvent
+  | AnalysisEvent
   | FirmwareEvent
   | ElectronicsEvent
   | SafetyEvent
@@ -907,6 +984,7 @@ const EVENT_TYPES = new Set<AgentEvent["type"]>([
   "build_guide",
   "print",
   "fem",
+  "analysis",
   "firmware",
   "electronics",
   "safety",

@@ -141,6 +141,7 @@ async def product_spec(ctx: Ctx, args: dict) -> dict:
         state.picked = {}
         state.checks = {}
         state.print_materials = {}
+        state.surface = None
     rebuild: list[str] = []
     previous_checks: dict = {}
     if revision:
@@ -538,7 +539,10 @@ async def cad_update(ctx: Ctx, args: dict) -> dict:
     if ctx.state.checks:
         out["checks"] = await rerun_checks(ctx)
     else:
+        from pai_agent.tools.surface import refresh_surface
+
         await ensure_assembly(ctx)
+        await refresh_surface(ctx)
     return out
 
 
@@ -548,6 +552,7 @@ async def rerun_checks(ctx: Ctx) -> list[dict]:
     from pai_agent.tools.checks import CHECK_TOOLS as BASE
     from pai_agent.tools.checks_more import CHECK_TOOLS as MORE
     from pai_agent.tools.fem import CHECK_TOOLS as FEM
+    from pai_agent.tools.surface import refresh_surface
 
     CHECK_TOOLS = {**BASE, **MORE, **FEM}
     await ensure_assembly(ctx)
@@ -556,6 +561,9 @@ async def rerun_checks(ctx: Ctx) -> list[dict]:
         function = CHECK_TOOLS[entry["tool"]]
         result = await function(ctx, dict(entry["args"]))
         results.append({"check": key, "result": result.get("result"), "detail": result.get("detail")})
+    surface = await refresh_surface(ctx)
+    if surface is not None:
+        results.append({"check": "surface", "result": surface.get("result"), "detail": surface.get("detail")})
     return results
 
 

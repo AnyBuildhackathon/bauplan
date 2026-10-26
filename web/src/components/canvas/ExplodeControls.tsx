@@ -94,10 +94,15 @@ function usePartFacts(key: string | null, label: string): Facts | null {
   return facts;
 }
 
+/** The parts the 3D view shows as approximate models. */
+export function useApproximateModels(): string[] {
+  const models = useSession((s) => s.cad?.part_models);
+  return [...new Set((models ?? []).filter((row) => row.model_kind === "approximate").map((row) => row.part_name))];
+}
+
 /** In the bottom-left corner of the Model tab, below Mechanic's line: which parts the 3D view shows as approximate models, if any. */
 export function ApproximateModelsNote() {
-  const models = useSession((s) => s.cad?.part_models);
-  const names = [...new Set((models ?? []).filter((row) => row.model_kind === "approximate").map((row) => row.part_name))];
+  const names = useApproximateModels();
   if (!names.length) return null;
   return (
     <p

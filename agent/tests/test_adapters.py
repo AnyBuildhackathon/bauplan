@@ -102,15 +102,18 @@ class _Machine:
 
 
 class LookupTests(_Machine, unittest.TestCase):
-    def test_locked_path_finds_only_the_backends_mujoco_and_hints_every_install(self):
+    def test_locked_path_finds_only_the_backends_own_engines_and_hints_every_install(self):
         rows = self.rows()
         self.assertEqual(list(rows), [adapter.id for adapter in adapters.ADAPTERS])
         self.assertEqual({row["domain"] for row in rows.values()}, set(adapters.DOMAINS))
         self.assertEqual([key for key, row in rows.items() if row["remote"]], ["isaac"])
+        # MuJoCo, VTK and SciPy are Python packages of the backend itself.
         self.assertIs(rows["mujoco"]["available"], True)
+        self.assertIs(rows["surface"]["available"], True)
+        self.assertRegex(rows["surface"]["version"], r"^\d+\.\d+")
         for key, row in rows.items():
             self.assertEqual(set(row), FIELDS)
-            if key != "mujoco":
+            if key not in ("mujoco", "surface"):
                 self.assertIs(row["available"], False, key)
                 self.assertIsNone(row["path"], key)
             self.assertTrue(row["detail"], key)
@@ -274,8 +277,9 @@ class RunLogTests(unittest.TestCase):
             {"type": "cad", "source": "freecad", "part": {"name": "Base plate"}},
             {"type": "omniverse", "source": "live", "status": "done", "mode": "test", "passed": True, "detail": "Held 0.5 m in the gust."},
             {"type": "circuit", "ok": False, "summary": "ESP32 DevKit V1 with 2 parts and 6 wires: 1 error and 0 warnings in the checks, 2 of 3 tests pass, 5 s simulated without an error."},
+            {"type": "analysis", "result": "fail", "summary": "Bracket: walls under 0.88 mm on 6.0 cm², down to 0.80 mm"},
         ]
-        self.assertEqual([self.log.record(event) for event in events], ["mujoco", "mujoco", "calculix", "slicer", "blender", "freecad", "isaac", "sparkbench"])
+        self.assertEqual([self.log.record(event) for event in events], ["mujoco", "mujoco", "calculix", "slicer", "blender", "freecad", "isaac", "sparkbench", "surface"])
         last = adapters.RunLog(self.path).last()
         self.assertEqual(last["mujoco"], {"at": last["mujoco"]["at"], "pass": True, "summary": "Speed run passed: 61 km/h, min. 60 km/h."})
         self.assertLess(abs(last["mujoco"]["at"] - time.time()), 60)
@@ -286,6 +290,7 @@ class RunLogTests(unittest.TestCase):
         self.assertEqual(last["isaac"]["summary"], "Isaac Sim test passed: Held 0.5 m in the gust.")
         self.assertEqual(last["sparkbench"]["summary"], "Circuit failed: ESP32 DevKit V1 with 2 parts and 6 wires: 1 error and 0 warnings in the checks, 2 of 3 tests pass, 5 s simulated without an error.")
         self.assertIs(last["sparkbench"]["pass"], False)
+        self.assertEqual(last["surface"]["summary"], "Surface check failed: Bracket: walls under 0.88 mm on 6.0 cm², down to 0.80 mm")
 
     def test_each_test_kind_is_named(self):
         cases = [
@@ -325,6 +330,7 @@ class RunLogTests(unittest.TestCase):
             {"type": "omniverse", "source": "recorded", "status": "recorded"},
             {"type": "omniverse", "source": "live", "status": "running"},
             {"type": "circuit", "ok": "yes", "summary": "Not a verdict."},
+            {"type": "analysis", "summary": "No verdict either."},
         ):
             self.assertIsNone(self.log.record(event), event)
         self.assertFalse(self.path.exists())

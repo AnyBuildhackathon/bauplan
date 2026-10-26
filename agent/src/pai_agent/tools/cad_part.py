@@ -405,6 +405,11 @@ async def cad_part(ctx: Ctx, args: dict) -> dict:
 
         async with _BUILD:
             await ensure_assembly(ctx)
+    else:
+        # A part on its own (the gripper) is its build: a surface check of it follows the new shape.
+        from pai_agent.tools.surface import refresh_surface
+
+        await refresh_surface(ctx)
     size = build.bbox_mm
     dims = " x ".join(f"{size[i + 3] - size[i]:.0f}" for i in range(3))
     detail = "FreeCAD headless, " + f"{build.mass_g:.1f}" + " g " + material + ", " + dims + " mm"

@@ -24,7 +24,7 @@ flowchart LR
         ORC[Orchestrator<br/>Claude Opus 5.5]
         SUB[Sub-agents<br/>Claude Sonnet 5.5]
         GLV[Gemini Live gateway<br/>WS /api/voice/live]
-        REG[Tool registry<br/>55 tools]
+        REG[Tool registry<br/>58 tools]
         BUS[Event bus<br/>SSE fan-out]
     end
 
@@ -349,7 +349,7 @@ The reasons behind the main choices, for a reviewer who wants to know why the co
 | Path | Contents |
 | --- | --- |
 | `agent/src/pai_agent/` | Backend package: API, session, orchestrator, sub-agents, engineering core, voice. |
-| `agent/src/pai_agent/tools/` | The 57 agent tools, see [TOOLS.md](TOOLS.md). |
+| `agent/src/pai_agent/tools/` | The 58 agent tools, see [TOOLS.md](TOOLS.md). |
 | `agent/freecad/` | FreeCAD build scripts, the part harness, parametric library parts and downloaded part models. |
 | `agent/solidcraft/` | SolidCraft's skills for the CAD agent and the library of SolidCraft designs (four-bar, two-finger gripper). |
 | `agent/blender/` | The Blender studio scene script. |

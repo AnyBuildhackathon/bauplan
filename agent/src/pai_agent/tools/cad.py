@@ -323,6 +323,11 @@ async def cad_frame(ctx: Ctx, args: dict) -> dict:
     refreshed = await refresh_fem(ctx, "frame")
     if refreshed is not None:
         notes.append("FEM again: " + str(refreshed.get("detail") or refreshed.get("error") or ""))
+    from pai_agent.tools.surface import refresh_surface
+
+    surface = await refresh_surface(ctx)
+    if surface is not None:
+        notes.append("Surface check again: " + str(surface.get("detail") or surface.get("error") or ""))
     return {
         "ok": True,
         "detail": detail,

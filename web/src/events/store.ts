@@ -14,6 +14,7 @@ import {
   type BuildGuideEvent,
   type PrintEvent,
   type FemEvent,
+  type AnalysisEvent,
   type ExplainEvent,
   type CadEvent,
   type DrawEvent,
@@ -242,6 +243,8 @@ export interface SessionState extends TrialSlice {
   /** FEM of printed parts by part id, the latest run of each; `femOrder` lists them newest last. */
   fem: Record<string, FemEvent & { seq: number; at: number }>;
   femOrder: string[];
+  /** The latest surface checks of the printed parts, for the studio's colour layer. */
+  analysis: AnalysisEvent | null;
   /** Learning-mode explanations by key, the latest of each. */
   explains: Record<string, ExplainEvent>;
   /** Design optimizer runs by id, the latest event of each. */
@@ -289,6 +292,7 @@ const TOOL_ALIASES: Record<string, string> = {
   assemble: "Assembly",
   cad_update: "FreeCAD",
   cad_view: "Model view",
+  surface_check: "Surface check",
   check_totals: "Analysis",
   check_tip_over: "Analysis",
   check_deflection: "Analysis",
@@ -387,6 +391,7 @@ function emptyState() {
     printPlan: null as PrintEvent | null,
     fem: {} as SessionState["fem"],
     femOrder: [] as string[],
+    analysis: null as AnalysisEvent | null,
     explains: {} as Record<string, ExplainEvent>,
     optimizes: {} as Record<string, OptimizeEvent>,
     ui: null as SessionState["ui"],
@@ -613,6 +618,7 @@ export const useSession = create<SessionState>((set, get) => ({
           printPlan: null,
           fem: {},
           femOrder: [],
+          analysis: null,
           cad: null,
           renders: [],
           parts: {},
@@ -639,6 +645,8 @@ export const useSession = create<SessionState>((set, get) => ({
         return set({ log, printPlan: ev, chat: [...s.chat, { kind: "print", id: nextId("print"), seq, at, plan: ev }] });
       case "fem":
         return set({ log, fem: { ...s.fem, [ev.part_id]: { ...ev, seq, at } }, femOrder: [...s.femOrder.filter((id) => id !== ev.part_id), ev.part_id] });
+      case "analysis":
+        return set({ log, analysis: ev });
       case "explain": {
         const explains = { ...s.explains, [ev.key]: ev };
         const known = s.chat.some((c) => c.kind === "explain" && c.key === ev.key);

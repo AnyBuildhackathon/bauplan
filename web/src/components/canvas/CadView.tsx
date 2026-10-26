@@ -15,6 +15,7 @@ import { fmtNum } from "../../lib/format";
 import { useHighlight } from "../../lib/hooks";
 import { lookFor, materialKey, materialsFromTree, pbrMaterial } from "../../lib/materials";
 import { isLive } from "../../lib/motion";
+import { AnalysisLayer } from "./AnalysisLayer";
 import { useAssemblyFlyIn } from "./AssemblyMotion";
 import { normaliseName } from "../../lib/targets";
 import { AnchorScope, useAnchor } from "./anchors";
@@ -197,6 +198,7 @@ function Part({
         <primitive object={object} />
       )}
       <group ref={anchor} position={center} />
+      <AnalysisLayer root={object} modelUrl={url} />
       <StudioRig model={object} center={center} radius={radius} home={HOME} front={zUp ? FRONT_Z_UP : FRONT_DRONE} unit={unit} />
     </>
   );

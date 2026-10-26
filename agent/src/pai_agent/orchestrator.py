@@ -109,6 +109,7 @@ When they named no number for something the product needs, propose a sensible li
    Only when that fails, pass an honest estimate. Say when a part's numbers are estimated (its confidence).
 4. assemble, read the warnings (a part that floats, a part without position) and fix them with placements.
    Then look at the model once with cad_view and fix what looks wrong (a part that floats, sits crooked or inside another, a hole in the wrong place, a missing part) with placements, cad_update or cad_part, then look again; at most two rounds.
+   Then surface_check once and fix the thin walls, tight gaps and overlaps it finds at the places it names (cad_update, placements); an overhang only needs support or another pose.
 5. The checks, right after the first assembly and before you tune anything: check_totals, then the ones your requirements need
    (check_tip_over, check_deflection, check_torque, check_runtime, check_power, check_thermal, check_rollover, simulate_assembly). Every check says pass or fail against the requirements.
 6. On a fail: say which requirement failed and why in one sentence, point at it with ui_point_at, then change one parameter with cad_update

@@ -1,11 +1,12 @@
 // What floats over a studio canvas (the live model in the Model and CAD tabs): the tool rail on
-// the left, the zoom pill on the right, the parts panel and the measuring hint, and the
-// studio's keys while no text field has the focus: 1 to 4 views, + − 0 zoom and fit, G grid,
-// L labels, V select, M measure, P parts.
+// the left, the zoom pill on the right, the parts panel, the measuring hint, the surface check's
+// legend, and the studio's keys while no text field has the focus: 1 to 4 views, + − 0 zoom and
+// fit, G grid, L labels, V select, M measure, P parts.
 import { useEffect } from "react";
 import { Ruler } from "lucide-react";
 import { useUi } from "../../lib/ui";
 import { useExplodeHover } from "../canvas/explode";
+import { AnalysisLegend } from "./AnalysisLegend";
 import { PartsPanel } from "./PartsPanel";
 import { useStudio, VIEW_KEYS } from "./studio";
 import { ToolRail } from "./ToolRail";
@@ -50,6 +51,7 @@ export function StudioOverlay() {
     <>
       <ToolRail />
       <ZoomPill />
+      <AnalysisLegend />
       {partsOpen && <PartsPanel />}
       {measuring && (
         <p

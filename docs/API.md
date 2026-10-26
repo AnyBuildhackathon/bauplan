@@ -144,6 +144,7 @@ Each event has a `type`; every stream begins with `reset`, then the backlog, the
 | `safety` | Advisory safety findings with severity, source rule, reason, fix and disclaimer. | [safety](events.md#safety) |
 | `bom` | The full bill of materials with prices, price sources and weights. | [bom](events.md#bom) |
 | `print` | Per-part print time, filament, cost, orientation, warnings and G-code when sliced; otherwise labelled estimates. | [print](events.md#print) |
+| `analysis` | The surface checks of the printed parts: overhang, wall thickness and clearance with numbers and places, and a GLB with every value for the studio's colour layer. | [analysis](events.md#analysis) |
 | `build_guide` | The step-by-step build guide for the current bill of materials. | [build_guide](events.md#build_guide) |
 | `firmware` | Betaflight CLI or Arduino sketch and the wiring table. | [firmware](events.md#firmware) |
 | `circuit` | SparkBench's circuit of an ESP32 or Pico build: pins, nets, KiCad and firmware files, design checks, acceptance tests, the simulation and the gaps to the real build. | [circuit](events.md#circuit) |

@@ -5,7 +5,10 @@ for download; the time and filament come from the comments the slicer writes. Wi
 slicer the numbers come from the mesh: shell and infill volume at a default profile, an
 average volumetric flow and a per-layer overhead, labelled 'estimate', with no G-code.
 Printability warnings always come from the mesh itself: overhangs past 45 degrees, walls
-thinner than 0.8 mm, and parts that do not fit a 220 mm bed.
+thinner than two extrusion lines of the nozzle (0.88 mm on 0.4 mm), and parts that do not fit
+a 220 mm bed. The walls are measured by the surface check (`tools/surface.py`), which runs
+in the poses planned here, shows its colour map in the studio and names a print direction
+with clearly less overhang; without it the designed wall or the part's thinnest side stands in.
 
 With the user's 3D printer set (`pai_agent.printers`) everything follows that printer: its bed
 and nozzle in the slicer and the estimate, its typical flow, the bed-fit check against its own
@@ -19,6 +22,7 @@ printer; the drone's frame is printed instead of bought.
 from __future__ import annotations
 
 import asyncio
+import logging
 import math
 import os
 import re
@@ -28,12 +32,13 @@ from pathlib import Path
 
 import numpy as np
 
-from pai_agent import printers
+from pai_agent import printers, surface_checks
 from pai_agent.context import Ctx
+
+log = logging.getLogger(__name__)
 
 BED_MM = (220.0, 220.0, 250.0)
 OVERHANG_DEG = 45.0
-MIN_WALL_MM = 0.8
 PROFILE = {"printer": "Generic 220 mm bed, 0.4 mm nozzle", "nozzle_mm": 0.4, "layer_height_mm": 0.2, "infill_pct": 20, "walls": 2}
 # Average extrusion rate and per-layer overhead of a stock bed slinger with the profile above.
 FLOW_MM3_S = 7.0
@@ -190,21 +195,37 @@ def fits(mesh: dict, bed: list[float]) -> bool:
     return max(x, y) <= max(bed[0], bed[1]) and min(x, y) <= min(bed[0], bed[1]) and z <= bed[2]
 
 
-def warnings_for(mesh: dict, min_wall_mm: float | None, material: str | None = None, prof: dict | None = None) -> list[dict]:
+def warnings_for(mesh: dict, min_wall_mm: float | None, material: str | None = None, prof: dict | None = None, measured: dict | None = None) -> list[dict]:
+    """The part's printability warnings. `measured` is its surface check (`tools/surface.py`): the real walls
+    then stand in for the designed wall and the part's thinnest side, and it may name a better print direction."""
+
     out = []
-    if mesh["overhang_mm2"] > 1.0:
-        out.append(
-            {
-                "kind": "overhang",
-                "text": f"{mesh['overhang_mm2'] / 100:.1f} cm² hangs over more than {OVERHANG_DEG:.0f}°, up to {mesh['overhang_max_deg']:.0f}°: needs supports or another orientation",
-            }
-        )
-    thinnest = min([v for v in mesh["size_mm"] if v > 0] or [0.0])
-    wall = min(v for v in (min_wall_mm, thinnest) if v is not None) if (min_wall_mm is not None or thinnest) else None
-    if wall is not None and wall < MIN_WALL_MM:
-        out.append({"kind": "thin_wall", "text": f"Wall {wall:.2f} mm is thinner than {MIN_WALL_MM} mm: two 0.4 mm perimeters cannot print it"})
-    x, y, z = mesh["size_mm"]
     prof = prof or profile()
+    if mesh["overhang_mm2"] > surface_checks.FINDING_MM2:
+        fix = "needs supports or another orientation"
+        better = (measured or {}).get("better")
+        if better:
+            how = f"{better['pose']} ({better['axis'].upper()} up)" if better.get("pose") else f"with {better['axis'].upper()} up"
+            left = surface_checks.area_text(better["critical_mm2"]) if better["critical_mm2"] >= surface_checks.FINDING_MM2 else "none"
+            fix = f"needs supports, or print it {how}: {left} left"
+        out.append({"kind": "overhang", "text": f"{mesh['overhang_mm2'] / 100:.1f} cm² hangs over more than {OVERHANG_DEG:.0f}°, up to {mesh['overhang_max_deg']:.0f}°: {fix}"})
+    nozzle = float(prof["nozzle_mm"])
+    limit, line = surface_checks.min_wall_mm(nozzle), round(surface_checks.LINE * nozzle, 2)
+    if measured and measured.get("min_wall_mm") is not None:
+        if measured["thin_mm2"] >= surface_checks.FINDING_MM2:
+            at = ", ".join(f"{v:.1f}" for v in measured["wall_at_mm"])
+            out.append(
+                {
+                    "kind": "thin_wall",
+                    "text": f"Walls under {limit:g} mm on {surface_checks.area_text(measured['thin_mm2'])}, down to {measured['min_wall_mm']:.2f} mm at ({at}) mm: two {line:g} mm lines of the {nozzle:g} mm nozzle do not fit",
+                }
+            )
+    else:
+        thinnest = min([v for v in mesh["size_mm"] if v > 0] or [0.0])
+        wall = min(v for v in (min_wall_mm, thinnest) if v is not None) if (min_wall_mm is not None or thinnest) else None
+        if wall is not None and wall < limit:
+            out.append({"kind": "thin_wall", "text": f"Wall {wall:.2f} mm is thinner than {limit:g} mm: two {line:g} mm lines of the {nozzle:g} mm nozzle do not fit"})
+    x, y, z = mesh["size_mm"]
     bed = prof["bed_mm"]
     if not fits(mesh, bed):
         where = f"the {prof['printer']} bed ({bed[0]:g} × {bed[1]:g} × {bed[2]:g} mm)" if prof.get("model") else f"a {bed[0]:.0f} mm bed"
@@ -346,7 +367,7 @@ def best_orientation(raw: np.ndarray, bed: list[float]) -> str:
     return min(scored)[3]
 
 
-def _plan_part(part: dict, orientation: str, slicer: tuple[str, str] | None, session_id: str, prof: dict | None = None) -> dict:
+def _plan_part(part: dict, orientation: str, slicer: tuple[str, str] | None, session_id: str, prof: dict | None = None, measured: dict | None = None) -> dict:
     prof = prof or profile()
     stl = Path(part["stl"])
     raw = read_stl(stl)
@@ -362,8 +383,10 @@ def _plan_part(part: dict, orientation: str, slicer: tuple[str, str] | None, ses
         "orientation": orientation,
         "size_mm": mesh["size_mm"],
         "volume_cm3": round(mesh["volume_mm3"] / 1000, 2),
-        "warnings": warnings_for(mesh, part["min_wall_mm"], part["material"], prof),
-        "supports": mesh["overhang_mm2"] > 1.0,
+        "warnings": warnings_for(mesh, part["min_wall_mm"], part["material"], prof, measured),
+        "wall_mm": (measured or {}).get("min_wall_mm"),
+        "better_up": ((measured or {}).get("better") or {}).get("axis"),
+        "supports": mesh["overhang_mm2"] > surface_checks.FINDING_MM2,
         "stl_url": "/files/" + session_id + "/" + stl.name if stl.parent.name == session_id else "",
         "gcode_url": "",
         "source": "estimate",
@@ -381,6 +404,18 @@ def _plan_part(part: dict, orientation: str, slicer: tuple[str, str] | None, ses
         except Exception as exc:  # The estimate stays; the row says why the slicer did not help.
             row["slicer_error"] = str(exc)
     return row
+
+
+async def _measure(ctx: Ctx, poses: dict[str, str]) -> dict[str, dict]:
+    """The surface check in these poses, per printed part id; empty when it cannot run, and the plan goes on without it."""
+
+    from pai_agent.tools.surface import run
+
+    try:
+        return (await run(ctx, orientations=poses, source="print_prep"))[1]
+    except Exception as exc:  # noqa: BLE001 - the designed walls and the part's size stand in
+        log.warning("The surface check for print_prep failed: %s", exc)
+        return {}
 
 
 def filament_line(plan: dict) -> dict:
@@ -416,10 +451,18 @@ async def print_prep(ctx: Ctx, args: dict) -> dict:
         return {"ok": False, "error": message, "detail": message}
     slicer = find_slicer()
     session_id = ctx.state.session_id
-    rows = []
+    # Each part's pose first: the surface check measures the parts the way they will be printed.
+    poses = {}
     for part in parts:
         chosen = str(per_part.get(part["id"]) or orientation)
-        rows.append(await asyncio.to_thread(_plan_part, part, chosen if chosen in CHOICES else orientation, slicer, session_id, prof))
+        chosen = chosen if chosen in CHOICES else orientation
+        if chosen == "auto":
+            chosen = await asyncio.to_thread(lambda stl=Path(part["stl"]): best_orientation(read_stl(stl), prof["bed_mm"]))
+        poses[part["id"]] = chosen
+    measured = await _measure(ctx, poses)
+    rows = []
+    for part in parts:
+        rows.append(await asyncio.to_thread(_plan_part, part, poses[part["id"]], slicer, session_id, prof, measured.get(part["id"])))
     source = "slicer" if rows and all(row["source"] == "slicer" for row in rows) else "estimate"
     totals = {
         "parts": sum(row["qty"] for row in rows),

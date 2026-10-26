@@ -49,6 +49,7 @@ from pai_agent.tools.stress import stress_test
 from pai_agent.tools.train_loop import train_controller
 from pai_agent.tools.ui import mascot_say, ui_control, ui_draw, ui_point_at
 from pai_agent.tools.view import SCHEMA as CAD_VIEW_SCHEMA, cad_view
+from pai_agent.tools.surface import SCHEMA as SURFACE_CHECK_SCHEMA, surface_check
 
 TOOLS = {
     "ask_user": ask_user,
@@ -71,6 +72,7 @@ TOOLS = {
     "assemble": assemble,
     "cad_update": cad_update,
     "cad_view": cad_view,
+    "surface_check": surface_check,
     "check_totals": check_totals,
     "check_tip_over": check_tip_over,
     "check_deflection": check_deflection,
@@ -530,6 +532,7 @@ SCHEMAS = [
         },
     },
     CAD_VIEW_SCHEMA,
+    SURFACE_CHECK_SCHEMA,
     {
         "name": "check_totals",
         "description": "Mass (product without external loads), cost (printed parts at filament cost plus bought parts) and size against the mass, cost and size requirements.",
@@ -747,7 +750,7 @@ SCHEMAS = [
     },
     {
         "name": "print_prep",
-        "description": "Makes every printed part print-ready after bom_build: slices each STL headless with PrusaSlicer or OrcaSlicer when installed (G-code per part for download), else estimates time and filament from the mesh and says 'estimate'. Returns print time, filament grams, support grams and cost per part and in total, and printability warnings (overhangs past 45 degrees and supports, walls under 0.8 mm, bed fit). With the user's 3D printer set it uses that printer's bed, nozzle and speed, picks each part's pose (auto: fits the bed, least support), warns about warping for the material on that printer (enclosure, part length) and materials it cannot print, and prices each printed part as filament on their printer. Adds a filament line to the bill of materials. orientation flat puts the smallest extent on the bed, upright the largest, as_modeled keeps the CAD pose, auto chooses; orientations sets it per part id. The pose sets the print direction fem_check judges the layers against.",
+        "description": "Makes every printed part print-ready after bom_build: slices each STL headless with PrusaSlicer or OrcaSlicer when installed (G-code per part for download), else estimates time and filament from the mesh and says 'estimate'. Returns print time, filament grams, support grams and cost per part and in total, and printability warnings (overhangs past 45 degrees and supports, with a print direction that needs clearly less; walls under two extrusion lines of the nozzle, 0.88 mm on 0.4 mm, measured with surface_check in the planned poses; bed fit). With the user's 3D printer set it uses that printer's bed, nozzle and speed, picks each part's pose (auto: fits the bed, least support), warns about warping for the material on that printer (enclosure, part length) and materials it cannot print, and prices each printed part as filament on their printer. Adds a filament line to the bill of materials. orientation flat puts the smallest extent on the bed, upright the largest, as_modeled keeps the CAD pose, auto chooses; orientations sets it per part id. The pose sets the print direction fem_check judges the layers against.",
         "input_schema": {
             "type": "object",
             "properties": {

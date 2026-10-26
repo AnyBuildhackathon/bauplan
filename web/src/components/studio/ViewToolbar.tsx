@@ -1,9 +1,12 @@
 // The view bar between the canvas tabs and the canvas: perspective or orthographic, the camera
-// views (keys 1 to 4), the explode amount in a popover, and the grid and label switches. The
-// grid switch also hides the lines of the test stage in the simulation replays; the rest needs
-// the live model, so it rests while the Model tab shows the render or two versions side by side.
+// views (keys 1 to 4), the explode amount in a popover, the surface check colour layer (overhang,
+// wall thickness or clearance, once Mechanic has checked this build), and the grid and label
+// switches. The grid switch also hides the lines of the test stage in the simulation replays; the
+// rest needs the live model, so it rests while the Model tab shows the render or two versions
+// side by side.
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ChevronDown, Expand, Grid3x3, Tag, Video } from "lucide-react";
+import { ChevronDown, Expand, Grid3x3, Layers, Tag, Video } from "lucide-react";
+import { ANALYSIS_CHECKS, areas, formatArea, isCurrent, useAnalysisLayer } from "../../events/analysis";
 import { useSession } from "../../events/store";
 import { useUi } from "../../lib/ui";
 import { ExplodeSlider } from "../canvas/ExplodeControls";
@@ -55,6 +58,8 @@ function usePopover() {
 const Word = ({ children }: { children: ReactNode }) => <span className="hidden @min-[600px]:inline">{children}</span>;
 
 const POPOVER = "absolute top-10 left-0 z-40 animate-rise rounded-[16px] bg-card p-1.5 shadow-[var(--shadow-float)]";
+/** The same popover opening to the left, for a button too close to the right edge of the window. */
+const POPOVER_LEFTWARD = POPOVER.replace("left-0", "right-0");
 
 function ViewsMenu({ disabled }: { disabled: boolean }) {
   const { open, setOpen, ref } = usePopover();
@@ -115,6 +120,71 @@ function ExplodeMenu({ disabled }: { disabled: boolean }) {
   );
 }
 
+/** The Surface menu's width, w-60. */
+const SURFACE_MENU_PX = 240;
+
+function SurfaceMenu({ disabled }: { disabled: boolean }) {
+  const { open, setOpen, ref } = usePopover();
+  const [leftward, setLeftward] = useState(false);
+  const analysis = useSession((s) => s.analysis);
+  const cadUrl = useSession((s) => s.cad?.glb_url);
+  const check = useAnalysisLayer((s) => s.check);
+  const show = useAnalysisLayer((s) => s.show);
+  const current = isCurrent(analysis, cadUrl);
+  const title = current
+    ? "Colour the model by overhang, wall thickness or clearance"
+    : analysis
+      ? "The surface check is of an earlier build; Mechanic checks again with print_prep"
+      : "No surface check yet; Mechanic runs one with print_prep";
+  return (
+    <div ref={ref} className="relative">
+      <BarButton
+        on={open || (current && !!check)}
+        disabled={disabled || !current}
+        onClick={() => {
+          // Where the bar wraps on a phone the button sits at the right edge: the menu opens to its left there.
+          const left = ref.current?.getBoundingClientRect().left ?? 0;
+          setLeftward(left + SURFACE_MENU_PX > window.innerWidth - 12);
+          setOpen(!open);
+        }}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label="Surface checks"
+        title={title}
+        data-target="studio:surface"
+      >
+        <Layers className="h-4 w-4" /> <Word>Surface</Word> <ChevronDown className={`h-3.5 w-3.5 transition ${open ? "rotate-180" : ""}`} />
+      </BarButton>
+      {open && current && (
+        <div role="menu" aria-label="Surface checks" className={`${leftward ? POPOVER_LEFTWARD : POPOVER} w-60`}>
+          {[null, ...ANALYSIS_CHECKS].map((c) => {
+            const info = c ? analysis.checks[c] : undefined;
+            if (c && !info) return null;
+            // What needs a fix at Mechanic's limit; red at sharp edges, contact lines and specks needs none.
+            const area = c ? areas(analysis, c).finding : 0;
+            return (
+              <button
+                key={c ?? "off"}
+                type="button"
+                role="menuitemradio"
+                aria-checked={check === c}
+                onClick={() => {
+                  show(c);
+                  setOpen(false);
+                }}
+                className={`flex h-9 w-full items-center justify-between gap-3 rounded-[10px] px-3 text-left text-[14px] font-semibold hover:bg-tile hover:text-ink ${check === c ? "bg-accent-soft text-accent" : "text-ink-2"}`}
+              >
+                {info ? info.label : "Off"}
+                {c && <span className={`num font-label text-[11px] ${area >= 1 ? "text-fail-ink" : "text-ok-ink"}`}>{area >= 1 ? formatArea(area) : "none"}</span>}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ViewToolbar() {
   const tab = useUi((s) => s.tab);
   const look = useUi((s) => s.look);
@@ -148,6 +218,7 @@ export function ViewToolbar() {
           </div>
           <ViewsMenu disabled={!live} />
           <ExplodeMenu disabled={!live} />
+          <SurfaceMenu disabled={!live} />
           <span className="mx-1.5 hidden h-5 w-px shrink-0 bg-track @min-[600px]:block" aria-hidden />
         </>
       )}

@@ -233,13 +233,15 @@ def _select(nodes: list[dict], aliases: dict[str, list[str]], only: list[str], h
     return [node for node in nodes if node["index"] in shown], unknown
 
 
-def _print_poses(state, names: list[str]) -> tuple[dict[str, list[float]], dict[str, str]]:
-    """The print direction of each printed part's nodes in the build's frame, and the pose it comes from."""
+def _print_poses(state, names: list[str], orientations: dict[str, str] | None = None) -> tuple[dict[str, list[float]], dict[str, str]]:
+    """The print direction of each printed part's nodes in the build's frame, and the pose it comes from:
+    print_prep's plan, or `orientations` by part id for a plan still being made."""
 
     from pai_agent.assembly import rotation
     from pai_agent.tools.fem import _build_axis
 
     plan = {row.get("id"): str(row.get("orientation")) for row in (state.print_plan or {}).get("parts", [])}
+    plan.update(orientations or {})
     up = [0.0, 0.0, 1.0]
     directions: dict[str, list[float]] = {}
     poses: dict[str, str] = {}

@@ -49,8 +49,10 @@ BUDGET_S = {
     "isaac_lab_status": 30.0,
     # Live shop prices search the web per line, 45 s each at most.
     "bom_build": 120.0,
-    # A slicer takes seconds to a minute per part; its own subprocess timeout is 180 s.
+    # A slicer takes seconds to a minute per part; its own subprocess timeout is 180 s. The surface checks run first.
     "print_prep": 300.0,
+    # The surface checks take seconds in their own process, which stops itself after 150 s.
+    "surface_check": 180.0,
     # A first SimReady object downloads its package, CoACD splits a container (PAI_SIMREADY_DECOMPOSE_S,
     # 180 s at most) and Blender writes the GLB (180 s at most); a cached object takes a second.
     "scene_object": 420.0,

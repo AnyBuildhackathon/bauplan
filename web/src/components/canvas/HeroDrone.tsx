@@ -12,6 +12,7 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { useSession } from "../../events/store";
 import { assetUrl } from "../../lib/api";
 import type { PartSizes } from "../../lib/hooks";
+import { AnalysisLayer } from "./AnalysisLayer";
 import { useAnchor } from "./anchors";
 import { ExplodeLayer, useExplodeHover, type PieceSpec } from "./explode";
 
@@ -99,7 +100,7 @@ interface Baked {
 
 const ratio = (want: number | undefined, had: number) => (want && had ? THREE.MathUtils.clamp(want / had, 0.3, 4) : 1);
 
-function Drone({ source, battery, sizes, highlight, spin = 0, explodable = false }: HeroDroneProps & { source: THREE.Group }) {
+function Drone({ url, source, battery, sizes, highlight, spin = 0, explodable = false }: HeroDroneProps & { source: THREE.Group }) {
   const { root, parts, baked, built } = useMemo(() => {
     const root = source.clone(true);
     const parts = new Map<string, Part>();
@@ -231,6 +232,7 @@ function Drone({ source, battery, sizes, highlight, spin = 0, explodable = false
       {anchors.map((a) => (
         <Anchor key={a.name} name={a.name} radius={a.radius} position={a.center} />
       ))}
+      {explodable && <AnalysisLayer root={root} modelUrl={url} />}
     </group>
   );
 }

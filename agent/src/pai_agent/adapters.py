@@ -1,7 +1,8 @@
 """Check adapters: the engines behind AnyBuild's checks, whether each is on this machine, and how each last ran.
 
 Every check runs on a real engine: FreeCAD builds the parts, gmsh and CalculiX solve their FEM,
-Blender renders, MuJoCo flies, grips, pushes and drops, the slicer plans the print, SparkBench,
+Blender renders, MuJoCo flies, grips, pushes and drops, VTK and SciPy measure each printed part's
+surface (overhang, walls, gaps), the slicer plans the print, SparkBench,
 KiCad, ngspice and Freerouting take the electronics, Robo Use judges a gripper from outside and
 Isaac runs on a GPU pod. `report()` says for each one whether it is installed, where, which
 version, what happens without it and how to install it.
@@ -420,6 +421,18 @@ async def _isaac() -> Found:
     return Found(False, f"{host} is configured, but SSH or nvidia-smi failed, so Isaac runs fall back to recorded results.", hint)
 
 
+def _surface() -> Found:
+    hint = "Part of the backend: `cd agent && uv sync` (VTK comes with cadquery-ocp, SciPy with CadQuery)."
+    missing = [name for name, module in (("VTK", "vtkmodules"), ("SciPy", "scipy")) if util.find_spec(module) is None]
+    if missing:
+        return Found(False, "The backend environment lacks " + " and ".join(missing) + ", so print_prep judges walls by the part's size and the studio shows no surface map.", hint)
+    try:
+        version = metadata.version("vtk")
+    except metadata.PackageNotFoundError:
+        version = None
+    return Found(True, "Measures the overhang, the wall thickness and the gaps to other parts on every spot of each printed part, in the backend.", hint, version)
+
+
 def _slicer() -> Found:
     hint = (
         "`brew install --cask prusaslicer` or `brew install --cask orcaslicer`"
@@ -448,6 +461,7 @@ ADAPTERS = (
     Adapter("mujoco", "MuJoCo", "simulation", ("Hover test", "Missions", "Grip test", "Push and drop"), _mujoco),
     Adapter("robouse", "Robo Use", "simulation", ("Independent grip trial",), _robouse),
     Adapter("isaac", "NVIDIA Isaac", "simulation", ("GPU wind test", "Isaac Lab training"), _isaac, remote=True),
+    Adapter("surface", "VTK and SciPy", "manufacturing", ("Overhang map", "Wall thickness", "Clearance"), _surface),
     Adapter("slicer", "Slicer", "manufacturing", ("G-code", "Print time and filament"), _slicer),
 )
 
@@ -557,6 +571,13 @@ def _print_run(event: dict) -> tuple[str, bool, str] | None:
     return "slicer", True, line
 
 
+def _surface_run(event: dict) -> tuple[str, bool, str] | None:
+    if event.get("result") not in ("pass", "fail"):
+        return None
+    passed = event["result"] == "pass"
+    return "surface", passed, _verdict("Surface check", passed, event.get("summary"))
+
+
 def _circuit_run(event: dict) -> tuple[str, bool, str] | None:
     if not isinstance(event.get("ok"), bool):
         return None
@@ -588,6 +609,7 @@ _RUNS: dict[str, Callable[[dict], tuple[str, bool, str] | None]] = {
     "sim": _sim_run,
     "mission": _mission_run,
     "fem": _fem_run,
+    "analysis": _surface_run,
     "print": _print_run,
     "circuit": _circuit_run,
     "trial": _trial_run,
