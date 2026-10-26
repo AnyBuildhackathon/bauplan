@@ -20,6 +20,8 @@ import RunControls from "./RunControls";
 import { useSketchDrop } from "./SketchDrop";
 import { ConfirmDesign } from "./ConfirmDesign";
 import { useStudio } from "../studio/studio";
+import { useNotes } from "../../events/notes";
+import type { StudioNote } from "../../events/types";
 
 const FRESH_MS = 2500;
 
@@ -158,12 +160,20 @@ export default function SidebarChat() {
     if (stickToBottom.current) scrollToBottom(false);
   }, [scrollToBottom]);
 
+  // The studio's notes in the box go with the message; one that did not arrive gets them back.
+  const sendWithNotes = async (text: string, voice = false) => {
+    const drafts = useNotes.getState().take();
+    if (!text.trim() && drafts.length === 0) return;
+    stickToBottom.current = true;
+    const ok = await sendPrompt(text, voice, drafts.map((d): StudioNote => d.note));
+    if (!ok && drafts.length) useNotes.getState().restore(drafts);
+  };
+
   const send = () => {
     const text = input.trim();
-    if (!text) return;
+    if (!text && useNotes.getState().notes.length === 0) return;
     setInput("");
-    stickToBottom.current = true;
-    void sendPrompt(text);
+    void sendWithNotes(text);
   };
 
   const stateTone =
@@ -323,6 +333,7 @@ export default function SidebarChat() {
                         role={item.role}
                         content={item.text}
                         voice={item.voice}
+                        notes={item.notes}
                         animate={item.role === "agent" && Date.now() - item.at < FRESH_MS}
                         onRevealProgress={onRevealProgress}
                       />
@@ -383,10 +394,7 @@ export default function SidebarChat() {
               stickToBottom.current = true;
               void sendSketch(image, note);
             }}
-            onVoice={(text) => {
-              stickToBottom.current = true;
-              void sendPrompt(text, true);
-            }}
+            onVoice={(text) => void sendWithNotes(text, true)}
           />
         </div>
       </div>

@@ -1,10 +1,11 @@
 // The studio's tools, floating at the left edge of the canvas: Select (a click on a part opens
-// its card and marks it in the assembly tree), Measure (two clicks give the distance) and Parts
-// (the panel with the catalog's part models and the library's builds).
+// its card and marks it in the assembly tree), Measure (two clicks give the distance), Mark (draw
+// on the view for Mechanic) and Parts (the panel with the catalog's part models and the library's builds).
 import type { ReactNode } from "react";
-import { MousePointer2, Ruler, Shapes } from "lucide-react";
+import { MousePointer2, PenLine, Ruler, Shapes } from "lucide-react";
 import { useUi } from "../../lib/ui";
 import { useExplodeHover } from "../canvas/explode";
+import { toggleMark } from "./studio";
 
 export function RailButton({ label, active, onClick, target, children }: { label: string; active: boolean; onClick: () => void; target: string; children: ReactNode }) {
   return (
@@ -48,6 +49,9 @@ export function ToolRail() {
         target="tool:measure"
       >
         <Ruler className="h-[18px] w-[18px]" strokeWidth={1.9} />
+      </RailButton>
+      <RailButton label="Mark for Mechanic (D)" active={tool === "mark"} onClick={toggleMark} target="tool:mark">
+        <PenLine className="h-[18px] w-[18px]" strokeWidth={1.9} />
       </RailButton>
       <span className="my-0.5 h-px w-6 bg-line" aria-hidden />
       <RailButton label="Parts (P)" active={partsOpen} onClick={() => setPartsOpen(!partsOpen)} target="tool:parts">

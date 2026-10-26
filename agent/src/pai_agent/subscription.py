@@ -352,7 +352,7 @@ async def run_agent(ctx, run, *, system: str, prompt, schemas: list[dict], max_t
     return {"ok": failure is None, "text": text.strip(), "session_id": stream.session_id, "error": failure}
 
 
-async def lead_loop(ctx, lead, system: str, schemas: list[dict], text: str, parallel: frozenset) -> None:
+async def lead_loop(ctx, lead, system: str, schemas: list[dict], text: str | list[dict], parallel: frozenset) -> None:
     """Mechanic's lead loop on the subscription: the same tools, chat, steps and Stop as `_lead_loop`."""
 
     from pai_agent.tools.registry import call_tool

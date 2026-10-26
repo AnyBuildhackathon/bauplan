@@ -7,13 +7,17 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Components } from "react-markdown";
 import { Check, Copy, Mic, Volume2 } from "lucide-react";
+import type { SentNote } from "../../events/types";
 import { enText } from "../../lib/copy";
+import { SentNoteChips } from "./NoteChips";
 
 interface ChatMessageProps {
   role: "user" | "agent";
   content: string;
   /** Spoken: the person's voice turn (mic marker) or a line Mechanic said aloud (speaker marker). */
   voice?: boolean;
+  /** The studio notes a person's message carried. */
+  notes?: SentNote[];
   /** Reveal word by word (true only for messages that just arrived). */
   animate: boolean;
   onRevealProgress?: () => void;
@@ -76,13 +80,17 @@ function Spoken({ by }: { by: "user" | "agent" }) {
   );
 }
 
-function UserMessage({ content, voice }: { content: string; voice?: boolean }) {
+function UserMessage({ content, voice, notes }: { content: string; voice?: boolean; notes?: SentNote[] }) {
   const isShort = content.length <= 48 && !content.includes("\n");
   return (
     <div className="flex flex-col items-end py-1.5 pl-10">
-      <div className={`bg-tile px-3.5 py-2 ${isShort ? "rounded-full" : "rounded-[20px] rounded-br-md"}`}>
-        <p className="font-read text-[15px] leading-[1.5] whitespace-pre-wrap text-ink">{content}</p>
-      </div>
+      {/* A message of notes alone has no bubble, only its chips. */}
+      {content.trim() && (
+        <div className={`bg-tile px-3.5 py-2 ${isShort ? "rounded-full" : "rounded-[20px] rounded-br-md"}`}>
+          <p className="font-read text-[15px] leading-[1.5] whitespace-pre-wrap text-ink">{content}</p>
+        </div>
+      )}
+      {notes && notes.length > 0 && <SentNoteChips notes={notes} />}
       {voice && <Spoken by="user" />}
     </div>
   );
@@ -130,7 +138,7 @@ function AssistantMessage({ content, voice, animate, onRevealProgress }: Omit<Ch
 
 function SidebarChatMessage({ role, content, ...rest }: ChatMessageProps) {
   const text = enText(content);
-  if (role === "user") return <UserMessage content={text} voice={rest.voice} />;
+  if (role === "user") return <UserMessage content={text} voice={rest.voice} notes={rest.notes} />;
   return <AssistantMessage content={text} {...rest} />;
 }
 

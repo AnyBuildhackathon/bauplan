@@ -103,6 +103,8 @@ const ratio = (want: number | undefined, had: number) => (want && had ? THREE.Ma
 function Drone({ url, source, battery, sizes, highlight, spin = 0, explodable = false }: HeroDroneProps & { source: THREE.Group }) {
   const { root, parts, baked, built } = useMemo(() => {
     const root = source.clone(true);
+    // The file's own frame, metres with Y up: studio notes read places on the model in it (studio/frame.ts).
+    root.userData.glbRoot = true;
     const parts = new Map<string, Part>();
     for (const name of NODES) {
       const node = root.getObjectByName(name);

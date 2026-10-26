@@ -61,6 +61,9 @@ class Session:
         self.run = RunControl(self.bus.publish)
         # What the person sent while a run was busy: the run reads it next round, or it starts the next run.
         self.pending: list[str] = []
+        # Messages with studio notes sent while a run was busy, as (text, notes): they start the next run,
+        # so their pictures and script lines go with the message instead of between tool results.
+        self.queued: list[tuple[str, list[dict]]] = []
         # Mechanic greets once per project; a voice reconnect or a second Talk continues the conversation.
         self.greeted = False
         # The one Gemini Live voice session (`gemini_live.LiveVoice`), or None.
@@ -78,14 +81,17 @@ class Session:
     def _busy(self) -> bool:
         return self.task is not None and not self.task.done()
 
-    async def start(self, text: str, voice: bool = False, record_user: bool = True) -> dict:
+    async def start(self, text: str, voice: bool = False, record_user: bool = True, notes: list[dict] | None = None) -> dict:
+        from pai_agent.notes import public
+
         mode = "claude" if claude_enabled() else "mock"
-        commands = match_commands(text, self.state)
+        # A message with studio notes is about the design, never a dashboard command or an answer to a question.
+        commands = [] if notes else match_commands(text, self.state)
         if commands:
             return await self._control(text, commands, mode, record_user=record_user)
         if self._busy():
             question = self.question
-            if question is not None and await self._answer_from_text(text, voice, record_user=record_user):
+            if question is not None and not notes and await self._answer_from_text(text, voice, record_user=record_user):
                 return {"ok": True, "mode": mode, "status": "answered"}
             if self.run.status == "paused":
                 # A message to a paused run replaces it: the run stops where it waits, the message continues.
@@ -95,16 +101,20 @@ class Session:
             else:
                 # Never dropped: the run reads it with its next tool results, or it starts the next run.
                 if record_user:
-                    await self.bus.publish({"type": "chat", "role": "user", "text": text, **({"voice": True} if voice else {})})
+                    await self.bus.publish({"type": "chat", "role": "user", "text": text, **({"voice": True} if voice else {}), **({"notes": public(notes)} if notes else {})})
                     await self.bus.publish({"type": "chat", "role": "agent", "text": "Got it. I finish the current step, then take that on."})
-                self.pending.append(text.strip())
+                if notes:
+                    self.queued.append((text.strip(), notes))
+                else:
+                    self.pending.append(text.strip())
                 # The running build may revise its requirements from it, so it counts as typed now.
-                self.state.requests.append(text.strip())
+                if text.strip():
+                    self.state.requests.append(text.strip())
                 return {"ok": True, "mode": mode, "status": "queued"}
         ctx = self._ctx(auto_steps=claude_enabled())
         ctx.trigger = "chat"
         ctx.label = label_of(text)
-        self.task = self._launch(run_prompt(ctx, text, self.messages, voice, record_user=record_user), ctx)
+        self.task = self._launch(run_prompt(ctx, text, self.messages, voice, record_user=record_user, notes=notes), ctx)
         return {"ok": True, "mode": mode, "status": "started"}
 
     async def _control(self, text: str, commands: list[dict], mode: str, *, record_user: bool = True) -> dict:
@@ -477,6 +487,7 @@ class Session:
         self.question = None
         self._answer = None
         self.pending.clear()
+        self.queued.clear()
         self.greeted = False
 
     async def shutdown(self) -> None:
@@ -518,6 +529,7 @@ class Session:
         except RunStopped:
             # Stop means stop: what was waiting for this run is not started after it.
             self.pending.clear()
+            self.queued.clear()
             await ctx.chat("agent", "Stopped. Everything built so far stays on the bench. Tell me what to do next.")
             await ctx.emit({"type": "mascot", "state": "ruhig", "say": "Stopped. Your move."})
         except Exception as exc:
@@ -527,14 +539,16 @@ class Session:
         finally:
             await self.run.finished()
         self.save_chat()
-        if self.pending:
+        if self.pending or self.queued:
             # Messages that came in while this run was busy start the next one, also after a failure.
-            text = "\n".join(self.pending)
+            text = "\n".join(self.pending + [words for words, _notes in self.queued if words])
+            notes = [note for _words, attached in self.queued for note in attached]
             self.pending.clear()
+            self.queued.clear()
             follow = self._ctx(auto_steps=claude_enabled())
             follow.trigger = "chat"
             follow.label = label_of(text)
-            self.task = self._launch(run_prompt(follow, text, self.messages, record_user=False), follow)
+            self.task = self._launch(run_prompt(follow, text, self.messages, record_user=False, notes=notes or None), follow)
 
     async def _baseline(self) -> None:
         # Every stream starts with this marker, so a client that reconnects or misses a reset starts clean.

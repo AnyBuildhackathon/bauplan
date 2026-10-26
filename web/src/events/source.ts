@@ -2,7 +2,7 @@
 // The UI only ever reads the session store.
 import { create } from "zustand";
 import { useSession } from "./store";
-import { parseEvent } from "./types";
+import { parseEvent, type SentNote, type StudioNote } from "./types";
 import { accessToken, apiFetch, apiStreamUrl, errorDetail, onAccessEvents, setAccessToken } from "../lib/api";
 import { useUi } from "../lib/ui";
 import { loadVoiceCapabilities } from "../lib/voice";
@@ -46,8 +46,11 @@ interface SourceState {
   startRemix: (id: string) => Promise<void>;
   notice: string | null;
   setMode: (mode: SourceMode) => void;
-  /** voice: the text is a spoken turn, shown with a mic marker. */
-  sendPrompt: (text: string, voice?: boolean) => Promise<void>;
+  /** voice: the text is a spoken turn, shown with a mic marker. notes: the studio notes that go with it (text may then be empty).
+   * Resolves to false when the message did not arrive. */
+  sendPrompt: (text: string, voice?: boolean, notes?: StudioNote[]) => Promise<boolean>;
+  /** Stores the picture of a marking in the session (POST /api/notes/markup) for a note; null when it failed. */
+  uploadMarkup: (png: Blob) => Promise<{ name: string; url: string } | null>;
   /** Starts a new product from a photo of a hand sketch, with what the user typed next to it. */
   sendSketch: (image: Blob, note?: string) => Promise<void>;
   /** Sends the sample phone stand sketch the backend ships with. */
@@ -228,20 +231,44 @@ export const useSource = create<SourceState>((set, get) => {
       openLive((live) => set({ live }));
     },
 
-    sendPrompt: async (text, voice = false) => {
+    sendPrompt: async (text, voice = false, notes = []) => {
       const trimmed = text.trim();
-      if (!trimmed) return;
-      useSession.getState().addLocalUserMessage(trimmed, voice);
+      if (!trimmed && notes.length === 0) return false;
+      useSession.getState().addLocalUserMessage(trimmed, voice, notes as SentNote[]);
       try {
         const res = await apiFetch("/api/prompt", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: trimmed, voice }),
+          body: JSON.stringify(notes.length ? { text: trimmed, voice, notes } : { text: trimmed, voice }),
         });
         await ensureOk(res);
         expectEcho();
+        return true;
       } catch (err) {
         notify(failure("Your message did not reach AnyBuild", err));
+        return false;
+      }
+    },
+
+    uploadMarkup: async (png) => {
+      try {
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result));
+          reader.onerror = () => reject(reader.error ?? new Error("unreadable picture"));
+          reader.readAsDataURL(png);
+        });
+        const res = await apiFetch("/api/notes/markup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image_base64: dataUrl }),
+        });
+        await ensureOk(res);
+        const body = (await res.json()) as { name: string; url: string };
+        return { name: body.name, url: body.url };
+      } catch (err) {
+        notify(failure("The marking did not reach AnyBuild", err));
+        return null;
       }
     },
 

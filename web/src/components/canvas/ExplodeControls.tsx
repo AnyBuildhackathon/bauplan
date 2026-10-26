@@ -1,14 +1,34 @@
 // The explode slider (in the popover of the view bar's Explode button), and the card a hovered
 // or clicked part shows: its name, the part that was picked for it, mass, price, the shop link
-// and which 3D model it shows.
-import { ArrowUpRight, X } from "lucide-react";
+// and which 3D model it shows; a clicked part goes to Mechanic's message box as a selection note
+// with the face and the point the click hit.
+import { ArrowUpRight, MessageSquarePlus, X } from "lucide-react";
 import { useEffect } from "react";
+import { attach, shownBuild } from "../../events/notes";
 import { useSession } from "../../events/store";
 import type { BomItem, PartModelRow } from "../../events/types";
 import { fmtEur, fmtGram } from "../../lib/format";
 import { normaliseName } from "../../lib/targets";
 import { useUi } from "../../lib/ui";
+import { partLabel } from "../studio/frame";
+import { useStudio } from "../studio/studio";
 import { useExplodeHover } from "./explode";
+
+/** The pinned part as a selection note: with the point and face of the click that pinned it, when it was one. */
+function selectPart(key: string, title: string) {
+  const pick = useStudio.getState().pick;
+  const clicked = pick && normaliseName(pick.node) === normaliseName(key) ? pick : null;
+  attach({
+    kind: "selection",
+    node: key,
+    part: title,
+    part_id: partLabel(key).partId,
+    point_mm: clicked?.point_mm ?? null,
+    normal: clicked?.normal ?? null,
+    ...(clicked?.cut ? { cut: true } : {}),
+    build: shownBuild(),
+  });
+}
 
 export function ExplodeSlider() {
   const explode = useUi((s) => s.explode);
@@ -159,12 +179,30 @@ export function PartCard() {
           {modelLine(facts.model)}
         </p>
       )}
-      {facts.url && (
-        <a href={facts.url} target="_blank" rel="noreferrer" className="mt-2.5 inline-flex h-8 items-center gap-1 rounded-full bg-ink px-3 text-[13px] font-bold text-white hover:bg-[#333]">
-          {facts.shop || "Shop"} <ArrowUpRight className="h-3.5 w-3.5" />
-        </a>
+      {(facts.url || pinned) && (
+        <div className="mt-2.5 flex flex-wrap items-center gap-2">
+          {facts.url && (
+            <a href={facts.url} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1 rounded-full bg-ink px-3 text-[13px] font-bold text-white hover:bg-[#333]">
+              {facts.shop || "Shop"} <ArrowUpRight className="h-3.5 w-3.5" />
+            </a>
+          )}
+          {pinned && key && (
+            <button
+              type="button"
+              onClick={() => {
+                selectPart(key, facts.title);
+                pin(null);
+              }}
+              data-target="part:attach"
+              title="Add this part, and where you clicked it, to your message for Mechanic"
+              className="inline-flex h-8 items-center gap-1.5 rounded-full bg-accent-soft px-3 text-[13px] font-bold text-accent hover:brightness-95"
+            >
+              <MessageSquarePlus className="h-3.5 w-3.5" /> Add to message
+            </button>
+          )}
+        </div>
       )}
-      {!pinned && facts.url && <p className="mt-1.5 text-[12px] font-medium text-faint">Click the part to open the link</p>}
+      {!pinned && <p className="mt-1.5 text-[12px] font-medium text-faint">{facts.url ? "Click the part to open the link or tell Mechanic" : "Click the part to tell Mechanic about it"}</p>}
     </div>
   );
 }

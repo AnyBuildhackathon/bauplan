@@ -7,6 +7,7 @@ This file is the only copy of the wire format.
 ## HTTP
 
 `POST /api/prompt` with `{"text": "..."}` starts or continues the one local session; `"voice": true` marks the text as a spoken turn.
+`"notes": [...]` carries the [studio notes](#studio-notes) the person attached; with notes the text may be empty.
 The response is `{"ok": true, "mode": "mock"|"claude", "status": "started"|"already_running"|"answered"|"ui"}`.
 `mode` is `mock` when no Claude runs (no `ANTHROPIC_API_KEY` and no logged-in local Claude Code subscription under `PAI_LLM_PROVIDER`, see [Settings](#settings)) or `PAI_FORCE_MOCK` is `1`.
 
@@ -25,6 +26,25 @@ A client that connects late receives the events already published, then the live
 Every stream starts with a `reset` event, so a client that reconnects replays onto an empty state.
 
 State-changing calls without a typed body (`/api/reset`, `/api/run/*`, `/api/cad/params`, `/api/cad/open`, `/api/versions/{n}/restore`, `/api/history/{id}/open`) need `Content-Type: application/json`, else HTTP 415, so a web page cannot fire them as a plain cross-site form post.
+
+### Studio notes
+
+A note is a chip in Mechanic's message box that says exactly what the person pointed at in the studio; it goes with the next `POST /api/prompt` as a structured attachment.
+Every note has `kind` and `build`, the `?build=` of the model it was taken on (`null` before the first CAD build); positions and directions are mm in the build's frame, Z up, as in `cad_view`.
+
+- `selection`: `{node, part, part_id, point_mm, normal, cut}`, a part the person clicked (`node` is its GLB node), the face's outward `normal` and the point; `point_mm` is `null` for a part picked without a click, `cut: true` marks a click on the face the section view cut.
+- `measure`: `{a, b}`, the two ends of the Measure tool, each `{point_mm, node, part, normal}`.
+- `markup`: `{image, view, version}`, a picture of the view the person drew on, uploaded first; `view` is how the studio showed the model (`tab`, `camera` from the model towards the camera, `ortho`, `explode` 0 to 1, `section` `{axis, at_mm, keep: below|above}`, `surface` `{check, limit}`, `hidden` part names, `labels`), `version` the version picked in Versions when it was not the newest.
+- `spot`: `{check, value, part, part_id, at_mm, limit, critical}`, one value the surface check colour layer read under a click, against the limit it showed.
+- `param`: `{name, label, value, unit, min, max, default}`, a CAD slider; `default` is the value Mechanic designed, when the dashboard knows it.
+
+At most 8 notes go with one message, unknown fields are dropped, and a note that does not check out is HTTP 400 with what is wrong.
+The backend adds what only it knows: a selection's script file and its `lines` (`[[first, last], ...]`, recorded per part by the FreeCAD harness), `body`, `part_kind`, `holder` (the printed part a standard part sits in) and `local_mm` (the point in the script's own frame when the part was moved into place); a measurement's `distance_mm`, `delta_mm`, `rise_deg` and `faces_deg`; a marking's `url`; a spot's `label`, `unit` and `mechanic_limit`; a parameter's `default` (the spec's value, else the script's `PARAMS` or the template's) and `user_set` when the value is one the person set with its slider; and `built_as` `{build, current, version, now, now_version}` for every note with a build.
+Mechanic reads the notes after the person's words, one numbered line each, with the code lines of every selected part, and every marking as a picture; a note on an older build or version says so when he reads it.
+Without Claude he answers with the notes read back, one line each, and builds nothing.
+A message with notes never counts as a dashboard command or as the answer to an open question; sent while a run is busy, it starts the next run instead of reaching the running one.
+
+`POST /api/notes/markup` with `{"image_base64": "..."}` (plain base64 or a data URL of a PNG, at most 4 MB and 4096 pixels on a side) stores a marking as `markup-<n>.png` in the session, at most 40 per chat, and answers `{"ok": true, "name": "markup-1.png", "url": "/files/{session}/markup-1.png"}`; anything else is HTTP 400.
 
 ### Pause and stop
 
@@ -364,7 +384,7 @@ A wrong code is HTTP 401; ten wrong codes from one IP in 15 minutes (or 200 from
 Clients send the token as `Authorization: Bearer <token>`, as the cookie, or as `?access_token=<token>` on URLs the browser loads itself (EventSource, images, models, videos).
 `GET /api/access` is HTTP 200 while the session is valid, and always 200 without an access code.
 
-With an access code, these calls are rate limited per session and, at three times the limit, per IP, in a sliding hour: builds (`POST /api/prompt`, `POST /api/sketch`, `POST /api/library/{id}/open`, `POST /api/versions/{n}/restore`, `POST /api/control`; `ANYBUILD_LIMIT_BUILDS`, default 20), `POST /api/voice/speak` (`ANYBUILD_LIMIT_SPEECH`, 300), `POST /api/voice/token` (`ANYBUILD_LIMIT_STT`, 60), `POST /api/cad/params` (`ANYBUILD_LIMIT_CAD`, 120), and `POST /api/explain` (`ANYBUILD_LIMIT_EXPLAIN`, 120).
+With an access code, these calls are rate limited per session and, at three times the limit, per IP, in a sliding hour: builds (`POST /api/prompt`, `POST /api/sketch`, `POST /api/library/{id}/open`, `POST /api/versions/{n}/restore`, `POST /api/control`; `ANYBUILD_LIMIT_BUILDS`, default 20), `POST /api/voice/speak` (`ANYBUILD_LIMIT_SPEECH`, 300), `POST /api/voice/token` (`ANYBUILD_LIMIT_STT`, 60), `POST /api/cad/params` (`ANYBUILD_LIMIT_CAD`, 120), `POST /api/explain` (`ANYBUILD_LIMIT_EXPLAIN`, 120), and `POST /api/notes/markup` (`ANYBUILD_LIMIT_MARKINGS`, 60).
 Over the limit, the answer is HTTP 429 with `{"detail": "Hourly limit of 20 builds reached. Try again in 12 minutes.", "limit": "build"}` and a `Retry-After` header; the dashboard shows `detail` as a notice.
 
 Browsers may call the backend from localhost, the Mac app, `https://anybuild-demo.vercel.app` and its preview deployments, and origins in `ANYBUILD_CORS_ORIGINS`, with credentials.
@@ -423,6 +443,7 @@ The tool pill still shows `offline`.
 `role` is `user` or `agent`.
 `text` is the utterance.
 `voice: true` marks a spoken line: a user turn transcribed by Gemini Live (or dictated with push-to-talk through Reson8 or the browser), or a line Mechanic said aloud in a Gemini Live conversation.
+`notes` lists the [studio notes](#studio-notes) a person's message carried, as the backend read them; the text is empty for a message of notes alone.
 
 ### tool
 
@@ -666,6 +687,7 @@ After `print_prep` the list ends with one filament line (`category: "filament"`,
 
 A finished build.
 `n`, `weight_g`, `thrust_to_weight`, `flight_time_min`, `price_eur` (the same numbers as the last `metrics`), and `sim` (`pass`, `fail`, or `null`).
+`build` is the CAD build it shows, the `?build=` of its model's URL.
 `parts` maps each category to the part name.
 `diff` lists what changed against the previous version: `{key, label, before, after, unit}`.
 Number rows have a `unit`; part rows have `key` `part:{category}`, names in `before` and `after`, and an empty `unit`.

@@ -23,7 +23,49 @@ export interface ChatEvent {
   text: string;
   /** A spoken line: the person's turn heard by Reson8 or the browser, or what Mechanic said aloud. */
   voice?: boolean;
+  /** The studio notes the person's message carried, as the backend read them (docs/events.md, notes). */
+  notes?: SentNote[];
 }
+
+/** One end of a measurement: where it was clicked, in mm in the build's frame. */
+export interface NotePoint {
+  point_mm: Vec3;
+  node?: string;
+  part?: string;
+  normal?: Vec3 | null;
+}
+type Vec3 = [number, number, number];
+/** How the studio showed the model when a marking was drawn on it. */
+export interface NoteView {
+  tab?: "modell" | "cad";
+  /** From the model to the camera, in the build's frame. */
+  camera?: Vec3;
+  ortho?: boolean;
+  explode?: number;
+  section?: { axis: "x" | "y" | "z"; at_mm: number; keep: "below" | "above" } | null;
+  surface?: { check: AnalysisCheck; limit: number } | null;
+  hidden?: string[];
+  labels?: boolean;
+}
+/** A studio note as the browser sends it with POST /api/prompt; `build` is the `?build=` of the model it was taken on. */
+export type StudioNote = { build: number | null } & (
+  | { kind: "selection"; node: string; part: string; part_id: string | null; point_mm: Vec3 | null; normal: Vec3 | null; cut?: boolean }
+  | { kind: "measure"; a: NotePoint; b: NotePoint }
+  | { kind: "markup"; image: string; view: NoteView; version: number | null }
+  | { kind: "spot"; check: AnalysisCheck; value: number; part: string; part_id: string | null; at_mm: Vec3; limit: number; critical: boolean }
+  | { kind: "param"; name: string; label: string; value: number; unit: string; min: number | null; max: number | null; default: number | null }
+);
+/** A note as the chat event carries it: what was sent plus what the backend added (a selection's script and lines, a marking's url). */
+export type SentNote = StudioNote & {
+  script?: string;
+  lines?: [number, number][];
+  url?: string;
+  distance_mm?: number;
+  rise_deg?: number;
+  label?: string;
+  unit?: string;
+  built_as?: { build: number; current: boolean; version: number | null } | null;
+};
 export interface ToolEvent {
   type: "tool";
   name: string;
@@ -435,6 +477,8 @@ export interface VersionDiff {
 export interface VersionEvent {
   type: "version";
   n: number;
+  /** The CAD build it shows, the `?build=` of its model. */
+  build?: number;
   weight_g: number;
   thrust_to_weight: number;
   flight_time_min: number;

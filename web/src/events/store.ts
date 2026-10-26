@@ -32,6 +32,7 @@ import {
   type RemixEvent,
   type RunStatus,
   type SafetyEvent,
+  type SentNote,
   type VersionEvent,
   type RequirementEvent,
   type SimEvent,
@@ -152,7 +153,7 @@ function performanceNumbers(metrics: MetricsEvent | null): ResultNumber[] {
 }
 
 export type ChatItem =
-  | { kind: "msg"; id: string; seq: number; at: number; role: "user" | "agent"; text: string; local?: boolean; voice?: boolean }
+  | { kind: "msg"; id: string; seq: number; at: number; role: "user" | "agent"; text: string; local?: boolean; voice?: boolean; notes?: SentNote[] }
   | { kind: "tool"; id: string; seq: number; at: number; name: string; phase: Phase; detail: string; endedAt?: number; instant?: boolean }
   | { kind: "sim"; id: string; seq: number; at: number; run: number; result: "pass" | "fail"; summary: string }
   /** One card per simulate_mission batch; it lists the batch's runs and reads them from `missionRuns`. */
@@ -253,7 +254,7 @@ export interface SessionState extends TrialSlice {
   ui: (UiEvent & { at: number }) | null;
   /** Reduces one contract event. `instant` marks events replayed in bulk (seek), so nothing animates for them. */
   apply: (ev: AgentEvent, opts?: { instant?: boolean }) => void;
-  addLocalUserMessage: (text: string, voice?: boolean) => void;
+  addLocalUserMessage: (text: string, voice?: boolean, notes?: SentNote[]) => void;
   reset: () => void;
 }
 
@@ -448,11 +449,12 @@ export const useSession = create<SessionState>((set, get) => ({
           if (echo >= 0) {
             const chat = s.chat.slice();
             const item = chat[echo];
-            if (item.kind === "msg") chat[echo] = { ...item, local: false, voice: item.voice || ev.voice };
+            // The echo's notes are what the backend read: a selection's script lines, a marking's url.
+            if (item.kind === "msg") chat[echo] = { ...item, local: false, voice: item.voice || ev.voice, notes: ev.notes ?? item.notes };
             return set({ log, chat });
           }
         }
-        const chat: ChatItem[] = [...s.chat, { kind: "msg", id: nextId("msg"), seq, at, role: ev.role, text: ev.text, voice: ev.voice }];
+        const chat: ChatItem[] = [...s.chat, { kind: "msg", id: nextId("msg"), seq, at, role: ev.role, text: ev.text, voice: ev.voice, notes: ev.notes }];
         return set({ log, chat });
       }
       case "tool": {
@@ -688,10 +690,10 @@ export const useSession = create<SessionState>((set, get) => ({
     }
   },
 
-  addLocalUserMessage: (text, voice) => {
+  addLocalUserMessage: (text, voice, notes) => {
     const at = Date.now();
     set((s) => ({
-      chat: [...s.chat, { kind: "msg", id: nextId("msg"), seq: ++seqCounter, at, role: "user", text, local: true, voice }],
+      chat: [...s.chat, { kind: "msg", id: nextId("msg"), seq: ++seqCounter, at, role: "user", text, local: true, voice, ...(notes?.length ? { notes } : {}) }],
     }));
   },
 

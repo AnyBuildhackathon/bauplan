@@ -1,16 +1,21 @@
 // The studio inside a 3D canvas (the Model and CAD tabs): it runs the view bar's camera
 // commands (front, side, top, reset, zoom, fit), the lens (perspective, or orthographic as a
 // 2° telephoto from far away, so every framing, explode and focus move keeps working), hides
-// the parts the assembly tree switched off, and measures between two points on the model.
+// the parts the assembly tree switched off, measures between two points on the model, cuts it
+// with the section plane, and keeps what the studio's notes to Mechanic read from the scene:
+// the last click with the Select tool and how the view stands, in the build's mm (frame.ts).
 // The scene keeps fitting its own camera; the rig only moves it on request.
 import { Html, Line } from "@react-three/drei";
-import { useFrame, useThree } from "@react-three/fiber";
+import { useFrame, useThree, type RootState } from "@react-three/fiber";
 import { useEffect, useLayoutEffect, useRef, useState, type ComponentRef } from "react";
 import * as THREE from "three";
+import { useAnalysisLayer, limitOf } from "../../events/analysis";
 import { useSession } from "../../events/store";
+import type { NotePoint, NoteView } from "../../events/types";
 import { normaliseName } from "../../lib/targets";
 import { useUi } from "../../lib/ui";
 import { treeNodes } from "./assembly";
+import { axisInFile, dirToBuild, fileToBuild, hitModel, keptByCut, partLabel, partNode, toBuild, type ModelFrame } from "./frame";
 import { useStudio, type CameraView } from "./studio";
 
 export const PERSPECTIVE_FOV = 30;
@@ -57,16 +62,217 @@ export interface StudioRigProps {
   front: THREE.Vector3;
   /** Metres per scene unit, for the measured distance. */
   unit: number;
+  /** The model file is millimetres with Z up (a generated part), not metres with Y up (the drone). */
+  zUp?: boolean;
 }
 
-export function StudioRig({ model, center, radius, home, front, unit }: StudioRigProps) {
+export function StudioRig({ model, center, radius, home, front, unit, zUp = false }: StudioRigProps) {
+  const frame: ModelFrame = { zUp, unit };
   return (
     <>
       <Camera center={center} radius={radius} home={home} front={front} />
       <PartVisibility model={model} />
-      <Measure model={model} unit={unit} />
+      <Section model={model} zUp={zUp} unit={unit} />
+      <Pick model={model} zUp={zUp} unit={unit} />
+      <ViewReader model={model} />
+      <Measure model={model} unit={unit} frame={frame} />
     </>
   );
+}
+
+/** Where a click lands on the model, as a note's point: the part, the place and the face, in the build's mm. */
+function notePoint(hit: ReturnType<typeof hitModel>, frame: ModelFrame): (NotePoint & { node: string; cut: boolean }) | null {
+  if (!hit) return null;
+  const node = partNode(hit.object).name;
+  return { node, part: partLabel(node).name, point_mm: toBuild(hit.object, hit.point, frame), normal: hit.normal ? dirToBuild(hit.normal) : null, cut: hit.cut };
+}
+
+const rayAt = (raycaster: THREE.Raycaster, camera: THREE.Camera, el: HTMLElement, e: PointerEvent) => {
+  const r = el.getBoundingClientRect();
+  raycaster.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
+};
+
+/** With the Select tool, a click (not a drag of the camera) on the model is the last pick: what a selection note carries. */
+function Pick({ model, zUp, unit }: { model: THREE.Object3D | null; zUp: boolean; unit: number }) {
+  const camera = useThree((s) => s.camera);
+  const gl = useThree((s) => s.gl);
+  const raycaster = useThree((s) => s.raycaster);
+  useEffect(() => {
+    const el = gl.domElement;
+    let down: { x: number; y: number } | null = null;
+    let n = 0;
+    const onDown = (e: PointerEvent) => {
+      if (e.button === 0) down = { x: e.clientX, y: e.clientY };
+    };
+    const onUp = (e: PointerEvent) => {
+      const click = down && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 5;
+      down = null;
+      if (!click || !model || useUi.getState().tool !== "select") return;
+      rayAt(raycaster, camera, el, e);
+      const pick = notePoint(hitModel(raycaster, model), { zUp, unit });
+      useStudio.setState({ pick: pick && { ...pick, n: ++n } });
+    };
+    el.addEventListener("pointerdown", onDown);
+    el.addEventListener("pointerup", onUp);
+    return () => {
+      el.removeEventListener("pointerdown", onDown);
+      el.removeEventListener("pointerup", onUp);
+    };
+  }, [model, gl, camera, raycaster, zUp, unit]);
+  // Another model (a new build, another tab) is not what was clicked.
+  useEffect(() => () => useStudio.setState({ pick: null }), [model]);
+  return null;
+}
+
+/** Lets a marking ask how the view stands right now: side, lens, explode, cut, colours, hidden parts, labels. */
+function ViewReader({ model }: { model: THREE.Object3D | null }) {
+  const camera = useThree((s) => s.camera);
+  const controls = useThree((s) => s.controls) as unknown as { target: THREE.Vector3 } | null;
+  useEffect(() => {
+    const read = (): NoteView => {
+      const { studio, explode, tab } = useUi.getState();
+      const { section, hidden, nodes } = useStudio.getState();
+      const target = controls?.target ?? new THREE.Vector3();
+      const layer = useAnalysisLayer.getState();
+      const info = layer.check ? useSession.getState().analysis?.checks[layer.check] : undefined;
+      return {
+        tab: tab === "cad" ? "cad" : "modell",
+        camera: dirToBuild(camera.position.clone().sub(target)),
+        ortho: studio.ortho,
+        explode,
+        section: section && section.at !== null && section.keep ? { axis: section.axis, at_mm: section.at, keep: section.keep } : null,
+        surface: layer.check && info ? { check: layer.check, limit: limitOf(layer.check, info, layer.limits) } : null,
+        hidden: hidden.map((name) => partLabel(nodes[name] ?? name).name),
+        labels: studio.labels,
+      };
+    };
+    useStudio.setState({ view: read });
+    return () => {
+      if (useStudio.getState().view === read) useStudio.setState({ view: null });
+    };
+  }, [camera, controls, model]);
+  return null;
+}
+
+const CAP = new THREE.Color();
+
+/** The model file's root: the studio's model object itself, or inside it (the drone sits in groups around its file). */
+function rootOf(model: THREE.Object3D | null): THREE.Object3D | null {
+  if (!model || model.userData.glbRoot) return model;
+  let found: THREE.Object3D | null = null;
+  model.traverse((o) => {
+    if (!found && o.userData.glbRoot) found = o;
+  });
+  return found;
+}
+
+/**
+ * The section view: one plane across the build's X, Y or Z cuts the model, and the faces it cuts show as
+ * flat darker shades of their parts (each part's inside drawn from behind, so every cut reads as filled).
+ * The plane lives in the model file's frame, at `at` mm along its axis, and follows the model in the
+ * scene; clicks and the hover go through what it took away. Off, the model is whole again.
+ */
+function Section({ model, zUp, unit }: { model: THREE.Object3D | null; zUp: boolean; unit: number }) {
+  const section = useStudio((s) => s.section);
+  const gl = useThree((s) => s.gl);
+  const camera = useThree((s) => s.camera);
+  const setEvents = useThree((s) => s.setEvents);
+  const get = useThree((s) => s.get);
+  const local = useRef(new THREE.Plane());
+  const world = useRef(new THREE.Plane());
+  const planes = useRef([world.current]);
+  const caps = useRef(new Map<THREE.Mesh, THREE.Mesh>());
+  // The file loads after the rig (the drone suspends): the root is looked for on every frame.
+  const [root, setRoot] = useState<THREE.Object3D | null>(() => rootOf(model));
+  const axis = section?.axis ?? null;
+  const on = !!section && section.at !== null && section.keep !== null;
+
+  // The model's extent along the axis, and the defaults: the middle, the half facing the camera cut away.
+  useEffect(() => {
+    if (!axis || !root) return;
+    root.updateMatrixWorld(true);
+    const inverse = root.matrixWorld.clone().invert();
+    const box = new THREE.Box3();
+    root.traverse((o) => {
+      if (o instanceof THREE.Mesh && !o.userData.sectionCap && !o.userData.analysisLayer && o.visible) box.union(new THREE.Box3().setFromObject(o).applyMatrix4(inverse));
+    });
+    if (box.isEmpty()) return;
+    const ends = [fileToBuild(box.min, { zUp, unit }), fileToBuild(box.max, { zUp, unit })];
+    const i = { x: 0, y: 1, z: 2 }[axis];
+    const min = Math.min(ends[0][i], ends[1][i]);
+    const max = Math.max(ends[0][i], ends[1][i]);
+    useStudio.setState({ sectionRange: { min, max } });
+    const now = useStudio.getState().section;
+    if (!now || now.axis !== axis) return;
+    const at = now.at === null ? Math.round(((min + max) / 2) * 10) / 10 : Math.min(max, Math.max(min, now.at));
+    let keep = now.keep;
+    if (keep === null) {
+      // The camera's place along the axis: the half on its side goes, so the cut faces it.
+      const eye = fileToBuild(root.worldToLocal(camera.position.clone()), { zUp, unit })[i];
+      keep = eye > at ? "below" : "above";
+    }
+    if (at !== now.at || keep !== now.keep) useStudio.setState({ section: { ...now, at, keep } });
+  }, [axis, root, zUp, unit, camera]);
+
+  useEffect(() => {
+    if (!on || !section) return;
+    const n = axisInFile(section.axis, { zUp, unit });
+    const offset = (section.at as number) / (unit * 1000);
+    // Keep n·p below or above the offset; three.js keeps the side its plane's normal points to.
+    if (section.keep === "below") local.current.set(n.clone().negate(), offset);
+    else local.current.set(n, -offset);
+  }, [on, section, zUp, unit]);
+
+  useEffect(() => {
+    if (!on || !root) return;
+    gl.localClippingEnabled = true;
+    useStudio.setState({ clip: world.current });
+    const previous = get().events.filter;
+    // The hover and a click on a part go through what the cut took away.
+    setEvents({ filter: (items: THREE.Intersection[], state: RootState) => (previous ? previous(items, state) : items).filter(keptByCut) });
+    const own = caps.current;
+    return () => {
+      setEvents({ filter: previous });
+      useStudio.setState({ clip: null });
+      for (const [mesh, cap] of own) {
+        mesh.remove(cap);
+        (cap.material as THREE.Material).dispose();
+      }
+      own.clear();
+      root.traverse((o) => {
+        if (!(o instanceof THREE.Mesh || o instanceof THREE.LineSegments)) return;
+        for (const m of (Array.isArray(o.material) ? o.material : [o.material]) as THREE.Material[]) {
+          if (m.clippingPlanes === planes.current) m.clippingPlanes = null;
+        }
+      });
+    };
+  }, [on, root, gl, get, setEvents]);
+
+  useFrame(() => {
+    const found = rootOf(model);
+    if (found !== root) setRoot(found);
+    if (!on || !root) return;
+    world.current.copy(local.current).applyMatrix4(root.matrixWorld);
+    // Every surface of the model takes the plane, also what appears later (the surface colours, edges).
+    root.traverse((o) => {
+      if (!(o instanceof THREE.Mesh || o instanceof THREE.LineSegments)) return;
+      const materials = (Array.isArray(o.material) ? o.material : [o.material]) as THREE.Material[];
+      for (const m of materials) if (m.clippingPlanes !== planes.current) m.clippingPlanes = planes.current;
+      if (!(o instanceof THREE.Mesh) || o.userData.sectionCap || o.userData.analysisLayer || caps.current.has(o)) return;
+      const source = materials[0] as THREE.MeshStandardMaterial;
+      if (source.transparent && source.opacity < 1) return;
+      // A quarter of the part's colour in linear light reads about half as bright on screen: plainly darker, still its part.
+      CAP.copy(source.color ?? CAP.set("#9a9da5")).multiplyScalar(0.25);
+      // Drawn just in front of the part's own inside, so a two-sided part shows the cut too.
+      const material = new THREE.MeshBasicMaterial({ color: CAP.clone(), side: THREE.BackSide, clippingPlanes: planes.current, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+      const cap = new THREE.Mesh(o.geometry, material);
+      cap.userData.sectionCap = true;
+      cap.name = o.name + " cut";
+      o.add(cap);
+      caps.current.set(o, cap);
+    });
+  });
+  return null;
 }
 
 function Camera({ center, radius, home, front }: Pick<StudioRigProps, "center" | "radius" | "home" | "front">) {
@@ -251,17 +457,15 @@ function PartVisibility({ model }: { model: THREE.Object3D | null }) {
 interface Pin {
   object: THREE.Object3D;
   local: THREE.Vector3;
+  /** The point as a note's end, in the build's mm. */
+  at: NotePoint;
 }
 
 const fmtMm = (mm: number) => (mm >= 1000 ? `${(mm / 1000).toFixed(2)} m` : `${mm.toFixed(mm < 100 ? 1 : 0)} mm`);
 
-function visible(o: THREE.Object3D | null): boolean {
-  for (; o; o = o.parent) if (!o.visible) return false;
-  return true;
-}
-
-/** With the Measure tool, two clicks on the model give the distance between them; the points ride along when parts move. */
-function Measure({ model, unit }: { model: THREE.Object3D | null; unit: number }) {
+/** With the Measure tool, two clicks on the model give the distance between them; the points ride along when parts move.
+ * Both points also wait in the studio as a measurement a note to Mechanic can carry. */
+function Measure({ model, unit, frame }: { model: THREE.Object3D | null; unit: number; frame: ModelFrame }) {
   const tool = useUi((s) => s.tool);
   const camera = useThree((s) => s.camera);
   const gl = useThree((s) => s.gl);
@@ -293,11 +497,12 @@ function Measure({ model, unit }: { model: THREE.Object3D | null; unit: number }
       const click = down && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 5;
       down = null;
       if (!click || !model) return;
-      const r = el.getBoundingClientRect();
-      raycaster.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
-      const hit = raycaster.intersectObject(model, true).find((h) => h.object instanceof THREE.Mesh && visible(h.object));
-      if (!hit) return;
-      const pin = { object: hit.object, local: hit.object.worldToLocal(hit.point.clone()) };
+      rayAt(raycaster, camera, el, e);
+      const hit = hitModel(raycaster, model);
+      const at = notePoint(hit, frame);
+      if (!hit || !at) return;
+      const { cut: _cut, ...end } = at;
+      const pin = { object: hit.object, local: hit.object.worldToLocal(hit.point.clone()), at: end };
       setPins((p) => (p.length >= 2 ? [pin] : [...p, pin]));
     };
     const onKey = (e: KeyboardEvent) => {
@@ -314,7 +519,13 @@ function Measure({ model, unit }: { model: THREE.Object3D | null; unit: number }
       el.removeEventListener("pointerup", onUp);
       window.removeEventListener("keydown", onKey);
     };
-  }, [tool, gl, camera, raycaster, model]);
+    // The frame is two plain values; a new object each render must not reset the tool.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tool, gl, camera, raycaster, model, frame.zUp, frame.unit]);
+  useEffect(() => {
+    useStudio.setState({ measurement: pins.length === 2 ? { a: pins[0].at, b: pins[1].at } : null });
+  }, [pins]);
+  useEffect(() => () => useStudio.setState({ measurement: null }), []);
 
   const world = (p: Pin) => p.object.localToWorld(p.local.clone());
   const last = useRef("");

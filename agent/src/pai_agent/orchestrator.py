@@ -23,6 +23,9 @@ Design decisions:
   script is written by its own CAD agent, so a four-part product does not wait four times.
 - The CAD engine is FreeCAD. `PAI_CAD_ENGINE=solidcraft` adds SolidCraft for parts that move on
   joints: its two tools (`tools/solidcraft_part.py`) and a paragraph on when to use them.
+- A message can carry studio notes (`notes.py`): what the person clicked, measured, drew on or read
+  in the studio. They follow the person's words, each marking as a picture; offline Mechanic only
+  reads them back.
 - The system prompt and tool list are identical every round and marked for prompt caching.
 - Every model call has a timeout (`PAI_MODEL_TIMEOUT_S`) and the loop a round limit, so a
   stuck model ends the run with a message instead of freezing the stage.
@@ -45,7 +48,7 @@ import logging
 import re
 
 from pai_agent.context import Ctx
-from pai_agent import settings, solidcraft
+from pai_agent import notes as studio_notes, settings, solidcraft
 from pai_agent.env import claude_enabled
 from pai_agent.mock_categories import NAMES as CATEGORY_NAMES, RUNS as CATEGORY_RUNS, wants_category
 from pai_agent.mock_gripper import run_gripper_mock, run_trial_story, wants_gripper
@@ -207,6 +210,16 @@ Read each report before you act on it. You keep product_spec, assemble, cad_upda
 For the drone and the gripper, work with their own tools as described above; delegation is for the general product flow.
 """
 
+_NOTES = """
+Studio notes: a message can carry notes the person attached in the studio, numbered after their words. A note says exactly what they mean; act on it rather than guessing from the words.
+- Selection: the part they clicked, the face and the point, and the lines of its script that build it (shown with the note). Change that part at that place: cad_update for its numbers, cad_part with a description that names those lines, or placements.
+- Measurement: a distance between two points they clicked, with the rise and the angle between the faces. Take it as their reading of the model.
+- Marking: a picture of the studio view they drew on, attached after the text. Look at it: their strokes mark the place. The note says how the view was set up (side, cut, explode, colours), so a cut face or a pulled-apart part is not a fault; cad_view with the same section shows you that cut.
+- Surface spot: one value of a surface check at one place. Fix that spot (a wall, a gap, an overlap), then surface_check again.
+- Parameter: a slider with its value, range and the value you designed; that is the number they mean.
+A note taken on an older build or version describes that model, not the one on the bench: compare the two before you change anything, and say which one you mean.
+"""
+
 _SOLIDCRAFT = """
 SolidCraft is the CAD engine here for anything whose parts move on joints: a gripper, a linkage, an arm, a leg, a hinge, a slide.
 Build it with solidcraft_part: describe each part, the joint between each pair (where it sits, its axis, its range) and the joint that drives it;
@@ -226,10 +239,15 @@ async def _first(ctx: Ctx) -> bool:
     return first
 
 
-async def run_prompt(ctx: Ctx, text: str, messages: list[dict], voice: bool = False, *, record_user: bool = True) -> None:
+async def run_prompt(ctx: Ctx, text: str, messages: list[dict], voice: bool = False, *, record_user: bool = True, notes: list[dict] | None = None) -> None:
     if record_user:
-        await ctx.chat("user", text, voice)
-    ctx.state.requests.append(text)
+        await ctx.chat("user", text, voice, notes=studio_notes.public(notes) if notes else None)
+    if text.strip():
+        ctx.state.requests.append(text)
+    if notes and not claude_enabled():
+        # Offline Mechanic only reads the notes back: acting on them takes the live model.
+        await ctx.chat("agent", studio_notes.read_back(ctx.state, notes))
+        return
     # "Train it, then stress test it": training first, so the stress test flies the trained gains.
     if not claude_enabled() and wants_train_then_stress(text):
         await _first(ctx)
@@ -277,7 +295,7 @@ async def run_prompt(ctx: Ctx, text: str, messages: list[dict], voice: bool = Fa
         else:
             await run_mock(ctx, text)
         return
-    await _run_claude(ctx, text, messages)
+    await _run_claude(ctx, text, messages, notes)
 
 
 async def _mock_omniverse(ctx: Ctx, text: str) -> bool:
@@ -386,7 +404,7 @@ _PARALLEL = {"cad_part"}
 
 
 def _system(delegation: bool) -> list[dict]:
-    text = _SYSTEM.replace("{controls}", control_list()) + (_DELEGATION if delegation else "") + (_SOLIDCRAFT if solidcraft.engine() == "solidcraft" else "")
+    text = _SYSTEM.replace("{controls}", control_list()) + (_DELEGATION if delegation else "") + _NOTES + (_SOLIDCRAFT if solidcraft.engine() == "solidcraft" else "")
     # The prompt and the tool list are the same every round; caching them keeps rounds fast.
     return [{"type": "text", "text": text, "cache_control": {"type": "ephemeral"}}]
 
@@ -399,7 +417,7 @@ def _tools(delegation: bool) -> list[dict]:
     return [schema for schema in SCHEMAS if schema["name"] != "delegate" and schema["name"] not in hidden]
 
 
-async def _run_claude(ctx: Ctx, text: str, messages: list[dict]) -> None:
+async def _run_claude(ctx: Ctx, text: str, messages: list[dict], notes: list[dict] | None = None) -> None:
     from pai_agent.agents import AgentRun
 
     config = settings.current()
@@ -407,6 +425,9 @@ async def _run_claude(ctx: Ctx, text: str, messages: list[dict]) -> None:
     lead = AgentRun(ctx, "orchestrator", "Orchestrator", config["orchestrator_model"], config["orchestrator_effort"], text.strip()[:120])
     local = lead.billing == "subscription"
     fresh = not ctx.state.llm_session if local else not messages
+    if notes:
+        # The studio notes follow the person's words, each marking as a picture after them (notes.py).
+        text = studio_notes.describe(ctx.state, text, notes)
     if fresh and ((ctx.state.product == "generic" and ctx.state.spec) or (ctx.state.finished and ctx.state.selected)):
         # A build Claude did not make (a loaded reference): it reads the build before the request.
         from pai_agent.references import build_context
@@ -418,8 +439,9 @@ async def _run_claude(ctx: Ctx, text: str, messages: list[dict]) -> None:
     if printer:
         # The printer rides with every request, so a printer set between messages reaches the next run.
         text = printer + "\n\n" + text
+    request = [{"type": "text", "text": text}, *studio_notes.images(ctx.state, notes)] if notes else text
     if not local:
-        _add_request(messages, text)
+        _add_request(messages, request)
     ctx.lead_id = lead.id
     # The first planning round takes a while; the person sees at once that Mechanic is on it.
     await ctx.emit({"type": "mascot", "state": "denkt", "say": "On it, thinking it through."})
@@ -427,7 +449,7 @@ async def _run_claude(ctx: Ctx, text: str, messages: list[dict]) -> None:
         if local:
             from pai_agent.subscription import lead_loop
 
-            await lead_loop(ctx, lead, _system(delegation)[0]["text"], _tools(delegation), text, frozenset(_PARALLEL))
+            await lead_loop(ctx, lead, _system(delegation)[0]["text"], _tools(delegation), request, frozenset(_PARALLEL))
         else:
             await _lead_loop(ctx, lead, delegation, messages)
     except RunStopped:
@@ -472,7 +494,7 @@ def _close_stopped(messages: list[dict]) -> None:
         messages.append({"role": "assistant", "content": "The user stopped this run here; what was built so far stays."})
 
 
-def _add_request(messages: list[dict], text: str) -> None:
+def _add_request(messages: list[dict], text: str | list[dict]) -> None:
     """Adds the request so the history stays valid after a run that failed or was stopped midway."""
 
     last = messages[-1] if messages else None
@@ -489,7 +511,7 @@ def _add_request(messages: list[dict], text: str) -> None:
     if last and last["role"] == "user":
         # The request after a failed round joins the unanswered turn instead of a second user turn.
         content = last["content"]
-        last["content"] = (content if isinstance(content, list) else [{"type": "text", "text": content}]) + [{"type": "text", "text": text}]
+        last["content"] = (content if isinstance(content, list) else [{"type": "text", "text": content}]) + (text if isinstance(text, list) else [{"type": "text", "text": text}])
         return
     messages.append({"role": "user", "content": text})
 

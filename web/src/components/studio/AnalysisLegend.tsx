@@ -1,10 +1,11 @@
 // The legend of the surface check colour layer, in the studio's bottom-left corner while a check is
 // shown: what the colours mean, how much needs a fix at Mechanic's limit (and what is red but needs
 // none: sharp edges, contact lines, specks), a slider that moves the limit (it recolours the model at
-// once and counts again; Mechanic keeps his own), and the value of the last spot clicked. That picked
-// spot is what a context note to Mechanic will carry (U6).
-import { X } from "lucide-react";
-import { areas, formatArea, formatLimit, formatValue, isCurrent, limitOf, limitRange, SHADES, useAnalysisLayer } from "../../events/analysis";
+// once and counts again; Mechanic keeps his own), and the value of the last spot clicked, which goes
+// to Mechanic's message box as a spot note (U6).
+import { MessageSquarePlus, X } from "lucide-react";
+import { areas, buildOf, formatArea, formatLimit, formatValue, isCurrent, limitOf, limitRange, SHADES, useAnalysisLayer } from "../../events/analysis";
+import { attach } from "../../events/notes";
 import { useSession } from "../../events/store";
 import type { AnalysisCheck, AnalysisCheckInfo, AnalysisEvent } from "../../events/types";
 import { fmtNum } from "../../lib/format";
@@ -136,6 +137,18 @@ export function AnalysisLegend() {
             <b className={picked.critical ? "text-fail-ink" : "text-ink"}>{formatValue(check, picked.value, info)}</b> on {picked.part.replace(/_/g, " ")} at{" "}
             <span className="num whitespace-nowrap">({picked.atMm.map((v) => fmtNum(v, 1)).join(", ")}) mm</span>
           </span>
+          <button
+            type="button"
+            onClick={() =>
+              attach({ kind: "spot", check, value: picked.value, part: picked.part, part_id: picked.partId, at_mm: picked.atMm, limit, critical: picked.critical, build: Number(buildOf(cadUrl)) || null })
+            }
+            aria-label="Add this spot to your message for Mechanic"
+            title="Add this spot to your message for Mechanic"
+            data-target="surface:attach"
+            className="-my-0.5 rounded-full p-1 text-accent hover:bg-accent-soft"
+          >
+            <MessageSquarePlus className="h-3.5 w-3.5" />
+          </button>
           <button type="button" onClick={() => pick(null)} aria-label="Clear the picked spot" className="-mr-1 rounded-full p-0.5 text-muted hover:bg-tile hover:text-ink">
             <X className="h-3 w-3" />
           </button>

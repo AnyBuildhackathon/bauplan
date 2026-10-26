@@ -1,17 +1,18 @@
 // The view bar between the canvas tabs and the canvas: perspective or orthographic, the camera
 // views (keys 1 to 4), the explode amount in a popover, the surface check colour layer (overhang,
-// wall thickness or clearance, once Mechanic has checked this build), and the grid and label
-// switches. The grid switch also hides the lines of the test stage in the simulation replays; the
-// rest needs the live model, so it rests while the Model tab shows the render or two versions
-// side by side.
+// wall thickness or clearance, once Mechanic has checked this build), and the grid, label and
+// section switches; the section cuts the model across X, Y or Z at a slider's place (key S).
+// The grid switch also hides the lines of the test stage in the simulation replays; the rest needs
+// the live model, so it rests while the Model tab shows the render or two versions side by side.
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ChevronDown, Expand, Grid3x3, Layers, Tag, Video } from "lucide-react";
+import { ArrowDownUp, ChevronDown, Expand, Grid3x3, Layers, ScissorsLineDashed, Tag, Video } from "lucide-react";
 import { ANALYSIS_CHECKS, areas, formatArea, isCurrent, useAnalysisLayer } from "../../events/analysis";
 import { useSession } from "../../events/store";
 import { useUi } from "../../lib/ui";
+import { fmtNum } from "../../lib/format";
 import { ExplodeSlider } from "../canvas/ExplodeControls";
 import { Segmented } from "../ui/primitives";
-import { useStudio, VIEW_KEYS, type CameraView } from "./studio";
+import { useStudio, VIEW_KEYS, type CameraView, type SectionAxis } from "./studio";
 
 const VIEWS: { view: CameraView; label: string }[] = [
   { view: "front", label: "Front" },
@@ -185,6 +186,103 @@ function SurfaceMenu({ disabled }: { disabled: boolean }) {
   );
 }
 
+/** The Section menu's width, w-72. */
+const SECTION_MENU_PX = 288;
+
+function SectionMenu({ disabled }: { disabled: boolean }) {
+  const { open, setOpen, ref } = usePopover();
+  const [leftward, setLeftward] = useState(false);
+  const section = useStudio((s) => s.section);
+  const range = useStudio((s) => s.sectionRange);
+  const setSection = useStudio((s) => s.setSection);
+  const at = section?.at ?? null;
+  const span = range ? range.max - range.min : 0;
+  // About two hundred steps across the model, in tenths of a millimetre.
+  const step = Math.max(0.1, Math.round((span / 200) * 10) / 10);
+  const pct = range && at !== null && span > 0 ? ((at - range.min) / span) * 100 : 50;
+  const label = section && at !== null ? `${section.axis.toUpperCase()} ${fmtNum(at, Math.abs(at) < 100 ? 1 : 0)}` : null;
+  return (
+    <div ref={ref} className="relative">
+      <BarButton
+        on={open || !!section}
+        disabled={disabled}
+        onClick={() => {
+          // Pressed, the model is cut at once; the popover places the cut.
+          if (!section) setSection({ axis: "z", at: null, keep: null });
+          const left = ref.current?.getBoundingClientRect().left ?? 0;
+          setLeftward(left + SECTION_MENU_PX > window.innerWidth - 12);
+          setOpen(!open || !section);
+        }}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-pressed={!!section}
+        aria-label="Section"
+        title="Cut the model to see inside (S)"
+        data-target="studio:section"
+      >
+        <ScissorsLineDashed className="h-4 w-4" /> <Word>Section</Word>
+        {label && <span className="num font-label text-[11px]">{label}</span>}
+      </BarButton>
+      {open && section && (
+        <div role="dialog" aria-label="Section" className={`${leftward ? POPOVER_LEFTWARD : POPOVER} w-72 px-3 pt-2.5 pb-3`}>
+          <div className="flex items-center gap-2">
+            <Segmented
+              size="sm"
+              value={section.axis}
+              onChange={(axis: SectionAxis) => setSection({ axis, at: null, keep: null })}
+              options={(["x", "y", "z"] as const).map((axis) => ({ value: axis, label: axis.toUpperCase(), target: `section:${axis}` }))}
+            />
+            <button
+              type="button"
+              onClick={() => section.keep && setSection({ ...section, keep: section.keep === "below" ? "above" : "below" })}
+              className="ml-auto inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-[13px] font-semibold text-ink-2 hover:bg-tile hover:text-ink"
+              title="Keep the other half"
+              data-target="section:flip"
+            >
+              <ArrowDownUp className="h-3.5 w-3.5" /> Flip
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSection(null);
+                setOpen(false);
+              }}
+              className="inline-flex h-8 items-center rounded-full px-2.5 text-[13px] font-semibold text-ink-2 hover:bg-tile hover:text-ink"
+              data-target="section:off"
+            >
+              Off
+            </button>
+          </div>
+          <label className="mt-2.5 flex items-center gap-2.5">
+            <input
+              type="range"
+              min={range?.min ?? 0}
+              max={range?.max ?? 1}
+              step={step}
+              value={at ?? 0}
+              disabled={!range || at === null}
+              onChange={(e) => setSection({ ...section, at: Number(e.target.value) })}
+              aria-label={`Section along ${section.axis.toUpperCase()}`}
+              className="bevel-range min-w-0 flex-1"
+              style={{ "--p": `${pct}%` } as React.CSSProperties}
+            />
+            <span className="num w-[72px] shrink-0 text-right text-[14px] font-bold text-ink" data-target="section:at">
+              {at === null ? "…" : `${fmtNum(at, 1)} mm`}
+            </span>
+          </label>
+          {range && (
+            <div className="num mt-0.5 flex justify-between pr-[82px] text-[11px] font-semibold text-muted">
+              <span>{fmtNum(range.min, 0)} mm</span>
+              <span>{fmtNum(range.max, 0)} mm</span>
+            </div>
+          )}
+          <p className="mt-1.5 text-[12px] leading-snug font-semibold text-muted">Cut faces show darker. Keeps the half {section.keep === "above" ? "above" : "below"} the cut.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ViewToolbar() {
   const tab = useUi((s) => s.tab);
   const look = useUi((s) => s.look);
@@ -230,6 +328,7 @@ export function ViewToolbar() {
           <Tag className="h-4 w-4" /> <Word>Labels</Word>
         </BarButton>
       )}
+      {!stage && <SectionMenu disabled={!live} />}
     </div>
   );
 }

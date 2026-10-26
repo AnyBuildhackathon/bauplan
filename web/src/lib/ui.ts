@@ -9,8 +9,8 @@ export type ConceptStatus = "verstanden" | "gesehen";
 export type MicMode = "handsfree" | "ptt";
 /** The tabs of the panel right of the studio. */
 export type RightTab = "mechanic" | "versions" | "assembly" | "joints" | "checks";
-/** What a click on the model does in the studio: select the part, or set a measuring point. */
-export type StudioTool = "select" | "measure";
+/** What a click on the model does in the studio: select the part, set a measuring point, or draw a marking for Mechanic. */
+export type StudioTool = "select" | "measure" | "mark";
 
 /** The studio's view switches (the bar above the canvas). On by default except labels and ortho, remembered per browser. */
 export interface StudioView {

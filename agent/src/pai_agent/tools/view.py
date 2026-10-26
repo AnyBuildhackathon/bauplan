@@ -126,18 +126,26 @@ def mcp_content(result: dict) -> list[dict]:
     return content
 
 
-def drop_old_images(messages: list[dict], keep: int = 2) -> None:
+def drop_old_images(messages: list[dict], keep: int = 2, markings: int = 3) -> None:
     """Keeps the newest `keep` pictures in a Messages history and turns older ones into a line of text.
 
     Every round sends the whole history again, so old pictures would cost tokens on every round and
-    a long session would run into the API's image limit.
+    a long session would run into the API's image limit. The markings a person drew in the studio
+    (notes.py) ride in their own messages and keep the newest `markings` of their own.
     """
 
     seen = 0
+    marks = 0
     for message in reversed(messages):
         content = message.get("content")
         if message.get("role") != "user" or not isinstance(content, list):
             continue
+        for index in range(len(content) - 1, -1, -1):
+            block = content[index]
+            if isinstance(block, dict) and block.get("type") == "image":
+                marks += 1
+                if marks > markings:
+                    content[index] = {"type": "text", "text": "(An older marking the person drew was shown here.)"}
         for block in reversed(content):
             if not isinstance(block, dict) or block.get("type") != "tool_result" or not isinstance(block.get("content"), list):
                 continue

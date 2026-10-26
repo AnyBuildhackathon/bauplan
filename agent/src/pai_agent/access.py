@@ -59,12 +59,14 @@ def buckets() -> dict[str, Bucket]:
     stt = _per_hour("ANYBUILD_LIMIT_STT", 60)
     cad = _per_hour("ANYBUILD_LIMIT_CAD", 120)
     explain = _per_hour("ANYBUILD_LIMIT_EXPLAIN", 120)
+    markings = _per_hour("ANYBUILD_LIMIT_MARKINGS", 60)
     return {
         "build": Bucket("build", "builds", builds, builds * 3),
         "speech": Bucket("speech", "speech requests", speech, speech * 3),
         "stt": Bucket("stt", "voice sessions", stt, stt * 3),
         "cad": Bucket("cad", "CAD recomputes", cad, cad * 3),
         "explain": Bucket("explain", "explanations", explain, explain * 3),
+        "markings": Bucket("markings", "markings", markings, markings * 3),
     }
 
 
@@ -87,6 +89,8 @@ def bucket_of(method: str, path: str) -> str | None:
         return "stt"
     if path == "/api/cad/params":
         return "cad"
+    if path == "/api/notes/markup":
+        return "markings"
     return None
 
 

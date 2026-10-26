@@ -40,8 +40,9 @@ class Ctx:
     async def emit(self, event: dict) -> None:
         await self.bus.publish(event)
 
-    async def chat(self, role: str, text: str, voice: bool = False) -> None:
-        await self.emit({"type": "chat", "role": role, "text": text, **({"voice": True} if voice else {})})
+    async def chat(self, role: str, text: str, voice: bool = False, notes: list[dict] | None = None) -> None:
+        # notes: the studio notes a person's message carries (notes.py), shown as chips under it.
+        await self.emit({"type": "chat", "role": role, "text": text, **({"voice": True} if voice else {}), **({"notes": notes} if notes else {})})
 
     async def step(self, step_id: str, status: str) -> None:
         await self.emit(

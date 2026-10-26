@@ -43,6 +43,13 @@ class PromptIn(BaseModel):
     text: str
     # The text is a spoken turn (Reson8 or the browser), not typed.
     voice: bool = False
+    # Studio notes: what the person pointed at in the studio (notes.py); with notes the text may be empty.
+    notes: list = []
+
+
+class MarkupIn(BaseModel):
+    # A PNG of the studio view the person drew on, as plain base64 or a data URL.
+    image_base64: str
 
 
 class SketchIn(BaseModel):
@@ -169,10 +176,32 @@ async def adapters_list() -> list[dict]:
 
 @app.post("/api/prompt")
 async def prompt(body: PromptIn, request: Request) -> dict:
+    from pai_agent import notes
+
     text = body.text.strip()
-    if not text:
+    session = request.app.state.session
+    try:
+        attached = notes.accept(body.notes, session.state)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if not text and not attached:
         raise HTTPException(status_code=400, detail="text is required")
-    return await request.app.state.session.start(text, voice=body.voice)
+    return await session.start(text, voice=body.voice, notes=attached)
+
+
+@app.post("/api/notes/markup")
+async def markup(body: MarkupIn, request: Request) -> dict:
+    """Stores a marking (the studio view the person drew on) for a note; the next message names it."""
+
+    from pai_agent import notes
+
+    _require_json(request)
+    state = request.app.state.session.state
+    try:
+        name = notes.store_markup(state, notes.decode_png(body.image_base64))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"ok": True, "name": name, "url": "/files/" + state.session_id + "/" + name}
 
 
 @app.post("/api/sketch")

@@ -395,6 +395,8 @@ async def commit(ctx: Ctx, label: str | None = None, restored_from: int | None =
     n = len(state.versions) + 1
     version = {
         "n": n,
+        # The CAD build it shows, the `?build=` of its model; studio notes name builds (notes.py).
+        "build": state.cad_builds,
         **numbers,
         "sim": state.last_sim["result"] if state.last_sim else None,
         "parts": _parts(state),

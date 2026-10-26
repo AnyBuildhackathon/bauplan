@@ -28,7 +28,8 @@ It has no OpenAPI page; FastAPI's generated docs are turned off on purpose for t
 | `GET` | `/api/status` | Independent partner availability and NVIDIA SSH/GPU connection, including the last Isaac run. Requires the normal access session. | | [Partner status](events.md#partner-status-and-director-mode) |
 | `GET` | `/api/adapters` | The engine behind every check (FreeCAD, CalculiX, Blender, SparkBench, KiCad, ngspice, Freerouting, Node.js, MuJoCo, Robo Use, Isaac, the slicer): installed or not, version, path, install hint and last run on this machine. Reads files only, never starts a tool. | | [Check adapters](events.md#check-adapters) |
 | `GET` | `/api/bench` | Saved live and mock benchmark results: `{ok, runs}`; missing runs are omitted. | | [Bench](events.md#http) |
-| `POST` | `/api/prompt` | Send a typed or spoken (`voice: true`) message; starts or continues a build, answers an open question, or operates the dashboard (`status: ui`). | build | [HTTP](events.md#http) |
+| `POST` | `/api/prompt` | Send a typed or spoken (`voice: true`) message, with the studio's `notes` (what the person clicked, measured, drew on or read in the studio); starts or continues a build, answers an open question, or operates the dashboard (`status: ui`). | build | [HTTP](events.md#http) |
+| `POST` | `/api/notes/markup` | Store a marking (a PNG of the studio view the person drew on) in the session for a note; answers its `name` and `url`. | markings | [Studio notes](events.md#studio-notes) |
 | `POST` | `/api/sketch` | Start a new product from a photo of a hand sketch (PNG, JPEG or WebP up to 8 MB, base64 or data URL). | build | [HTTP](events.md#http) |
 | `GET` | `/api/sketch/sample` | The sample phone stand sketch (PNG). | | [HTTP](events.md#http) |
 | `POST` | `/api/reset` | Clear the session, chat memory and event buffer; publishes `reset`. | | [HTTP](events.md#http) |

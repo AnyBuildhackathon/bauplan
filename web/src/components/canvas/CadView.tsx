@@ -1,12 +1,14 @@
 // CAD tab: the part from the latest `cad` event (glb_url) in 3D, its feature tree,
 // the parameters as sliders (POST /api/cad/params, the next `cad` event updates
-// the view), a small image of the real FreeCAD view and "In FreeCAD öffnen".
+// the view; each also goes to Mechanic's message box as a parameter note), a small
+// image of the real FreeCAD view and "In FreeCAD öffnen".
 import { OrbitControls } from "@react-three/drei";
 import { Canvas, useLoader, useThree } from "@react-three/fiber";
-import { ChevronRight, Download, ExternalLink, FileCode2, Layers, RefreshCw, X } from "lucide-react";
+import { ChevronRight, Download, ExternalLink, FileCode2, Layers, MessageSquarePlus, RefreshCw, X } from "lucide-react";
 import { Component, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { attach, shownBuild } from "../../events/notes";
 import { useSession } from "../../events/store";
 import { useSource } from "../../events/source";
 import { isSlider, type CadEvent, type CadNode, type CadNumberParam } from "../../events/types";
@@ -119,6 +121,8 @@ function Part({
     const looks = materialsFromTree(tree ?? []);
     const fallback = single ? materialKey(single) : null;
     const root = gltf.scene.clone(true);
+    // The file's own frame: studio notes read places on the model in it (studio/frame.ts).
+    root.userData.glbRoot = true;
     // Generated parts are modelled Z-up like FreeCAD; three.js is Y-up.
     if (zUp) {
       root.rotation.x = -Math.PI / 2;
@@ -205,7 +209,7 @@ function Part({
       )}
       <group ref={anchor} position={center} />
       <AnalysisLayer root={object} modelUrl={url} />
-      <StudioRig model={object} center={center} radius={radius} home={HOME} front={zUp ? FRONT_Z_UP : FRONT_DRONE} unit={unit} />
+      <StudioRig model={object} center={center} radius={radius} home={HOME} front={zUp ? FRONT_Z_UP : FRONT_DRONE} unit={unit} zUp={zUp} />
     </>
   );
 }
@@ -291,14 +295,29 @@ function ParamSlider({
   const digits = param.step !== undefined ? decimalsOf(param.step) : step < 1 ? 1 : 0;
   const ends = param.step !== undefined ? digits : 0;
   const changed = Math.abs(value - param.value) > 1e-9;
+  const label = param.label ?? paramLabel(name);
   return (
     <label className="block" data-target={`param:${name} ${name}`}>
       <div className="flex items-baseline justify-between gap-2">
-        <span className="min-w-0 truncate text-[14px] font-semibold text-ink-2" title={param.label ?? paramLabel(name)}>{param.label ?? paramLabel(name)}</span>
-        <span className={`num shrink-0 text-[15px] font-bold whitespace-nowrap ${pending ? "text-agent-ink" : changed ? "text-ink" : "text-ink"}`}>
+        <span className="min-w-0 truncate text-[14px] font-semibold text-ink-2" title={label}>{label}</span>
+        <span className={`num ml-auto shrink-0 text-[15px] font-bold whitespace-nowrap ${pending ? "text-agent-ink" : changed ? "text-ink" : "text-ink"}`}>
           {changed && <span className="mr-1 text-[13px] font-semibold text-faint">{fmtNum(param.value, digits)} →</span>}
           {param.unit === "deg" ? `${fmtNum(value, digits)}°` : `${fmtNum(value, digits)} ${param.unit}`.trim()}
         </span>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            // The backend knows what Mechanic designed and whether the value is the person's own (notes.py).
+            attach({ kind: "param", name, label, value, unit: param.unit, min: param.min, max: param.max, default: null, build: shownBuild() });
+          }}
+          aria-label={`Add ${label} to your message for Mechanic`}
+          title={`Add ${label} to your message for Mechanic`}
+          data-target={`param:attach:${name}`}
+          className="-mr-1 shrink-0 self-center rounded-full p-1 text-faint transition hover:bg-accent-soft hover:text-accent"
+        >
+          <MessageSquarePlus className="h-3.5 w-3.5" />
+        </button>
       </div>
       <input
         type="range"

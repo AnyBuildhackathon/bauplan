@@ -217,6 +217,8 @@ export function useExplode(root: THREE.Object3D, specs: PieceSpec[], opts: { glo
   useEffect(() => {
     for (const p of pieces) {
       p.node.add(p.center);
+      // Where the part sits assembled, so a click on it reads as a place on the build (studio/frame.ts).
+      p.node.userData.restPosition = p.base;
       for (const name of [p.key, ...(p.aliases ?? [])]) focusable.set(normaliseName(name), p);
     }
     labels.current = pieces.map((p) => (p.label ? labelSprite(p.label) : null));
@@ -226,6 +228,7 @@ export function useExplode(root: THREE.Object3D, specs: PieceSpec[], opts: { glo
       for (const p of pieces) {
         for (const name of [p.key, ...(p.aliases ?? [])]) if (focusable.get(normaliseName(name)) === p) focusable.delete(normaliseName(name));
         p.node.position.copy(p.base);
+        delete p.node.userData.restPosition;
         p.center.removeFromParent();
       }
       for (const l of labels.current) {

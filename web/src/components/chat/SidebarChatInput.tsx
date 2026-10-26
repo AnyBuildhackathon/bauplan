@@ -1,6 +1,7 @@
 // Adapted from core-oss (github.com/10xapp/core-oss, Apache-2.0),
 // core-web/src/components/SidebarChat/SidebarChatInput.tsx. Modified: Bevel pill
-// styling, a mic button and a sketch photo (SketchDrop.tsx) in place of attachments and mentions: hands-free by default
+// styling, a mic button, a sketch photo (SketchDrop.tsx) and the studio's notes as chips (NoteChips.tsx)
+// in place of attachments and mentions: hands-free by default
 // (click Talk to start a Gemini Live conversation, lib/geminiLive.ts, which hears, transcribes
 // and answers), push-to-talk dictation as the alternative (hold the button or the space
 // bar; speech goes to Reson8 or the browser, lib/voice.ts).
@@ -11,6 +12,8 @@ import { useSpeech } from "../../lib/speech";
 import { startListening as listen, type Listener } from "../../lib/voice";
 import { startVoice, stopVoice, useVoiceChat } from "../../lib/geminiLive";
 import { pickImage, SketchButton, SketchChip } from "./SketchDrop";
+import { DraftNoteChips } from "./NoteChips";
+import { useNotes } from "../../events/notes";
 import { PrinterButton } from "../print/PrinterPicker";
 
 interface SidebarChatInputProps {
@@ -66,12 +69,14 @@ export default function SidebarChatInput({
   const handsFree = useUi((s) => s.handsFree);
   const userTalking = useUi((s) => s.userTalking);
   const speaking = useSpeech((s) => s.speaking);
+  const notes = useNotes((s) => s.notes.length);
   const [hint, setHint] = useState<string | null>(null);
   const lg = size === "lg";
   // A longer message gets the whole width, the buttons move under it; the row of buttons
   // beside the text would leave it a column a few words wide in the side panel. A box too
   // narrow for text and buttons side by side (a phone) stacks them always (container query).
-  const stacked = !lg && (value.length > 28 || value.includes("\n"));
+  // Studio notes take the top row of the box, so it stacks with them too.
+  const stacked = !lg && (value.length > 28 || value.includes("\n") || notes > 0);
 
   // Auto-resize textarea without causing layout flash
   const adjustHeight = useCallback(() => {
@@ -185,7 +190,8 @@ export default function SidebarChatInput({
     }
   };
 
-  const canSubmit = (value.trim().length > 0 || !!sketch) && !disabled;
+  // Notes alone make a message: Mechanic looks at what they point at.
+  const canSubmit = (value.trim().length > 0 || !!sketch || notes > 0) && !disabled;
   const hearing = listening || (handsFree && userTalking);
   const micHot = listening || handsFree;
 
@@ -199,6 +205,7 @@ export default function SidebarChatInput({
             : `min-h-[64px] gap-2 rounded-[24px] py-3 pr-3 pl-4 shadow-[var(--shadow-pill)] ${stacked ? "flex-col pt-3.5" : "items-end @max-[360px]:flex-col @max-[360px]:items-stretch @max-[360px]:pt-3.5"}`
         }`}
       >
+        {notes > 0 && !sketch && <DraftNoteChips />}
         {hearing ? (
           <div className={`flex flex-1 items-center gap-3 ${lg ? "min-h-[112px]" : "self-center"}`}>
             <Waveform active bars={lg ? 11 : 7} />
@@ -220,7 +227,7 @@ export default function SidebarChatInput({
               if (picked.file) onSketchChange?.(picked.file);
               else if (picked.error) flash(picked.error);
             }}
-            placeholder={sketch ? "What should I know about it? (optional)" : handsFree ? "Just talk, or type" : placeholder}
+            placeholder={sketch ? "What should I know about it? (optional)" : notes > 0 ? "What should Mechanic do here? (optional)" : handsFree ? "Just talk, or type" : placeholder}
             rows={1}
             name="prompt"
             aria-label="Message to Mechanic"

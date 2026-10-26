@@ -12,6 +12,7 @@ import { useSession } from "../../events/store";
 import type { AnalysisCheck, AnalysisCheckInfo } from "../../events/types";
 import { assetUrl } from "../../lib/api";
 import { useUi } from "../../lib/ui";
+import { keptByCut } from "../studio/frame";
 
 /** A layer that cannot load leaves the model as it is. */
 class Quiet extends Component<{ children: ReactNode; resetKey: string }, { failed: boolean }> {
@@ -159,7 +160,8 @@ function Overlay({ root, url, check, info }: { root: THREE.Object3D; url: string
       const r = el.getBoundingClientRect();
       raycaster.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
       const shown = layers.filter((layer) => visible(layer.mesh));
-      const hit = raycaster.intersectObjects(shown.map((layer) => layer.mesh), false)[0];
+      // With the section on, what the cut took away is not under the pointer.
+      const hit = raycaster.intersectObjects(shown.map((layer) => layer.mesh), false).find(keptByCut);
       const layer = hit && shown.find((l) => l.mesh === hit.object);
       const values = layer?.mesh.geometry.getAttribute(info.attribute.toLowerCase());
       if (!hit || !layer || !values || hit.faceIndex == null) return;

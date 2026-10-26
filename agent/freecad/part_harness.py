@@ -22,7 +22,8 @@ in it, in which bodies, and whether the part touches one. The backend judges tha
 
 Writes one STL per part, part.step (all printed parts), part.stl (all printed
 parts) and result.json with volume and bounding box per part, plus those
-simulation fields under `sim`. Never raises:
+simulation fields under `sim`. Each part also gets `lines`, the script lines
+that build it, which a selection note from the studio cites. Never raises:
 every failure lands in result.json as `error` plus the traceback tail, so the
 agent can read it and fix the script.
 """
@@ -164,6 +165,143 @@ def _center(shape):
     return [round(value / total, 3) for value in sums] if total > 0 else None
 
 
+def _part_lines(source, names, shapes):
+    """The script lines that build each part: {name: [[first, last], ...]}, read from the syntax tree.
+
+    A part's lines are the entry that puts it into `parts` (or the `shape` it is), the statements before
+    it that make or change the shapes that entry uses (`shapes`: the names holding a shape, or a list of
+    them, after the run), back to where each was made from nothing, and the functions it calls. A part
+    added under a computed name gets the statement that adds it. Comments right above a block count.
+    """
+
+    import ast
+
+    body = ast.parse(source).body
+    defs = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
+    funcs = {node.name: node for node in body if isinstance(node, defs[:2])}
+
+    def walk(node):
+        # Inside one statement, without the bodies of the functions and classes it defines.
+        stack = [node]
+        while stack:
+            item = stack.pop()
+            yield item
+            stack.extend(child for child in ast.iter_child_nodes(item) if not isinstance(child, (*defs, ast.Lambda)))
+
+    def span(node):
+        return [node.lineno, node.end_lineno or node.lineno]
+
+    def reads(node):
+        return {item.id for item in walk(node) if isinstance(item, ast.Name) and isinstance(item.ctx, ast.Load)}
+
+    def writes(stmt):
+        out = set()
+        for item in walk(stmt):
+            if isinstance(item, ast.Name) and isinstance(item.ctx, ast.Store):
+                out.add(item.id)
+            elif isinstance(item, ast.Expr) and isinstance(item.value, ast.Call) and isinstance(item.value.func, ast.Attribute) and isinstance(item.value.func.value, ast.Name):
+                # `servo.translate(...)` changes the shape in place.
+                out.add(item.value.func.value.id)
+        return out
+
+    def fresh(stmt, name):
+        return isinstance(stmt, ast.Assign) and any(isinstance(t, ast.Name) and t.id == name for t in stmt.targets) and name not in reads(stmt.value)
+
+    def called(node, seen):
+        # The script's own functions a node calls, and the ones those call, each once.
+        out = []
+        for item in walk(node):
+            if isinstance(item, ast.Call) and isinstance(item.func, ast.Name) and item.func.id in funcs and item.func.id not in seen:
+                seen.add(item.func.id)
+                out += [span(funcs[item.func.id])] + called(funcs[item.func.id], seen)
+        return out
+
+    def same_part(value, key):
+        # `parts["Palm"] = parts["Palm"].cut(slot)` builds on the entry before it.
+        return any(
+            isinstance(item, ast.Subscript) and isinstance(item.value, ast.Name) and item.value.id == "parts" and isinstance(item.slice, ast.Constant) and item.slice.value == key
+            for item in walk(value)
+        )
+
+    # Every place a part name gets its value, in order: (index of the top-level statement, the lines, the value).
+    found, computed = {}, []
+    for index, stmt in enumerate(body):
+        if isinstance(stmt, defs):
+            continue
+        for item in walk(stmt):
+            if isinstance(item, ast.Assign):
+                for target in item.targets:
+                    if isinstance(target, ast.Name) and target.id == "parts":
+                        if not isinstance(item.value, ast.Dict):
+                            computed.append(span(stmt))
+                            continue
+                        for key, value in zip(item.value.keys, item.value.values):
+                            if isinstance(key, ast.Constant) and isinstance(key.value, str):
+                                found.setdefault(key.value, []).append((index, [key.lineno, value.end_lineno or value.lineno], value))
+                            elif key is not None:
+                                computed.append(span(stmt))
+                    elif isinstance(target, ast.Name) and target.id == "shape":
+                        found.setdefault("Part", []).append((index, span(item), item.value))
+                    elif isinstance(target, ast.Subscript) and isinstance(target.value, ast.Name) and target.value.id == "parts":
+                        if isinstance(target.slice, ast.Constant) and isinstance(target.slice.value, str):
+                            found.setdefault(target.slice.value, []).append((index, span(stmt), item.value))
+                        else:
+                            computed.append(span(stmt))
+            elif isinstance(item, ast.Call) and isinstance(item.func, ast.Attribute) and item.func.attr == "update" and isinstance(item.func.value, ast.Name) and item.func.value.id == "parts":
+                for kw in item.keywords:
+                    if kw.arg:
+                        found.setdefault(kw.arg, []).append((index, span(stmt), kw.value))
+                for arg in item.args:
+                    pairs = zip(arg.keys, arg.values) if isinstance(arg, ast.Dict) else []
+                    for key, value in pairs:
+                        if isinstance(key, ast.Constant) and isinstance(key.value, str):
+                            found.setdefault(key.value, []).append((index, span(stmt), value))
+                    if not isinstance(arg, ast.Dict):
+                        computed.append(span(stmt))
+
+    lines = source.splitlines()
+    out = {}
+    for name in names:
+        entries = found.get(name)
+        if not entries:
+            if computed:
+                out[name] = [list(r) for r in computed]
+            continue
+        ranges, seen, done = [], set(), set()
+        todo = []
+        for index, entry, value in reversed(entries):
+            ranges += [entry] + called(value, seen)
+            todo += [(needed, index) for needed in reads(value) & shapes]
+            if not same_part(value, name):
+                break
+        while todo:
+            needed, index = todo.pop()
+            if needed in done:
+                continue
+            done.add(needed)
+            for before in range(index - 1, -1, -1):
+                stmt = body[before]
+                if isinstance(stmt, defs) or needed not in writes(stmt):
+                    continue
+                ranges += [span(stmt)] + called(stmt, seen)
+                # What this statement used, as it stood there.
+                todo += [(other, before) for other in (reads(stmt) & shapes) - done]
+                if fresh(stmt, needed):
+                    break
+        merged = []
+        for first, last in sorted(ranges):
+            # A comment right above a block belongs to it.
+            while first > 1 and lines[first - 2].strip().startswith("#"):
+                first -= 1
+            # Blocks with only blank lines between them read as one range.
+            if merged and all(not text.strip() for text in lines[merged[-1][1] : first - 1]):
+                merged[-1][1] = max(merged[-1][1], last)
+            else:
+                merged.append([first, last])
+        out[name] = merged
+    return out
+
+
 def main():
     import builtins
     import math
@@ -209,6 +347,11 @@ def main():
     # Anything that is not a shape fails below with its own message.
     bodies = [name for name, shape in parts.items() if name not in reference and isinstance(shape, Part.Shape) and not shape.isNull()]
     fitted = _fit_hardware(parts, bodies, hardware, limit) if hardware else []
+    try:
+        held = {key for key, value in scope.items() if isinstance(value, Part.Shape) or (isinstance(value, (list, tuple)) and value and all(isinstance(v, Part.Shape) for v in value))}
+        lines = _part_lines(source, [str(name) for name in parts], held)
+    except Exception:  # The lines are a pointer for notes; a script they cannot read still builds.
+        lines = {}
 
     rows = []
     printed = []
@@ -242,6 +385,7 @@ def main():
                 "reference": name in reference,
                 "color": colors.get(name),
                 "material": materials.get(name),
+                "lines": lines.get(str(name)),
             }
         )
         if name not in reference:
