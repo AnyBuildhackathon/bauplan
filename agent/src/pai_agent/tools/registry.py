@@ -1061,7 +1061,7 @@ async def call_tool(ctx: Ctx, name: str, args: dict | None) -> dict:
         await publish_geometry(ctx)
         if name in {"train_in_browser", "isaac_train", "isaac_lab_train", "train_controller"}:
             await refresh_after_training(ctx)
-        if name == "bom_build":
+        if name in {"bom_build", "robouse_trial"}:
             from pai_agent.versions import after_tool
 
             await after_tool(ctx, name, payload, result)

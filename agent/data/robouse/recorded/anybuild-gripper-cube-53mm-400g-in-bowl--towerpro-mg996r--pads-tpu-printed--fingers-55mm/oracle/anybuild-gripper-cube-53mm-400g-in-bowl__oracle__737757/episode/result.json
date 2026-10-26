@@ -1,0 +1,33 @@
+{
+  "task": "anybuild-gripper-cube-53mm-400g-in-bowl",
+  "seed": 0,
+  "success": true,
+  "success_ever": true,
+  "success_mode": "final",
+  "outcome": "done",
+  "steps_used": 231,
+  "max_steps": 800,
+  "requests": 9,
+  "agent_text": "the cube is in the bowl",
+  "wall_time_s": 5.1,
+  "embodiment_mode": "sim",
+  "metrics": {
+    "success": 1,
+    "progress": 1.0,
+    "safety_events": 0,
+    "safe_failure": null,
+    "excellent": 1,
+    "execution_time_s": 4.62,
+    "execution_speed": 12.987,
+    "control_dt_s": 0.02,
+    "smoothness_sparc": -15.253,
+    "avg_jerk": 185.3726,
+    "path_length_m": 1.1095,
+    "max_contact_force_n": 6.088
+  },
+  "video_size": [
+    960,
+    720
+  ],
+  "signature": "9b6a41c3946d931d7e8250e447b5af69505801147309a35c15346c4eb3f7bbb4"
+}

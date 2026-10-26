@@ -1,0 +1,57 @@
+{
+  "task_name": "anybuild-gripper-cube-53mm-400g-in-bowl",
+  "trial_name": "anybuild-gripper-cube-53mm-400g-in-bowl__noop__ada42b",
+  "status": "completed",
+  "source": "AnyBuild",
+  "agent_info": {
+    "name": "noop",
+    "model_info": {
+      "name": "none",
+      "provider": null
+    },
+    "interface": "cli"
+  },
+  "verifier_result": {
+    "rewards": {
+      "reward": 0.0
+    }
+  },
+  "episode": {
+    "task": "anybuild-gripper-cube-53mm-400g-in-bowl",
+    "seed": 0,
+    "success": false,
+    "success_ever": false,
+    "success_mode": "final",
+    "outcome": "done",
+    "steps_used": 0,
+    "max_steps": 800,
+    "requests": 1,
+    "agent_text": "noop control",
+    "wall_time_s": 0.98,
+    "embodiment_mode": "sim",
+    "metrics": {
+      "success": 0,
+      "progress": 0.0,
+      "safety_events": 0,
+      "safe_failure": 1,
+      "excellent": null
+    },
+    "signature": "a1d0fe699f8b2ab5c81e577cb58ae237236c9d463f3e2f08b35eb8377d78e9dc"
+  },
+  "agent_return_code": 0,
+  "agent_timed_out": false,
+  "exception_info": null,
+  "started_at": "2026-10-26T04:44:29.659440+00:00",
+  "finished_at": "2026-10-26T04:44:36.682197+00:00",
+  "wall_time_s": 7.0,
+  "embodiment_mode": "sim",
+  "cost": {
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "cached_tokens": null,
+    "cost_usd": 0.0,
+    "cost_source": "no model"
+  },
+  "image_input": null,
+  "budget_stop": null
+}

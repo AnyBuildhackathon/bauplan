@@ -17,6 +17,7 @@ from __future__ import annotations
 import asyncio
 import json
 import math
+import re
 
 from pai_agent.context import Ctx
 from pai_agent.grip_sim import Fingers, contact, hold_n, squeeze_n
@@ -54,6 +55,28 @@ def _num(args: dict, key: str, default: float | None = None) -> float | None:
         return float(args[key])
     except (KeyError, TypeError, ValueError):
         return default
+
+
+# How a request writes a brief's number: (unit pattern, how many of the brief's unit one of it is).
+GRAMS = ((r"g|grams?", 1.0), (r"kg|kilograms?", 1000.0))
+MILLIMETRES = ((r"mm|millimet(?:er|re)s?", 1.0), (r"cm|centimet(?:er|re)s?", 10.0))
+EUROS = ((r"€|eur|euros?", 1.0),)
+_NUMBER = r"(\d+(?:[.,]\d+)?)"
+
+
+def typed_number(state, value: float, units: tuple) -> bool:
+    """Whether a request the user typed has this number in one of these units: '400 g', '0.4 kg', '5.3 cm', '€30'."""
+
+    for text in state.requests:
+        for unit, scale in units:
+            patterns = [_NUMBER + r"\s*(?:" + unit + r")(?![a-z])"]
+            if "€" in unit:
+                patterns.append(r"€\s*" + _NUMBER)
+            for pattern in patterns:
+                for match in re.finditer(pattern, text, re.IGNORECASE):
+                    if abs(float(match.group(1).replace(",", ".")) * scale - value) < 1e-6:
+                        return True
+    return False
 
 
 # The drone's requirements a request can set: id, limit key, wording.
@@ -164,15 +187,21 @@ async def product_brief(ctx: Ctx, args: dict) -> dict:
         return _fail("object_mass_g and object_width_mm must be positive numbers.")
     _reset_build(state)
     state.brief = {"object_mass_g": mass, "object_width_mm": width, "max_weight_g": max_weight, "budget_eur": budget}
-    said = {**attribute(state, quote, False), "changed_from": None}
+
+    def said(value: float, units: tuple, reason: str) -> dict:
+        # The user's sentence stands behind a row only when they typed its number; a default is Mechanic's proposal.
+        if typed_number(state, value, units):
+            return {**attribute(state, quote, False), "changed_from": None}
+        return {**attribute(state, "", True, "Proposed by Mechanic: " + reason), "changed_from": None}
+
     requirements = [
-        {"id": "payload", "text": f"Holds {mass:g} g while the arm moves", **said},
-        {"id": "opening", "text": f"Opens wider than {width:g} mm", **said},
+        {"id": "payload", "text": f"Holds {mass:g} g while the arm moves", **said(mass, GRAMS, "your request names no weight for the object.")},
+        {"id": "opening", "text": f"Opens wider than {width:g} mm", **said(width, MILLIMETRES, f"your request names no size, so the jaws are sized for {width:g} mm.")},
     ]
     if max_weight:
-        requirements.append({"id": "weight", "text": f"Gripper under {max_weight:g} g", "max": max_weight, **said})
+        requirements.append({"id": "weight", "text": f"Gripper under {max_weight:g} g", "max": max_weight, **said(max_weight, GRAMS, "a light gripper leaves the arm its payload.")})
     if budget:
-        requirements.append({"id": "budget", "text": f"Parts under {budget:g} €", "max": budget, **said})
+        requirements.append({"id": "budget", "text": f"Parts under {budget:g} €", "max": budget, **said(budget, EUROS, "a hobby-servo gripper's usual price.")})
     requirements.append({"id": "printable", "text": "Printable body with STL and STEP", **attribute(state, "", True, "Proposed by Mechanic: the body is printed, so it needs STL and STEP."), "changed_from": None})
     state.requirements = requirements
     return {

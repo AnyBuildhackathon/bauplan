@@ -48,7 +48,7 @@ from pai_agent.context import Ctx
 from pai_agent import settings, solidcraft
 from pai_agent.env import claude_enabled
 from pai_agent.mock_categories import NAMES as CATEGORY_NAMES, RUNS as CATEGORY_RUNS, wants_category
-from pai_agent.mock_gripper import run_gripper_mock, wants_gripper
+from pai_agent.mock_gripper import run_gripper_mock, run_trial_story, wants_gripper
 from pai_agent.mock_lamp import run_lamp_mock, wants_lamp
 from pai_agent.mock_product import run_product_mock, wants_product
 from pai_agent.mock_solidcraft import run_solidcraft_mock, wants_solidcraft
@@ -58,7 +58,7 @@ from pai_agent.scene import STEPS
 from pai_agent.tools.browser_train import run_mock_training
 from pai_agent.tools.optimize import run_optimize_mock, run_pick_mock, wants_optimize, wants_pick
 from pai_agent.tools.registry import DELEGATED, SCHEMAS, call_tool
-from pai_agent.tools.robouse_trial import run_trial_mock, wants_trial
+from pai_agent.tools.robouse_trial import wants_trial
 from pai_agent.tools.solidcraft_part import NAMES as SOLIDCRAFT_TOOLS
 from pai_agent.tools.stress import run_stress_mock, wants_stress
 from pai_agent.tools.ui import control_list
@@ -174,6 +174,16 @@ Then cad_part with template gripper (params jaw_opening_mm at least object width
 Asked to stress test the build or how robust it is: stress_test (after training it flies the trained gains), then mascot_say with its explanation and name the score in English.
 Asked for an independent test, Robo Use, or whether an agent can use the built gripper: robouse_trial (harness claude-code only when the user asks for Claude Code to drive it), then its verdict in one sentence; status recorded means Robo Use did not run now.
 
+The independent verdict and the fix loop (the gripper):
+When the request says where the object goes (into a bowl, onto a pad), the built gripper gets an outside judge: after bom_build and firmware, robouse_trial with that goal.
+Its verdict joins that version's verdict book, next to your own grip test, so the versions show both side by side.
+A verdict counts only when the trial ran on this build (status done) or was recorded on this same design (recorded.matches_build true); a recorded trial of another design judges nothing here, so never fix on it.
+On verdict fail: say the cause in one or two sentences from summary and analysis (how far the cube slipped in the lift, where it fell, why your own test missed it),
+then ask_user with two or three fixes that grip harder, each with what it costs: a stronger servo from the catalog, silicone pads, or fingers about 15 mm shorter (more squeeze at the pad tips); the default is the one with the most margin.
+Build the answer as the next version: catalog_search for the part, cad_part with template gripper and its params, grip_calc, simulate_grip, blender_render, safety_check, bom_build, firmware, then robouse_trial again.
+At most two fix rounds; when it still fails, ask_user whether to keep the last version or change the brief. When a fix passes, open ui_control panel:compare with the first and the last version and name both verdicts.
+On verdict refused the gripper cannot take the object at all: name the reason, then change the jaw opening or the finger length first.
+
 Omniverse requests: use isaac_test for gusty wind, a camera/payload mass or hover stability.
 These tools and product_usd support the drone only. For a gripper, use simulate_grip and explain that the GPU hover controller does not support it.
 Build CAD and select the parts first when a live product test needs them. USD export happens automatically.
@@ -246,7 +256,7 @@ async def run_prompt(ctx: Ctx, text: str, messages: list[dict], voice: bool = Fa
             await run_gripper_mock(ctx, text)
             return
         if wants_trial(text):
-            await run_trial_mock(ctx, text)
+            await run_trial_story(ctx, text)
             return
         if wants_lamp(text) and not (ctx.state.product == "generic" and (ctx.state.spec or {}).get("name") == "Desk lamp"):
             await run_lamp_mock(ctx, text)

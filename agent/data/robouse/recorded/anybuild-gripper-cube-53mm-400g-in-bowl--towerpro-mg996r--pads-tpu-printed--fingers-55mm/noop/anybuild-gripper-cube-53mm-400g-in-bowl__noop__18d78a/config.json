@@ -1,0 +1,62 @@
+{
+ "task": "anybuild-gripper-cube-53mm-400g-in-bowl",
+ "task_path": "tasks/anybuild-gripper-cube-53mm-400g-in-bowl",
+ "harness": "noop",
+ "model": "",
+ "interface": "cli",
+ "seed": null,
+ "agent_timeout_s": 900.0,
+ "trial_name": "anybuild-gripper-cube-53mm-400g-in-bowl__noop__18d78a",
+ "started_at": "2026-10-26T04:44:49.018378+00:00",
+ "workspace": "",
+ "metadata": {
+  "source_benchmark": "AnyBuild",
+  "category": "manipulation",
+  "difficulty": "medium",
+  "tags": [
+   "anybuild",
+   "designed-gripper",
+   "pick-place"
+  ],
+  "anybuild": {
+   "brief": {
+    "object_mass_g": 400.0,
+    "object_width_mm": 53.0,
+    "goal": "bowl"
+   },
+   "servo": "TowerPro MG996R servo",
+   "pads": "Printed TPU finger pads",
+   "opening_mm": 76.0,
+   "grip_angle_deg": 25.17
+  }
+ },
+ "epoch": 0,
+ "split": null,
+ "attempt": 0,
+ "extra_instruction": null,
+ "prior_learnings": null,
+ "requested": null,
+ "image_input": null,
+ "image_input_reason": "no language model",
+ "spend_cap_usd": null,
+ "provenance": {
+  "robouse": "0.6.1",
+  "python": "3.12.15",
+  "platform": "macOS-27.0.1-arm64-arm-64bit",
+  "git_commit": "235cce383725e3fa7c93029326b14aaf323b0a89",
+  "git_dirty": true,
+  "mujoco": "3.3.0",
+  "numpy": "2.5.4"
+ },
+ "sandbox": "none",
+ "workspace_files": [
+  ".robouse/",
+  ".robouse/bin/",
+  ".robouse/bin/robo",
+  ".robouse/bin/robo_cli.py",
+  ".robouse/bin/robo_mcp.py",
+  ".robouse/ready",
+  ".robouse/socket",
+  "observations/"
+ ]
+}

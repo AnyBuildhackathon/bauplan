@@ -1,6 +1,7 @@
 // Simulation tab for the gripper: replays `sim` events of kind "grip" in 3D on the grid stage
 // (the stress card keeps the flat front view).
-// The hand lifts 15 cm and shakes; the object follows only as far as friction holds it.
+// The hand lifts 15 cm and shakes; the object follows only as far as friction holds it. The object is
+// the one the grip test holds: a cube as wide as the brief's object (docs/events.md, sim).
 // Before/after shows the previous run next to the selected one, on the shared playhead.
 import { OrbitControls } from "@react-three/drei";
 import { Canvas, useThree } from "@react-three/fiber";
@@ -16,7 +17,6 @@ import { SimSpeed } from "./SimSpeed";
 import { seek, setPlaying, useSimClockDriver, useSimTime } from "./simClock";
 
 const COLOR = { pass: "#2ed3ae", fail: "#ff5a5f" } as const;
-const OBJECT_H = 120;
 
 /** Linear lookup in a [t, value] series. */
 function at(series: [number, number][], t: number): number {
@@ -35,7 +35,7 @@ function at(series: [number, number][], t: number): number {
 const objectRise = (run: Run) => run.trajectory.map((s) => [s[0], s[3]] as [number, number]);
 
 const mm = (v: number) => v / 1000;
-/** The can is 12 cm tall; the stage grid and fog scale to that. */
+/** The stage grid and fog scale to a hand that lifts its object 15 cm. */
 const GRIP_SIZE = 0.15;
 const GRIP_TARGET = new THREE.Vector3(0, 0.17, 0);
 const GRIP_VIEW = new THREE.Vector3(0.75, 0.42, 1).normalize();
@@ -79,7 +79,7 @@ function Squeeze({ length, flip }: { length: number; flip: boolean }) {
   );
 }
 
-/** The grip test in metres: floor at y = 0, the pads hold the can's middle. */
+/** The grip test in metres: floor at y = 0, the pads hold the cube's middle. */
 function GripScene({ run, t }: { run: Run; t: number }) {
   const width = run.object_width_mm ?? 66;
   const hand = at(run.hand ?? [], t) * 1000;
@@ -87,20 +87,20 @@ function GripScene({ run, t }: { run: Run; t: number }) {
   const pass = run.result === "pass";
   const slipping = hand - obj > 10;
   const gap = width / 2;
-  const padY = hand + OBJECT_H / 2;
+  const padY = hand + width / 2;
   const palmY = padY + 20 + 73;
   const fingerLen = palmY - (padY - 26);
   const obstacles = useMemo(() => stageObstacles(GRIP_SIZE), []);
-  const canColor = pass ? "#bff0e2" : slipping ? "#ffc9c9" : "#e4e5ea";
+  const cubeColor = pass ? "#bff0e2" : slipping ? "#ffc9c9" : "#e4e5ea";
   return (
     <>
       <FitGrip />
       <ambientLight intensity={0.3} />
       <GridStage size={GRIP_SIZE} shadowArea={0.6} shadowReach={0.45} obstacles={obstacles} />
-      {/* The can. */}
-      <mesh position={[0, mm(obj + OBJECT_H / 2), 0]}>
-        <cylinderGeometry args={[mm(gap), mm(gap), mm(OBJECT_H), 48]} />
-        <meshStandardMaterial color={canColor} roughness={0.35} metalness={0.25} />
+      {/* The cube the test grips. */}
+      <mesh position={[0, mm(obj + width / 2), 0]}>
+        <boxGeometry args={[mm(width), mm(width), mm(width)]} />
+        <meshStandardMaterial color={cubeColor} roughness={0.35} metalness={0.25} />
       </mesh>
       {/* Pads, fingers, palm and the wrist block. */}
       {[-1, 1].map((side) => (
@@ -139,8 +139,8 @@ export function GripStage({ run, t, label, stage = false }: { run: Run; t: numbe
   const pass = run.result === "pass";
   // Scene in mm: floor at y = 0, up is negative SVG y. The pads hold the object's middle.
   const floor = 300;
-  const objTop = floor - obj - OBJECT_H;
-  const padY = floor - hand - OBJECT_H / 2 - 20;
+  const objTop = floor - obj - width;
+  const padY = floor - hand - width / 2 - 20;
   const palmY = padY - 80;
   const gap = width / 2;
   const slipping = hand - obj > 10;
@@ -154,9 +154,9 @@ export function GripStage({ run, t, label, stage = false }: { run: Run; t: numbe
       ) : (
       <svg viewBox="-150 0 300 330" className="h-full w-full" preserveAspectRatio="xMidYMid meet" role="img" aria-label={`${label}: grip test ${run.run}`}>
         <line x1={-150} x2={150} y1={floor} y2={floor} stroke="#d6d5de" strokeWidth={2} />
-        {/* Object: a can between the pads. */}
-        <rect x={-gap} y={objTop} width={width} height={OBJECT_H} rx={8} fill={pass ? "#e8faf5" : slipping ? "#ffecec" : "#f4f4f7"} stroke={pass ? COLOR.pass : slipping ? COLOR.fail : "#9a9aa6"} strokeWidth={2.5} />
-        <text x={0} y={objTop + OBJECT_H / 2 + 5} textAnchor="middle" fontSize={14} fontWeight={700} fill="#55565f">
+        {/* Object: the cube between the pads. */}
+        <rect x={-gap} y={objTop} width={width} height={width} rx={4} fill={pass ? "#e8faf5" : slipping ? "#ffecec" : "#f4f4f7"} stroke={pass ? COLOR.pass : slipping ? COLOR.fail : "#9a9aa6"} strokeWidth={2.5} />
+        <text x={0} y={objTop + width / 2 + 5} textAnchor="middle" fontSize={14} fontWeight={700} fill="#55565f">
           {fmtNum(run.payload_g ?? 0, 0)} g
         </text>
         {/* Hand: palm, two fingers, black pads on the inside. */}
@@ -181,7 +181,7 @@ export function GripStage({ run, t, label, stage = false }: { run: Run; t: numbe
         </span>
         {stage && (
           <span className="num inline-flex h-8 items-center rounded-full bg-white/95 px-3.5 text-[13px] font-semibold text-ink-2 shadow-[var(--shadow-pill)]">
-            {fmtNum(run.payload_g ?? 0, 0)} g can
+            {fmtNum(run.payload_g ?? 0, 0)} g cube
           </span>
         )}
       </div>

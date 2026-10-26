@@ -29,6 +29,7 @@ import { ExplainChatCard } from "../learn/Explain";
 import { RequirementsCard, ResultsCard } from "./BuildCards";
 import { SafetyCard } from "../safety/SafetyCard";
 import { OptimizeCard } from "./OptimizeCard";
+import { VerdictMarks } from "../studio/VersionVerdicts";
 import { TrialCard } from "./TrialCard";
 import { useSimPane } from "../training/useBrowserTraining";
 
@@ -275,6 +276,7 @@ function VersionPartRenderer({ item }: { item: Extract<ChatItem, { kind: "versio
       ) : (
         <p className="mt-1 font-label text-[12px] text-ink-2">{v.summary}</p>
       )}
+      {(v.verdicts ?? []).length > 0 && !v.diff.some((d) => d.key.startsWith("verdict:")) && <VerdictMarks v={v} own={false} className="mt-1.5" />}
     </button>
   );
 }

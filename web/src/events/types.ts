@@ -442,6 +442,24 @@ export interface VersionEvent {
   restored_from?: number | null;
   /** ISO time the version was committed. */
   at?: string;
+  /** What independent judges said about this exact design, next to its own test in `sim`; a verdict arrives after the commit. */
+  verdicts?: VersionVerdict[];
+}
+/** One independent judge's verdict in a version's book (docs/events.md, version). */
+export interface VersionVerdict {
+  /** The judge: robouse (robouse_trial). */
+  judge: string;
+  /** "Robo Use", or "Robo Use, Claude Code" when Claude Code drove the gripper. */
+  label: string;
+  trial_id: string;
+  harness: string;
+  verdict: "pass" | "fail" | "invalid" | "refused";
+  /** 1 or 0; null when the gripper cannot take the object at all. */
+  reward: number | null;
+  /** done: it ran on this build; recorded: recorded earlier on this same design; failed: the task was refused. */
+  status: "done" | "recorded" | "failed";
+  summary: string;
+  at?: string;
 }
 export type VersionTrigger = "chat" | "library" | "check_failed" | "restore";
 /** One mission test (simulate_mission) of the drone built from its parts, with its replay. */

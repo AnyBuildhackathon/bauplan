@@ -53,6 +53,9 @@ class BuildState:
     versions: list[dict] = field(default_factory=list)
     # What restoring a version needs beyond its event (catalog ids, frame params, the saved build), by n.
     version_files: dict[int, dict] = field(default_factory=dict)
+    # Independent verdicts (robouse_trial) given on a bench that is not a version yet, each with the parts and
+    # parameters it judged; versions.commit files them when it commits that same design.
+    pending_verdicts: list[dict] = field(default_factory=list)
     reasons: dict[str, dict] = field(default_factory=dict)
     # Which product this session builds (drone, gripper or generic), and the last generated CAD part.
     product: str = "drone"

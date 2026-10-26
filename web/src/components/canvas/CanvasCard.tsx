@@ -186,7 +186,7 @@ export function CanvasCard() {
             value={pane}
             onChange={(pane) => { selectTab("simulation"); setPane(pane); }}
             options={[
-              { value: "hover", label: "Hover test", target: "sim:hover" },
+              { value: "hover", label: product === "gripper" ? "Grip test" : "Hover test", target: "sim:hover" },
               ...(missions > 0 || pane === "missions" ? [{ value: "missions" as const, label: "Missions", target: "sim:missions missions" }] : []),
               ...(stresses > 0 || pane === "stress" ? [{ value: "stress" as const, label: "Stress", target: "sim:stress stress fem" }] : []),
               ...((trials > 0 && product === "gripper") || pane === "robouse" ? [{ value: "robouse" as const, label: "Robo Use", target: "sim:robouse robouse" }] : []),

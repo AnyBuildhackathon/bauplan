@@ -1,10 +1,12 @@
 // Logbook: one column with a timeline of the versions. Each entry says what triggered
-// it (a chat request, a library item, a restore), the three key numbers and what changed
-// in one line; it opens to the full difference. Saved chats fold away below, the learned
-// concepts show only in learning mode, and Export downloads the whole logbook as Markdown.
+// it (a chat request, a library item, a restore), its own test and independent verdicts,
+// the three key numbers and what changed in one line; it opens to the full difference.
+// Saved chats fold away below, the learned concepts show only in learning mode, and
+// Export downloads the whole logbook as Markdown.
 import { useEffect, useState } from "react";
 import { ChevronDown, Download, MessageSquareText } from "lucide-react";
 import { MascotHead } from "../components/mascot/Mascot";
+import { failedVerdict, VERDICT_TEXT, verdictTone, verdictWord } from "../components/studio/VersionVerdicts";
 import { Chip, PillButton } from "../components/ui/primitives";
 import { STEP_IDS, type VersionDiff, type VersionEvent } from "../events/types";
 import { useSession } from "../events/store";
@@ -52,10 +54,11 @@ function VersionEntry({ v, last }: { v: VersionEvent; last: boolean }) {
   const label = triggerLabel(v);
   const tested = v.sim !== null;
   const pass = v.sim !== "fail";
+  const verdicts = v.verdicts ?? [];
   return (
     <li className="flex gap-4" data-target={`logbook:v${v.n}`}>
       <div className="flex flex-col items-center">
-        <span className={`num flex h-7 min-w-9 items-center justify-center rounded-full px-2 text-[13px] font-semibold text-white ${pass ? "bg-ok" : "bg-fail"}`}>
+        <span className={`num flex h-7 min-w-9 items-center justify-center rounded-full px-2 text-[13px] font-semibold text-white ${pass && !failedVerdict(v) ? "bg-ok" : "bg-fail"}`}>
           v{v.n}
         </span>
         {!last && <span className="mt-1.5 w-px flex-1 bg-track" />}
@@ -67,6 +70,13 @@ function VersionEntry({ v, last }: { v: VersionEvent; last: boolean }) {
             <span className="truncate">
               <span className="text-ink-2">{label}</span>
               {tested && <span className={pass ? "text-ok-ink" : "text-fail-ink"}> · {pass ? "test passed" : "test failed"}</span>}
+              {verdicts.map((x) => (
+                <span key={x.judge + x.harness} className={VERDICT_TEXT[verdictTone(x)]}>
+                  {" "}
+                  · {verdictWord(x)}
+                  {x.status === "recorded" ? " (recorded)" : ""}
+                </span>
+              ))}
             </span>
             <ChevronDown className={`ml-auto h-4 w-4 shrink-0 text-faint transition group-hover:text-ink-2 ${open ? "rotate-180" : ""}`} />
           </div>
@@ -222,7 +232,8 @@ function logbookMarkdown(s: Pick<Session, "versions" | "requirements" | "bom" | 
     lines.push("## Versions", "");
     for (const v of [...s.versions].reverse()) {
       lines.push(`### v${v.n} · ${triggerLabel(v)}`, "");
-      lines.push(`${keyNumbers(v).map((n) => `${n.label} ${n.value}`).join(" · ")}${v.sim ? ` · test ${v.sim === "pass" ? "passed" : "failed"}` : ""}`, "");
+      const verdicts = (v.verdicts ?? []).map((x) => ` · ${verdictWord(x)}${x.status === "recorded" ? " (recorded)" : ""}`).join("");
+      lines.push(`${keyNumbers(v).map((n) => `${n.label} ${n.value}`).join(" · ")}${v.sim ? ` · test ${v.sim === "pass" ? "passed" : "failed"}` : ""}${verdicts}`, "");
       for (const d of v.diff) lines.push(`- ${diffText(d)}`);
       if (v.diff.length) lines.push("");
     }

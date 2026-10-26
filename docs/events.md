@@ -111,7 +111,7 @@ With `"kind": "reference"` the same call promotes the build into the registry (`
 
 ### Versions
 
-`GET /api/versions` answers `{"ok": true, "versions": [...]}`, every version of the session in the `version` event shape without `type`.
+`GET /api/versions` answers `{"ok": true, "versions": [...]}`, every version of the session in the `version` event shape without `type`, each with its verdict book (`verdicts`).
 `POST /api/versions/{n}/restore` makes version `n` current: Mechanic rebuilds it through the same tools as any build (a product from the spec, part scripts, picks and checks saved with it; the drone by re-picking its catalog parts, the frame with its parameters, the hover test, the render and the bill of materials) and commits the result as a new version with `trigger` `restore` and `restored_from` `n`, so history only grows.
 It answers like `POST /api/prompt` with `restoring: n`; HTTP 404 for an unknown `n`, 409 while Mechanic is building.
 Versions live in the session; a reset clears them.
@@ -666,14 +666,21 @@ A finished build.
 Number rows have a `unit`; part rows have `key` `part:{category}`, names in `before` and `after`, and an empty `unit`.
 `summary` is one line such as `48.4 g · 10.4 min · 117.60 €`.
 Every rebuild is a version: every product, the drone included, commits one after its `bom_build`.
-Each version is published once, with the fields below.
-`trigger` is `chat`, `library`, `check_failed` (a chat rebuild that makes a requirement pass that the last version failed) or `restore`.
+Each version is published once with the fields below, and again whenever a verdict joins its book.
+`trigger` is `chat`, `library`, `check_failed` (a chat rebuild that makes a requirement pass that the last version failed, or one in the run where an independent judge failed the last version: the fix loop) or `restore`.
 `product` is `drone`, `gripper` or `generic`; `label` names the trigger in one line (the chat request, the library item, `Restored v1`).
 For a non-drone product `weight_g` and `price_eur` are set, `thrust_to_weight` and `flight_time_min` are `null`, and `cards` are its metric cards as the last `metrics` event had them.
 `requirements` is `[{id, text, met, detail}]` at commit time, `params` the CAD parameters (`arm_length_mm` for the drone frame, `{part_id}.{param}` for a product), and `nodes` maps a product's part ids to the body names in its GLB.
 `files` is `{glb_url, render_url}`: a copy of the model made for this version (`/files/{session}/v{n}-frame.glb`, `v{n}-assembly.glb`, `v{n}-part-….glb`) and its studio render; either is `null` when there was none.
 `restored_from` is the version a restore rebuilt, else `null`; `at` is the local commit time.
-The diff also covers changed CAD parameters (key `param:{name}`) and requirements that flipped (key `req:{id}`, `before` and `after` are `pass` or `fail`).
+The diff also covers changed CAD parameters (key `param:{name}`, `label` in words such as `Finger length`; the gripper's servo pocket follows its servo and is not a parameter here), requirements that flipped (key `req:{id}`, `before` and `after` are `pass` or `fail`) and verdicts that changed (key `verdict:{judge}`, or `verdict:{judge}:{harness}` for an agent's trial, `before` and `after` such as `fail, reward 0` and `pass, reward 1`).
+
+`verdicts` is the version's verdict book: what independent judges said about exactly this design, next to its own test in `sim`.
+Each entry is `{judge, label, trial_id, harness, verdict, reward, status, summary, at}`; the one judge so far is Robo Use (`judge: "robouse"`, `label` `Robo Use`, or `Robo Use, Claude Code` when Claude Code drove the gripper), from a `trial` event.
+`verdict` is `pass`, `fail`, `invalid` or `refused`, `reward` is `1` or `0` (`null` when refused), and `status` is `done` (it ran on this build), `recorded` (recorded earlier on this same design) or `failed` (the task generator refused this design).
+A trial of another design (a recorded example), one that could not run and one still running judge nothing and stay out; a newer verdict of the same judge and harness replaces the older.
+A verdict usually arrives after the version's commit; the version is then published again with the same `n`, its `verdicts` and its recomputed `diff`, and the client replaces it in place.
+A trial on a bench changed since the last commit (a part swapped, a dimension changed) judges the next version and joins it when that same design is committed; a design that changes before its commit drops it.
 
 ### part
 
@@ -919,8 +926,12 @@ The video runs only while the simulator steps, so every time below is video seco
 `ee_path` is `[[t, x, y, z], ...]` of the hand's tool point and `force` `[[t, newtons], ...]` of the largest contact force, one row per control step; metres, z up, the table top at 0, y away from Robo Use's front camera.
 `scene` is `{object: {name, kind, color, size_m, path}, target: {name, kind, pos, floor_z, rim_z, inner_diameter_m, size_m}}` from the episode's states; `object.path` is `[[t, x, y, z], ...]`, its place after every request.
 `provenance` is `{robouse, mujoco}` and `ran_at` when the trial started.
-A recorded trial adds `recorded: {matches_build, reason}`: `reason` why Robo Use did not run, `matches_build` whether the bench holds the design and brief it was recorded with (`agent/data/robouse/recorded/`, the gripper mock story's MG996R design with the 66 mm, 200 g can).
-When it does not, the trial is AnyBuild's example gripper's, never this build's: the card and the pane call its verdict an example, and its `summary` and `design` name that gripper.
+A recorded trial adds `recorded: {matches_build, reason}`: `reason` why Robo Use did not run, `matches_build` whether the bench holds the design and brief it was recorded with.
+`agent/data/robouse/recorded/` holds one recording per design (its `design.json` names the servo, the pads, every CAD parameter and the brief): the gripper mock story's MG996R design with the 66 mm, 200 g can, the example, and every design the 400 g cube story's fix loop builds (`scripts/record_robouse_trial.py --story`).
+The recording of the design on the bench stands in when there is one, else the example; when it is the example, the trial is AnyBuild's example gripper's, never this build's: the card and the pane call its verdict an example, and its `summary` and `design` name that gripper.
+A pass where the cube fell out of the fingers and landed on target says so in `summary`.
+A trial that judged this build (`done`, `recorded` with `matches_build`, or `refused`) joins the verdict book of the version it ran on (`version`, `verdicts`).
+On `fail`, the fix loop follows: the cause, two or three fixes that grip harder as a `question` (a stronger servo, silicone pads, shorter fingers, each with AnyBuild's own grip safety and extra cost), the chosen fix built as the next version, and `robouse_trial` on it, for at most two rounds before the user decides.
 The client shows one chat card per trial and the trial in the Simulation tab's Robo Use pane: the verdict, the video with one mark per request on its timeline, the requests, the hand's path on the stage and the contact force, all on the video's clock.
 
 ## Scene targets
@@ -1106,6 +1117,13 @@ The swap to the MG996R gives 4.5 N per finger, a safety of 4.8×, and passes wit
 An object the MG996R cannot hold at twice its weight, such as a 400 g cube 40 mm wide, steps up to the DS3218.
 FreeCAD builds the gripper headless from the library template with the servo pocket sized for the MG996R (58 g PLA), Blender renders it, and the bill of materials comes to 18.65 € and 128 g.
 Once the gripper is built, "Test it in Robo Use" (or "an independent test") runs `robouse_trial` on it; naming Claude Code asks for `harness: "claude-code"`, which still needs its credentials. Before any gripper, Mechanic asks for one first.
+A failed verdict there starts the fix loop described below.
+The numbers a gripper request does not give (a size, the gripper's weight limit, the budget) are requirements proposed by Mechanic, with his reason; a cube without a size gets the size of an aluminium cube of its mass (steel, wood or plastic when the request names one).
+A gripper request that says where the object goes plays the fix-loop story: "Gripper that puts a 400 g cube into a bowl" proposes a 53 mm cube, the SG90 slips, and v1 is the MG996R with printed TPU pads, which AnyBuild's own grip test passes at 2.1x.
+Robo Use then puts that cube into the bowl with v1: the reference solution lets it slip 7.1 mm in the lift and drops it during the carry, 15 cm from the bowl, reward 0.
+Mechanic names why his own test missed it (it only lifts, shakes and pulls straight down; Robo Use also carries the cube sideways) and asks which fix goes into v2: the DS3218 servo (grip safety 4.3x, +7.00 €, the default), silicone pads (3.2x, +2.90 €) or fingers shortened from 70 to 55 mm (2.8x, no new parts).
+The chosen fix is built through FreeCAD, the grip test, Blender and the bill of materials as v2 (trigger `check_failed`, label `Fix for Robo Use: …`), Robo Use passes it (reward 1), and Mechanic opens the comparison of v1 and v2 with both verdicts.
+Without Robo Use the recorded trials of exactly these designs give the same verdicts; a second failed round would ask once more, and after two the user decides.
 The drone and gripper stories call `firmware` right after `bom_build`: the drone gets a Betaflight CLI file, the gripper an Arduino sketch.
 Both call `safety_check` right before `bom_build`: the drone gets the EU class C0 note (under 250 g, register the operator, no remote ID) and the lithium battery shipping note, the gripper the pinch-point warning with a gear cover and a firmware travel limit as the fix.
 A prompt that asks for a lamp on mains (`lamp` with `230 V`, `mains` or `wall socket`) plays the safety story: Mechanic writes a 230 V desk lamp spec, `safety_check` flags mains voltage inside printed PETG, Mechanic asks whether to switch to a USB-C 5 V supply (the default), revises the spec and runs the check again without the mains finding. The run stops before FreeCAD; with a key Claude builds it.

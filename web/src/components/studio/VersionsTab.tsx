@@ -1,6 +1,6 @@
 // The Versions tab of the right panel: every build newest first with what started it, its
-// numbers and its test, selecting one shows it in the Model tab, an old one can be restored,
-// and two can be compared side by side.
+// numbers, its own test and the verdicts of independent judges such as Robo Use side by side;
+// selecting one shows it in the Model tab, an old one can be restored, and two can be compared side by side.
 import { useState } from "react";
 import { GitCommitVertical, GitCompare, RotateCcw } from "lucide-react";
 import { useSession } from "../../events/store";
@@ -9,11 +9,13 @@ import type { VersionEvent, VersionTrigger } from "../../events/types";
 import { fmtEur, fmtMin, fmtNum } from "../../lib/format";
 import { useUi } from "../../lib/ui";
 import { PanelEmpty, PanelHeader } from "./RightRail";
+import { failedVerdict, VerdictMarks } from "./VersionVerdicts";
 
 const TRIGGER_LABEL: Record<VersionTrigger, string> = {
   chat: "Chat",
   library: "Library",
-  check_failed: "Failed check",
+  // The version fixes a check the last one failed (a requirement or an independent verdict).
+  check_failed: "Fix",
   restore: "Restore",
 };
 
@@ -22,9 +24,18 @@ const clock = (iso: string) => {
   return Number.isNaN(d.getTime()) ? "" : d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 };
 
-/** The three numbers a row shows: the drone's own, or the first cards of another product. */
+// The weight and price cards: the gripper's and any other product's (mass and cost).
+const TOTALS = new Set(["weight_g", "price_eur", "mass_g", "cost_eur"]);
+
+/** The three numbers a row shows: the drone's own, or another product's lead card with its weight and price. */
 function keyNumbers(v: VersionEvent): string[] {
-  if (v.cards && v.cards.length > 0) return v.cards.slice(0, 3).map((c) => `${c.label} ${fmtNum(c.value, c.digits)} ${c.unit}`.trim());
+  if (v.cards && v.cards.length > 0) {
+    const lead = v.cards.find((c) => !TOTALS.has(c.key));
+    const out = lead ? [`${lead.label} ${fmtNum(lead.value, lead.digits)} ${lead.unit}`.trim()] : [];
+    if (typeof v.weight_g === "number") out.push(`${fmtNum(v.weight_g, 1)} g`);
+    if (typeof v.price_eur === "number") out.push(fmtEur(v.price_eur));
+    return out;
+  }
   const out: string[] = [];
   if (typeof v.weight_g === "number") out.push(`${fmtNum(v.weight_g, 1)} g`);
   if (typeof v.flight_time_min === "number") out.push(`${fmtMin(v.flight_time_min)} min`);
@@ -37,7 +48,9 @@ function VersionRow({ v, newest, selected, building }: { v: VersionEvent; newest
   const selectTab = useUi((s) => s.selectTab);
   const restoreVersion = useSource((s) => s.restoreVersion);
   const [confirm, setConfirm] = useState(false);
-  const tone = v.sim === "fail" ? "bg-fail" : "bg-ok";
+  const tone = v.sim === "fail" || failedVerdict(v) ? "bg-fail" : "bg-ok";
+  // With an independent verdict the own test moves next to it, so the two read side by side.
+  const judged = (v.verdicts ?? []).length > 0;
   const time = v.at ? clock(v.at) : "";
   const numbers = keyNumbers(v);
 
@@ -57,11 +70,16 @@ function VersionRow({ v, newest, selected, building }: { v: VersionEvent; newest
           <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <span className="rounded-full bg-tile px-2.5 py-0.5 text-[12px] font-bold text-muted">{TRIGGER_LABEL[v.trigger ?? "chat"] ?? "Chat"}</span>
             {newest && <span className="rounded-full bg-ok-soft px-2.5 py-0.5 text-[12px] font-bold text-ok-ink">current</span>}
-            {v.sim && <span className={`text-[13px] font-bold ${v.sim === "fail" ? "text-fail-ink" : "text-ok-ink"}`}>{v.sim === "fail" ? "Test failed" : "Test passed"}</span>}
+            {!judged && v.sim && <VerdictMarks v={v} />}
             {time && <span className="num ml-auto text-[13px] font-semibold text-muted">{time}</span>}
           </span>
           <span className="mt-1 line-clamp-2 block text-[15px] leading-snug font-bold text-ink">{v.label || "Chat request"}</span>
           {numbers.length > 0 && <span className="num mt-0.5 block text-[14px] text-muted">{numbers.join(" · ")}</span>}
+          {judged && (
+            <span className="mt-1 block">
+              <VerdictMarks v={v} />
+            </span>
+          )}
         </span>
       </button>
       {!newest && !confirm && (

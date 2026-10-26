@@ -12,7 +12,8 @@ The trial folder becomes one `trial` event: reward, verdict, the video copied fl
 step track from the episode trace, and the hand's path and contact force from the physics log.
 
 Without the Robo Use environment, or when a step fails, a trial recorded with the same tools
-(`agent/data/robouse/recorded/`) stands in as `status: recorded`. It says why and whether it is this design;
+(`agent/data/robouse/recorded/`) stands in as `status: recorded`: the one recorded on the design on the bench when
+there is one (the gripper stories' designs), else the example gripper's. It says why and whether it is this design;
 unless it is, nothing in it describes this build.
 """
 
@@ -34,7 +35,8 @@ from pai_agent.paths import DATA_DIR, REPO_ROOT
 from pai_agent.versions import bench_version
 
 RECORDED_DIR = DATA_DIR / "robouse" / "recorded"
-# The recorded trial: the gripper mock story's final design (MG996R, printed TPU pads, the template's sizes) and brief.
+# The example among the recorded trials: the gripper mock story's final design (MG996R, printed TPU pads, the
+# template's sizes) on its 66 mm, 200 g can. The other folders are the designs of the 400 g cube story's fix loop.
 RECORDED_TASK = "anybuild-gripper-cube-66mm-200g-in-bowl"
 # Robo Use's default is the backend's 320 x 320; this reads on a projector and stays near 150 kB for a pick and place.
 RECORD_SIZE = "960x720"
@@ -53,6 +55,12 @@ AGENT_OVERHEAD_S = 120.0
 _RUNNER_OPS = {"status"}
 # Within these the trace counts a hand move as a lift (mostly up) and the object as resting.
 _MOVE_M = 0.005
+
+# What the model does after a fail on this build: the fix loop (orchestrator prompt, the gripper's verdict section).
+FIX_LOOP = (
+    "Name the cause in one sentence from summary and analysis, then ask_user with two or three fixes that grip harder (a stronger servo, "
+    "silicone pads, shorter fingers), build the answer as the next version and run robouse_trial on it; at most two fix rounds."
+)
 
 _TRIAL = re.compile(r"\brobo[\s-]?use\b|\bindependent(?:ly)?\s+(?:test|check|judge|benchmark)", re.IGNORECASE)
 _CLAUDE_CODE = re.compile(r"\bclaude[\s-]?code\b", re.IGNORECASE)
@@ -562,6 +570,14 @@ def summary(trial: dict, outcome: str, gripper: str = "this gripper") -> str:
     peak = trial["metrics"].get("max_contact_force_n")
     if outcome == "invalid":
         return "Not counted: the no-op control scores too, so this task does not test the gripper."
+    if outcome == "pass" and a.get("dropped"):
+        # The end state passes, but the grip did not hold: the cube fell out of the fingers and happened to land on target.
+        where = f", {a['distance_mm'] / 10:.0f} cm from its middle" if a.get("distance_mm") is not None else ""
+        landed = ("on " if design.get("goal") == "pad" else "in ") + target
+        return (
+            f"{who} got the cube {goal} with {gripper} in {trial['steps_used']} of {trial['max_steps']} steps, but it fell out of the fingers "
+            f"during the {a['dropped']} and landed {landed}{where}."
+        )
     if outcome == "pass":
         tail = f", {a['lift_slip_mm']:.1f} mm slip in the lift" if a.get("lift_slip_mm") is not None else ""
         tail += f", peak contact {peak:.1f} N" if peak is not None else ""
@@ -589,14 +605,16 @@ def public(trial: dict) -> dict:
 # The recorded stand-in.
 
 
-def _recorded_design() -> dict:
-    return _json(RECORDED_DIR / RECORDED_TASK / "design.json")
+def recordings() -> list[Path]:
+    """Every recorded trial folder, one design on one brief each, the example first."""
+
+    folders = sorted(p for p in RECORDED_DIR.glob("*") if (p / "design.json").is_file())
+    return sorted(folders, key=lambda p: p.name != RECORDED_TASK)
 
 
-def matches_recorded(state, goal: str) -> bool:
-    """True when the bench holds the design and brief the recorded trial ran with: same servo, pads, sizes and object."""
+def _same_design(state, design: dict, goal: str) -> bool:
+    """True when the bench holds the design and brief a trial was recorded with: same servo, pads, sizes and object."""
 
-    design = _recorded_design()
     part = state.part or {}
     brief = design.get("brief") or {}
     if state.product != "gripper" or part.get("template") != "gripper" or not design:
@@ -616,10 +634,22 @@ def matches_recorded(state, goal: str) -> bool:
     )
 
 
-def read_recorded() -> tuple[dict, dict]:
-    """The recorded reference trial and its validity check."""
+def recording_for(state, goal: str) -> Path | None:
+    """The trial recorded on the design and brief the bench holds, if there is one."""
 
-    folder = RECORDED_DIR / RECORDED_TASK
+    return next((folder for folder in recordings() if _same_design(state, _json(folder / "design.json"), goal)), None)
+
+
+def matches_recorded(state, goal: str) -> bool:
+    """True when a trial was recorded on the design and brief the bench holds."""
+
+    return recording_for(state, goal) is not None
+
+
+def read_recorded(folder: Path | None = None) -> tuple[dict, dict]:
+    """A recorded reference trial and its validity check: this folder's, else the example gripper's."""
+
+    folder = folder or RECORDED_DIR / RECORDED_TASK
     validity, oracle = check_validity(_json(folder / "check.json"), folder)
     if oracle is None:
         raise ValueError("the recorded trial is missing")
@@ -698,13 +728,14 @@ def _answer(event: dict, next_step: str) -> dict:
 
 
 async def _recorded(ctx: Ctx, base: dict, reason: str, goal: str) -> dict:
+    folder = recording_for(ctx.state, goal)
     try:
-        trial, validity = await asyncio.to_thread(read_recorded)
+        trial, validity = await asyncio.to_thread(read_recorded, folder)
     except (OSError, ValueError) as exc:
         message = reason + " The recorded trial could not be read either: " + str(exc)
         await ctx.emit({**base, "status": "failed", "stage": None, "detail": message, "error": message})
         return _fail(message)
-    same = matches_recorded(ctx.state, goal)
+    same = folder is not None
     version = trial["provenance"].get("robouse")
     detail = (
         reason
@@ -716,10 +747,18 @@ async def _recorded(ctx: Ctx, base: dict, reason: str, goal: str) -> dict:
     )
     event = _event(ctx, base, trial, validity, "recorded", detail, {"matches_build": same, "reason": reason})
     await ctx.emit(event)
-    told = "the same design as the bench" if same else "a different design, so none of its numbers describe this build"
+    if same:
+        # Recorded on exactly this design and brief, so its verdict is this version's (the verdict book files it).
+        return _answer(
+            event,
+            "This trial was recorded earlier on the same design and brief as the bench, so its verdict holds for this build. Say in one sentence "
+            "that Robo Use did not run now and that this is its recorded verdict"
+            + (". " + FIX_LOOP if event["verdict"] == "fail" else "."),
+        )
     return _answer(
         event,
-        "This is a recorded trial of " + told + ". Say in one sentence that Robo Use did not run now and why; do not quote its numbers as this build's.",
+        "This is a recorded trial of a different design, so none of its numbers describe this build. Say in one sentence that Robo Use did not "
+        "run now and why; do not quote its numbers as this build's.",
     )
 
 
@@ -799,13 +838,17 @@ async def robouse_trial(ctx: Ctx, args: dict) -> dict:
     elif outcome == "invalid":
         next_step = "Say the task is not counted (the no-op control scores) and do not judge the design on it."
     else:
-        next_step = "Name the cause in one sentence from summary and analysis, then propose a fix (a stronger servo, longer or wider pads, a smaller object) and test again."
+        next_step = FIX_LOOP
     return _answer(event, next_step)
 
 
-async def run_trial_mock(ctx: Ctx, text: str = "") -> None:
+async def run_trial_mock(ctx: Ctx, text: str = "", goal: str = "bowl", again: bool = False) -> dict | None:
     """'Test it in Robo Use' without a key: the same tool, with Mechanic's lines around it. Claude Code drives the
-    gripper only when the prompt names it, and only where its credentials are set."""
+    gripper only when the prompt names it, and only where its credentials are set. `again` introduces it in a few
+    words, for the next version of a fix loop.
+
+    Returns the tool's result when it judged this build (a trial on it, or one recorded on this same design), so a
+    fix loop can follow a fail (mock_gripper.fix_loop); None when it judged nothing here."""
 
     from pai_agent.tools.registry import call_tool
 
@@ -817,32 +860,41 @@ async def run_trial_mock(ctx: Ctx, text: str = "") -> None:
             "Robo Use tests a gripper AnyBuild has built, in its own physics. Ask me for one first, "
             "like 'Design a robot gripper that picks up a 200 g soda can, 66 mm wide', then ask again.",
         )
-        return
+        return None
     brief = state.brief or {}
-    await call_tool(ctx, "mascot_say", {"state": "denkt", "say": "An outside judge. Let's see what it says."})
-    await ctx.chat(
-        "agent",
-        f"Independent test in Robo Use: its own MuJoCo scene, a task written from your brief (put the {brief.get('object_width_mm', 66):g} mm, "
-        f"{brief.get('object_mass_g', 200):g} g cube in the bowl), judged on where the cube ends up. The scripted reference solution has to score 1 and doing nothing 0.",
-    )
-    result = await call_tool(ctx, "robouse_trial", {"harness": "claude-code"} if _CLAUDE_CODE.search(text) else {})
+    await call_tool(ctx, "mascot_say", {"state": "denkt", "say": "Robo Use again." if again else "An outside judge. Let's see what it says."})
+    if again:
+        await ctx.chat("agent", f"Robo Use again: the same task, now on v{bench_version(state)}.")
+    else:
+        await ctx.chat(
+            "agent",
+            f"Independent test in Robo Use: its own MuJoCo scene, a task written from your brief (put the {brief.get('object_width_mm', 66):g} mm, "
+            f"{brief.get('object_mass_g', 200):g} g cube {'on the pad' if goal == 'pad' else 'in the bowl'}), judged on where the cube ends up. "
+            "The scripted reference solution has to score 1 and doing nothing 0.",
+        )
+    args: dict = {"goal": goal}
+    if _CLAUDE_CODE.search(text):
+        args["harness"] = "claude-code"
+    result = await call_tool(ctx, "robouse_trial", args)
     if result.get("ok") is False:
         await call_tool(ctx, "mascot_say", {"state": "besorgt", "say": "Robo Use could not run."})
         await ctx.chat("agent", "Robo Use could not run: " + str(result.get("error")))
-        return
+        return None
     outcome = result.get("verdict")
     if result.get("status") == "recorded":
         await call_tool(ctx, "mascot_say", {"state": "erklaert", "say": "A recorded run. Nothing ran just now."})
-        if (result.get("recorded") or {}).get("matches_build"):
+        same = bool((result.get("recorded") or {}).get("matches_build"))
+        if same:
             line = "Robo Use did not run on this machine, so this is the trial recorded earlier on this same design. " + str(result.get("summary") or "")
         else:
             line = "Robo Use did not run on this machine, and the recorded trial is of AnyBuild's example gripper, so it does not judge this build."
         await ctx.chat("agent", line)
-        return
+        return result if same else None
     mood = {"pass": "freut_sich", "fail": "besorgt"}.get(str(outcome), "erklaert")
     say = {"pass": "Robo Use says it works.", "fail": "Robo Use found a flaw.", "refused": "It cannot even take the cube."}.get(str(outcome), "Not counted.")
     await call_tool(ctx, "mascot_say", {"state": mood, "say": say})
     await ctx.chat("agent", str(result.get("summary") or result.get("detail") or ""))
+    return result
 
 
 SCHEMA = {

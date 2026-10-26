@@ -46,8 +46,9 @@ const PARAM_LABELS: Record<string, string> = {
   diagonal_mm: "Diagonal",
   plate_width_mm: "Plate width",
 };
-const paramLabel = (key: string) =>
-  PARAM_LABELS[key] ?? key.replace(/_(mm|deg|g)$/, "").replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
+/** "finger_length_mm" as "Finger length"; a product's "base.length_mm" as "Base length". */
+export const paramLabel = (key: string) =>
+  PARAM_LABELS[key] ?? key.replace(/_(mm|deg|g)$/, "").replace(/[._]/g, " ").replace(/^\w/, (c) => c.toUpperCase());
 
 class LoadBoundary extends Component<{ children: ReactNode; fallback: ReactNode; resetKey: string }, { failed: boolean }> {
   state = { failed: false };

@@ -1,0 +1,68 @@
+{
+  "task_name": "anybuild-gripper-cube-53mm-400g-in-bowl",
+  "trial_name": "anybuild-gripper-cube-53mm-400g-in-bowl__oracle__73a093",
+  "status": "completed",
+  "source": "AnyBuild",
+  "agent_info": {
+    "name": "oracle",
+    "model_info": {
+      "name": "scripted",
+      "provider": null
+    },
+    "interface": "cli"
+  },
+  "verifier_result": {
+    "rewards": {
+      "reward": 1.0
+    }
+  },
+  "episode": {
+    "task": "anybuild-gripper-cube-53mm-400g-in-bowl",
+    "seed": 0,
+    "success": true,
+    "success_ever": true,
+    "success_mode": "final",
+    "outcome": "done",
+    "steps_used": 242,
+    "max_steps": 800,
+    "requests": 9,
+    "agent_text": "the cube is in the bowl",
+    "wall_time_s": 2.41,
+    "embodiment_mode": "sim",
+    "metrics": {
+      "success": 1,
+      "progress": 1.0,
+      "safety_events": 0,
+      "safe_failure": null,
+      "excellent": 1,
+      "execution_time_s": 4.84,
+      "execution_speed": 12.3967,
+      "control_dt_s": 0.02,
+      "smoothness_sparc": -15.2201,
+      "avg_jerk": 176.3378,
+      "path_length_m": 1.1553,
+      "max_contact_force_n": 7.034
+    },
+    "video_size": [
+      960,
+      720
+    ],
+    "signature": "5af792a11bc15b8143b8eab4422d295b2cac27ce951fede3e7e3d104208fcedc"
+  },
+  "agent_return_code": 0,
+  "agent_timed_out": false,
+  "exception_info": null,
+  "started_at": "2026-10-26T04:43:33.692427+00:00",
+  "finished_at": "2026-10-26T04:43:41.922991+00:00",
+  "wall_time_s": 8.2,
+  "embodiment_mode": "sim",
+  "cost": {
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "cached_tokens": null,
+    "cost_usd": 0.0,
+    "cost_source": "no model"
+  },
+  "image_input": null,
+  "budget_stop": null
+}

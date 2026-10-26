@@ -1,6 +1,7 @@
 // Two versions side by side in the Model tab: one synchronised camera for both
 // canvases, the parts that changed glow in the agent orange, and a table of the
-// parts and numbers underneath. Opened from the Versions tab of the right panel.
+// verdicts, parts and numbers underneath, the independent verdicts (Robo Use) first.
+// Opened from the Versions tab of the right panel.
 import { Environment, Lightformer, OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame, useLoader, useThree } from "@react-three/fiber";
 import { ArrowRight, X } from "lucide-react";
@@ -8,12 +9,13 @@ import { Component, Suspense, useEffect, useId, useLayoutEffect, useMemo, useRef
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { useSession } from "../../events/store";
-import type { VersionEvent } from "../../events/types";
+import type { VersionEvent, VersionVerdict } from "../../events/types";
 import { assetUrl } from "../../lib/api";
 import { enLabel } from "../../lib/copy";
 import { fmtNum } from "../../lib/format";
 import { useUi } from "../../lib/ui";
-import { partColor } from "./CadView";
+import { failedVerdict, VerdictMarks } from "../studio/VersionVerdicts";
+import { paramLabel, partColor } from "./CadView";
 import { HeroDrone, useDroneUrl } from "./HeroDrone";
 
 const AGENT = new THREE.Color("#ff8a3d");
@@ -186,6 +188,8 @@ interface Row {
   /** Whether the change is good, bad, or neither. */
   tone: "ok" | "fail" | "none";
   changed: boolean;
+  /** A verdict row colours each version's verdict as a pass or a fail. */
+  tones?: ["ok" | "fail" | "none", "ok" | "fail" | "none"];
 }
 
 const DRONE_NUMBERS = [
@@ -204,8 +208,48 @@ function numberRow(key: string, label: string, unit: string, digits: number, bet
   return { key, label, before: show(a), after: show(b), delta: changed ? `${d > 0 ? "+" : "−"}${fmtNum(Math.abs(d), digits)}` : "", tone, changed };
 }
 
-function compareRows(a: VersionEvent, b: VersionEvent): Row[] {
+const ownWord = (sim: VersionEvent["sim"]) => (sim === "fail" ? "failed" : sim === "pass" ? "passed" : "–");
+const verdictCell = (v: VersionVerdict | undefined) =>
+  !v ? "not judged" : v.verdict === "invalid" ? "not counted" : v.verdict === "refused" ? "can't take it" : `${v.verdict === "pass" ? "passed" : "failed"} · reward ${v.reward ?? "–"}`;
+const cellTone = (v: VersionVerdict | undefined) => (!v || v.verdict === "invalid" ? "none" : v.verdict === "pass" ? "ok" : "fail");
+const ownTone = (sim: VersionEvent["sim"]) => (sim === "pass" ? "ok" : sim === "fail" ? "fail" : "none");
+
+/** One row per judge and policy, keyed like the version diff: `robouse`, or `robouse:claude-code` for an agent's trial. */
+const verdictKey = (v: VersionVerdict) => (v.harness === "oracle" ? v.judge : `${v.judge}:${v.harness}`);
+
+/** The own test and each independent verdict, when either version was judged: what the comparison is about. */
+function verdictRows(a: VersionEvent, b: VersionEvent): Row[] {
+  const before = new Map((a.verdicts ?? []).map((v) => [verdictKey(v), v]));
+  const after = new Map((b.verdicts ?? []).map((v) => [verdictKey(v), v]));
+  if (before.size === 0 && after.size === 0) return [];
   const rows: Row[] = [];
+  if (a.sim || b.sim) {
+    const changed = a.sim !== b.sim;
+    rows.push({
+      key: "verdict:own",
+      label: "Own test",
+      before: ownWord(a.sim),
+      after: ownWord(b.sim),
+      delta: "",
+      tone: changed ? (b.sim === "pass" ? "ok" : "fail") : "none",
+      changed,
+      tones: [ownTone(a.sim), ownTone(b.sim)],
+    });
+  }
+  for (const key of new Set([...before.keys(), ...after.keys()])) {
+    const x = before.get(key);
+    const y = after.get(key);
+    const changed = verdictCell(x) !== verdictCell(y);
+    const d = typeof x?.reward === "number" && typeof y?.reward === "number" ? y.reward - x.reward : 0;
+    const tone = !changed || !y || y.verdict === "invalid" ? "none" : y.verdict === "pass" ? "ok" : "fail";
+    const delta = d ? `${d > 0 ? "+" : "−"}${fmtNum(Math.abs(d), 0)}` : "";
+    rows.push({ key: `verdict:${key}`, label: (y ?? x)!.label, before: verdictCell(x), after: verdictCell(y), delta, tone, changed, tones: [cellTone(x), cellTone(y)] });
+  }
+  return rows;
+}
+
+function compareRows(a: VersionEvent, b: VersionEvent): Row[] {
+  const rows: Row[] = verdictRows(a, b);
   const drone = (b.product ?? "drone") === "drone";
   for (const m of drone ? DRONE_NUMBERS : DRONE_NUMBERS.filter((m) => m.key === "weight_g" || m.key === "price_eur")) {
     const row = numberRow(m.key, m.label, m.unit, m.digits, m.better, a[m.key], b[m.key]);
@@ -226,7 +270,7 @@ function compareRows(a: VersionEvent, b: VersionEvent): Row[] {
   for (const [name, value] of Object.entries(b.params ?? {})) {
     const old = a.params?.[name];
     if (typeof old !== "number" || old === value) continue;
-    const row = numberRow(`param:${name}`, name, name.endsWith("_mm") ? "mm" : "", 1, 0, old, value);
+    const row = numberRow(`param:${name}`, paramLabel(name), name.endsWith("_mm") ? "mm" : "", 1, 0, old, value);
     if (row) rows.push(row);
   }
   const reqs = new Map((a.requirements ?? []).map((r) => [r.id, r]));
@@ -268,10 +312,18 @@ function changedParts(a: VersionEvent, b: VersionEvent, drone: boolean): Set<str
 function Pane({ version, side, glow, shared, drone }: { version: VersionEvent; side: "A" | "B"; glow: Set<string>; shared: SharedCamera; drone: boolean }) {
   return (
     <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden rounded-[16px] bg-white/60 ring-1 ring-line">
-      <div className="absolute top-3 left-3 z-10 flex max-w-[85%] items-center gap-2 rounded-full bg-white/90 py-1 pr-3 pl-1 shadow-[var(--shadow-pill)] backdrop-blur">
-        <span className={`num rounded-full px-2 py-0.5 text-[13px] font-bold text-white ${version.sim === "fail" ? "bg-fail" : "bg-ok"}`}>v{version.n}</span>
-        <span className="truncate text-[14px] font-semibold text-ink">{version.label || `v${version.n}`}</span>
-        <span className="sr-only">version {side}</span>
+      <div className="absolute top-3 left-3 z-10 flex max-w-[85%] flex-col items-start gap-1.5">
+        <div className="flex max-w-full items-center gap-2 rounded-full bg-white/90 py-1 pr-3 pl-1 shadow-[var(--shadow-pill)] backdrop-blur">
+          <span className={`num rounded-full px-2 py-0.5 text-[13px] font-bold text-white ${version.sim === "fail" || failedVerdict(version) ? "bg-fail" : "bg-ok"}`}>v{version.n}</span>
+          <span className="truncate text-[14px] font-semibold text-ink">{version.label || `v${version.n}`}</span>
+          <span className="sr-only">version {side}</span>
+        </div>
+        {/* The independent verdicts in a pill of their own, so a long label never pushes them out. */}
+        {(version.verdicts ?? []).length > 0 && (
+          <div className="max-w-full rounded-[14px] bg-white/90 px-3 py-1 shadow-[var(--shadow-pill)] backdrop-blur">
+            <VerdictMarks v={version} own={false} />
+          </div>
+        )}
       </div>
       <LoadBoundary fallback={<NoModel />}>
         {drone ? <DroneScene version={version} highlight={glow} shared={shared} /> : <ProductScene version={version} glow={glow} shared={shared} />}
@@ -338,8 +390,8 @@ export function CompareView({ pair }: { pair: [number, number] }) {
                   {r.changed && r.key.startsWith("part:") && <span className="mr-1.5 inline-block h-2 w-2 rounded-full bg-agent" />}
                   {r.label}
                 </td>
-                <td className={`py-1.5 pr-3 ${r.changed ? "text-muted" : ""}`}>{r.before}</td>
-                <td className={`py-1.5 pr-3 ${r.changed ? "font-semibold text-ink" : ""}`}>{r.after}</td>
+                <td className={`py-1.5 pr-3 ${r.tones ? `font-semibold ${TONE[r.tones[0]]}` : r.changed ? "text-muted" : ""}`}>{r.before}</td>
+                <td className={`py-1.5 pr-3 ${r.tones ? `font-semibold ${TONE[r.tones[1]]}` : r.changed ? "font-semibold text-ink" : ""}`}>{r.after}</td>
                 <td className={`py-1.5 text-right font-semibold ${TONE[r.tone]}`}>{r.delta || (r.changed && !r.key.startsWith("part:") ? r.after : "")}</td>
               </tr>
             ))}

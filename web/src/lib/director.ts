@@ -11,8 +11,10 @@ interface Shot {
   pane?: SimPane;
 }
 
-function shotFor({ ev }: LoggedEvent, state: SessionState): Shot | null {
+function shotFor({ ev }: LoggedEvent, state: SessionState, previous?: SessionState): Shot | null {
   if (ev.type === "version") {
+    // A version published again with a verdict is no new build: the view stays on the trial that brought it.
+    if (previous?.versions.some((v) => v.n === ev.n)) return null;
     const before = state.versions.filter((v) => v.n < ev.n && (v.product ?? "drone") === (ev.product ?? "drone")).at(-1);
     return { tab: "modell", look: "3d", compare: before ? [before.n, ev.n] : null };
   }
@@ -71,7 +73,7 @@ export function useDirector() {
         useUi.setState({ compare: null, selectedVersion: null, selectedRun: null });
         return;
       }
-      const shot = shotFor(entry, state);
+      const shot = shotFor(entry, state, previous);
       if (shot) {
         pending = shot;
         sync();

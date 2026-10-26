@@ -175,6 +175,7 @@ In mock mode the first request builds drone version 1 to your budget; the change
 
 Without `ANTHROPIC_API_KEY` and without a logged-in local Claude Code (see `PAI_LLM_PROVIDER`), the backend runs scripted stories through the same tools that Claude calls: the drone from a typed request and a typed change, the phone stand (a tip-over failure fixed by a wider base), the robot gripper (an SG90 servo that drops the can, replaced by an MG996R) and the reference builds.
 After the gripper, "Test it in Robo Use" runs it in the independent Robo Use benchmark; without the bridge's environment a trial recorded on the same design stands in, labelled as recorded.
+A gripper request that says where the object goes, such as "Gripper that puts a 400 g cube into a bowl", gets that judge on its own after version 1, and a failed verdict starts the fix loop (see [Robo Use trials](#robo-use-trials-for-a-designed-gripper)).
 The top bar says whether Claude runs on the API key, on the local subscription, or the mock runs.
 `PAI_FORCE_MOCK=1` forces the mock even with a key.
 
@@ -387,7 +388,19 @@ The export writes one self-contained MJCF file from the FreeCAD build: the parts
 [anybuild-robouse/README.md](anybuild-robouse/README.md) has the details.
 
 In the app, `robouse_trial` does all of this for the gripper on the bench: after a gripper build, ask "Test it in Robo Use" and the trial shows in the Simulation tab's Robo Use pane with its verdict, video, robo requests and the hand's path.
-Without the bridge's environment a trial recorded on the gripper mock story's design stands in, labelled as recorded; `PAI_ROBOUSE_BIN` names another `anybuild-robouse`.
+Without the bridge's environment a trial recorded on the same design stands in, labelled as recorded; `PAI_ROBOUSE_BIN` names another `anybuild-robouse`.
+
+Each verdict lands in the verdict book of the version it judged, so the Versions tab, the side-by-side comparison, the chat's version cards and the Logbook show AnyBuild's own test and Robo Use's verdict next to each other.
+A failed verdict starts the fix loop: Mechanic names the cause from the trial, offers two or three fixes that grip harder (a stronger servo, silicone pads, shorter fingers) with AnyBuild's own grip numbers as a question, builds the chosen one as the next version and has Robo Use judge it again, for at most two rounds before the user decides.
+
+```text
+Gripper that puts a 400 g cube into a bowl
+```
+
+In the offline demo this builds version 1 with the MG996R servo and printed pads around a 53 mm cube (400 g of aluminium, proposed by Mechanic).
+AnyBuild's own grip test passes it at 2.1x, but Robo Use's reference solution lets the cube slip 7.1 mm in the lift and drop it in the carry: reward 0.
+Every offered fix passes as version 2 (reward 1), and Mechanic opens the comparison of both versions.
+`agent/data/robouse/recorded/` holds a trial recorded on each of these designs, so the story plays the same without Robo Use; `cd agent && uv run python scripts/record_robouse_trial.py --story` records them again with the real bridge and FreeCAD.
 
 ## Testing
 

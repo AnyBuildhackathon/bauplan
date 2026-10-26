@@ -81,6 +81,114 @@ class SnapshotAndDiff(unittest.TestCase):
         self.assertEqual(versions.diff(None, v2), [])
 
 
+def _trial(ctx: Ctx, tid: str, verdict: str, reward: float | None, status: str = "done", matches: bool = True, harness: str = "oracle") -> dict:
+    """A finished trial event as robouse_trial publishes it, on the version the bench holds; returns the tool's answer."""
+
+    event = {
+        "type": "trial",
+        "id": tid,
+        "status": status,
+        "harness": harness,
+        "verdict": verdict,
+        "reward": reward,
+        "summary": "The reference solution " + ("put the cube in the bowl." if verdict == "pass" else "dropped the cube."),
+        "version": versions.bench_version(ctx.state),
+        "recorded": {"matches_build": matches, "reason": "Robo Use is turned off here."} if status == "recorded" else None,
+    }
+    ctx.bus.events.append(event)
+    return {"ok": True, "id": tid, "status": status, "verdict": verdict}
+
+
+class VerdictBook(unittest.TestCase):
+    """Independent verdicts (Robo Use) land in the book of the version they judged, next to the version's own test."""
+
+    def _committed(self, length: float = 110, feet: str = "rubber-feet-10mm") -> Ctx:
+        ctx = _generic_ctx(length, feet, met=True)
+        ctx.trigger = "chat"
+        asyncio.run(versions.commit(ctx, label="Design a phone stand"))
+        return ctx
+
+    def test_a_verdict_after_the_commit_joins_that_version_and_publishes_it_again(self):
+        ctx = self._committed()
+        self.assertEqual(ctx.state.versions[0]["verdicts"], [])
+        self.assertEqual(versions.bench_version(ctx.state), 1)
+        # call_tool hands every finished robouse_trial to after_tool.
+        asyncio.run(versions.after_tool(ctx, "robouse_trial", {}, _trial(ctx, "trial-a", "fail", 0.0)))
+        [verdict] = ctx.state.versions[0]["verdicts"]
+        self.assertEqual(
+            {k: verdict[k] for k in ("judge", "label", "trial_id", "harness", "verdict", "reward", "status")},
+            {"judge": "robouse", "label": "Robo Use", "trial_id": "trial-a", "harness": "oracle", "verdict": "fail", "reward": 0.0, "status": "done"},
+        )
+        published = [ev for ev in ctx.bus.events if ev["type"] == "version"]
+        self.assertEqual([ev["n"] for ev in published], [1, 1])
+        self.assertEqual(published[-1]["verdicts"], ctx.state.versions[0]["verdicts"])
+        # The same judge again replaces its verdict; Claude Code driving it is a second line.
+        asyncio.run(versions.record_verdict(ctx, _trial(ctx, "trial-b", "pass", 1.0)))
+        asyncio.run(versions.record_verdict(ctx, _trial(ctx, "trial-c", "fail", 0.0, harness="claude-code")))
+        book = ctx.state.versions[0]["verdicts"]
+        self.assertEqual([(v["trial_id"], v["label"]) for v in book], [("trial-b", "Robo Use"), ("trial-c", "Robo Use, Claude Code")])
+
+    def test_the_next_version_diffs_its_verdict_against_the_last(self):
+        ctx = self._committed()
+        asyncio.run(versions.record_verdict(ctx, _trial(ctx, "trial-1", "fail", 0.0)))
+        ctx.state.picked["feet"] = {"id": "rubber-feet-12mm", "name": "Rubber Feet 12Mm"}
+        # A chat rebuild in the run where Robo Use failed v1 answers that verdict.
+        second = asyncio.run(versions.commit(ctx, label="Fix for Robo Use: bigger feet"))
+        self.assertEqual(second["trigger"], "check_failed")
+        self.assertNotIn("verdict:robouse", {row["key"] for row in second["diff"]})
+        asyncio.run(versions.record_verdict(ctx, _trial(ctx, "trial-2", "pass", 1.0)))
+        rows = {row["key"]: row for row in ctx.state.versions[1]["diff"]}
+        self.assertEqual((rows["verdict:robouse"]["before"], rows["verdict:robouse"]["after"]), ("fail, reward 0", "pass, reward 1"))
+        self.assertEqual(rows["verdict:robouse"]["label"], "Robo Use")
+        self.assertEqual([v["verdict"] for v in ctx.state.versions[0]["verdicts"]], ["fail"])
+        last = [ev for ev in ctx.bus.events if ev["type"] == "version"][-1]
+        self.assertEqual((last["n"], last["verdicts"][0]["verdict"]), (2, "pass"))
+
+    def test_a_rebuild_after_a_passed_verdict_is_a_plain_chat_version(self):
+        ctx = self._committed()
+        asyncio.run(versions.record_verdict(ctx, _trial(ctx, "trial-ok", "pass", 1.0)))
+        ctx.state.picked["feet"] = {"id": "rubber-feet-12mm", "name": "Rubber Feet 12Mm"}
+        second = asyncio.run(versions.commit(ctx, label="Make it cheaper"))
+        self.assertEqual(second["trigger"], "chat")
+
+    def test_a_verdict_on_a_changed_bench_waits_for_that_design_to_be_committed(self):
+        ctx = self._committed()
+        # A swap after the commit: the bench is the next version, even before its bill of materials.
+        ctx.state.picked["feet"] = {"id": "rubber-feet-12mm", "name": "Rubber Feet 12Mm"}
+        self.assertEqual(versions.bench_version(ctx.state), 2)
+        asyncio.run(versions.record_verdict(ctx, _trial(ctx, "trial-early", "pass", 1.0)))
+        self.assertEqual(ctx.state.versions[0]["verdicts"], [])
+        self.assertEqual(len(ctx.state.pending_verdicts), 1)
+        second = asyncio.run(versions.commit(ctx, label="Bigger feet"))
+        self.assertEqual([v["trial_id"] for v in second["verdicts"]], ["trial-early"])
+        self.assertNotIn("bench", second["verdicts"][0])
+        self.assertEqual(ctx.state.pending_verdicts, [])
+
+    def test_a_verdict_on_a_design_that_changed_again_before_its_commit_is_dropped(self):
+        ctx = self._committed()
+        ctx.state.picked["feet"] = {"id": "rubber-feet-12mm", "name": "Rubber Feet 12Mm"}
+        asyncio.run(versions.record_verdict(ctx, _trial(ctx, "trial-stale", "pass", 1.0)))
+        ctx.state.built["base"]["params"]["length_mm"] = 150
+        second = asyncio.run(versions.commit(ctx, label="Bigger feet and a longer base"))
+        self.assertEqual(second["verdicts"], [])
+        self.assertEqual(ctx.state.pending_verdicts, [])
+
+    def test_only_a_trial_that_judged_this_design_counts(self):
+        ctx = self._committed()
+        # A recorded trial of another design, a run that could not start and one still running say nothing about v1.
+        asyncio.run(versions.record_verdict(ctx, _trial(ctx, "trial-example", "pass", 1.0, status="recorded", matches=False)))
+        asyncio.run(versions.record_verdict(ctx, _trial(ctx, "trial-broken", "fail", None, status="failed")))
+        self.assertEqual(ctx.state.versions[0]["verdicts"], [])
+        asyncio.run(versions.record_verdict(ctx, _trial(ctx, "trial-same", "fail", 0.0, status="recorded")))
+        asyncio.run(versions.record_verdict(ctx, _trial(ctx, "trial-refused", "refused", None, status="failed", harness="claude-code")))
+        book = {v["trial_id"]: v for v in ctx.state.versions[0]["verdicts"]}
+        self.assertEqual(set(book), {"trial-same", "trial-refused"})
+        self.assertEqual(versions.verdict_text(book["trial-same"]), "fail, reward 0")
+        self.assertEqual(versions.verdict_text(book["trial-refused"]), "cannot take the object")
+        self.assertIsNone(book["trial-refused"]["reward"])
+        self.assertEqual(versions.verdict_text({"verdict": "invalid", "reward": 0.0}), "not counted")
+
+
 class Restore(unittest.TestCase):
     def test_generic_restore_rebuilds_the_saved_build_through_the_tools(self):
         ctx = _generic_ctx(110, "rubber-feet-10mm", met=True)

@@ -3,11 +3,17 @@
 Every product, the drone included, commits a version here after its bill of materials; `snapshot` adds
 the model copy, the requirement results and what a restore needs. A restore rebuilds an old version
 through the same tools as any build and commits it as a new version, so history only grows.
+
+Each version also keeps a verdict book: what independent judges (Robo Use, `robouse_trial`) said about that
+exact design, next to AnyBuild's own test in `sim`. A verdict usually arrives after its version is committed,
+and the version is then published again with it; one given on a bench that is not a version yet waits for the
+commit of that same design.
 """
 
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import time
 from pathlib import Path
@@ -15,6 +21,8 @@ from pathlib import Path
 from pai_agent.context import Ctx
 
 TRIGGERS = ("chat", "library", "check_failed", "restore")
+# Independent judges whose verdicts a version keeps, by the tool that asks them.
+JUDGES = {"robouse_trial": ("robouse", "Robo Use")}
 
 # Drone numbers in the existing diff shape: key, label, unit.
 _DRONE_NUMBERS = (
@@ -75,7 +83,15 @@ def _params(state) -> dict[str, float]:
     if state.product == "drone":
         return {name: value for name, value in state.cad_params.items() if isinstance(value, (int, float))}
     params = (state.part or {}).get("params") or {}
-    return {name: value for name, value in params.items() if isinstance(value, (int, float))}
+    # The gripper's servo pocket follows the chosen servo (tools/gripper.servo_params): the servo is the part row, not a dimension.
+    return {name: value for name, value in params.items() if isinstance(value, (int, float)) and not name.startswith("servo_")}
+
+
+def _param_label(name: str) -> str:
+    """'finger_length_mm' -> 'Finger length', a product's 'base.length_mm' -> 'Base length'."""
+
+    words = re.sub(r"_(mm|deg|g)$", "", name).replace(".", " ").replace("_", " ")
+    return words[:1].upper() + words[1:]
 
 
 def _requirements(state) -> list[dict]:
@@ -86,7 +102,7 @@ def _requirements(state) -> list[dict]:
 
 
 def diff(previous: dict | None, current: dict) -> list[dict]:
-    """Rows `{key, label, before, after, unit}`: numbers, swapped parts, CAD parameters and flipped requirements."""
+    """Rows `{key, label, before, after, unit}`: numbers, swapped parts, CAD parameters, flipped requirements and verdicts."""
 
     if not previous:
         return []
@@ -112,7 +128,7 @@ def diff(previous: dict | None, current: dict) -> list[dict]:
         before = before_params.get(name)
         if isinstance(before, (int, float)) and before != value:
             unit = "mm" if name.endswith("_mm") else ""
-            rows.append({"key": "param:" + name, "label": name, "before": before, "after": value, "unit": unit})
+            rows.append({"key": "param:" + name, "label": _param_label(name), "before": before, "after": value, "unit": unit})
     before_reqs = {r["id"]: r for r in previous.get("requirements") or []}
     for requirement in current.get("requirements") or []:
         old = before_reqs.get(requirement["id"])
@@ -127,7 +143,121 @@ def diff(previous: dict | None, current: dict) -> list[dict]:
                 "unit": "",
             }
         )
+    before_verdicts = {_verdict_key(v): v for v in previous.get("verdicts") or []}
+    for verdict in current.get("verdicts") or []:
+        old = before_verdicts.get(_verdict_key(verdict))
+        if old is None or verdict_text(old) == verdict_text(verdict):
+            continue
+        rows.append({"key": "verdict:" + _verdict_key(verdict), "label": verdict["label"], "before": verdict_text(old), "after": verdict_text(verdict), "unit": ""})
     return rows
+
+
+# The verdict book (docs/events.md, version: verdicts).
+
+
+def _verdict_key(verdict: dict) -> str:
+    """One entry per judge and policy: the reference solution's verdict and Claude Code's are kept apart."""
+
+    harness = verdict.get("harness") or "oracle"
+    return verdict["judge"] + ("" if harness == "oracle" else ":" + harness)
+
+
+def verdict_text(verdict: dict) -> str:
+    """'pass, reward 1', 'fail, reward 0', 'not counted' or 'cannot take the object'."""
+
+    outcome = verdict.get("verdict")
+    if outcome == "invalid":
+        return "not counted"
+    if outcome == "refused":
+        return "cannot take the object"
+    reward = verdict.get("reward")
+    return str(outcome) + (f", reward {reward:g}" if isinstance(reward, (int, float)) else "")
+
+
+def verdict_of(event: dict | None) -> dict | None:
+    """The verdict book entry for a finished trial event, or None when it judged nothing about this build.
+
+    A trial counts when it ran on this build, when it was recorded earlier on this same design, or when the task
+    generator refused this design; a recorded trial of another design, one still running and one that could not
+    run say nothing about the version on the bench.
+    """
+
+    if not event or event.get("type") != "trial" or event.get("status") == "running":
+        return None
+    recorded = event.get("recorded") or {}
+    if event.get("status") == "recorded" and not recorded.get("matches_build"):
+        return None
+    if event.get("status") == "failed" and event.get("verdict") != "refused":
+        return None
+    if event.get("verdict") not in {"pass", "fail", "invalid", "refused"}:
+        return None
+    judge, label = JUDGES["robouse_trial"]
+    harness = str(event.get("harness") or "oracle")
+    return {
+        "judge": judge,
+        "label": label + ("" if harness == "oracle" else ", Claude Code" if harness == "claude-code" else ", " + harness),
+        "trial_id": event.get("id"),
+        "harness": harness,
+        "verdict": event["verdict"],
+        "reward": event.get("reward") if event.get("verdict") != "refused" else None,
+        "status": event.get("status"),
+        "summary": str(event.get("summary") or ""),
+        "at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+    }
+
+
+def _file_verdict(version: dict, verdict: dict) -> None:
+    """Adds a verdict to a version's book; a newer one of the same judge and policy replaces the older."""
+
+    key = _verdict_key(verdict)
+    version["verdicts"] = [v for v in version.get("verdicts") or [] if _verdict_key(v) != key] + [verdict]
+
+
+def _bench(state) -> dict:
+    """What a version stands for when a judge looks at it: its parts and CAD parameters."""
+
+    return {"parts": _parts(state), "params": _params(state)}
+
+
+async def record_verdict(ctx: Ctx, result: dict) -> dict | None:
+    """Files a finished trial in the verdict book of the version it judged and publishes that version again.
+
+    The trial names the bench version it ran on (`bench_version`). When that version is committed, the verdict joins
+    it now; when the bench is not a version yet, it waits for the commit of this same design (`commit`), and a design
+    that changes before its commit drops it. Returns the version it joined, else None.
+    """
+
+    state = ctx.state
+    event = _last(ctx, "trial", lambda ev: ev.get("id") == result.get("id"))
+    verdict = verdict_of(event)
+    if verdict is None or event is None:
+        return None
+    n = event.get("version")
+    version = next((v for v in state.versions if v["n"] == n), None)
+    if version is None:
+        key = _verdict_key(verdict)
+        state.pending_verdicts = [v for v in state.pending_verdicts if _verdict_key(v) != key] + [{**verdict, "n": n, "bench": _bench(state)}]
+        return None
+    _file_verdict(version, verdict)
+    if verdict["verdict"] in {"fail", "refused"}:
+        # The next version this run commits answers this verdict (_trigger).
+        ctx.verdict_failed = n
+    previous = next((v for v in state.versions if v["n"] == n - 1), None)
+    version["diff"] = diff(previous, version)
+    await ctx.emit({"type": "version", **version})
+    return version
+
+
+def _take_pending(state, version: dict) -> list[dict]:
+    """The waiting verdicts given on exactly this design, for its commit; the rest judged a bench that changed."""
+
+    bench = {"parts": version.get("parts") or {}, "params": version.get("params") or {}}
+    book: dict = {"verdicts": []}
+    for verdict in state.pending_verdicts:
+        if verdict.get("n") == version["n"] and verdict.get("bench") == bench:
+            _file_verdict(book, {k: v for k, v in verdict.items() if k not in {"n", "bench"}})
+    state.pending_verdicts = []
+    return book["verdicts"]
 
 
 def _write_restorable(state, folder: Path) -> None:
@@ -202,14 +332,22 @@ def _trigger(ctx: Ctx, version: dict, previous: dict | None) -> str:
         failed = {r["id"] for r in previous.get("requirements") or [] if r.get("met") is False}
         if any(r["id"] in failed and r.get("met") is True for r in version.get("requirements") or []):
             return "check_failed"
+        # So does a rebuild in the run where an independent judge failed the last version (the fix loop).
+        if getattr(ctx, "verdict_failed", None) == previous["n"]:
+            return "check_failed"
     return trigger
 
 
 def bench_version(state) -> int:
-    """The number of the version on the bench: the one its bill of materials committed, or the next one."""
+    """The number of the version on the bench: the one its bill of materials committed, or the next one.
+
+    A part swapped or a dimension changed since that commit makes the bench the next version, even before its
+    bill of materials: a test run on it then judges the design that comes next, not the one committed."""
 
     if state.versions and (state.bom or {}).get("version") == len(state.versions):
-        return len(state.versions)
+        last = state.versions[-1]
+        if _bench(state) == {"parts": last.get("parts") or {}, "params": last.get("params") or {}}:
+            return len(state.versions)
     return len(state.versions) + 1
 
 
@@ -242,6 +380,8 @@ async def commit(ctx: Ctx, label: str | None = None, restored_from: int | None =
     snapshot(ctx, version, trigger, label, restored_from)
     if not restored_from:
         version["trigger"] = _trigger(ctx, version, previous)
+    # Verdicts given on this design before its bill of materials; the ones given after it arrive through record_verdict.
+    version["verdicts"] = _take_pending(state, version)
     version["diff"] = diff(previous, version)
     weight, price = version.get("weight_g"), version.get("price_eur")
     pieces = [f"{weight:.1f} g" if isinstance(weight, (int, float)) else ""]
@@ -258,10 +398,13 @@ async def commit(ctx: Ctx, label: str | None = None, restored_from: int | None =
 
 
 async def after_tool(ctx: Ctx, name: str, args: dict, result: dict) -> None:
-    """Hooked into call_tool: every product commits a version after its bill of materials."""
+    """Hooked into call_tool: every product commits a version after its bill of materials, and an independent
+    judge's verdict lands in the book of the version it judged."""
 
     if name == "bom_build":
         await commit(ctx, label=getattr(ctx, "label", None), restored_from=getattr(ctx, "restored_from", None))
+    elif name in JUDGES:
+        await record_verdict(ctx, result)
 
 
 def public(version: dict) -> dict:
