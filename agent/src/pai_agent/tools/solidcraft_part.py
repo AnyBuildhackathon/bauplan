@@ -275,6 +275,33 @@ def _joint_rows(build: solidcraft.Build) -> list[dict]:
     return rows
 
 
+def explode_joints(components: list[dict], joints: list[dict]) -> list[dict]:
+    """Each joint's axis and place in the design's frame, and the part on either side with its bodies, for the explode view."""
+
+    by_occurrence = {}
+    for component in components:
+        if component.get("parent") is None:
+            continue
+        for occurrence in component.get("occurrences") or []:
+            by_occurrence[int(occurrence["id"])] = {"part": component["name"], "bodies": list(component.get("bodies") or [])}
+    rows = []
+    for joint in joints:
+        frame = joint.get("frame_a") or {}
+        fixed, moving = by_occurrence.get(int(joint["a"])), by_occurrence.get(int(joint["b"]))
+        if joint.get("suppressed") or not frame.get("origin") or not fixed or not moving or not fixed["bodies"] or not moving["bodies"]:
+            continue
+        rows.append(
+            {
+                "name": joint["name"],
+                "axis": [round(float(v), 6) or 0.0 for v in frame.get("z") or [0.0, 0.0, 1.0]],
+                "at_mm": [round(float(v), 4) or 0.0 for v in frame["origin"]],
+                "moving": moving,
+                "fixed": fixed,
+            }
+        )
+    return rows
+
+
 def _link_rows(build: solidcraft.Build) -> list[dict]:
     by_id = {int(joint["id"]): joint["name"] for joint in build.joints}
     rows = []
@@ -415,6 +442,7 @@ async def solidcraft_part(ctx: Ctx, args: dict) -> dict:
             "view_png_url": None,
             "script_url": url("script"),
             "design_url": url("design"),
+            "joints": explode_joints(build.components, build.joints),
             "part": {
                 "name": name,
                 "material": material,

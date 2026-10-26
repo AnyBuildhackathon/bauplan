@@ -77,21 +77,10 @@ async function toModel3d() {
   if (useUi.getState().look !== "3d") await press("look:3d", "", () => useUi.getState().setLook("3d"));
 }
 
-/** Eases the explode amount, so the parts glide apart instead of jumping. */
+/** Sets the explode switch and amount; the parts glide there on their own (canvas/explode.tsx), about a second. */
 function animateExplode(to: number) {
-  const from = useUi.getState().explode;
-  const start = performance.now();
-  const ms = 1100;
-  return new Promise<void>((resolve) => {
-    const step = (now: number) => {
-      const t = Math.min(1, (now - start) / ms);
-      const e = t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
-      useUi.getState().setExplode(from + (to - from) * e);
-      if (t < 1) requestAnimationFrame(step);
-      else resolve();
-    };
-    requestAnimationFrame(step);
-  });
+  useUi.getState().setExplode(to);
+  return new Promise<void>((resolve) => setTimeout(resolve, 1000));
 }
 
 async function perform(ev: UiEvent) {

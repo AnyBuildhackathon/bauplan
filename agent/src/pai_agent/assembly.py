@@ -185,6 +185,8 @@ def build(spec: dict, built: dict, picked: dict, directory: Path) -> dict:
                     "color": row["color"],
                     "mass_g": mass,
                     "com_mm": list(apply(matrix, offset, tuple(row["com_mm"]))),
+                    # Its axis into the material, turned with its part.
+                    "direction": [round(v, 4) for v in apply(matrix, (0.0, 0.0, 0.0), tuple(row["direction"]))] if row.get("direction") else None,
                     "bbox_mm": _bbox(vertices),
                     "vertices": vertices,
                 }

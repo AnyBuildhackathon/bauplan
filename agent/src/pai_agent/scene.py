@@ -75,7 +75,7 @@ CONTROLS = {
     "setting:all_metrics": "setting: show all metrics (value true or false)",
     "setting:push_to_talk": "setting: push-to-talk instead of hands-free (value true or false)",
     "setting:voice": "Mechanic's voice on or off (value true or false)",
-    "explode": "the explode slider in the Model tab: value 0 (assembled) to 100 (every part pulled apart)",
+    "explode": "the studio's Explode switch with its slider: value 0 (off, assembled) to 100 (every part pulled apart along the way it goes on)",
     "focus": "turn the 3D camera to one part (part: a part name or id)",
     "run:test": "run the product's MuJoCo test again",
     "run:rebuild": "rebuild the CAD and rerun the checks",

@@ -73,7 +73,11 @@ interface UiState {
   /** Who listens to the microphone: Reson8, the browser, or nobody. */
   stt: "reson8" | "browser" | "none";
   display: Display;
-  /** Explode amount of the Model tab, 0 assembled to 1 every part pulled apart. */
+  /** The studio's Explode switch (off by default): the parts glide out along their assembly directions. */
+  exploded: boolean;
+  /** How far the switch pulls them, 0 assembled to 1 fully apart: the slider in its popover, kept while it is off. */
+  explodeAmount: number;
+  /** The explode amount the studio's model glides to: the slider's amount while the switch is on, else 0. */
   explode: number;
   /** The part the 3D camera turns to; `at` restarts the move for the same part. */
   focus: { part: string; at: number } | null;
@@ -82,7 +86,10 @@ interface UiState {
   libraryPick: string | null;
   /** HeyClicky: Mechanic's pointer flies to the controls he operates. Remembered per browser. */
   clicky: boolean;
+  /** Sets the amount and the switch together (0 turns it off), as Mechanic's explode control does. */
   setExplode: (explode: number) => void;
+  setExploded: (on: boolean) => void;
+  setExplodeAmount: (amount: number) => void;
   setFocus: (part: string | null) => void;
   setSettingsOpen: (open: boolean) => void;
   setLibraryPick: (id: string | null) => void;
@@ -234,12 +241,29 @@ export const useUi = create<UiState>((set) => ({
   userTalking: false,
   voiceOn: storedVoice(),
   display: storedDisplay(),
+  exploded: false,
+  explodeAmount: 1,
   explode: 0,
   focus: null,
   settingsOpen: false,
   libraryPick: null,
   clicky: storedClicky(),
-  setExplode: (explode) => set({ explode: Math.max(0, Math.min(1, explode)) }),
+  setExplode: (value) =>
+    set((s) => {
+      const amount = Math.max(0, Math.min(1, value));
+      return amount > 0 ? { exploded: true, explodeAmount: amount, explode: amount } : { exploded: false, explode: 0, explodeAmount: s.explodeAmount };
+    }),
+  setExploded: (exploded) =>
+    set((s) => {
+      // Switched on with the slider left at 0, the parts still come apart: all the way.
+      const explodeAmount = exploded && s.explodeAmount <= 0 ? 1 : s.explodeAmount;
+      return { exploded, explodeAmount, explode: exploded ? explodeAmount : 0 };
+    }),
+  setExplodeAmount: (value) =>
+    set((s) => {
+      const explodeAmount = Math.max(0, Math.min(1, value));
+      return { explodeAmount, explode: s.exploded ? explodeAmount : 0 };
+    }),
   setFocus: (part) => set({ focus: part ? { part, at: Date.now() } : null }),
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
   setLibraryPick: (libraryPick) => set({ libraryPick }),
@@ -311,5 +335,5 @@ export const useUi = create<UiState>((set) => ({
     }
     set({ voiceOn });
   },
-  resetUi: () => set({ selectedVersion: null, compare: null, selectedRun: null, selectedMission: null, lessonStep: null, concepts: {}, bomOpen: false, bomPricing: false, confirmedBuild: null, explode: 0, focus: null, tool: "select", partsOpen: false }),
+  resetUi: () => set({ selectedVersion: null, compare: null, selectedRun: null, selectedMission: null, lessonStep: null, concepts: {}, bomOpen: false, bomPricing: false, confirmedBuild: null, exploded: false, explodeAmount: 1, explode: 0, focus: null, tool: "select", partsOpen: false }),
 }));

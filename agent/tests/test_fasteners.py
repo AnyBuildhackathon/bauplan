@@ -294,6 +294,9 @@ def _product_flow(ctx: Ctx) -> None:
     assert built["product_mass_g"] == pytest.approx(ctx.state.assembly["printed_mass_g"] + hardware_mass, abs=0.11)
     cad = [event for event in ctx.bus.events if event.get("type") == "cad" and event.get("assembly")][-1]
     assert {row["kind"] for row in cad["bodies"]} == {"printed", "hardware"}
+    # The explode view takes every standard part out of its hole: the part it sits in and its axis into the material.
+    pieces = [row for row in cad["bodies"] if row["kind"] == "hardware"]
+    assert {(row["holder"], tuple(row["direction"])) for row in pieces} == {("base", (0.0, 0.0, -1.0)), ("lid", (0.0, 0.0, -1.0))}
     labels = [child["label"] for node in cad["tree"][0]["children"] for child in node["children"]]
     assert labels == ["Heat-set insert ruthex M3x4 ×4 (hardware)", "ISO 4762 M3x8 ×4 (hardware)"]
     # Each such row names the GLB nodes of its pieces, so the Assembly tab can select and hide them.

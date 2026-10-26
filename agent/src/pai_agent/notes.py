@@ -105,6 +105,15 @@ def _end(raw: object, what: str) -> dict:
     }
 
 
+def _amount(raw: object) -> float | None:
+    """How far the studio had pulled the parts apart (0 to 1), or None while assembled."""
+
+    explode = _number(raw, "exploded")
+    if not explode:
+        return None
+    return round(min(1.0, max(0.0, explode)), 2) or None
+
+
 def _view(raw: object) -> dict:
     if raw is None:
         return {}
@@ -154,9 +163,10 @@ def _check(raw: object, directory: Path) -> dict:
             normal=_direction(raw.get("normal"), "normal"),
             # Clicked where the section view cut the part: a point inside it, on the cut.
             cut=bool(raw.get("cut")) or None,
+            exploded=_amount(raw.get("exploded")),
         )
     elif kind == "measure":
-        note.update(a=_end(raw.get("a"), "a"), b=_end(raw.get("b"), "b"))
+        note.update(a=_end(raw.get("a"), "a"), b=_end(raw.get("b"), "b"), exploded=_amount(raw.get("exploded")))
     elif kind == "markup":
         image = _text(raw.get("image"), "image", required=True)
         if not image or not _MARKUP.fullmatch(image) or not (directory / image).is_file():
@@ -446,6 +456,15 @@ def _when(state, note: dict) -> str:
     return " Taken on " + then + ", an older model than the one on the bench now (" + now + "): check what changed before you act on it."
 
 
+def _exploded(note: dict) -> str:
+    if not note.get("exploded"):
+        return ""
+    return (
+        f" The studio showed the model exploded {round(note['exploded'] * 100)} %, each part pulled out the way it goes on;"
+        " the points are where the parts sit assembled."
+    )
+
+
 def _line(state, note: dict, index: int, drone: bool) -> str:
     kind = note["kind"]
     if kind == "selection":
@@ -465,7 +484,7 @@ def _line(state, note: dict, index: int, drone: bool) -> str:
             text += "."
         if note.get("script") and note.get("lines"):
             text += " Its script " + note["script"] + " builds it in lines " + _ranges(note["lines"]) + " (below)."
-        return text + _when(state, note)
+        return text + _exploded(note) + _when(state, note)
     if kind == "measure":
         a, b = note["a"], note["b"]
         ends = [(end.get("part") or end.get("node") or "the model") + " at " + _point(end["point_mm"]) for end in (a, b)]
@@ -473,7 +492,7 @@ def _line(state, note: dict, index: int, drone: bool) -> str:
         text = f"Measurement: {_mm(note['distance_mm'])} mm from {ends[0]} to {ends[1]}: dx {_mm(dx)}, dy {_mm(dy)}, dz {_mm(dz)} mm, {note['rise_deg']:g}° from the horizontal"
         if note.get("faces_deg") is not None:
             text += f"; the two faces stand at {note['faces_deg']:g}° to each other"
-        return text + "." + _when(state, note)
+        return text + "." + _exploded(note) + _when(state, note)
     if kind == "markup":
         view = note.get("view") or {}
         bits = ["drawn on the " + TABS.get(view.get("tab", "modell"), "Model") + " tab"]
@@ -587,6 +606,8 @@ def _short(state, note: dict, drone: bool) -> str:
         elif note.get("point_mm"):
             facing = _facing(note.get("normal"), drone)
             text += (", the face " + facing + " at " if facing else " at ") + _point(note["point_mm"])
+        if note.get("exploded"):
+            text += f", seen exploded {round(note['exploded'] * 100)} %"
     elif kind == "measure":
         ends = [(end.get("part") or "the model") for end in (note["a"], note["b"])]
         text = f"{_mm(note['distance_mm'])} mm from {ends[0]} to {ends[1]}, {note['rise_deg']:g}° up"

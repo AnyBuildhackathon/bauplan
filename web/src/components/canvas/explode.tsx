@@ -1,11 +1,13 @@
-// The Model tab's explode view: one slider (lib/ui `explode`, 0 to 1) pulls every part of
-// the loaded assembly out from its base, reverse-engineering style. It works on any GLB with
-// one node per part: the FreeCAD drone (a propeller is a child of its motor and rides along),
-// the gripper and every spec product (parts of one assembly group move as a unit, then
-// spread inside it). Directions come from the parts' bounding boxes: away from the largest
-// part, straight up when a part sits right on top of it. Labels fade in past the middle, or
-// show at any amount with the studio's Labels switch, and a hovered part glows and names
-// itself in the card (PartCard). While the studio measures, the pointer belongs to the tool.
+// The studio's explode view (U12): the view bar's Explode switch and its slider (lib/ui `explode`, 0 to 1)
+// pull the loaded assembly apart, each part along the way it goes on. It works on any GLB with one node per
+// part: the FreeCAD drone (a propeller is a child of its motor and leaves it along the shaft), the gripper,
+// SolidCraft designs and every spec product. The first time the model explodes, explodePlan.ts works out from
+// the parts' own faces, the standard parts' axes and the joints where each part goes: a screw out of its hole
+// along its axis, a part on a joint along the joint's axis, a part off the faces it sits on, anything else away
+// from the middle; the parts of one assembly group leave as one, then spread. The parts glide there on a spring
+// and keep their colours, the surface check's colour layer and the section's cut. Labels ride with their parts,
+// fading in past the middle (or at any amount with the studio's Labels switch), and a hovered part glows and
+// names itself in the card (PartCard). While the studio measures, the pointer belongs to the tool.
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
@@ -13,6 +15,8 @@ import { create } from "zustand";
 import { normaliseName } from "../../lib/targets";
 import { useUi } from "../../lib/ui";
 import { useAnchorMap } from "./anchors";
+import { countBases, findContacts, planExplode, springStep, type Basis, type PlanJoint, type PlanPart, type Vec3 } from "./explodePlan";
+import { usePrefersReducedMotion } from "./GridStage";
 
 export interface PieceSpec {
   node: THREE.Object3D;
@@ -30,15 +34,24 @@ export interface PieceSpec {
   isBase?: boolean;
   /** A load the product holds (the phone on a stand): never the base. */
   load?: boolean;
+  /** A standard part: the way out of its hole in the model file's frame, and the keys of the parts that may hold it. */
+  fastener?: { out: Vec3; holders: string[] } | null;
+  /** The joints it moves on, axis and place in the model file's frame, with the keys of the parts on their other side. */
+  joints?: PlanJoint[];
 }
 
 interface Piece extends PieceSpec {
   base: THREE.Vector3;
-  /** Parent-local offset at full explode. */
+  /** Parent-local offset at full explode, once the explode is planned. */
   offset: THREE.Vector3;
   /** Child of the node at its bounding-box centre: anchor, label and camera focus. */
   center: THREE.Group;
   radius: number;
+  /** Its box and centre at rest, in the frame the model's root sits in. */
+  box: THREE.Box3;
+  middle: THREE.Vector3;
+  /** The piece it hangs under in the file (a propeller under its motor), if any. */
+  parent: Piece | null;
 }
 
 /** What the pointer is over in the explode view; a click pins it so its shop link can be clicked. */
@@ -63,103 +76,153 @@ export const useExplodeHover = create<{
   pin: (key, label = "", x = 0, y = 0) => set(key ? { key, label, x, y, pinned: true } : { key: null, pinned: false }),
 }));
 
+/** How the live explode view takes the model apart: how many parts leave which way, once it first explodes. */
+export const useExplodePlan = create<{ counts: Record<Exclude<Basis, "base">, number> | null }>(() => ({ counts: null }));
+
 /** Every focusable piece of the live explode view, by normalised name and alias. */
 const focusable = new Map<string, Piece>();
 
-const UP = new THREE.Vector3(0, 1, 0);
+/** The explode amount the live model shows right now, as it glides to the switch's amount. */
+let shownAmount = 0;
+export const shownExplode = () => shownAmount;
 
-function boxOf(node: THREE.Object3D): THREE.Box3 {
-  return new THREE.Box3().setFromObject(node);
+const UP = new THREE.Vector3(0, 1, 0);
+/** A part with more triangles is sampled for its mating faces, so a detailed bought model plans in a few frames. */
+const MAX_TRIANGLES = 24000;
+
+/** The pieces at rest: boxes, centres and the label anchors, in the frame the model's root sits in. */
+function piecesOf(root: THREE.Object3D, specs: PieceSpec[]): Piece[] {
+  // A remount while exploded: back to rest first, so the boxes are the assembled ones.
+  for (const s of specs) if (s.node.userData.restPosition) s.node.position.copy(s.node.userData.restPosition as THREE.Vector3);
+  root.updateMatrixWorld(true);
+  const frame = root.parent?.matrixWorld ?? new THREE.Matrix4();
+  const toFrame = frame.clone().invert();
+  const byNode = new Map<THREE.Object3D, Piece>();
+  const pieces = specs.map((spec) => {
+    const box = new THREE.Box3().setFromObject(spec.node).applyMatrix4(toFrame);
+    const middle = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    const center = new THREE.Group();
+    center.position.copy(spec.node.worldToLocal(middle.clone().applyMatrix4(frame)));
+    const piece: Piece = { ...spec, base: spec.node.position.clone(), offset: new THREE.Vector3(), center, radius: Math.max(1e-6, size.length() / 2), box, middle, parent: null };
+    byNode.set(spec.node, piece);
+    return piece;
+  });
+  for (const p of pieces) {
+    for (let o = p.node.parent; o && o !== root.parent; o = o.parent) {
+      const hit = byNode.get(o);
+      if (hit) {
+        p.parent = hit;
+        break;
+      }
+    }
+  }
+  const R = radiusOf(pieces);
+  for (const p of pieces) labelEdge(p, UP, R, frame);
+  return pieces;
 }
 
-/** Bounding boxes in world space; call with the assembly at rest. */
-function plan(root: THREE.Object3D, specs: PieceSpec[]): { pieces: Piece[]; lift: number } {
-  root.updateMatrixWorld(true);
-  const nodes = new Set(specs.map((s) => s.node));
-  const parentPiece = (node: THREE.Object3D) => {
-    for (let p = node.parent; p && p !== root.parent; p = p.parent) if (nodes.has(p)) return p;
-    return null;
-  };
-  const info = specs.map((spec) => {
-    const box = boxOf(spec.node);
-    const center = box.getCenter(new THREE.Vector3());
-    const size = box.getSize(new THREE.Vector3());
-    return { spec, box, center, radius: Math.max(1e-6, size.length() / 2), parent: parentPiece(spec.node) };
-  });
+/** Puts the label anchor where a ray from the piece's centre along `out` leaves its box, a little beyond; `frame` is
+ * the world matrix of the frame the boxes are in. */
+function labelEdge(p: Piece, out: THREE.Vector3, R: number, frame: THREE.Matrix4) {
+  let reach = Infinity;
+  for (const axis of ["x", "y", "z"] as const) {
+    if (Math.abs(out[axis]) < 1e-6) continue;
+    reach = Math.min(reach, ((out[axis] > 0 ? p.box.max[axis] : p.box.min[axis]) - p.middle[axis]) / out[axis]);
+  }
+  const edge = p.middle.clone().addScaledVector(out, (Number.isFinite(reach) ? reach : p.radius) + R * 0.05);
+  p.center.userData.explodeTop = p.node.worldToLocal(edge.applyMatrix4(frame));
+}
+
+/** The radius of the pieces' bounding sphere together. */
+function radiusOf(pieces: Piece[]): number {
   const all = new THREE.Box3();
-  for (const i of info) all.union(i.box);
-  const R = all.getBoundingSphere(new THREE.Sphere()).radius || 1;
+  for (const p of pieces) all.union(p.box);
+  return all.getBoundingSphere(new THREE.Sphere()).radius || 1;
+}
 
-  // The base everything leaves from: the one marked, else the largest piece that stands on the floor
-  // (a base plate, not the phone a stand holds).
-  const top = info.filter((i) => !i.parent && !i.spec.load);
-  const floor = Math.min(...top.map((i) => i.box.min.y));
-  const grounded = top.filter((i) => i.box.min.y <= floor + R * 0.15);
-  const base = top.find((i) => i.spec.isBase) ?? grounded.sort((a, b) => b.radius - a.radius)[0];
+const vec = (v: THREE.Vector3): Vec3 => [v.x, v.y, v.z];
 
-  // Units move as one: a group, or a lone top-level piece.
-  const units = new Map<string, typeof info>();
-  for (const i of info) {
-    if (i.parent) continue;
-    // The base's own group comes apart piece by piece; other groups leave it as one.
-    const id = i.spec.group && i.spec.group !== base?.spec.group ? `g:${i.spec.group}` : `p:${i.spec.key}`;
-    units.set(id, [...(units.get(id) ?? []), i]);
-  }
-  const unitBox = (members: typeof info) => members.reduce((b, m) => b.union(m.box), new THREE.Box3());
-  const C = base ? base.center.clone() : all.getCenter(new THREE.Vector3());
-  const world = new Map<THREE.Object3D, THREE.Vector3>();
-  let stack = 0;
-  for (const members of units.values()) {
-    const ub = unitBox(members);
-    const uc = ub.getCenter(new THREE.Vector3());
-    const isBase = members.includes(base);
-    const d = uc.clone().sub(C);
-    let unitOffset = new THREE.Vector3();
-    if (!isBase) {
-      // Right on the base: straight up, or straight down for a part hanging below it (a battery).
-      const dir = d.length() > R * 0.08 ? d.clone().normalize() : UP.clone().multiplyScalar(d.y < 0 ? -1 : 1);
-      // Parts sitting in the same spot stack up instead of landing on each other.
-      if (d.length() <= R * 0.08) stack++;
-      unitOffset = dir.multiplyScalar(d.length() * 0.75 + R * (0.22 + 0.14 * Math.max(0, stack - 1)));
+/**
+ * Plans where every piece goes (explodePlan.ts) from its triangles at rest, the standard parts' axes and the joints,
+ * in the frame the model's root sits in (Y up, like the scene), and sets each piece's offset in its node's own
+ * parent frame. Returns how far the whole model rises at full explode, so nothing ends up under the floor.
+ */
+function planPieces(root: THREE.Object3D, pieces: Piece[]): number {
+  // At rest, also when the assembly is still flying in (AssemblyMotion.tsx lands it next).
+  for (const p of pieces) p.node.position.copy(p.base);
+  root.updateMatrixWorld(true);
+  const frame = root.parent?.matrixWorld ?? new THREE.Matrix4();
+  const toFrame = frame.clone().invert();
+  const nodes = new Set(pieces.map((p) => p.node));
+  const parts: PlanPart[] = pieces.map((p) => {
+    const tris: number[] = [];
+    const m = new THREE.Matrix4();
+    const v = new THREE.Vector3();
+    const visit = (o: THREE.Object3D) => {
+      if (o !== p.node && nodes.has(o)) return;
+      if (o instanceof THREE.Mesh && !o.userData.sectionCap && !o.userData.analysisLayer) {
+        const g = o.geometry as THREE.BufferGeometry;
+        const pos = g.getAttribute("position");
+        if (pos) {
+          m.multiplyMatrices(toFrame, o.matrixWorld);
+          const index = g.getIndex();
+          const count = index ? index.count : pos.count;
+          const triangles = Math.floor(count / 3);
+          const stride = Math.max(1, Math.ceil(triangles / MAX_TRIANGLES));
+          for (let t = 0; t < triangles; t += stride) {
+            for (let c = 0; c < 3; c++) {
+              const i = index ? index.getX(t * 3 + c) : t * 3 + c;
+              v.fromBufferAttribute(pos, i).applyMatrix4(m);
+              tris.push(v.x, v.y, v.z);
+            }
+          }
+        }
+      }
+      for (const child of o.children) visit(child);
+    };
+    visit(p.node);
+    const fileDir = (d: Vec3) => vec(new THREE.Vector3(...d).transformDirection(root.matrix));
+    const joints: PlanJoint[] = (p.joints ?? []).map((j) => ({
+      axis: fileDir(j.axis),
+      at: j.at ? vec(new THREE.Vector3(...j.at).applyMatrix4(root.matrix)) : null,
+      parents: j.parents,
+    }));
+    // A piece under another in the file rides on it, as on a joint: a propeller leaves its motor along the shaft.
+    if (p.parent) {
+      const d = p.middle.clone().sub(p.parent.middle);
+      joints.push({ axis: vec(d.lengthSq() > (p.radius * 0.2) ** 2 ? d.normalize() : UP), at: null, parents: [p.parent.key] });
     }
-    for (const m of members) {
-      const inner = m.center.clone().sub(uc);
-      const spread = members.length > 1 && !(isBase && m === base) ? (inner.length() > 1e-6 ? inner.normalize() : UP.clone()).multiplyScalar(m.radius * 0.6 + R * 0.08) : new THREE.Vector3();
-      world.set(m.spec.node, unitOffset.clone().add(spread));
-    }
-  }
-  for (const i of info) {
-    if (!i.parent) continue;
-    const parentInfo = info.find((p) => p.spec.node === i.parent)!;
-    const d = i.center.clone().sub(parentInfo.center);
-    const dir = d.length() > i.radius * 0.2 ? d.normalize() : UP.clone();
-    world.set(i.spec.node, dir.multiplyScalar(i.radius * 0.6 + R * 0.08));
-  }
-
-  // Parts that leave downwards (a battery under the frame) would sink through the floor: lift the model instead.
-  const drop = Math.min(0, ...info.map((i) => i.box.min.y + (world.get(i.spec.node)?.y ?? 0) - all.min.y));
-  const pieces = info.map((i) => {
-    const node = i.spec.node;
-    const offsetWorld = world.get(node) ?? new THREE.Vector3();
-    // The offset in the frame the node's position lives in (its parent), scale and rotation included.
-    const parent = node.parent!;
-    const origin = node.getWorldPosition(new THREE.Vector3());
-    const local = parent.worldToLocal(origin.clone().add(offsetWorld)).sub(parent.worldToLocal(origin.clone()));
-    const center = new THREE.Group();
-    center.position.copy(node.worldToLocal(i.center.clone()));
-    // The label sits on the side the part flies out to, so neighbouring labels part ways too.
-    const out = offsetWorld.lengthSq() > 1e-12 ? offsetWorld.clone().normalize() : UP;
-    // Where a ray from the centre along that side leaves the part's box.
-    let reach = Infinity;
-    for (const axis of ["x", "y", "z"] as const) {
-      if (Math.abs(out[axis]) < 1e-6) continue;
-      reach = Math.min(reach, ((out[axis] > 0 ? i.box.max[axis] : i.box.min[axis]) - i.center[axis]) / out[axis]);
-    }
-    const edge = i.center.clone().addScaledVector(out, (Number.isFinite(reach) ? reach : i.radius) + R * 0.05);
-    center.userData.explodeTop = node.worldToLocal(edge);
-    return { ...i.spec, base: node.position.clone(), offset: local, center, radius: i.radius };
+    return {
+      key: p.key,
+      triangles: Float32Array.from(tris),
+      min: vec(p.box.min),
+      max: vec(p.box.max),
+      group: p.parent ? null : p.group,
+      isBase: p.isBase,
+      load: p.load,
+      fastener: p.fastener ? { out: fileDir(p.fastener.out), holders: p.fastener.holders } : null,
+      joints,
+    };
   });
-  return { pieces, lift: -drop * root.scale.y };
+  const R = radiusOf(pieces);
+  const plan = planExplode(parts, findContacts(parts, R * 0.004), [0, 1, 0]);
+  pieces.forEach((p, i) => {
+    const planned = plan.parts[i];
+    // Its own move: a piece under another one already rides along with it.
+    const own = new THREE.Vector3(...planned.offset);
+    if (p.parent) own.sub(new THREE.Vector3(...plan.parts[pieces.indexOf(p.parent)].offset));
+    // Into the frame the node's position lives in, scale and rotation included.
+    const parent = p.node.parent!;
+    const origin = p.node.getWorldPosition(new THREE.Vector3());
+    const moved = origin.clone().applyMatrix4(toFrame).add(own).applyMatrix4(frame);
+    p.offset.copy(parent.worldToLocal(moved).sub(parent.worldToLocal(origin)));
+    // The label sits on the side the part flies out to, so neighbouring labels part ways too.
+    const out = new THREE.Vector3(...planned.offset);
+    labelEdge(p, out.lengthSq() > 1e-12 ? out.normalize() : UP, R, frame);
+  });
+  useExplodePlan.setState({ counts: countBases(plan) });
+  return plan.lift;
 }
 
 /** A rounded pill label drawn into a canvas texture, shared with the build guide. */
@@ -206,7 +269,11 @@ const AGENT = new THREE.Color("#ff8a3d");
  */
 export function useExplode(root: THREE.Object3D, specs: PieceSpec[], opts: { glow?: boolean } = {}) {
   const anchors = useAnchorMap();
-  const { pieces, lift } = useMemo(() => plan(root, specs), [root, specs]);
+  const pieces = useMemo(() => piecesOf(root, specs), [root, specs]);
+  // Planned the first time the model explodes, so loading a model never waits for it.
+  const lift = useRef<number | null>(null);
+  const motion = useRef({ x: 0, v: 0 });
+  const still = usePrefersReducedMotion();
   const layer = useRef<THREE.Group>(null);
   // Labels live beside the model, not in it, so they never count towards a part's bounding box.
   const labelRoot = useMemo(() => new THREE.Group(), []);
@@ -224,6 +291,9 @@ export function useExplode(root: THREE.Object3D, specs: PieceSpec[], opts: { glo
     labels.current = pieces.map((p) => (p.label ? labelSprite(p.label) : null));
     for (const l of labels.current) if (l) labelRoot.add(l);
     shown.current = -1;
+    lift.current = null;
+    motion.current = { x: 0, v: 0 };
+    useExplodePlan.setState({ counts: null });
     return () => {
       for (const p of pieces) {
         for (const name of [p.key, ...(p.aliases ?? [])]) if (focusable.get(normaliseName(name)) === p) focusable.delete(normaliseName(name));
@@ -271,12 +341,18 @@ export function useExplode(root: THREE.Object3D, specs: PieceSpec[], opts: { glo
   }, [pieces, hoverKey, opts.glow]);
 
   const top = useMemo(() => new THREE.Vector3(), []);
-  useFrame(() => {
-    const { explode: e, studio } = useUi.getState();
+  useFrame((_, dt) => {
+    const { explode: target, studio } = useUi.getState();
+    if (target > 0 && lift.current === null) lift.current = planPieces(root, pieces);
+    // The parts glide to the switch's amount: smooth to start and to stop, never past it.
+    const m = motion.current;
+    [m.x, m.v] = still ? [target, 0] : springStep(m.x, m.v, target, Math.min(dt, 0.1));
+    const e = m.x;
+    shownAmount = e;
     if (e !== shown.current) {
       shown.current = e;
       for (const p of pieces) p.node.position.copy(p.base).addScaledVector(p.offset, e);
-      if (layer.current) layer.current.position.y = lift * e;
+      if (layer.current) layer.current.position.y = (lift.current ?? 0) * e;
     }
     const alpha = studio.labels ? 1 : Math.max(0, Math.min(1, (e - 0.45) / 0.3));
     pieces.forEach((p, i) => {
@@ -361,7 +437,7 @@ export function ExplodeCamera({ maxDistance }: { maxDistance?: number }) {
 
   useFrame(() => {
     if (!controls) return;
-    const want = 1 + 0.9 * useUi.getState().explode;
+    const want = 1 + 0.9 * shownAmount;
     const offset = camera.position.clone().sub(controls.target);
     if (Math.abs(want - zoom.current) > 1e-4) {
       offset.multiplyScalar(want / zoom.current);

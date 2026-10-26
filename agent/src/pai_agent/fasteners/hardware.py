@@ -593,6 +593,8 @@ def row_of(one: Made, stl_name: str) -> dict:
         "hole_d_mm": one.numbers.get("hole_d"),
         "radial_gap_mm": _gap(item, one.numbers),
         "seat_mm": one.seat,
+        # From the seat into the material: the explode view takes it out the other way.
+        "direction": [_round(v) for v in item["direction"]],
         "stl": stl_name,
         "bbox_mm": _bounds(one.shape),
         "com_mm": [_round(v) for v in (center.x, center.y, center.z)],

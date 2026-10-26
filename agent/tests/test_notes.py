@@ -180,6 +180,14 @@ def test_a_selection_names_its_script_lines_and_the_point_in_its_own_frame(tmp_p
     # A click on the face the section view cut is a point inside the part.
     [inside] = notes.accept([{"kind": "selection", "node": "Base plate", "part": "Base plate", "point_mm": [-20, 0, 2], "normal": [1, 0, 0], "cut": True}], state)
     assert "The person clicked inside it, on the face the section view cut, at (-20.0, 0.0, 2.0) mm" in notes._line(state, inside, 0, False)
+    # Clicked on the exploded model: the point is where the part sits assembled, and Mechanic is told how it looked.
+    [apart] = notes.accept([{"kind": "selection", "node": "Base plate", "part": "Base plate", "point_mm": [-20, 0, 2], "exploded": 0.6}], state)
+    assert notes._line(state, apart, 0, False).endswith(
+        "The studio showed the model exploded 60 %, each part pulled out the way it goes on; the points are where the parts sit assembled."
+    )
+    assert notes.read_back(state, [apart]).startswith("I read your notes:\n\n- Base plate, part-base.py lines 3-8, 18, 20 at (-20.0, 0.0, 2.0) mm, seen exploded 60 %")
+    [whole] = notes.accept([{"kind": "selection", "node": "Base plate", "exploded": 0}], state)
+    assert "exploded" not in whole or whole["exploded"] is None
 
 
 def test_mechanic_reads_each_note_with_the_code_and_an_older_build_said_plainly(tmp_path) -> None:

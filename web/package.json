@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "build:desktop": "tsc -b && vite build --mode desktop --outDir dist-desktop",
     "typecheck": "tsc -b",
+    "test": "node --test unit/*.test.ts",
     "preview": "vite preview",
     "e2e": "playwright test -c e2e/playwright.config.ts",
     "e2e:live": "E2E_LIVE=1 playwright test -c e2e/playwright.config.ts e2e/live.spec.ts"

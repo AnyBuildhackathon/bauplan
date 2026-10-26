@@ -2,7 +2,7 @@
 // the left, the zoom pill on the right, the parts panel, the measuring hint (which adds a finished
 // measurement to Mechanic's message box), the marking layer, the surface check's legend, and the
 // studio's keys while no text field has the focus: 1 to 4 views, + − 0 zoom and fit, G grid,
-// L labels, S section, V select, M measure, D mark, P parts.
+// L labels, E explode, S section, V select, M measure, D mark, P parts.
 import { useEffect } from "react";
 import { MessageSquarePlus, Ruler } from "lucide-react";
 import { attach, shownBuild } from "../../events/notes";
@@ -34,6 +34,7 @@ function useStudioKeys() {
       else if (e.key === "0") send({ kind: "fit" });
       else if (e.key === "g") ui.setStudio({ grid: !ui.studio.grid });
       else if (e.key === "l") ui.setStudio({ labels: !ui.studio.labels });
+      else if (e.key === "e") ui.setExploded(!ui.exploded);
       else if (e.key === "s") toggleSection();
       else if (e.key === "v") ui.setTool("select");
       else if (e.key === "m") {

@@ -387,3 +387,14 @@ def test_solidcraft_errors_come_back_with_their_step(tmp_path):
     result = asyncio.run(call_tool(_bench(tmp_path), "solidcraft_part", {"name": "Broken gripper", "script": script}))
     assert result["ok"] is False
     assert "step 14 (solid.fillet)" in result["error"] and len(result["attempts"]) == 1
+
+
+def test_the_explode_view_gets_each_joints_axis_place_and_the_parts_on_either_side():
+    fixture = json.loads((FIXTURES / "actuator-panel.json").read_text(encoding="utf-8"))
+    rows = {row["name"]: row for row in tool.explode_joints(fixture["components"], fixture["joints"]["joints"])}
+    hinge = rows["Hinge"]
+    assert hinge["axis"] == [1.0, 0.0, 0.0] and hinge["at_mm"] == [0.0, 0.0, 0.0]
+    assert hinge["moving"] == {"part": "Wing", "bodies": ["Panel"]} and hinge["fixed"] == {"part": "Frame", "bodies": ["Post", "Base"]}
+    # The rod slides out of its barrel along the stroke's own axis.
+    assert rows["Stroke"]["axis"] == pytest.approx([0.0, 0.489196, 0.872174]) and rows["Stroke"]["fixed"]["part"] == "Actuator barrel"
+

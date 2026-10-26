@@ -14,6 +14,7 @@ import { useSession } from "../../events/store";
 import type { NotePoint, NoteView } from "../../events/types";
 import { normaliseName } from "../../lib/targets";
 import { useUi } from "../../lib/ui";
+import { shownExplode } from "../canvas/explode";
 import { treeNodes } from "./assembly";
 import { axisInFile, dirToBuild, fileToBuild, hitModel, keptByCut, partLabel, partNode, toBuild, type ModelFrame } from "./frame";
 import { useStudio, type CameraView } from "./studio";
@@ -333,7 +334,7 @@ function Camera({ center, radius, home, front }: Pick<StudioRigProps, "center" |
   const fitDistance = () => {
     const vfov = THREE.MathUtils.degToRad(camera.fov);
     const hfov = 2 * Math.atan(Math.tan(vfov / 2) * (size.width / Math.max(1, size.height)));
-    const explode = 1 + 0.9 * useUi.getState().explode;
+    const explode = 1 + 0.9 * shownExplode();
     return (radius / Math.sin(Math.min(vfov, hfov) / 2)) * explode;
   };
 

@@ -11,7 +11,7 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { attach, shownBuild } from "../../events/notes";
 import { useSession } from "../../events/store";
 import { useSource } from "../../events/source";
-import { isSlider, type CadEvent, type CadNode, type CadNumberParam } from "../../events/types";
+import { isSlider, type CadEvent, type CadJoint, type CadNode, type CadNumberParam } from "../../events/types";
 import { assetUrl } from "../../lib/api";
 import { fmtNum } from "../../lib/format";
 import { useHighlight } from "../../lib/hooks";
@@ -23,6 +23,7 @@ import { normaliseName } from "../../lib/targets";
 import { AnchorScope, useAnchor } from "./anchors";
 import { GridStage, usePrefersReducedMotion } from "./GridStage";
 import { ExplodeCamera, ExplodeLayer, type PieceSpec } from "./explode";
+import type { Vec3 } from "./explodePlan";
 import { IntroTurn } from "./IntroTurn";
 import { StudioOverlay } from "../studio/StudioOverlay";
 import { StudioRig } from "../studio/StudioRig";
@@ -184,18 +185,39 @@ function Part({
     }
   }, [camera, center, radius, partSize, staged, size.width, size.height, controls]);
 
-  // One piece per GLB node; an assembled product names its spec part and group per node.
+  // One piece per GLB node; an assembled product names its spec part and group per node, a standard part the parts
+  // that hold it and its axis, a SolidCraft design the joints its parts move on.
+  const joints = cad?.joints;
   const specs = useMemo<PieceSpec[]>(() => {
     if (!explodable) return [];
+    const bodyOf = (node: THREE.Object3D) => bodies?.find((b) => normaliseName(b.name) === normaliseName(node.name));
+    const nodesOf = (names: string[]) => object.children.filter((n) => names.some((name) => normaliseName(name) === normaliseName(n.name))).map((n) => n.name);
     return object.children.map((node) => {
-      const body = bodies?.find((b) => normaliseName(b.name) === normaliseName(node.name));
+      const body = bodyOf(node);
       const name = body?.part_name ?? prettyName(node.name);
       const label = body && body.name !== body.part_name ? prettyName(body.name) : name;
       // Screws, nuts and inserts come in numbers: they name themselves on hover, without a pill each.
       const pill = body?.kind === "hardware" ? "" : label;
-      return { node, key: node.name, label: pill, name: label, group: body?.group ?? null, load: body?.kind === "external", aliases: body ? [body.part_id, body.part_name] : [] };
+      // A standard part leaves its hole the other way from its axis into the material, from a body of its part.
+      const holders = (holder: string | null | undefined) => object.children.filter((n) => bodyOf(n)?.kind !== "hardware" && bodyOf(n)?.part_id === holder).map((n) => n.name);
+      const fastener = body?.kind === "hardware" ? { out: (body.direction ?? [0, 0, -1]).map((v) => -v) as Vec3, holders: holders(body.holder) } : null;
+      const mine = (side: CadJoint["moving"]) => side.bodies.some((b) => normaliseName(b) === normaliseName(node.name));
+      const own = (joints ?? []).filter((j) => mine(j.moving));
+      // A SolidCraft part (component) leaves as one, then its bodies spread.
+      const part = (joints ?? []).flatMap((j) => [j.moving, j.fixed]).find(mine)?.part;
+      return {
+        node,
+        key: node.name,
+        label: pill,
+        name: label,
+        group: body?.group ?? part ?? null,
+        load: body?.kind === "external",
+        aliases: body ? [body.part_id, body.part_name] : [],
+        fastener,
+        joints: own.map((j) => ({ axis: j.axis, at: j.at_mm.map((v) => v * unit * 1000) as Vec3, parents: nodesOf(j.fixed.bodies) })),
+      };
     });
-  }, [object, bodies, explodable]);
+  }, [object, bodies, joints, explodable, unit]);
 
   const anchor = useAnchor("frame", radius * 0.8);
   return (

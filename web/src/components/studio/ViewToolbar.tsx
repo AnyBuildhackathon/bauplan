@@ -1,5 +1,5 @@
 // The view bar between the canvas tabs and the canvas: perspective or orthographic, the camera
-// views (keys 1 to 4), the explode amount in a popover, the surface check colour layer (overhang,
+// views (keys 1 to 4), the explode switch with its amount in a popover (key E), the surface check colour layer (overhang,
 // wall thickness or clearance, once Mechanic has checked this build), and the grid, label and
 // section switches; the section cuts the model across X, Y or Z at a slider's place (key S).
 // The grid switch also hides the lines of the test stage in the simulation replays; the rest needs
@@ -10,6 +10,7 @@ import { ANALYSIS_CHECKS, areas, formatArea, isCurrent, useAnalysisLayer } from 
 import { useSession } from "../../events/store";
 import { useUi } from "../../lib/ui";
 import { fmtNum } from "../../lib/format";
+import { useExplodePlan } from "../canvas/explode";
 import { ExplodeSlider } from "../canvas/ExplodeControls";
 import { Segmented } from "../ui/primitives";
 import { useStudio, VIEW_KEYS, type CameraView, type SectionAxis } from "./studio";
@@ -95,26 +96,57 @@ function ViewsMenu({ disabled }: { disabled: boolean }) {
 
 function ExplodeMenu({ disabled }: { disabled: boolean }) {
   const { open, setOpen, ref } = usePopover();
-  const explode = useUi((s) => s.explode);
-  const pct = Math.round(explode * 100);
+  const exploded = useUi((s) => s.exploded);
+  const amount = useUi((s) => s.explodeAmount);
+  const setExploded = useUi((s) => s.setExploded);
+  const counts = useExplodePlan((s) => s.counts);
+  const ways = counts
+    ? ([
+        [counts.fastener, "along its axis", "along their axes"],
+        [counts.joint, "along its joint", "along their joints"],
+        [counts.mate, "off its face", "off their faces"],
+        [counts.centre, "out from the middle", "out from the middle"],
+      ] as const).filter(([n]) => n > 0).map(([n, one, many]) => `${n} ${n === 1 ? one : many}`)
+    : [];
   return (
     <div ref={ref} className="relative">
       <BarButton
-        on={open || pct > 0}
+        on={open || exploded}
         disabled={disabled}
-        onClick={() => setOpen(!open)}
+        onClick={() => {
+          // Pressed, the parts glide apart at once; the popover sets how far.
+          if (!exploded) setExploded(true);
+          setOpen(!open || !exploded);
+        }}
         aria-haspopup="dialog"
         aria-expanded={open}
+        aria-pressed={exploded}
         aria-label="Explode"
-        title="Pull every part apart"
+        title="Pull the parts apart along their assembly directions (E)"
         data-control="explode"
       >
         <Expand className="h-4 w-4" /> <Word>Explode</Word>
-        {pct > 0 && <span className="num font-label text-[11px]">{pct}%</span>}
+        {exploded && <span className="num font-label text-[11px]">{Math.round(amount * 100)}%</span>}
       </BarButton>
-      {open && (
-        <div role="dialog" aria-label="Explode" className={`${POPOVER} px-3`}>
-          <ExplodeSlider />
+      {open && exploded && (
+        <div role="dialog" aria-label="Explode" className={`${POPOVER} w-72 px-3 pt-1 pb-3`}>
+          <div className="flex items-center gap-3">
+            <ExplodeSlider />
+            <button
+              type="button"
+              onClick={() => {
+                setExploded(false);
+                setOpen(false);
+              }}
+              className="ml-auto inline-flex h-8 items-center rounded-full px-2.5 text-[13px] font-semibold text-ink-2 hover:bg-tile hover:text-ink"
+              data-target="explode:off"
+            >
+              Off
+            </button>
+          </div>
+          <p className="text-[12px] leading-snug font-semibold text-muted" data-target="explode:ways">
+            {ways.length ? `Each part leaves the way it goes on: ${ways.join(", ")}.` : "Each part leaves the way it goes on."}
+          </p>
         </div>
       )}
     </div>

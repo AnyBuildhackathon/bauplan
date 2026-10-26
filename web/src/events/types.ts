@@ -49,8 +49,8 @@ export interface NoteView {
 }
 /** A studio note as the browser sends it with POST /api/prompt; `build` is the `?build=` of the model it was taken on. */
 export type StudioNote = { build: number | null } & (
-  | { kind: "selection"; node: string; part: string; part_id: string | null; point_mm: Vec3 | null; normal: Vec3 | null; cut?: boolean }
-  | { kind: "measure"; a: NotePoint; b: NotePoint }
+  | { kind: "selection"; node: string; part: string; part_id: string | null; point_mm: Vec3 | null; normal: Vec3 | null; cut?: boolean; exploded?: number }
+  | { kind: "measure"; a: NotePoint; b: NotePoint; exploded?: number }
   | { kind: "markup"; image: string; view: NoteView; version: number | null }
   | { kind: "spot"; check: AnalysisCheck; value: number; part: string; part_id: string | null; at_mm: Vec3; limit: number; critical: boolean }
   | { kind: "param"; name: string; label: string; value: number; unit: string; min: number | null; max: number | null; default: number | null }
@@ -383,6 +383,8 @@ export interface CadEvent {
   script_url?: string | null;
   /** A SolidCraft design (solidcraft_part): the .solidcraft file, which opens in SolidCraft with its timeline. */
   design_url?: string | null;
+  /** A SolidCraft design's joints, for the explode view: axis and place in the design's frame, and the part on either side. */
+  joints?: CadJoint[];
   part?: {
     name: string;
     material: string;
@@ -417,6 +419,18 @@ export interface CadBody {
   kind: "printed" | "bought" | "external" | "hardware";
   group: string | null;
   mass_g: number;
+  /** A standard part: the id of the printed part it sits in. */
+  holder?: string | null;
+  /** A standard part: its axis from the seat into the material, in the product's frame. */
+  direction?: [number, number, number] | null;
+}
+/** One joint of a SolidCraft design; the bodies are GLB node names. */
+export interface CadJoint {
+  name: string;
+  axis: [number, number, number];
+  at_mm: [number, number, number];
+  moving: { part: string; bodies: string[] };
+  fixed: { part: string; bodies: string[] };
 }
 /** Mechanic operates a dashboard control: the pointer flies to `[data-control~=control]`, then it acts. */
 export interface UiEvent {

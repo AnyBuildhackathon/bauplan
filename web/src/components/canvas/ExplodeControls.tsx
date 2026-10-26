@@ -1,4 +1,4 @@
-// The explode slider (in the popover of the view bar's Explode button), and the card a hovered
+// The explode slider (in the popover of the view bar's Explode switch, 0 to 100 %), and the card a hovered
 // or clicked part shows: its name, the part that was picked for it, mass, price, the shop link
 // and which 3D model it shows; a clicked part goes to Mechanic's message box as a selection note
 // with the face and the point the click hit.
@@ -31,9 +31,9 @@ function selectPart(key: string, title: string) {
 }
 
 export function ExplodeSlider() {
-  const explode = useUi((s) => s.explode);
-  const setExplode = useUi((s) => s.setExplode);
-  const pct = Math.round(explode * 100);
+  const amount = useUi((s) => s.explodeAmount);
+  const setAmount = useUi((s) => s.setExplodeAmount);
+  const pct = Math.round(amount * 100);
   return (
     <label className="flex h-10 items-center gap-3">
       <span className="text-[13px] font-semibold text-muted">Assembled</span>
@@ -43,8 +43,8 @@ export function ExplodeSlider() {
         max={100}
         step={1}
         value={pct}
-        onChange={(e) => setExplode(Number(e.target.value) / 100)}
-        className="bevel-range w-[160px]"
+        onChange={(e) => setAmount(Number(e.target.value) / 100)}
+        className="bevel-range w-[120px]"
         style={{ "--p": `${pct}%` } as React.CSSProperties}
         aria-label="Explode"
       />

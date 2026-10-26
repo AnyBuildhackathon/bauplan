@@ -633,13 +633,14 @@ A `pai:#rrggbbaa` material is see-through with that alpha, used for external loa
 A SolidCraft design from `solidcraft_part` has the tree design, then one node per part (component) with its bodies, and a GLB with one node per body in that body's colour, Z-up in millimetres like a generated part.
 Its `params` are the design's favourite parameters that are plain lengths or angles (else all such, at most eight), each with `unit` `mm` (half to double the value) or `deg` (90 degrees either way).
 `script_url` is the SolidCraft command script that built it, a slider's `parameters.change` at its end (`/files/{session}/solidcraft-{name}.json`), `design_url` the `.solidcraft` design, which opens in SolidCraft with its timeline, `view_png_url` is `null`, and `part` is as for `cad_part`.
+`joints` lists, for the explode view, each joint as `{name, axis, at_mm, moving: {part, bodies}, fixed: {part, bodies}}`: its axis and place in the design's frame (mm), and the part (component) on either side with the names of its bodies, which are GLB node names.
 
 A whole product built from a spec sends `assembly: true`.
 Its tree is the product with one node per assembly and one per part (`(bought)` and `(load)` mark bought parts and loads, each label ends in its mass and material or its catalog name).
 A printed part's standard parts are its children, one row per kind with `nodes`, as for a single part.
 Its `params` are every printed part's sliders as `{part_id}.{param}`, each with a `label` such as `Base plate · depth`.
 `bodies` has one row per GLB node, `{name, part_id, part_name, kind, group, mass_g}`, where `name` is the node name, `group` the spec assembly id or `null`, and `mass_g` the body's mass (the explode view groups and labels the parts with it).
-`kind` is `printed`, `bought`, `external` or `hardware`; a standard part (`hardware`) has its bill-of-materials line's `category` as `part_id`, the line's name as `part_name`, and the group of the printed part that holds it.
+`kind` is `printed`, `bought`, `external` or `hardware`; a standard part (`hardware`) has its bill-of-materials line's `category` as `part_id`, the line's name as `part_name`, and the group of the printed part that holds it, with `holder`, the id of that printed part, and `direction`, its axis from the seat into the material in the product's frame (the explode view takes it out the other way; `null` when not known).
 `glb_url` and `stl_url` are `assembly.glb` (all bodies; bought parts as their own 3D models fitted to their size and position when they have one, listed in `part_models` as for a drone, else as blocks; loads as blocks) and `assembly.stl` (printed bodies), `step_url` is `null` (each part has its own STEP), `script_url` is `assembly-scripts.py` with every part's script, and `part` sums the printed parts.
 
 ### render

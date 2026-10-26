@@ -1,10 +1,11 @@
 // Assembly fly-in: when a live `cad` event brings a whole assembly, every top-level body
 // starts pushed out along the line from the assembly centre to its own centre and springs
-// into place, 60 ms after the one before. Loads (see-through) fade in last.
+// into place, 60 ms after the one before. Loads (see-through) fade in last. Exploding lands them at once.
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { MOTION } from "../../lib/motion";
+import { useUi } from "../../lib/ui";
 
 type Flyer = { node: THREE.Object3D; home: THREE.Vector3; from: THREE.Vector3; delay: number; fade: THREE.Material[] };
 
@@ -67,6 +68,15 @@ export function useAssemblyFlyIn(root: THREE.Object3D, radius: number, play: boo
   useFrame(({ clock }) => {
     const list = flyers.current;
     if (!list.length) return;
+    // Exploding takes the parts over (explode.tsx): they land at once.
+    if (useUi.getState().explode > 0) {
+      for (const f of list) {
+        f.node.position.copy(f.home);
+        f.fade.forEach((m) => (m.opacity = m.userData.opacity ?? m.opacity));
+      }
+      flyers.current = [];
+      return;
+    }
     if (!start.current) start.current = clock.elapsedTime;
     const t = clock.elapsedTime - start.current;
     let done = true;

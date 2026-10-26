@@ -463,6 +463,9 @@ def _bodies(state) -> list[dict]:
                 "mass_g": round(float(body.get("mass_g") or 0.0), 1),
             }
         )
+        if body["kind"] == "hardware":
+            # The explode view takes it out of its hole: the part it sits in and its axis into the material.
+            rows[-1].update(holder=body.get("holder"), direction=body.get("direction"))
     return rows
 
 

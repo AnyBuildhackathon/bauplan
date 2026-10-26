@@ -77,6 +77,9 @@ export function shownBuild(): number | null {
 
 /** Puts a note into Mechanic's message box and brings the box into view. */
 export function attach(note: StudioNote, thumb: string | null = null): boolean {
+  // Taken on the exploded model: Mechanic reads its points as where the parts sit assembled.
+  const { explode } = useUi.getState();
+  if ((note.kind === "selection" || note.kind === "measure") && explode > 0) note = { ...note, exploded: Math.round(explode * 100) / 100 };
   if (!useNotes.getState().add(note, thumb)) {
     if (useNotes.getState().notes.length >= MAX_NOTES) useSource.setState({ notice: `A message takes ${MAX_NOTES} notes at most.` });
     return false;
