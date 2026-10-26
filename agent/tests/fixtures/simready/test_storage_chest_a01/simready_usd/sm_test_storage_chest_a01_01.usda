@@ -1,0 +1,70 @@
+#usda 1.0
+(
+    customLayerData = {
+        dictionary SimReady_Metadata = {
+            float3 asset_extents = (0.14, 0.04, 0.04)
+            string asset_license = "CC-BY 4.0"
+            string author = "NVIDIA"
+            double mass = 4
+            string qcode = "Q1638236"
+            int rigid_body_count = 2
+        }
+    }
+    defaultPrim = "RootNode"
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+# A test stand-in for a SimReady package with two rigid bodies (like a chest and its drawer):
+# 1 kg on the left, 3 kg on the right, each with its own mass properties.
+def Xform "RootNode" (
+    prepend apiSchemas = ["SemanticsLabelsAPI:wikidata_class"]
+    kind = "component"
+)
+{
+    token[] semantics:labels:wikidata_class = ["storage chest"]
+
+    def Scope "Geometry"
+    {
+        def Xform "left_obj" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+        )
+        {
+            float physics:mass = 1
+            point3f physics:centerOfMass = (0, 0, 0.02)
+            float3 physics:diagonalInertia = (0.001, 0.001, 0.001)
+            double3 xformOp:translate = (-0.05, 0, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+
+            def Mesh "left_mesh" (
+                prepend apiSchemas = ["PhysicsCollisionAPI"]
+            )
+            {
+                int[] faceVertexCounts = [4, 4, 4, 4, 4, 4]
+                int[] faceVertexIndices = [0, 3, 2, 1, 4, 5, 6, 7, 0, 1, 5, 4, 1, 2, 6, 5, 2, 3, 7, 6, 3, 0, 4, 7]
+                point3f[] points = [(-0.02, -0.02, 0), (0.02, -0.02, 0), (0.02, 0.02, 0), (-0.02, 0.02, 0), (-0.02, -0.02, 0.04), (0.02, -0.02, 0.04), (0.02, 0.02, 0.04), (-0.02, 0.02, 0.04)]
+            }
+        }
+
+        def Xform "right_obj" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+        )
+        {
+            float physics:mass = 3
+            point3f physics:centerOfMass = (0, 0, 0.02)
+            float3 physics:diagonalInertia = (0.001, 0.001, 0.001)
+            double3 xformOp:translate = (0.05, 0, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+
+            def Mesh "right_mesh" (
+                prepend apiSchemas = ["PhysicsCollisionAPI"]
+            )
+            {
+                int[] faceVertexCounts = [4, 4, 4, 4, 4, 4]
+                int[] faceVertexIndices = [0, 3, 2, 1, 4, 5, 6, 7, 0, 1, 5, 4, 1, 2, 6, 5, 2, 3, 7, 6, 3, 0, 4, 7]
+                point3f[] points = [(-0.02, -0.02, 0), (0.02, -0.02, 0), (0.02, 0.02, 0), (-0.02, 0.02, 0), (-0.02, -0.02, 0.04), (0.02, -0.02, 0.04), (0.02, 0.02, 0.04), (-0.02, 0.02, 0.04)]
+            }
+        }
+    }
+}

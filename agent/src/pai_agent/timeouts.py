@@ -47,6 +47,9 @@ BUDGET_S = {
     "bom_build": 120.0,
     # A slicer takes seconds to a minute per part; its own subprocess timeout is 180 s.
     "print_prep": 300.0,
+    # A first SimReady object downloads its package, CoACD splits a container (PAI_SIMREADY_DECOMPOSE_S,
+    # 180 s at most) and Blender writes the GLB (180 s at most); a cached object takes a second.
+    "scene_object": 420.0,
     # FEM meshes and solves each load case in CalculiX (150 s each at most); a material change reruns it.
     "fem_check": 420.0,
     "material_pick": 420.0,

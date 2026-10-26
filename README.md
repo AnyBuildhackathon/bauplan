@@ -116,6 +116,7 @@ The full stack with versions and licenses is in [docs/FRAMEWORKS.md](docs/FRAMEW
 - macOS or Linux, with [uv](https://docs.astral.sh/uv/) (it installs Python 3.12 on first run) and Node.js 20 or newer.
 - Optional: [FreeCAD 1.1](https://www.freecad.org/) and [Blender](https://www.blender.org/) in `/Applications` for real CAD and renders; without them CadQuery and a recorded still stand in.
 - Optional: Rust for the Mac app.
+- Optional: the SimReady extra (`cd agent && uv sync --extra simready`) to put real objects from NVIDIA's SimReady library (CC BY 4.0) into a scene; the catalogue search works without it.
 - Optional API keys in `agent/.env` (see [Configuration](#configuration)); without any key the scripted mock runs.
 
 ### Backend
@@ -267,6 +268,19 @@ Tokens are cached until they expire, results for a day, each provider stays insi
 | `PAI_WARM` | `0` skips warming slow imports at start. |
 | `DEMO_PACE_S` | Pause between steps in seconds, for stage pacing (default `0`). |
 | `PORT` | Backend port (default `8100`). |
+
+### SimReady objects
+
+`scene_object` and `GET /api/objects` use NVIDIA's SimReady assets (Hugging Face dataset `nvidia/simready-assets`, pinned revision, CC BY 4.0); see [events.md](docs/events.md#objects).
+The catalogue ships in `agent/data/simready/index.json` (rebuild it with `cd agent && uv run --extra simready python scripts/build_simready_index.py`), and `cd agent && uv run --extra simready python scripts/smoke_simready.py` checks the whole path against the real dataset.
+
+| Variable | Purpose |
+| --- | --- |
+| `PAI_SIMREADY_CACHE` | Where downloaded packages, conversions and thumbnails live (default `~/.cache/anybuild/simready`, outside the repository). |
+| `PAI_SIMREADY_MIRROR` | A local folder laid out like the dataset, read instead of Hugging Face (offline machines, tests). |
+| `PAI_SIMREADY_MAX_MB` | The largest package a first use may download (default `300`); food and kitchenware take a few megabytes, some equipment over a gigabyte. |
+| `PAI_SIMREADY_DECOMPOSE_S` | Time limit for CoACD's convex decomposition of a container (default `180`); after it the object keeps one convex hull per mesh and a warning. |
+| `HF_TOKEN` | Optional Hugging Face token: a higher rate limit than the anonymous 3,000 file requests per 5 minutes (a token saved by `hf auth login` works too). |
 
 ### Public deployment
 

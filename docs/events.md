@@ -193,6 +193,41 @@ HTTP 400 without a title or author or without a finished build (no bill of mater
 `POST /api/community/{id}/remix` (HTTP 404 for an unknown id) opens the entry on a fresh bench: it sends a `remix` event, rebuilds the entry through the same tools and events as `POST /api/library/{id}/open`, and Mechanic asks what to change.
 The response is like `POST /api/prompt`, with `remix`: `{"ok": true, "mode": "mock", "status": "started", "remix": "quiet-desk-fan"}`, or `status: already_running`.
 
+### Objects
+
+NVIDIA's SimReady objects are real things a build stands next to, is sized for or picks up: the 2,575 packages of the Hugging Face dataset `nvidia/simready-assets` at the pinned revision `524747d9b5e1` (food, kitchenware, boxes, hand tools and more), each a USD asset with its mesh, textures, mass, friction and Wikidata semantics, all under CC BY 4.0.
+The catalogue is offline in `agent/data/simready/index.json`, built once by `agent/scripts/build_simready_index.py`; a package itself is fetched when `scene_object` first uses it (see [object](#object)).
+
+`GET /api/objects?q=banana&limit=20&offset=0` answers `{"ok": true, "total": 23, "source": "nvidia/simready-assets@524747d9b5e1", "items": [object, ...]}`, best match first.
+Every word of `q` must match the object's Wikidata class, title, id, category or description (a plural matches its singular, a word of three letters or more matches as a prefix); the class weighs most, among equally good matches the smaller download comes first, and an empty `q` lists the catalogue by id.
+`limit` is 1 to 100 (default 20) and `offset` 0 or more, else HTTP 400.
+Each item is:
+
+```json
+{
+  "id": "food_produce_banana_a01",
+  "title": "Banana",
+  "category": "Food",
+  "description": "banana fruit",
+  "wikidata": {"class": "banana", "qcode": "Q503"},
+  "size_mm": [116.0, 162.2, 31.6],
+  "mass_g": 242.8,
+  "mass_estimated": true,
+  "download_mb": 1.2,
+  "thumbnail_url": "/api/objects/food_produce_banana_a01/thumbnail",
+  "license": "CC-BY-4.0",
+  "source": "nvidia/simready-assets@524747d9b5e1"
+}
+```
+
+`size_mm` is the object's bounding box `[x, y, z]` with Z up.
+`mass_g` is SimReady's estimate from the material's density, the volume and a fill ratio, so `mass_estimated` is always `true`.
+`download_mb` is what the first use of the object downloads: food and kitchenware take one to a few megabytes, while equipment ships hundreds, almost all of it textures.
+
+`GET /api/objects/{id}/thumbnail` returns the object's studio render on a transparent background as a 256 px WebP (`image/webp`).
+The first request downloads that one file and checks it against the SHA-256 the catalogue keeps for it; every later request is the cached image, without the network.
+It is HTTP 404 for an id that is not in the catalogue, and 503 when the render is not cached yet and Hugging Face is unreachable.
+
 ### Bench
 
 `GET /api/bench` answers `{"ok": true, "runs": [run, ...]}`: the results `agent/bench/run.py` wrote to `agent/bench/results/live.json` and `agent/bench/results/mock.json`, the live run first; a missing file is left out, so no run yet is `"runs": []`.
@@ -445,6 +480,61 @@ The client shows the latest sketch in the Model tab; a `reset` drops it, and so 
 
 `{"type": "remix", "id": "quiet-desk-fan", "title": "Quiet USB desk fan", "author": "maker.kai"}` says the bench holds a remix of that community entry.
 Sent once when `POST /api/community/{id}/remix` starts; the client shows a "Remixed from" link back to the original until the next reset, and publishing the build links the new entry to it.
+
+### object
+
+A NVIDIA SimReady object in the scene, placed by `scene_object`: context for the build (the mug a holder fits, the banana a gripper picks up, the pan it goes into), never part of the bill of materials.
+
+```json
+{
+  "type": "object",
+  "id": "kitchenware_pan_a01",
+  "title": "Frying pan",
+  "wikidata": {"class": "frying pan", "qcode": "Q127666"},
+  "size_mm": [259.3, 431.0, 44.5],
+  "mass_g": 2956.5,
+  "mass_estimated": true,
+  "mass_source": "SimReady estimate (the rigid body's mass properties)",
+  "friction": 0.4,
+  "glb_url": "/files/{session}/simready-kitchenware_pan_a01.glb?v=e8aca0e5dd",
+  "thumbnail_url": "/api/objects/kitchenware_pan_a01/thumbnail",
+  "mjcf_url": "/files/{session}/simready-kitchenware_pan_a01.xml?v=38cfd49199",
+  "license": "CC-BY-4.0",
+  "attribution": "\"kitchenware_pan_a01\" by NVIDIA, from the SimReady assets (https://huggingface.co/datasets/nvidia/simready-assets/tree/524747d9b5e1f21b5b18b56041788c01d745f1a1/kitchenware_pan_a01), licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Changed by AnyBuild: converted from USD to STL meshes and an MJCF body for MuJoCo (Z up, metres); collision split into 12 convex parts with CoACD instead of one convex hull; converted from USD to glTF binary (GLB) with Blender; thumbnail resized to 256 px WebP.",
+  "changes": ["Converted from USD to STL meshes and an MJCF body for MuJoCo (Z up, metres)", "Collision split into 12 convex parts with CoACD instead of one convex hull", "Converted from USD to glTF binary (GLB) with Blender", "Thumbnail resized to 256 px WebP"],
+  "source": "nvidia/simready-assets@524747d9b5e1",
+  "role": "target",
+  "position_mm": [0.0, 0.0, 22.2],
+  "rotation_deg": [0.0, 0.0, 0.0],
+  "origin_mm": [0.0, 85.8, -0.9],
+  "collision": {"method": "coacd", "parts": 12, "cavity_mm": 22.8},
+  "grasp_points_mm": [[-167.4, 0.0, 13.9], [167.4, 0.0, 13.9]],
+  "textured": true,
+  "warnings": [],
+  "reason": "The gripper puts the banana into it."
+}
+```
+
+`id` is the SimReady package id; `title`, `wikidata` (class and Q-code from the USD's semantics), `size_mm` and `mass_g` are as in [Objects](#objects).
+`mass_estimated` is always `true`, because SimReady computed every mass from density, volume and a fill ratio; `mass_source` says which mass the USD declares, the rigid body's own or the sum of its colliders' (UsdPhysics precedence).
+`friction` is the sliding friction MuJoCo uses: the dynamic friction of the physics material the USD binds to the largest collision group, the lower of the two coefficients, so a grasp that holds in MuJoCo is not held by friction the object lacks.
+`mjcf_url` is a standalone MJCF file with one `<body>`: a free joint, an `<inertial>` with the USD's mass, centre of mass and full inertia, the visual meshes per material (group 2, no contact, the material's colour), the convex collision meshes (group 3, with the friction) and the grasp points as sites (group 4).
+Its meshes are STL files next to it in the session, so it loads on its own or `<include>`s into a scene; the body sits at `origin_mm` with the rotation, in metres.
+`glb_url` is the model for the 3D view: glTF binary, Y up, metres, the same origin as the MJCF body, with base colour, metallic-roughness and normal textures, each scaled down to at most 1024 px (then `changes` says so); `textured` is `false` when Blender was missing or failed and the GLB carries the materials' base colours only.
+`collision` is `{method, parts, cavity_mm}`: `hull` is one convex hull per collision mesh, `coacd` a convex decomposition by CoACD into `parts`.
+MuJoCo collides every mesh as its convex hull, and one hull is a lid over a pan or a bowl: a banana dropped into the pan lies on that lid 30 mm up, while the decomposed pan holds it at its bottom.
+`cavity_mm` is the deepest water the object's top surface holds; the default `auto` decomposes an object holding at least 5 mm over at least 10 % of its box and gives everything else hulls.
+`role` is `context`, `payload` (what the product grips or carries) or `target` (where a payload goes).
+`position_mm` is the centre of the object's bounding box in the scene (millimetres, Z up, the product's frame), `rotation_deg` the rotation about X, then Y, then Z (as for a spec part), and `origin_mm` where the MJCF and GLB origin sits.
+`grasp_points_mm` are SimReady's grasp points in the object's own frame.
+`license` is always `CC-BY-4.0`, since the backend refuses every other package.
+`attribution` is the CC BY 4.0 notice (title, author, source link, license link and the changes), and `changes` lists each change AnyBuild made, as the license asks; show the attribution wherever the object is shown.
+The MJCF file, the STL headers and the GLB's `asset.copyright` carry the same notice.
+`source` names the dataset and its pinned revision.
+`warnings` lists what the conversion could not keep, such as a decomposition that ran out of time and fell back to hulls; `reason` is Mechanic's line for why the object is in the scene.
+
+`{"type": "object", "id": "kitchenware_pan_a01", "removed": true}` takes it out of the scene again.
+Objects stay on the bench until a reset, and the client keeps the latest event per `id`.
 
 ### sim
 
@@ -866,7 +956,7 @@ Closing buttons are tagged `{control}:close`, and `look:3d` is the 3D switch of 
 
 ## Tools
 
-`ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `simulate_mission`, `stress_test`, `cad_frame`, `cad_part`, `product_brief`, `product_spec`, `sketch_to_spec`, `reference_load`, `delegate`, `part_pick`, `assemble`, `cad_update`, `check_totals`, `check_tip_over`, `check_deflection`, `check_torque`, `check_runtime`, `check_power`, `check_thermal`, `check_rollover`, `simulate_assembly`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `robouse_trial`, `blender_render`, `bom_build`, `print_prep`, `build_guide`, `firmware`, `electronics_plan`, `circuit_design`, `safety_check`, `ui_point_at`, `ui_draw`, `ui_control`, `mascot_say`, `train_in_browser`, `train_controller`, `optimize_design`, `optimize_apply`, `material_pick`, `fem_check`.
+`ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `simulate_mission`, `stress_test`, `cad_frame`, `cad_part`, `product_brief`, `product_spec`, `sketch_to_spec`, `reference_load`, `delegate`, `part_pick`, `assemble`, `cad_update`, `check_totals`, `check_tip_over`, `check_deflection`, `check_torque`, `check_runtime`, `check_power`, `check_thermal`, `check_rollover`, `simulate_assembly`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `robouse_trial`, `blender_render`, `bom_build`, `print_prep`, `build_guide`, `firmware`, `electronics_plan`, `circuit_design`, `safety_check`, `scene_object`, `ui_point_at`, `ui_draw`, `ui_control`, `mascot_say`, `train_in_browser`, `train_controller`, `optimize_design`, `optimize_apply`, `material_pick`, `fem_check`.
 
 `material_pick` takes `part_id` (none for the drone frame), `max_temp_c`, `outdoor`, `impact`, `flex` and optionally `material` and `reason`; it chooses among the filaments the user's printer prints (every material without a printer): heat and flex rule a material out (heat deflection temperature at least 5 °C over `max_temp_c`), then outdoor UV and impact toughness rank, then stiffness and strength, then the spool price. It returns `material`, a one-sentence `reason`, `meets_needs`, `rejected` with why, and the data sheet `properties` and `source`; the part's mass follows the density and every check runs again.
 `fem_check` takes `part_id` and optionally `cases` (`[{name, region, force_n}]`, newtons in the assembly frame), `fixed` (the held region), `infill_pct` and `walls`; a region is `{face: x_min ... z_max}`, `{near: [x, y, z], radius_mm}` or `{box: [x0, y0, z0, x1, y1, z1]}`. Without cases a spec part is held on its lowest face and loaded by each external load within 40 mm at twice its weight (else a 10 N press on its top); the drone frame is held at the stack, with all four motors at full thrust and a crash on one motor at 10 g. It emits the `fem` event, stores its result as a check (rerun by `cad_update`, by `cad_frame` for the drone and by `material_pick`) and judges the `strength` requirement.
@@ -951,6 +1041,19 @@ CadQuery writes the same STL, STEP, and GLB when FreeCAD is missing or the scrip
 `build_guide` is drone only, comes after `bom_build`, and takes `steps` as in the `build_guide` event, without `items`; a step number out of order, an unknown part, or a scene part no step installs is an error that names it.
 A step may add `bom_parts`, categories from the bill of materials that have no scene part (`camera`, `canopy`, `hardware`); they show up in `items`.
 `print_prep` comes after `bom_build`; `orientation` (`flat` by default, `auto` by default with a printer set, `upright`, `as_modeled`) applies to every part and `orientations` sets it per part id. It runs a slicer found on `PATH` or in `/Applications` (`PAI_SLICER` names an executable, `off` skips it) and emits one `print` event.
+
+### Scene objects
+
+`scene_object` puts a NVIDIA SimReady object into the scene, as context, as a size to design around, or as a payload or a target: `query` searches the offline catalogue (see [Objects](#objects)) and places the best match, with the next matches as `candidates`; `id` places one exact object; `role`, `position_mm`, `rotation_deg` and `collision` (`auto`, `hull` or `decompose`) are as in the [object](#object) event; `remove` with `id` takes it out.
+The first use of an object downloads its package from Hugging Face into `~/.cache/anybuild/simready` (`PAI_SIMREADY_CACHE`, outside the repository; `agent/src/pai_agent/simready/fetch.py`).
+The license is read first and anything but CC-BY-4.0 is refused, the bill of materials is checked against the packaging file's SHA-256 and every file against the bill of materials, and only what a conversion reads is fetched, not the MDL sources or the texture previews.
+A cached object comes back in milliseconds without the network; `PAI_SIMREADY_MIRROR` reads packages from a local folder laid out like the dataset instead, and `HF_TOKEN` raises Hugging Face's rate limit.
+A first use downloads at most `PAI_SIMREADY_MAX_MB` (default 300, about nine in ten objects): `query` then places the best match that fits and lists the larger ones it skipped in `warnings`, and an `id` over the limit is refused with smaller matches as `candidates`.
+`agent/src/pai_agent/simready/convert.py` reads the USD with SimReady's MuJoCo physics variant selected, bakes every mesh into the object's frame (Z up, metres, whatever the file's units and up axis) and writes the MJCF body, then the GLB through Blender, the one `blender_render` uses.
+CoACD runs in its own process for at most `PAI_SIMREADY_DECOMPOSE_S` seconds (default 180); after that the object keeps its hulls and the event warns.
+CoACD and Blender run one at a time in a backend, Blender on two threads, so a second object waits instead of competing for the machine.
+Conversions are cached per package content and converter code, and `PAI_CACHE=0` converts again.
+The tool needs the optional `simready` extra (`cd agent && uv sync --extra simready` for usd-core, coacd, trimesh and huggingface_hub); without it the tool answers with that command and the search still works.
 
 ## Mock story
 

@@ -39,6 +39,24 @@ We searched Printables, GitHub, the manufacturers' pages and the open web for th
 Thingiverse, GrabCAD and MakerWorld refused automated access, so we could not search them.
 The candidates we found were the wrong part (a BetaFPV 0802SE motor, generic three-blade 2-inch props, printable plastic frames) or had a license that does not allow redistribution (CC BY-NC and CC BY-NC-SA).
 
+## NVIDIA SimReady objects
+
+AnyBuild can put real objects from NVIDIA's SimReady assets into a scene (`scene_object`, see [docs/events.md](docs/events.md#object)).
+They are the packages of the Hugging Face dataset [nvidia/simready-assets](https://huggingface.co/datasets/nvidia/simready-assets) at revision `524747d9b5e1f21b5b18b56041788c01d745f1a1`, made by NVIDIA and licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+Each package declares that license in its `com.nvidia.simready.packaging.json` and ships the license text.
+No package is stored in this repository: the backend downloads a package when it is first used, refuses any package whose license is not CC-BY-4.0, and keeps it in a cache outside the repository.
+`agent/data/simready/index.json` lists every package of that revision with facts read from its metadata (name, Wikidata class, size, mass) and the hash of its thumbnail; it is derived from the dataset and carries the same attribution.
+
+AnyBuild changes what it uses and says so with every object it shows, in the `attribution` and `changes` of the `object` event, the comment of the MJCF file, the header of every STL file and the `asset.copyright` of the GLB:
+
+- the USD is converted to STL meshes and an MJCF body for MuJoCo;
+- the collision meshes are replaced by their convex hulls, or a container's by a convex decomposition with CoACD;
+- the object is converted to a glTF binary (GLB) with Blender, its textures scaled down to at most 1024 px, or without its textures when Blender is missing;
+- the thumbnail is resized to a 256 px WebP.
+
+NVIDIA's name identifies the source of the objects; it does not mean NVIDIA endorses AnyBuild.
+Whoever passes converted objects on, for example in an exported project, passes the attribution and the list of changes with them and may not add restrictions.
+
 ## Generated media
 
 These files were made for AnyBuild by the team with generative tools and are released with the project under the MIT License, subject to the terms of the tools that made them.

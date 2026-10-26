@@ -1,0 +1,133 @@
+#usda 1.0
+(
+    defaultPrim = "RootNode"
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "RootNode" (
+    prepend apiSchemas = ["SemanticsLabelsAPI:wikidata_class", "SemanticsLabelsAPI:wikidata_qcode"]
+    kind = "component"
+)
+{
+    custom string omni:simready:documentation = "serving tray"
+    token[] semantics:labels:wikidata_class = ["tray"]
+    token[] semantics:labels:wikidata_qcode = ["Q613972"]
+
+    def Scope "Geometry"
+    {
+        def Xform "tray_obj" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI"]
+        )
+        {
+            # 120 x 80 x 40 mm, 4 mm walls, open at the top; faces 0-8 outside and rim, 9-13 inside.
+            def Mesh "tray_mesh" (
+                prepend apiSchemas = ["MaterialBindingAPI"]
+            )
+            {
+                int[] faceVertexCounts = [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4]
+                int[] faceVertexIndices = [0, 3, 2, 1, 0, 1, 5, 4, 1, 2, 6, 5, 2, 3, 7, 6, 3, 0, 4, 7, 4, 5, 9, 8, 5, 6, 10, 9, 6, 7, 11, 10, 7, 4, 8, 11, 8, 9, 13, 12, 9, 10, 14, 13, 10, 11, 15, 14, 11, 8, 12, 15, 12, 13, 14, 15]
+                point3f[] points = [(-0.06, -0.04, 0), (0.06, -0.04, 0), (0.06, 0.04, 0), (-0.06, 0.04, 0), (-0.06, -0.04, 0.04), (0.06, -0.04, 0.04), (0.06, 0.04, 0.04), (-0.06, 0.04, 0.04), (-0.056, -0.036, 0.04), (0.056, -0.036, 0.04), (0.056, 0.036, 0.04), (-0.056, 0.036, 0.04), (-0.056, -0.036, 0.004), (0.056, -0.036, 0.004), (0.056, 0.036, 0.004), (-0.056, 0.036, 0.004)]
+                float3[] extent = [(-0.06, -0.04, 0), (0.06, 0.04, 0.04)]
+                texCoord2f[] primvars:st = [(0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5), (0.25, 0.5)] (
+                    interpolation = "faceVarying"
+                )
+                uniform token subdivisionScheme = "none"
+                rel material:binding = </RootNode/Looks/m_red>
+                rel material:binding:physics = </RootNode/PhysicsMaterials/physics_mat_plastic>
+                uniform token subsetFamily:materialBind:familyType = "partition"
+
+                def GeomSubset "outside" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    uniform token elementType = "face"
+                    uniform token familyName = "materialBind"
+                    int[] indices = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+                    rel material:binding = </RootNode/Looks/m_red>
+                }
+
+                def GeomSubset "inside" (
+                    prepend apiSchemas = ["MaterialBindingAPI"]
+                )
+                {
+                    uniform token elementType = "face"
+                    uniform token familyName = "materialBind"
+                    int[] indices = [9, 10, 11, 12, 13]
+                    rel material:binding = </RootNode/Looks/m_textured>
+                }
+            }
+
+            def Xform "Grasp_Point_1_1"
+            {
+                token visibility = "invisible"
+                double3 xformOp:translate = (-0.06, 0, 0.03)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+            }
+
+            def Xform "Grasp_Point_1_2"
+            {
+                token visibility = "invisible"
+                double3 xformOp:translate = (0.06, 0, 0.03)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+            }
+        }
+    }
+
+    def Scope "Looks"
+    {
+        def Material "m_red"
+        {
+            token outputs:surface.connect = </RootNode/Looks/m_red/Surface.outputs:surface>
+
+            def Shader "Surface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.8, 0.1, 0.1)
+                float inputs:roughness = 0.6
+                token outputs:surface
+            }
+        }
+
+        def Material "m_textured"
+        {
+            token outputs:surface.connect = </RootNode/Looks/m_textured/Surface.outputs:surface>
+
+            def Shader "Surface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor.connect = </RootNode/Looks/m_textured/Albedo.outputs:rgb>
+                float inputs:roughness = 0.6
+                token outputs:surface
+            }
+
+            def Shader "Albedo"
+            {
+                uniform token info:id = "UsdUVTexture"
+                asset inputs:file = @../Textures/t_tray_alb.png@
+                float2 inputs:st.connect = </RootNode/Looks/m_textured/uv.outputs:result>
+                float3 outputs:rgb
+            }
+
+            def Shader "uv"
+            {
+                uniform token info:id = "UsdPrimvarReader_float2"
+                string inputs:varname = "st"
+                float2 outputs:result
+            }
+        }
+    }
+
+    def Scope "PhysicsMaterials"
+    {
+        def Material "physics_mat_plastic" (
+            prepend apiSchemas = ["PhysicsMaterialAPI"]
+        )
+        {
+            float physics:density = 950
+            float physics:dynamicFriction = 0.45
+            float physics:restitution = 0.3
+            float physics:staticFriction = 0.5
+        }
+    }
+}

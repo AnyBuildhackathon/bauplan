@@ -76,3 +76,6 @@ class BuildState:
     optimize: dict[str, dict] = field(default_factory=dict)
     # The Claude Code conversation the subscription provider continues on the next message, or None.
     llm_session: str | None = None
+    # NVIDIA SimReady objects in the scene (scene_object) by id: role, placement, size, mass and their
+    # MJCF and GLB files in the session. Context for the build, never in the bill of materials.
+    objects: dict[str, dict] = field(default_factory=dict)

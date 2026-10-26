@@ -78,6 +78,13 @@ It has no OpenAPI page; FastAPI's generated docs are turned off on purpose for t
 | `GET` | `/api/community/{entry_id}/thumbnail` | The entry's render (PNG). | | [Community](events.md#community) |
 | `GET` | `/api/community/{entry_id}/files/{name}` | One of the entry's renders or CAD files. | | [Community](events.md#community) |
 
+### Objects
+
+| Method | Path | Purpose | Limit | Spec |
+| --- | --- | --- | --- | --- |
+| `GET` | `/api/objects?q=&limit=&offset=` | Search the NVIDIA SimReady objects (CC BY 4.0) of the pinned library, offline: title, class, size, mass and thumbnail per object. | | [Objects](events.md#objects) |
+| `GET` | `/api/objects/{object_id}/thumbnail` | The object's render as a 256 px WebP, downloaded once and then cached. | | [Objects](events.md#objects) |
+
 ### Voice
 
 | Method | Path | Purpose | Limit | Spec |
@@ -122,6 +129,7 @@ Each event has a `type`; every stream begins with `reset`, then the backlog, the
 | `product` | Which product the bench holds (`drone`, `gripper` or a spec slug). | [product](events.md#product) |
 | `sketch` | The hand sketch a build started from and what Claude read off it. | [sketch](events.md#sketch) |
 | `remix` | The bench holds a remix of a community entry. | [remix](events.md#remix) |
+| `object` | A NVIDIA SimReady object in the scene, with its MJCF body, GLB, CC BY 4.0 attribution and changes, or `removed`. | [object](events.md#object) |
 | `requirement` | One requirement with its quote, limit, measured value and pass or fail. | [requirement](events.md#requirement) |
 | `metrics` | The key numbers: weight, thrust-to-weight, flight time, price. | [metrics](events.md#metrics) |
 | `part` | A bought part was chosen or considered, with its quote and warnings. | [part](events.md#part) |

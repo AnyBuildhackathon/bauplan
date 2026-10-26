@@ -578,6 +578,33 @@ async def community_file(entry_id: str, name: str) -> FileResponse:
     return FileResponse(path, media_type=_media(name), filename=name)
 
 
+@app.get("/api/objects")
+async def objects(q: str = "", limit: int = 20, offset: int = 0) -> dict:
+    """Searches the NVIDIA SimReady objects (CC BY 4.0) of the pinned library, offline from agent/data/simready/index.json."""
+
+    from pai_agent.simready import index, source_tag
+
+    if not 1 <= limit <= 100 or offset < 0:
+        raise HTTPException(status_code=400, detail="limit is 1 to 100 and offset 0 or more")
+    rows, total = index.search(q[:200], limit=limit, offset=offset)
+    return {"ok": True, "total": total, "source": source_tag(index.revision()), "items": [index.public(row) for row in rows]}
+
+
+@app.get("/api/objects/{object_id}/thumbnail")
+async def object_thumbnail(object_id: str) -> FileResponse:
+    from pai_agent.simready import fetch, index
+
+    row = index.get(object_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="unknown SimReady object")
+    try:
+        # The first request downloads the one render file; every later one is the cached 256 px WebP.
+        path = await asyncio.to_thread(fetch.thumbnail, object_id, row)
+    except (fetch.SimReadyError, OSError) as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return FileResponse(path, media_type="image/webp", headers={"Cache-Control": "public, max-age=86400"})
+
+
 @app.get("/api/settings")
 async def settings_get() -> dict:
     from pai_agent import settings

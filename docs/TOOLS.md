@@ -13,7 +13,9 @@ Event payloads are specified in [events.md](events.md#tools), and the step each 
 | **Anthropic Claude** (Opus 5.5, Sonnet 5.5, Haiku 5.5) | Orchestrator, sub-agents, `cad_part` script writing, `sketch_to_spec` (vision), `bom_build` live prices (server-side web search), learning-mode explanations | Anthropic Python SDK, Messages API with tool use, adaptive thinking and effort | Scripted mock stories through the same tools |
 | **FreeCAD 1.1** | `cad_frame`, `cad_part`, `cad_update`, `POST /api/cad/open` | GUI over the [freecad-mcp](https://github.com/neka-nat/freecad-mcp) XML-RPC add-on on port 9875, or headless `freecadcmd` in a sandbox | CadQuery (frame) or a marked placeholder block (generated parts) |
 | **CadQuery 2.8** (OpenCascade) | `cad_frame` fallback | Python library | None needed |
-| **Blender 5** | `blender_render`, `product_usd` | Headless `blender -b -P agent/blender/studio.py` (Cycles with Metal GPU, or EEVEE) | Recorded still `agent/runs/fallback/render.png` |
+| **Blender 5** | `blender_render`, `product_usd`, `scene_object` (GLB) | Headless `blender -b -P agent/blender/studio.py` (Cycles with Metal GPU, or EEVEE); `agent/src/pai_agent/simready/blender_glb.py` turns a SimReady USD into a textured GLB | Recorded still `agent/runs/fallback/render.png`; an untextured GLB in the materials' base colours for `scene_object` |
+| **NVIDIA SimReady assets** (Hugging Face dataset `nvidia/simready-assets`, CC BY 4.0) | `scene_object`, `GET /api/objects` | Packages fetched one by one at a pinned revision, license-checked and verified against their SHA-256 bill of materials; read with usd-core (OpenUSD); offline catalogue in `agent/data/simready/index.json` | The catalogue and cached objects work offline; an uncached object needs the network or `PAI_SIMREADY_MIRROR` |
+| **CoACD 1.0** | `scene_object` for containers | Convex decomposition in its own process, `python -m pai_agent.simready.decompose` | One convex hull per collision mesh, with a warning |
 | **MuJoCo 3.17** | `simulate_drone`, `simulate_assembly`, `simulate_grip` on the backend; `train_in_browser`, `stress_test` in the browser | Python bindings; `@mujoco/mujoco` WebAssembly in the dashboard | None needed |
 | **NVIDIA Isaac Sim 5.1 and Isaac Lab 2.3** | `isaac_test`, `isaac_train` and aliases | SSH to a GPU host prepared by `runpod/setup.sh`, job script `runpod/isaac_job.py` | Recorded, clearly labelled result |
 | **Robo Use 0.6.1** (MuJoCo 3.3) | `robouse_trial` | The `anybuild-robouse` command in its own uv environment (`PAI_ROBOUSE_BIN`): `task`, `check` (`robouse tasks check`) and `trial` (`robouse run`) | Recorded, clearly labelled trial (`agent/data/robouse/recorded/`) |
@@ -130,6 +132,12 @@ Scene target names and control names are listed in [events.md](events.md#scene-t
 | Tool | Inputs | Returns and emits | Behind it |
 | --- | --- | --- | --- |
 | `safety_check` | `context`: string; `findings`: array of findings with severity, title, reason, rule and fix | Returns sorted findings, top finding, disclaimer and next action; emits `safety` with product, label, findings and summary before ordering. | Python rules over the build and optional Claude findings; advisory, not certification |
+
+## Scene objects
+
+| Tool | Inputs | Returns and emits | Behind it |
+| --- | --- | --- | --- |
+| `scene_object` | `query`: string; `id`: string; `role`: `context`, `payload` or `target`; `position_mm`, `rotation_deg`: number arrays; `collision`: `auto`, `hull` or `decompose`; `remove`: boolean; `reason`: string | Puts a NVIDIA SimReady object into the scene with its size, its mass (SimReady's estimate) and friction from the USD, an MJCF body (one convex hull, or a CoACD decomposition for a container) and a textured GLB; returns the object, the next search matches as `candidates` and the CC BY 4.0 attribution; emits `object`. A first download over `PAI_SIMREADY_MAX_MB` (300 MB) is refused. Never part of the bill of materials. | `pai_agent.simready`: verified fetch from Hugging Face, usd-core, CoACD, trimesh, MuJoCo to check the body compiles, Blender for the GLB |
 
 ## Print preparation
 

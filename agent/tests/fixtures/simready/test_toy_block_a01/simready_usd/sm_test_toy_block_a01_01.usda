@@ -1,0 +1,90 @@
+#usda 1.0
+(
+    customLayerData = {
+        dictionary SimReady_Metadata = {
+            float3 asset_extents = (4, 4, 4)
+            string asset_license = "CC-BY 4.0"
+            string author = "NVIDIA"
+            double mass = 0.05
+            string qcode = "Q1435765"
+            int rigid_body_count = 1
+        }
+    }
+    defaultPrim = "RootNode"
+    kilogramsPerUnit = 1
+    metersPerUnit = 0.01
+    upAxis = "Y"
+)
+
+# A test stand-in for a SimReady package in other units: a 4 cm block authored in centimetres with
+# Y up, its mass properties on the rigid body, no physics variants.
+def Xform "RootNode" (
+    prepend apiSchemas = ["SemanticsLabelsAPI:wikidata_class", "SemanticsLabelsAPI:wikidata_qcode"]
+    kind = "component"
+)
+{
+    custom string omni:simready:documentation = "wooden toy block"
+    token[] semantics:labels:wikidata_class = ["toy block"]
+    token[] semantics:labels:wikidata_qcode = ["Q1435765"]
+
+    def Scope "Geometry"
+    {
+        def Xform "block_obj" (
+            prepend apiSchemas = ["PhysicsRigidBodyAPI", "PhysicsMassAPI"]
+        )
+        {
+            float physics:mass = 0.05
+            point3f physics:centerOfMass = (0, 2, 0)
+            float3 physics:diagonalInertia = (0.13333334, 0.13333334, 0.13333334)
+            quatf physics:principalAxes = (1, 0, 0, 0)
+
+            def Mesh "block_mesh" (
+                prepend apiSchemas = ["MaterialBindingAPI", "PhysicsCollisionAPI", "PhysicsMeshCollisionAPI"]
+            )
+            {
+                int[] faceVertexCounts = [4, 4, 4, 4, 4, 4]
+                int[] faceVertexIndices = [0, 1, 2, 3, 4, 7, 6, 5, 0, 4, 5, 1, 1, 5, 6, 2, 2, 6, 7, 3, 3, 7, 4, 0]
+                point3f[] points = [(-2, 0, -2), (2, 0, -2), (2, 0, 2), (-2, 0, 2), (-2, 4, -2), (2, 4, -2), (2, 4, 2), (-2, 4, 2)]
+                float3[] extent = [(-2, 0, -2), (2, 4, 2)]
+                uniform token physics:approximation = "convexHull"
+                uniform token subdivisionScheme = "none"
+                rel material:binding = </RootNode/Looks/m_blue>
+                rel material:binding:physics = </RootNode/PhysicsMaterials/physics_mat_wood>
+            }
+
+            def Xform "Grasp_Point_1_1"
+            {
+                token visibility = "invisible"
+                double3 xformOp:translate = (0, 4, 0)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+            }
+        }
+    }
+
+    def Scope "Looks"
+    {
+        def Material "m_blue"
+        {
+            token outputs:surface.connect = </RootNode/Looks/m_blue/Surface.outputs:surface>
+
+            def Shader "Surface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.2, 0.4, 0.9)
+                token outputs:surface
+            }
+        }
+    }
+
+    def Scope "PhysicsMaterials"
+    {
+        def Material "physics_mat_wood" (
+            prepend apiSchemas = ["PhysicsMaterialAPI"]
+        )
+        {
+            float physics:density = 600
+            float physics:dynamicFriction = 0.8
+            float physics:staticFriction = 0.9
+        }
+    }
+}

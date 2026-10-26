@@ -1,0 +1,75 @@
+#usda 1.0
+(
+    customLayerData = {
+        dictionary SimReady_Metadata = {
+            float3 asset_extents = (0.12, 0.08, 0.04)
+            string asset_license = "CC-BY 4.0"
+            string author = "NVIDIA"
+            double mass = 0.21
+            string qcode = "Q613972"
+            int rigid_body_count = 1
+        }
+    }
+    defaultPrim = "RootNode"
+    kilogramsPerUnit = 1
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+# A test stand-in for a SimReady package: an open tray (a container), its physics in a MuJoCo and a
+# PhysX variant like SimReady's, with the PhysX variant selected by default.
+def Xform "RootNode" (
+    prepend references = @./payloads/base.usda@
+    variants = {
+        string MuJoCo = "Disabled"
+        string PhysX = "Enabled"
+    }
+    append variantSets = ["MuJoCo", "PhysX"]
+)
+{
+    variantSet "MuJoCo" = {
+        "Disabled" {
+        }
+        "Enabled" {
+            over "Geometry"
+            {
+                over "tray_obj"
+                {
+                    over "tray_mesh" (
+                        prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsMeshCollisionAPI", "PhysicsMassAPI"]
+                    )
+                    {
+                        uniform token physics:approximation = "convexHull"
+                        uniform int mjc:maxhullvert = 128
+                        float physics:mass = 0.21
+                        point3f physics:centerOfMass = (0, 0, 0.012)
+                        float3 physics:diagonalInertia = (0.0002, 0.0003, 0.0004)
+                        quatf physics:principalAxes = (1, 0, 0, 0)
+                    }
+                }
+            }
+        }
+    }
+    variantSet "PhysX" = {
+        "Disabled" {
+        }
+        "Enabled" {
+            over "Geometry"
+            {
+                over "tray_obj"
+                {
+                    over "tray_mesh" (
+                        prepend apiSchemas = ["PhysicsCollisionAPI", "PhysicsMeshCollisionAPI", "PhysicsMassAPI"]
+                    )
+                    {
+                        uniform token physics:approximation = "sdf"
+                        float physics:mass = 9.99
+                        point3f physics:centerOfMass = (0, 0, 0.012)
+                        float3 physics:diagonalInertia = (0.0002, 0.0003, 0.0004)
+                        quatf physics:principalAxes = (1, 0, 0, 0)
+                    }
+                }
+            }
+        }
+    }
+}

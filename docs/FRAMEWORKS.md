@@ -33,6 +33,15 @@ AnyBuild's own code is MIT licensed (see [LICENSE](../LICENSE)); third-party mod
 | numpy | 2.5.4 | BSD-3-Clause and others | Numerics for the simulations and meshes. |
 | hatchling | build only | MIT | Package build backend. |
 
+The optional extra `simready` (`uv sync --extra simready`) adds what the SimReady objects need:
+
+| Package | Version | License | Role |
+| --- | --- | --- | --- |
+| usd-core | 26.11 | LicenseRef-TOST-1.0 (Pixar's Apache-2.0 variant) | Reads the SimReady USD packages: meshes, materials, physics and semantics. |
+| coacd | 1.0.14 | MIT | Convex decomposition of containers for MuJoCo. |
+| trimesh | 5.2.0 | MIT | Convex hulls and the GLB written without Blender. |
+| huggingface_hub | 2.3.0 | Apache-2.0 | Lists the dataset for the index builder and finds a saved Hugging Face login. |
+
 Tests run with pytest (`agent/tests/`) and standalone smoke scripts (`agent/scripts/smoke_*.py`).
 
 ## Robo Use bridge (`anybuild-robouse/`, its own uv environment)

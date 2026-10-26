@@ -15,6 +15,15 @@ dependencies = [
   "claude-agent-sdk>=0.2.174",
 ]
 
+[project.optional-dependencies]
+# NVIDIA SimReady objects (pai_agent.simready): fetch from Hugging Face, read the USD, decompose for MuJoCo.
+simready = [
+  "usd-core>=26.11",
+  "coacd>=1.0.14",
+  "trimesh>=5.2",
+  "huggingface_hub>=2.3",
+]
+
 [project.scripts]
 physical-ai-agent = "pai_agent.app:main"
 

@@ -30,6 +30,7 @@ from pai_agent.tools.electronics import electronics_plan
 from pai_agent.tools.safety import SCHEMA as SAFETY_SCHEMA, safety_check
 from pai_agent.tools.circuit import SCHEMA as CIRCUIT_SCHEMA, circuit_design
 from pai_agent.tools.robouse_trial import SCHEMA as ROBOUSE_TRIAL_SCHEMA, robouse_trial
+from pai_agent.tools.scene_object import SCHEMA as SCENE_OBJECT_SCHEMA, scene_object
 from pai_agent.tools.isaac import isaac_lab_status, isaac_lab_train, isaac_sim_render, isaac_test, isaac_train, ssh_setting
 from pai_agent.tools.usd import product_usd
 from pai_agent.tools.ask import ask_user
@@ -93,6 +94,7 @@ TOOLS = {
     "electronics_plan": electronics_plan,
     "safety_check": safety_check,
     "circuit_design": circuit_design,
+    "scene_object": scene_object,
     "ui_point_at": ui_point_at,
     "ui_draw": ui_draw,
     "mascot_say": mascot_say,
@@ -791,6 +793,7 @@ SCHEMAS = [
     BUILD_GUIDE_SCHEMA,
     SAFETY_SCHEMA,
     CIRCUIT_SCHEMA,
+    SCENE_OBJECT_SCHEMA,
     {
         "name": "firmware",
         "description": "Generates the firmware and wiring table from the chosen parts: a Betaflight CLI configuration for a drone (motor order, rates, trained PID gains, else defaults), an Arduino sketch for a servo product. Call it after bom_build. explanation is your one or two sentences for the team; the file itself comes from a fixed template.",
@@ -935,6 +938,8 @@ def _running_detail(name: str, args: dict) -> str:
         return str(args.get("name", ""))
     if name == "sketch_to_spec":
         return str(args.get("sketch", ""))
+    if name == "scene_object":
+        return str(args.get("id") or args.get("query") or "")
     if name == "delegate":
         return str(args.get("agent", "")) + " agent"
     if name == "optimize_design":
