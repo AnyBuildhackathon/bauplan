@@ -5,6 +5,7 @@ each printed part of it, part_pick binds each bought part to a catalog item, a p
 validated on the web (`web` true, `pai_agent.web_parts`), or an honest estimate, assemble puts everything together, and the checks in
 pai_agent.tools.checks judge the requirements. cad_update changes a printed part's
 numbers, rebuilds it from the same script, reassembles and reruns every check so far.
+The values the user set with the CAD sliders (user_change) stay through all of it.
 """
 
 from __future__ import annotations
@@ -16,7 +17,7 @@ import time
 from pathlib import Path
 
 from pai_agent import assembly as asm
-from pai_agent import learned_parts, web_parts
+from pai_agent import learned_parts, part_params, web_parts
 from pai_agent.context import Ctx
 from pai_agent.fasteners import hardware
 from pai_agent.paths import DATA_DIR, PARTS_PATH, REPO_ROOT
@@ -138,6 +139,7 @@ async def product_spec(ctx: Ctx, args: dict) -> dict:
         state.frame_mass_g = None
         state.bom = None
         state.built = {}
+        state.user_params = {}
         state.picked = {}
         state.checks = {}
         state.print_materials = {}
@@ -158,13 +160,17 @@ async def product_spec(ctx: Ctx, args: dict) -> dict:
                     continue
                 info = state.built[part["id"]]
                 built[part["id"]] = info
-                # New numbers or other standard parts: the same script builds it again with them.
-                if any(info["params"].get(k) != v for k, v in part["params"].items()) or (info.get("fasteners") or []) != part.get("fasteners", []):
+                # New numbers or other standard parts: the same script builds it again with them; the user's values still win.
+                wanted = {**part["params"], **(state.user_params.get(part["id"]) or {})}
+                if any(info["params"].get(k) != v for k, v in wanted.items()) or (info.get("fasteners") or []) != part.get("fasteners", []):
                     rebuild.append(part["id"])
             elif part["kind"] == "bought" and part["id"] in state.picked:
                 picked[part["id"]] = state.picked[part["id"]]
         state.built = built
         state.picked = picked
+        # The user's values stay with every printed part that is still there, also one whose script is written again.
+        printed_ids = {p["id"] for p in spec["parts"] if p["kind"] == "printed"}
+        state.user_params = {k: v for k, v in state.user_params.items() if k in printed_ids}
         previous_checks = state.checks
         state.checks = {}
     state.product = "generic"
@@ -222,10 +228,29 @@ async def product_spec(ctx: Ctx, args: dict) -> dict:
         "to_build": to_build,
         "to_pick": to_pick,
         "rechecked": rechecked,
+        **_user_values(state, spec),
         "next": "cad_part for each part in to_build, part_pick for each in to_pick, then assemble and the checks."
         if to_build or to_pick
         else "Every part is kept and the earlier checks ran again (rechecked); run any new check the revised requirements need.",
     }
+
+
+def _user_values(state, spec: dict) -> dict:
+    """The user's values on the bench as `{part_id}.{param}`, and the spec values they keep from applying."""
+
+    values, overridden = {}, {}
+    for part in spec["parts"]:
+        for name, value in (state.user_params.get(part["id"]) or {}).items():
+            values[part["id"] + "." + name] = value
+            wanted = (part.get("params") or {}).get(name)
+            if wanted is not None and wanted != value:
+                overridden[part["id"] + "." + name] = wanted
+    if not values:
+        return {}
+    out = {"user_values": values, "user_values_note": part_params.USER_NOTE}
+    if overridden:
+        out["overridden_by_user"] = overridden
+    return out
 
 
 async def part_pick(ctx: Ctx, args: dict) -> dict:
@@ -347,7 +372,8 @@ def _sliders(state) -> dict:
         if not info:
             continue
         for key, slider in info["sliders"].items():
-            label = part["name"] + " · " + re.sub(r"_(mm|deg|g)$", "", key).replace("_", " ")
+            # A declared parameter brings its own label; an estimated slider is named after its key.
+            label = part["name"] + " · " + (slider.get("label") or re.sub(r"_(mm|deg|g)$", "", key).replace("_", " "))
             sliders[part["id"] + "." + key] = {**slider, "label": label}
     return sliders
 
@@ -485,8 +511,21 @@ async def assemble(ctx: Ctx, args: dict) -> dict:
     }
 
 
+def _shown(value: object) -> str:
+    if isinstance(value, bool):
+        return "on" if value else "off"
+    return f"{value:g}" if isinstance(value, (int, float)) else str(value)
+
+
+def _real(value: object) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
 async def cad_update(ctx: Ctx, args: dict) -> dict:
-    """Changes numbers of a built printed part: same script, new params, then reassemble and recheck."""
+    """Changes values of a built printed part: same script, new params, then reassemble and recheck.
+
+    A value the user set with the CAD sliders stays theirs: Mechanic changes it only with its name in
+    replace_user_values, once the user asked for a new value."""
 
     from pai_agent.tools.cad_part import cad_part
 
@@ -501,25 +540,39 @@ async def cad_update(ctx: Ctx, args: dict) -> dict:
         return _fail("part_id must be a built printed part. Built: " + (", ".join(ctx.state.built) or "none") + ".")
     changes = args.get("params")
     if not isinstance(changes, dict) or not changes:
-        return _fail("params must name the numbers to change, e.g. {\"depth_mm\": 110}.")
+        return _fail("params must name the values to change, e.g. {\"depth_mm\": 110}.")
+    replace = set(part_params.names(args.get("replace_user_values")))
+    user = ctx.state.user_params.get(part_id) or {}
     params = dict(info["params"])
     sliders = {k: dict(v) for k, v in info["sliders"].items()}
-    for key, value in changes.items():
-        try:
-            number = float(value)
-        except (TypeError, ValueError):
-            return _fail(str(key) + " must be a number.")
+    taken = []
+    for key, raw in changes.items():
         if key not in params:
             return _fail(str(key) + " is not a parameter of " + info["name"] + ". Parameters: " + ", ".join(params) + ".")
-        params[key] = number
         slider = sliders.get(key)
-        if slider is not None:
-            slider["min"] = min(slider["min"], round(number * 0.5, 1))
-            slider["max"] = max(slider["max"], round(number * 1.5, 1))
+        try:
+            value = part_params.coerce(key, slider or {}, raw)
+        except ValueError as exc:
+            return _fail(str(exc))
+        if key in user and key not in replace and user[key] != value:
+            taken.append(key)
+        params[key] = value
+        if slider is not None and "type" not in slider:
+            # An estimated slider grows with the change; a declared range widens in cad_part when the value leaves it.
+            slider["min"] = min(slider["min"], round(value * 0.5, 1))
+            slider["max"] = max(slider["max"], round(value * 1.5, 1))
+    if taken:
+        said = ", ".join(key + " " + _shown(user[key]) for key in taken)
+        return _fail(
+            "The user set " + said + " with the CAD sliders. Change it only when the user asks for a new value; then call cad_update again with "
+            "replace_user_values " + json.dumps(taken) + ".",
+            user_values=dict(user),
+        )
     part = part_of(spec, part_id)
-    if part is not None and part.get("size_mm"):
+    numbers = [k for k in changes if _real(params[k]) and _real(info["params"].get(k))]
+    if part is not None and part.get("size_mm") and numbers:
         # The envelope check follows the change: a deeper base is meant to be deeper.
-        scale = max(abs(params[k]) / max(abs(info["params"][k]), 1e-6) for k in changes)
+        scale = max(abs(params[k]) / max(abs(info["params"][k]), 1e-6) for k in numbers)
         part["size_mm"] = [round(v * max(scale, 1.0), 2) for v in part["size_mm"]]
     result = await cad_part(
         ctx,
@@ -531,11 +584,15 @@ async def cad_update(ctx: Ctx, args: dict) -> dict:
             "params": params,
             "_sliders": sliders,
             "_generated": info["generated"],
+            **({"replace_user_values": sorted(replace)} if replace else {}),
         },
     )
     if result.get("ok") is False:
         return result
-    out = {"ok": True, "detail": info["name"] + ": " + ", ".join(f"{k} {float(v):g}" for k, v in changes.items()), "part": result}
+    out = {"ok": True, "detail": info["name"] + ": " + ", ".join(f"{k} {_shown(params[k])}" for k in changes), "part": result}
+    for key in ("user_values", "user_values_note", "dropped_user_values", "dropped_note"):
+        if key in result:
+            out[key] = result[key]
     if ctx.state.checks:
         out["checks"] = await rerun_checks(ctx)
     else:
@@ -544,6 +601,16 @@ async def cad_update(ctx: Ctx, args: dict) -> dict:
         await ensure_assembly(ctx)
         await refresh_surface(ctx)
     return out
+
+
+async def user_change(ctx: Ctx, part_id: str, values: dict) -> dict:
+    """Someone moved a slider of a built part: the values are the user's from now on, and cad_update builds them."""
+
+    before = part_params.remember(ctx.state, part_id, values)
+    result = await cad_update(ctx, {"part_id": part_id, "params": values})
+    if result.get("ok") is False:
+        part_params.restore(ctx.state, part_id, before)
+    return result
 
 
 async def rerun_checks(ctx: Ctx) -> list[dict]:

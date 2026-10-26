@@ -65,6 +65,9 @@ class BuildState:
     # parts picked per spec part id, the assembled model and the check results by check key.
     spec: dict | None = None
     built: dict[str, dict] = field(default_factory=dict)
+    # What the user set with the CAD sliders, per part (a spec part id, or the slug of a single part's name): it wins
+    # over the script's defaults and Mechanic's values, also when Mechanic writes the part again (pai_agent/part_params.py).
+    user_params: dict[str, dict] = field(default_factory=dict)
     picked: dict[str, dict] = field(default_factory=dict)
     assembly: dict | None = None
     assembly_stale: bool = True

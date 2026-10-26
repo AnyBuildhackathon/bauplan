@@ -300,14 +300,33 @@ export interface CadNode {
   /** The GLB nodes the row stands for, when it names them: a standard part's row lists its pieces. */
   nodes?: string[];
 }
-export interface CadParam {
+interface CadParamBase {
+  /** Display name; an assembly names the part, e.g. "Base plate · depth". */
+  label?: string;
+  /** The feature it shapes, from the part script's PARAMS; null when it names none. */
+  group?: string | null;
+}
+/** A slider: the drone frame's and SolidCraft's numbers carry no type; a part script's PARAMS says number or integer and the step. */
+export interface CadNumberParam extends CadParamBase {
+  type?: "number" | "integer";
   value: number;
   min: number;
   max: number;
   unit: string;
-  /** Display name; an assembly names the part, e.g. "Base plate · depth". */
-  label?: string;
+  step?: number;
 }
+export interface CadSwitchParam extends CadParamBase {
+  type: "switch";
+  value: boolean;
+}
+export interface CadChoiceParam extends CadParamBase {
+  type: "choice";
+  value: string | number;
+  options: (string | number)[];
+}
+export type CadParam = CadNumberParam | CadSwitchParam | CadChoiceParam;
+/** A parameter the sliders show: a number or a whole number. */
+export const isSlider = (p: CadParam): p is CadNumberParam => p.type !== "switch" && p.type !== "choice";
 /** A CAD part as FreeCAD, CadQuery or SolidCraft built it. File URLs are served by the backend under /files/. */
 export interface CadEvent {
   type: "cad";
@@ -433,8 +452,8 @@ export interface VersionEvent {
   /** The metric cards of a non-drone product as the panel showed them. */
   cards?: MetricCard[];
   requirements?: { id: string; text: string; met: boolean | null; detail: string }[];
-  /** CAD parameters by name: frame params for the drone, `{part_id}.{param}` for a product. */
-  params?: Record<string, number>;
+  /** CAD parameters by name: frame params for the drone, `{part_id}.{param}` for a product; a switch is true or false, a choice its option. */
+  params?: Record<string, number | boolean | string>;
   /** A product's part id to its body name in the GLB, so a compare can light the changed bodies. */
   nodes?: Record<string, string>;
   /** Copies of the model and render made for this version, so an old one can still be drawn. */

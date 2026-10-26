@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "../events/store";
-import type { GeometryEvent, MetricsEvent, VersionEvent } from "../events/types";
+import { isSlider, type CadParam, type GeometryEvent, type MetricsEvent, type VersionEvent } from "../events/types";
 import { metricTargets, versions, type Version } from "./derived";
 import { partKey } from "./targets";
 import { useUi } from "./ui";
@@ -50,6 +50,7 @@ function sizesOf(geometry: GeometryEvent | null): PartSizes | null {
 
 /** The kickoff's pack, the Tattu R-Line 1S 550 of the reference build. */
 const RLINE_550: [number, number, number] = [59, 18, 8];
+const sliderValue = (p: CadParam | undefined) => (p && isSlider(p) ? p.value : undefined);
 
 const NO_LOG: ReturnType<typeof useSession.getState>["log"] = [];
 
@@ -86,8 +87,8 @@ export function useAssembly(atSeq?: number | "latest"): Assembly {
     }
     const size = battery?.size_mm ?? RLINE_550;
     return {
-      arm: (cad?.params.arm_length_mm?.value ?? 42.5) / 1000,
-      thickness: (cad?.params.thickness_mm?.value ?? 2) / 1000,
+      arm: (sliderValue(cad?.params.arm_length_mm) ?? 42.5) / 1000,
+      thickness: (sliderValue(cad?.params.thickness_mm) ?? 2) / 1000,
       battery: [size[0] / 1000, size[1] / 1000, size[2] / 1000],
       propDiameter: (parts.propeller?.diameter_mm ?? 51) / 1000,
       sizes: sizesOf(geo),

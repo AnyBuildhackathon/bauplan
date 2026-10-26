@@ -8,6 +8,8 @@ agent/freecad/part_harness.py exports STL, STEP and per-part volumes.
 A part's standard parts (pai_agent/fasteners) are built in CadQuery first and go
 in as STEP files: the harness cuts their holes and measures their fit, and one that
 sits in material fails the build.
+A script that declares PARAMS (pai_agent/part_params.py) runs with that declaration
+next to it, and the harness holds the script to it.
 """
 
 from __future__ import annotations
@@ -157,11 +159,13 @@ def run_script(
     expected_mm: list[float] | None = None,
     fasteners: list[dict] | None = None,
     strict: bool = True,
+    contract: object | None = None,
 ) -> PartBuild:
     """Builds the script in a temp dir, then copies STL, STEP and GLB to out_dir/stem.*
 
     fasteners are the part's standard parts, normalized (pai_agent.fasteners.hardware). With strict, one
     that sits in material fails the build like a FreeCAD error; without, it is only reported.
+    contract is the script's PARAMS as written, when it declares them; params then hold every declared value.
     """
 
     check_script(source)
@@ -174,6 +178,8 @@ def run_script(
     try:
         (work / "part_script.py").write_text(source, encoding="utf-8")
         (work / "params.json").write_text(json.dumps(params), encoding="utf-8")
+        if contract is not None:
+            (work / "contract.json").write_text(json.dumps({"params": contract}), encoding="utf-8")
         if made:
             hardware.write_inputs(made, work)
         command = [binary, str(HARNESS)]
@@ -253,8 +259,11 @@ def run_script_cached(
     material: str = "PLA",
     expected_mm: list[float] | None = None,
     fasteners: list[dict] | None = None,
+    contract: object | None = None,
 ) -> tuple[PartBuild, bool]:
-    """run_script, but an identical script, parameters, material and standard parts reuse the last FreeCAD result. Returns (build, cached)."""
+    """run_script, but an identical script, parameters, material and standard parts reuse the last FreeCAD result. Returns (build, cached).
+
+    The contract is read from the script itself, so the script already keys it."""
 
     from pai_agent import cache
 
@@ -275,8 +284,9 @@ def run_script_cached(
                 parts, meta["bbox_mm"], meta["volume_mm3"], meta["mass_g"], out_dir / (stem + ".stl"), out_dir / (stem + ".step"), out_dir / (stem + ".glb"),
                 meta.get("sim"), rows, meta.get("hardware_warnings") or [],
             ), True
-    # A part without standard parts builds with the same call as before they existed.
-    build = run_script(source, params, out_dir, stem, material, expected_mm=expected_mm, **({"fasteners": fasteners} if fasteners else {}))
+    # A part without standard parts or PARAMS builds with the same call as before they existed.
+    extra = {**({"fasteners": fasteners} if fasteners else {}), **({"contract": contract} if contract is not None else {})}
+    build = run_script(source, params, out_dir, stem, material, expected_mm=expected_mm, **extra)
     files = {"part.stl": build.stl, "part.step": build.step, "part.glb": build.glb}
     rows = []
     for row in build.parts:

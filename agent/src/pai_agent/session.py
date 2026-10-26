@@ -34,6 +34,7 @@ from pai_agent.run_control import RunControl, RunStopped
 from pai_agent.scene import STEPS
 from pai_agent.state import BuildState
 from pai_agent.tools.registry import emit_connections
+from pai_agent.versions import label_of
 
 log = logging.getLogger(__name__)
 
@@ -102,7 +103,7 @@ class Session:
                 return {"ok": True, "mode": mode, "status": "queued"}
         ctx = self._ctx(auto_steps=claude_enabled())
         ctx.trigger = "chat"
-        ctx.label = text.strip()[:80]
+        ctx.label = label_of(text)
         self.task = self._launch(run_prompt(ctx, text, self.messages, voice, record_user=record_user), ctx)
         return {"ok": True, "mode": mode, "status": "started"}
 
@@ -370,9 +371,10 @@ class Session:
         return result
 
     async def _update_generic(self, body: dict) -> dict:
-        """A slider of an assembled product: `part_id.param` names the part and its number."""
+        """A slider of an assembled product: `part_id.param` names the part and its parameter; the value is the user's from now on."""
 
-        from pai_agent.tools.product import cad_update
+        from pai_agent.part_params import coerce, in_range
+        from pai_agent.tools.product import user_change
 
         changes = {str(body["name"]): body.get("value")} if "name" in body else dict(body)
         by_part: dict[str, dict] = {}
@@ -384,18 +386,15 @@ class Session:
                 message = key + " is not a parameter of this product."
                 return {"ok": False, "error": message, "detail": message}
             try:
-                number = float(value)
-            except (TypeError, ValueError):
-                message = key + " must be a number."
-                return {"ok": False, "error": message, "detail": message}
-            if not slider["min"] <= number <= slider["max"]:
-                message = key + " must be between " + str(slider["min"]) + " and " + str(slider["max"]) + "."
-                return {"ok": False, "error": message, "detail": message}
+                number = coerce(key, slider, value)
+                in_range(key, slider, number)
+            except ValueError as exc:
+                return {"ok": False, "error": str(exc), "detail": str(exc)}
             by_part.setdefault(part_id, {})[param] = number
         ctx = self._ctx(auto_steps=False)
         result: dict = {"ok": True}
         for part_id, params in by_part.items():
-            result = await cad_update(ctx, {"part_id": part_id, "params": params})
+            result = await user_change(ctx, part_id, params)
             if result.get("ok") is False:
                 return result
         from pai_agent.requirements import refresh_requirements
@@ -534,7 +533,7 @@ class Session:
             self.pending.clear()
             follow = self._ctx(auto_steps=claude_enabled())
             follow.trigger = "chat"
-            follow.label = text[:80]
+            follow.label = label_of(text)
             self.task = self._launch(run_prompt(follow, text, self.messages, record_user=False), follow)
 
     async def _baseline(self) -> None:

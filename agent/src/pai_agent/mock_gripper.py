@@ -341,13 +341,16 @@ async def _build_fix(ctx: Ctx, option: dict, goal: str, n: int) -> dict | None:
         await _need(ctx, "catalog_search", {"category": option["kind"], "select_id": option["part"]["id"], "reason": reason})
     # Every dimension of the bench stays, a slider move included; cad_part sizes the servo pocket for the chosen servo.
     params = {key: value for key, value in ((state.part or {}).get("params") or {}).items() if not key.startswith("servo_")}
+    taken = {}
     if option["kind"] == "fingers":
         params["finger_length_mm"] = option["finger_length_mm"]
+        # The user picked this fix, so it replaces a finger length they set with the slider.
+        taken = {"replace_user_values": ["finger_length_mm"]}
     await ctx.step("cad", "running")
     await _need(
         ctx,
         "cad_part",
-        {"name": "Robot gripper", "template": "gripper", "description": "Two-finger gear gripper for a robot arm", "material": "PLA", "params": params},
+        {"name": "Robot gripper", "template": "gripper", "description": "Two-finger gear gripper for a robot arm", "material": "PLA", "params": params, **taken},
     )
     await _need(ctx, "grip_calc", {})
     sim = await _need(ctx, "simulate_grip", {})

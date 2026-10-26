@@ -73,22 +73,27 @@ def _vector(raw: object, name: str, problems: list[str], positive: bool = False)
     return [round(float(v), 3) for v in values]  # type: ignore[arg-type]
 
 
-def _params(raw: object, where: str, problems: list[str]) -> dict[str, float]:
+def _params(raw: object, where: str, problems: list[str]) -> dict[str, float | bool | str]:
+    """Numbers, plus True/False for a switch and an option's text for a choice (pai_agent/part_params.py)."""
+
     if raw is None:
         return {}
     if not isinstance(raw, dict):
         problems.append(where + ".params must be an object of numbers, e.g. {\"width_mm\": 80}.")
         return {}
-    out = {}
+    out: dict[str, float | bool | str] = {}
     for key, value in raw.items():
-        number = _number(value.get("value") if isinstance(value, dict) else value)
-        if number is None:
-            problems.append(where + ".params." + str(key) + " must be a number.")
+        value = value.get("value") if isinstance(value, dict) else value
+        kept: float | bool | str | None = value if isinstance(value, bool) else _number(value)
+        if kept is None and isinstance(value, str) and 0 < len(value.strip()) <= 40:
+            kept = value.strip()
+        if kept is None:
+            problems.append(where + ".params." + str(key) + " must be a number, true or false for a switch, or the option of a choice.")
             continue
         if not re.fullmatch(r"[a-z][a-z0-9_]{0,40}", str(key)):
             problems.append(where + ".params key " + repr(key) + " must be snake_case like width_mm.")
             continue
-        out[str(key)] = number
+        out[str(key)] = kept
     return out
 
 

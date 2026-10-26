@@ -9,7 +9,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { useSession } from "../../events/store";
 import { useSource } from "../../events/source";
-import type { CadEvent, CadNode, CadParam } from "../../events/types";
+import { isSlider, type CadEvent, type CadNode, type CadNumberParam } from "../../events/types";
 import { assetUrl } from "../../lib/api";
 import { fmtNum } from "../../lib/format";
 import { useHighlight } from "../../lib/hooks";
@@ -50,6 +50,12 @@ const PARAM_LABELS: Record<string, string> = {
 /** "finger_length_mm" as "Finger length"; a product's "base.length_mm" as "Base length". */
 export const paramLabel = (key: string) =>
   PARAM_LABELS[key] ?? key.replace(/_(mm|deg|g)$/, "").replace(/[._]/g, " ").replace(/^\w/, (c) => c.toUpperCase());
+
+/** Decimals a declared step needs: 0.5 shows one, 0.25 two, a whole step none. */
+const decimalsOf = (step: number) => {
+  const text = String(step);
+  return text.includes(".") ? Math.min(3, text.length - text.indexOf(".") - 1) : 0;
+};
 
 class LoadBoundary extends Component<{ children: ReactNode; fallback: ReactNode; resetKey: string }, { failed: boolean }> {
   state = { failed: false };
@@ -272,7 +278,7 @@ function ParamSlider({
   onCommit,
 }: {
   name: string;
-  param: CadParam;
+  param: CadNumberParam;
   value: number;
   pending: boolean;
   onChange: (v: number) => void;
@@ -280,15 +286,18 @@ function ParamSlider({
 }) {
   const span = param.max - param.min || 1;
   const pct = ((value - param.min) / span) * 100;
-  const step = span <= 10 ? 0.1 : span <= 50 ? 0.5 : 1;
+  // A part script's PARAMS gives the step; the drone frame and SolidCraft leave it to the span.
+  const step = param.step ?? (span <= 10 ? 0.1 : span <= 50 ? 0.5 : 1);
+  const digits = param.step !== undefined ? decimalsOf(param.step) : step < 1 ? 1 : 0;
+  const ends = param.step !== undefined ? digits : 0;
   const changed = Math.abs(value - param.value) > 1e-9;
   return (
     <label className="block" data-target={`param:${name} ${name}`}>
       <div className="flex items-baseline justify-between gap-2">
         <span className="min-w-0 truncate text-[14px] font-semibold text-ink-2" title={param.label ?? paramLabel(name)}>{param.label ?? paramLabel(name)}</span>
         <span className={`num shrink-0 text-[15px] font-bold whitespace-nowrap ${pending ? "text-agent-ink" : changed ? "text-ink" : "text-ink"}`}>
-          {changed && <span className="mr-1 text-[13px] font-semibold text-faint">{fmtNum(param.value, step < 1 ? 1 : 0)} →</span>}
-          {fmtNum(value, step < 1 ? 1 : 0)} {param.unit}
+          {changed && <span className="mr-1 text-[13px] font-semibold text-faint">{fmtNum(param.value, digits)} →</span>}
+          {param.unit === "deg" ? `${fmtNum(value, digits)}°` : `${fmtNum(value, digits)} ${param.unit}`.trim()}
         </span>
       </div>
       <input
@@ -305,8 +314,8 @@ function ParamSlider({
         aria-label={param.label ?? paramLabel(name)}
       />
       <div className="num flex justify-between text-[11px] font-semibold text-faint">
-        <span>{fmtNum(param.min)}</span>
-        <span>{fmtNum(param.max)}</span>
+        <span>{fmtNum(param.min, ends)}</span>
+        <span>{fmtNum(param.max, ends)}</span>
       </div>
     </label>
   );
@@ -378,12 +387,18 @@ export function CadView() {
   const [showScript, setShowScript] = useState(false);
   const answeredBy = useRef(0);
 
+  // The sliders show the numbers; a part's switches and choices come with its grouped parameter panel.
+  const sliders = useMemo(
+    () => Object.entries(cad?.params ?? {}).filter((entry): entry is [string, CadNumberParam] => isSlider(entry[1])),
+    [cad],
+  );
+
   // A new `cad` event is the backend's answer: take its values, clear the pending state.
   useEffect(() => {
     if (!cad) return;
-    setValues(Object.fromEntries(Object.entries(cad.params).map(([k, p]) => [k, p.value])));
+    setValues(Object.fromEntries(sliders.map(([k, p]) => [k, p.value])));
     if (cad.n > answeredBy.current) setPending(null);
-  }, [cad]);
+  }, [cad, sliders]);
 
   if (!cad) {
     return (
@@ -402,15 +417,15 @@ export function CadView() {
   const script = assetUrl(cad.script_url ?? null);
   const source = CAD_SOURCE_LABEL[cad.source] ?? cad.source;
 
-  const commit = async (name: string) => {
+  const commit = async (name: string, param: CadNumberParam) => {
     const v = values[name];
-    if (v === undefined || Math.abs(v - cad.params[name].value) < 1e-9) return;
+    if (v === undefined || Math.abs(v - param.value) < 1e-9) return;
     answeredBy.current = cad.n;
     setPending(name);
     const ok = await setCadParams({ [name]: v });
     if (!ok) {
       setPending(null);
-      setValues((prev) => ({ ...prev, [name]: cad.params[name].value }));
+      setValues((prev) => ({ ...prev, [name]: param.value }));
     }
   };
 
@@ -459,10 +474,10 @@ export function CadView() {
 
         {cad.part && <PartFacts part={cad.part} assembly={!!cad.assembly} />}
 
-        {Object.keys(cad.params).length > 0 && (
+        {sliders.length > 0 && (
           <section className="mt-4 space-y-3">
             <h3 className="eyebrow">Parameters</h3>
-            {Object.entries(cad.params).map(([name, p]) => (
+            {sliders.map(([name, p]) => (
               <ParamSlider
                 key={name}
                 name={name}
@@ -470,7 +485,7 @@ export function CadView() {
                 value={values[name] ?? p.value}
                 pending={pending === name}
                 onChange={(v) => setValues((prev) => ({ ...prev, [name]: v }))}
-                onCommit={() => void commit(name)}
+                onCommit={() => void commit(name, p)}
               />
             ))}
           </section>

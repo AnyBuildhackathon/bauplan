@@ -269,7 +269,7 @@ function compareRows(a: VersionEvent, b: VersionEvent): Row[] {
   }
   for (const [name, value] of Object.entries(b.params ?? {})) {
     const old = a.params?.[name];
-    if (typeof old !== "number" || old === value) continue;
+    if (typeof old !== "number" || typeof value !== "number" || old === value) continue;
     const row = numberRow(`param:${name}`, paramLabel(name), name.endsWith("_mm") ? "mm" : "", 1, 0, old, value);
     if (row) rows.push(row);
   }

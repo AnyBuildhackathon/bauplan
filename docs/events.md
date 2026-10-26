@@ -56,6 +56,8 @@ Missing names keep the last value, or the defaults 36 mm, 2 mm, and 6.6 mm.
 A value outside the limits is HTTP 400 and does not emit `cad`; while Mechanic is building it is HTTP 409.
 
 When the newest CAD build is a generated part (`cad_part`), the same call reruns that part's script with the new value, no model call needed, and any name from its `params` works within its slider limits.
+A switch takes `true` or `false` and a choice one of its `options`; a value outside the limits, of the wrong kind or not a whole number for an `integer` is HTTP 400.
+Every value set this way is the user's from then on: it stays with the part when Mechanic rebuilds it or writes its script again, and Mechanic reads it as `user_values` in the tool results.
 For a product built from a spec, the slider names are `{part_id}.{param}` (such as `base.depth_mm`): that part is rebuilt from its script, the product is reassembled and every check that ran before runs again.
 For the gripper, `grip_calc` then runs again, so a longer finger shows up as a lower finger force.
 When the newest CAD build is a SolidCraft design (`solidcraft_part`), the same call runs its script again followed by one `parameters.change`, as moving the parameter in SolidCraft does: the timeline rebuilds, and the faces and edges the script picked, the joints among them, follow the geometry; any slider name works within its limits.
@@ -598,6 +600,8 @@ The motor, propeller, battery, flight controller and camera nodes show the chose
 `part_models` lists those nodes as `{node, part_id, part_name, model_kind, model_missing, model_source}`, and each such node's extras carry the same fields; `model_kind` is `official` (the maker's or a library's model, under its license), `look-alike` (built from the part's measured numbers) or `approximate` (`model_missing` names the numbers no real source gave, drawn in proportion).
 
 A part from `cad_part` adds `script_url` (`/files/{session}/part-{name}.py`, the FreeCAD script that built it) and `part`, `{name, material, mass_g, bbox_mm, attempts, generated}`.
+Its `params` come from the script's `PARAMS` (or a template's), in their declared order, each with `type` (`number`, `integer`, `switch` or `choice`), `value`, `label` and `group` (`null` when none); a number or integer adds `min`, `max`, `step` and `unit`, a choice `options`, and a switch's `value` is `true` or `false`.
+A script without `PARAMS` gets `{value, min, max, unit}` for each `_mm` parameter, half to double its value.
 `bbox_mm` is `[xmin, ymin, zmin, xmax, ymax, zmax]`, `attempts` counts script runs including failed ones, `generated` is `true` when Claude wrote the script and `false` for a library template.
 Its tree is the part with one child per body, `(bought)` marking reference parts such as the servo.
 The standard parts it holds (`fasteners` of `cad_part`: screws, nuts, washers, heat-set inserts) follow as one child per kind, such as `ISO 4762 M3x8 ×4 (hardware)`, with `nodes`, the names of the GLB nodes of its pieces.
@@ -671,7 +675,8 @@ Each version is published once with the fields below, and again whenever a verdi
 `trigger` is `chat`, `library`, `check_failed` (a chat rebuild that makes a requirement pass that the last version failed, or one in the run where an independent judge failed the last version: the fix loop) or `restore`.
 `product` is `drone`, `gripper` or `generic`; `label` names the trigger in one line (the chat request, the library item, `Restored v1`).
 For a non-drone product `weight_g` and `price_eur` are set, `thrust_to_weight` and `flight_time_min` are `null`, and `cards` are its metric cards as the last `metrics` event had them.
-`requirements` is `[{id, text, met, detail}]` at commit time, `params` the CAD parameters (`arm_length_mm` for the drone frame, `{part_id}.{param}` for a product), and `nodes` maps a product's part ids to the body names in its GLB.
+`requirements` is `[{id, text, met, detail}]` at commit time, `params` the CAD parameters (`arm_length_mm` for the drone frame, `{part_id}.{param}` for a product; a switch is `true` or `false`, a choice its option), and `nodes` maps a product's part ids to the body names in its GLB.
+A changed switch or choice is a diff row with text, `before` and `after` such as `off` and `on`, and an empty `unit`.
 `files` is `{glb_url, render_url}`: a copy of the model made for this version (`/files/{session}/v{n}-frame.glb`, `v{n}-assembly.glb`, `v{n}-part-….glb`) and its studio render; either is `null` when there was none.
 `restored_from` is the version a restore rebuilt, else `null`; `at` is the local commit time.
 The diff also covers changed CAD parameters (key `param:{name}`, `label` in words such as `Finger length`; the gripper's servo pocket follows its servo and is not a parameter here), requirements that flipped (key `req:{id}`, `before` and `after` are `pass` or `fail`) and verdicts that changed (key `verdict:{judge}`, or `verdict:{judge}:{harness}` for an agent's trial, `before` and `after` such as `fail, reward 0` and `pass, reward 1`).
@@ -1066,6 +1071,11 @@ The checks judge every requirement of their kind and store their arguments, so `
 `cad_part` builds any part from `name`, `description`, `params` (mm, they become the CAD sliders), `material` (`PLA`, `PETG`, `ABS`, `ASA`, `NYLON`, `TPU`, `ALUMINIUM`, `STEEL`), and optionally `script` or `template` (`gripper`).
 Without a script Claude writes FreeCAD Python for the description; when FreeCAD reports an error, the script and the error go back to Claude for a fix, up to three attempts.
 The script sees `Part`, `App`, `Vector`, `math` and `P` (the params) and sets `shape` or `parts = {name: solid}`, optionally `colors`, `materials` and `reference` (shown, not printed).
+It starts with `PARAMS`, one dict of plain data that declares each parameter a person may tune: `{"width_mm": {"value": 60.0, "min": 30.0, "max": 120.0, "step": 1.0, "unit": "mm", "label": "Width", "group": "Body"}}`; `"type": "integer"` makes a whole number, a `True`/`False` value a switch and `options` a choice (`agent/src/pai_agent/part_params.py`).
+The backend reads it without running the script and answers every problem at once (a range that does not hold the value, a step of 0, an unknown key, a parameter the script never reads); a script the CAD agent wrote must have it, scripts from before it (the library references) keep their estimated sliders.
+`P` then holds each declared parameter's value: its default, replaced by Mechanic's `params` (a number beyond the range widens it for that build), replaced by the user's slider values; the harness fails a script that reads any other name from `P` or changes `PARAMS` while it runs, naming the script line.
+The result lists `params` (the values it was built with) and, when the user set some with the sliders, `user_values` with a note, `overridden_by_user` (Mechanic's values they replaced) and `dropped_user_values` (values a rewritten script no longer takes, with why).
+`cad_part` and `cad_update` take `replace_user_values`, the names of user values Mechanic's `params` replace once the user asked for a new value; `cad_update` refuses to change a user value without it and says so.
 It is checked statically (only `FreeCAD`, `Part` and `math` imports, no file access, no dunder attributes), then runs in `freecadcmd` in a fresh temp directory with a scrubbed environment and a 60 s timeout; on macOS `sandbox-exec` also denies network access and writes outside that directory.
 The result has `mass_g` (printed bodies, from each body's material density), `volume_mm3`, `bbox_mm`, per-body `parts` and the `attempts`.
 Without `ANTHROPIC_API_KEY` only templates and passed scripts build.

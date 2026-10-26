@@ -13,6 +13,7 @@ from pai_agent.run_control import RunStopped
 from pai_agent.scene import CONTROLS, DRAW_KINDS, MASCOT_STATES, PART_CATEGORIES, TARGETS
 from pai_agent.fasteners.hardware import SCHEMA as FASTENERS_SCHEMA
 from pai_agent.freecad_run import find_freecadcmd
+from pai_agent.part_params import REPLACE_SCHEMA as REPLACE_USER_VALUES
 from pai_agent.tools.blender import blender_render, find_blender, recorded_still
 from pai_agent.tools.bom import bom_build
 from pai_agent.tools.browser_train import train_in_browser
@@ -328,19 +329,22 @@ SCHEMAS = [
             "Builds it headless in FreeCAD from a Python script and returns STEP, STL and GLB, volume, mass for the material and the bounding box. "
             "Without script, Claude writes the script from description and params, and when FreeCAD reports an error it is fixed and retried up to 3 times. "
             "You may pass script yourself: FreeCAD Python that sets `shape` or `parts` = {name: solid}; Part, App, Vector, math and P (the params) are predefined, "
-            "nothing else can be imported, no file access. template 'gripper' uses the tested robot gripper script. "
-            "For the gripper, the servo pocket follows the chosen servo automatically."
+            "nothing else can be imported, no file access; start it with PARAMS to declare each parameter's range, step, unit, label and group. "
+            "template 'gripper' uses the tested robot gripper script. "
+            "For the gripper, the servo pocket follows the chosen servo automatically. "
+            "The result lists params (the values it was built with) and user_values (set by the user with the CAD sliders, they stay)."
         ),
         "input_schema": {
             "type": "object",
             "properties": {
                 "name": {"type": "string"},
                 "description": {"type": "string", "description": "What the part is for, its features and key dimensions."},
-                "params": {"type": "object", "description": "Dimensions in mm, e.g. {\"width_mm\": 60}. They become sliders in the CAD tab."},
+                "params": {"type": "object", "description": "Parameter values, lengths in mm, e.g. {\"width_mm\": 60}. They become sliders in the CAD tab."},
                 "material": {"type": "string", "enum": ["PLA", "PETG", "ABS", "ASA", "NYLON", "TPU", "ALUMINIUM", "STEEL"]},
                 "template": {"type": "string", "enum": ["gripper"]},
                 "script": {"type": "string"},
                 "fasteners": FASTENERS_SCHEMA,
+                "replace_user_values": REPLACE_USER_VALUES,
             },
             "required": ["name"],
         },
@@ -527,7 +531,7 @@ SCHEMAS = [
         ),
         "input_schema": {
             "type": "object",
-            "properties": {"part_id": {"type": "string"}, "params": {"type": "object"}},
+            "properties": {"part_id": {"type": "string"}, "params": {"type": "object"}, "replace_user_values": REPLACE_USER_VALUES},
             "required": ["part_id", "params"],
         },
     },

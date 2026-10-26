@@ -1,14 +1,20 @@
 # Back rest of a desk phone stand: a plate leaning back at angle_deg from the table,
-# braced by two triangular gussets. It stands on the base plate (top at
-# base_thickness_mm) with its front face crossing the base top at front_y_mm.
+# braced by two triangular gussets. It stands on the base plate (its top at BASE_T)
+# with its front face crossing the base top at Y0.
 import math
 
-W = P.get("width_mm", 70.0)
-L = P.get("support_length_mm", 95.0)
-T = P.get("thickness_mm", 5.0)
-A = P.get("angle_deg", 65.0)
-BASE_T = P.get("base_thickness_mm", 5.0)
-Y0 = P.get("front_y_mm", -10.0)
+PARAMS = {
+    "width_mm": {"value": 70.0, "min": 50.0, "max": 120.0, "step": 1.0, "unit": "mm", "label": "Width", "group": "Back rest"},
+    "support_length_mm": {"value": 95.0, "min": 60.0, "max": 160.0, "step": 1.0, "unit": "mm", "label": "Length", "group": "Back rest"},
+    "thickness_mm": {"value": 5.0, "min": 3.0, "max": 10.0, "step": 0.5, "unit": "mm", "label": "Thickness", "group": "Back rest"},
+    "angle_deg": {"value": 65.0, "min": 45.0, "max": 80.0, "step": 1.0, "unit": "deg", "label": "Lean angle", "group": "Back rest"},
+}
+W = P["width_mm"]
+L = P["support_length_mm"]
+T = P["thickness_mm"]
+A = P["angle_deg"]
+BASE_T = 5.0
+Y0 = -10.0
 
 lean = 90.0 - A
 s, c = math.sin(math.radians(lean)), math.cos(math.radians(lean))

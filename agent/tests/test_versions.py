@@ -219,5 +219,13 @@ class Restore(unittest.TestCase):
             asyncio.run(versions.restore(ctx, 4))
 
 
+class Labels(unittest.TestCase):
+    def test_a_long_request_ends_at_a_word_with_an_ellipsis(self):
+        text = "Build a micro drone under 120 euros with at least 8 minutes of flight time, under 50 g."
+        self.assertEqual(versions.label_of(text), "Build a micro drone under 120 euros with at least 8 minutes of flight time…")
+        self.assertEqual(versions.label_of("Make it fly\n10 minutes."), "Make it fly 10 minutes.")
+        self.assertEqual(len(versions.label_of("x" * 200)), versions.LABEL_MAX)
+
+
 if __name__ == "__main__":
     unittest.main()

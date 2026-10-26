@@ -6,7 +6,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "../../events/store";
 import { useSource } from "../../events/source";
-import type { AgentEvent, ExplainEvent } from "../../events/types";
+import { isSlider, type AgentEvent, type ExplainEvent } from "../../events/types";
 import { apiFetch } from "../../lib/api";
 import { useUi } from "../../lib/ui";
 import { Chip } from "../ui/primitives";
@@ -120,7 +120,7 @@ export function useAutoExplain() {
 
     function remember(ev: AgentEvent) {
       if (ev.type === "part") parts[ev.category] = ev.id;
-      if (ev.type === "cad") for (const [k, p] of Object.entries(ev.params ?? {})) params[k] = p.value;
+      if (ev.type === "cad") for (const [k, p] of Object.entries(ev.params ?? {})) if (isSlider(p)) params[k] = p.value;
     }
     function ask(kind: ExplainKind, id: string) {
       if (asked.has(`${kind}:${id}`)) return;
@@ -163,7 +163,9 @@ export function useAutoExplain() {
             if (ev.name === "cad_frame" && ev.status === "error") frameError = true;
             break;
           case "cad": {
+            // A number explains its change; a switch or a choice has no formula to show.
             for (const [k, p] of Object.entries(ev.params ?? {})) {
+              if (!isSlider(p)) continue;
               const changed = k in params && params[k] !== p.value;
               if (changed || (frameError && k === "arm_length_mm")) ask("param", k);
             }

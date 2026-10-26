@@ -9,6 +9,11 @@ that are shown but not printed, such as a bought servo). Templates that can be
 simulated also set `joints`, `tool`, `collision` and `grip_surfaces` (plain
 numbers, lists and dicts, read by pai_agent/mjcf_export.py).
 
+A script that declares its parameters in PARAMS (pai_agent/part_params.py) also gets
+contract.json, PARAMS as the backend read it. Its P then holds every declared value
+and the fixed inputs: reading any other name fails, instead of quietly taking a
+default, and PARAMS must still be as declared once the script has run.
+
 Standard parts (pai_agent/fasteners) arrive as hardware.json and STEP files; the
 script sees them as H (name to shape, hole tool, seat, direction and sizes).
 After the script, every hole is cut into the printed bodies and each part's
@@ -38,6 +43,38 @@ SAFE_BUILTINS = (
 def _write(payload):
     with open(os.path.join(OUT, "result.json"), "w", encoding="utf-8") as handle:
         json.dump(payload, handle)
+
+
+class UndeclaredParameter(KeyError):
+    def __str__(self):
+        return str(self.args[0])
+
+
+class Declared(dict):
+    """P of a script that declares PARAMS: a name it does not declare is an error, not a silent default."""
+
+    def __missing__(self, key):
+        raise UndeclaredParameter(str(key) + " is not declared in PARAMS; declare every parameter the script reads from P.")
+
+    def get(self, key, default=None):
+        return self[key]
+
+
+def _load_contract():
+    """PARAMS as the backend read it from the script, or None for a script without PARAMS."""
+
+    path = os.path.join(OUT, "contract.json")
+    if not os.path.isfile(path):
+        return None
+    with open(path, encoding="utf-8") as handle:
+        return json.load(handle)["params"]
+
+
+def _plain(value):
+    try:
+        return json.loads(json.dumps(value))
+    except (TypeError, ValueError):
+        return None
 
 
 def _guarded_import(name, globals=None, locals=None, fromlist=(), level=0):
@@ -140,6 +177,7 @@ def main():
     with open(os.path.join(OUT, "part_script.py"), encoding="utf-8") as handle:
         source = handle.read()
     limit, hardware = _load_hardware(Part)
+    contract = _load_contract()
     safe = {name: getattr(builtins, name) for name in SAFE_BUILTINS}
     safe["__import__"] = _guarded_import
     scope = {
@@ -150,10 +188,12 @@ def main():
         "Part": Part,
         "Vector": App.Vector,
         "math": math,
-        "P": dict(params),
+        "P": dict(params) if contract is None else Declared(params),
         "H": {item["name"]: _for_script(item, App) for item in hardware},
     }
     exec(compile(source, "part_script.py", "exec"), scope)
+    if contract is not None and _plain(scope.get("PARAMS")) != contract:
+        raise ValueError("PARAMS changed while the script ran: declare it once at the top as plain data and leave it as it is.")
 
     parts = scope.get("parts")
     if parts is None and scope.get("shape") is not None:
@@ -234,4 +274,7 @@ if OUT:
         main()
     except Exception as exc:  # The agent reads this and retries with a fixed script.
         tail = traceback.format_exc().strip().splitlines()[-6:]
-        _write({"ok": False, "error": type(exc).__name__ + ": " + str(exc), "traceback": "\n".join(tail)})
+        # The script's own line, also when the error is raised deeper down, in P or in FreeCAD.
+        lines = [frame.lineno for frame in traceback.extract_tb(exc.__traceback__) if frame.filename == "part_script.py"]
+        where = " (part_script.py line " + str(lines[-1]) + ")" if lines else ""
+        _write({"ok": False, "error": type(exc).__name__ + ": " + str(exc) + where, "traceback": "\n".join(tail)})

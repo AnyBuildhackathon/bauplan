@@ -21,6 +21,7 @@ from pathlib import Path
 from pai_agent.context import Ctx
 
 TRIGGERS = ("chat", "library", "check_failed", "restore")
+LABEL_MAX = 80
 # Independent judges whose verdicts a version keeps, by the tool that asks them.
 JUDGES = {"robouse_trial": ("robouse", "Robo Use")}
 
@@ -32,6 +33,16 @@ _DRONE_NUMBERS = (
     ("thrust_to_weight", "Thrust/weight", ": 1"),
 )
 _PRODUCT_NUMBERS = (("weight_g", "Weight", "g"), ("price_eur", "Price", "€"))
+
+
+def label_of(text: str) -> str:
+    """A request as a version's label: one line of at most LABEL_MAX characters, ended at a word with an ellipsis."""
+
+    words = " ".join(str(text).split())
+    if len(words) <= LABEL_MAX:
+        return words
+    cut = words[: LABEL_MAX - 1]
+    return (cut.rsplit(" ", 1)[0] if " " in cut else cut).rstrip(" ,;:-") + "…"
 
 
 def _last(ctx: Ctx, kind: str, test=lambda _ev: True) -> dict | None:
@@ -72,19 +83,24 @@ def _parts(state) -> dict[str, str]:
     return {category: part["name"] for category, part in state.selected.items()}
 
 
-def _params(state) -> dict[str, float]:
+def _params(state) -> dict[str, float | bool | str]:
+    # Numbers, and the switches (True/False) and choices (text) a part script declares (pai_agent/part_params.py).
     if state.product == "generic":
         return {
             part_id + "." + name: value
             for part_id, info in state.built.items()
             for name, value in (info.get("params") or {}).items()
-            if isinstance(value, (int, float))
+            if isinstance(value, (int, float, str))
         }
     if state.product == "drone":
         return {name: value for name, value in state.cad_params.items() if isinstance(value, (int, float))}
     params = (state.part or {}).get("params") or {}
     # The gripper's servo pocket follows the chosen servo (tools/gripper.servo_params): the servo is the part row, not a dimension.
-    return {name: value for name, value in params.items() if isinstance(value, (int, float)) and not name.startswith("servo_")}
+    return {name: value for name, value in params.items() if isinstance(value, (int, float, str)) and not name.startswith("servo_")}
+
+
+def _shown(value) -> str:
+    return ("on" if value else "off") if isinstance(value, bool) else str(value)
 
 
 def _param_label(name: str) -> str:
@@ -126,9 +142,14 @@ def diff(previous: dict | None, current: dict) -> list[dict]:
     before_params = previous.get("params") or {}
     for name, value in (current.get("params") or {}).items():
         before = before_params.get(name)
-        if isinstance(before, (int, float)) and before != value:
+        if before is None or before == value:
+            continue
+        if isinstance(before, (int, float)) and isinstance(value, (int, float)) and not isinstance(before, bool) and not isinstance(value, bool):
             unit = "mm" if name.endswith("_mm") else ""
             rows.append({"key": "param:" + name, "label": _param_label(name), "before": before, "after": value, "unit": unit})
+        else:
+            # A switch or a choice reads as text: "on" to "off", one option to the other.
+            rows.append({"key": "param:" + name, "label": _param_label(name), "before": _shown(before), "after": _shown(value), "unit": ""})
     before_reqs = {r["id"]: r for r in previous.get("requirements") or []}
     for requirement in current.get("requirements") or []:
         old = before_reqs.get(requirement["id"])
@@ -316,8 +337,12 @@ def snapshot(ctx: Ctx, version: dict, trigger: str, label: str | None = None, re
     if render:
         files["render_url"] = render["png_url"]
     version["files"] = files
-    # What a restore needs and the event does not carry: catalog ids and the frame, or the generic build.
-    restore = {"part_ids": {category: part["id"] for category, part in state.selected.items() if part.get("id")}, "cad_params": dict(state.cad_params)}
+    # What a restore needs and the event does not carry: catalog ids and the frame, or the generic build with the user's values.
+    restore = {
+        "part_ids": {category: part["id"] for category, part in state.selected.items() if part.get("id")},
+        "cad_params": dict(state.cad_params),
+        "user_params": {part_id: dict(values) for part_id, values in state.user_params.items()},
+    }
     if state.product == "generic" and state.spec:
         _write_restorable(state, directory / "versions" / ("v" + str(n)))
         restore["folder"] = str(directory / "versions" / ("v" + str(n)))
@@ -434,7 +459,12 @@ async def restore(ctx: Ctx, n: int) -> dict:
     if old.get("product", "drone") == "generic":
         folder = Path(saved["folder"])
         ref = json.loads((folder / "reference.json").read_text(encoding="utf-8"))
+        # The values the user had set then are the user's again, so a later rewrite keeps them as it did then;
+        # a spec that starts another product clears them, so they are set again after it.
+        mine = saved.get("user_params") or {}
+        state.user_params = {part_id: dict(values) for part_id, values in mine.items()}
         await need("product_spec", ref["spec"])
+        state.user_params = {part_id: dict(values) for part_id, values in mine.items()}
         for part in ref["spec"]["parts"]:
             entry = ref["scripts"].get(part["id"])
             if part["kind"] != "printed" or entry is None:

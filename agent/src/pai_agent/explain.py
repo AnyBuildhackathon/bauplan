@@ -311,6 +311,9 @@ def _param_facts(state: BuildState, events: list[dict], name: str) -> dict:
     values = []
     for i, e in enumerate(events):
         param = (e.get("params") or {}).get(name) if e.get("type") == "cad" else None
+        # Only a number has a before and after to explain; a switch or a choice does not.
+        if param and param.get("type") in {"switch", "choice"}:
+            param = None
         if param and (not values or values[-1][1] != param["value"]):
             values.append((i, param["value"], param.get("unit", "mm")))
     errors = [(i, e["detail"]) for i, e in enumerate(events) if e.get("type") == "tool" and e.get("name") == "cad_frame" and e.get("status") == "error"]
