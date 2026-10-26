@@ -144,7 +144,11 @@ async function perform(ev: UiEvent) {
       return;
     case "setting": {
       const on = ev.value !== false;
-      if (name === "voice") return press("setting:voice", ev.say, () => ui.setVoiceOn(on));
+      if (name === "voice") {
+        // The voice switch sits in the chat's header, so the chat comes to the front first.
+        if (useUi.getState().rightTab !== "mechanic" || !useUi.getState().panelOpen) await press("rail:mechanic", "", () => ui.setRightTab("mechanic"));
+        return press("setting:voice", ev.say, () => ui.setVoiceOn(on));
+      }
       const wasOpen = useUi.getState().settingsOpen;
       if (!wasOpen) await press("panel:settings", "", () => ui.setSettingsOpen(true));
       await press(`setting:${name}`, ev.say, () => {

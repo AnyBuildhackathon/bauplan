@@ -44,7 +44,7 @@ function sourceText(r: RequirementEvent): string {
   return /^proposed by mechanic/i.test(r.source_quote) ? r.source_quote : `Proposed by Mechanic: ${r.source_quote}`;
 }
 
-function RequirementLine({ r }: { r: RequirementEvent }) {
+export function RequirementLine({ r }: { r: RequirementEvent }) {
   const [open, setOpen] = useState(false);
   const state = r.met === true ? "ok" : r.met === false ? "fail" : "open";
   const from = source(r);

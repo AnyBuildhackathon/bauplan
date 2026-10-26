@@ -7,6 +7,20 @@ export type CanvasTab = "modell" | "cad" | "simulation" | "omniverse" | "agents"
 export type ModelLook = "3d" | "render";
 export type ConceptStatus = "verstanden" | "gesehen";
 export type MicMode = "handsfree" | "ptt";
+/** The tabs of the panel right of the studio. */
+export type RightTab = "mechanic" | "versions" | "assembly" | "joints" | "checks";
+/** What a click on the model does in the studio: select the part, or set a measuring point. */
+export type StudioTool = "select" | "measure";
+
+/** The studio's view switches (the bar above the canvas). On by default except labels and ortho, remembered per browser. */
+export interface StudioView {
+  /** Grid lines: the CAD grid under the model, and the lines of the test stage in the simulation replays. */
+  grid: boolean;
+  /** Part names on the model at any explode amount; exploded parts name themselves either way. */
+  labels: boolean;
+  /** Orthographic projection instead of perspective. */
+  ortho: boolean;
+}
 
 /** What the dashboard shows beyond the essentials. Off by default, remembered per browser. */
 export interface Display {
@@ -29,10 +43,8 @@ interface UiState {
   selectTab: (tab: CanvasTab) => void;
   /** Inside the Modell tab: the live 3D model or the Blender render. */
   look: ModelLook;
-  /** Version picked on the meeting timeline; null follows the newest. */
+  /** Version picked in the Versions tab; null follows the newest. */
   selectedVersion: number | null;
-  /** The version history drawer, opened from the timeline. */
-  versionsOpen: boolean;
   /** Two versions side by side in the Model tab, older first; null shows the single model. */
   compare: [number, number] | null;
   /** Simulation run picked in the Simulation tab; null follows the newest run. */
@@ -78,6 +90,21 @@ interface UiState {
   /** The chat fills the window beside the icon rail instead of sitting in its column. */
   chatExpanded: boolean;
   setChatExpanded: (on: boolean) => void;
+  /** The studio's view switches (grid, labels, ortho), remembered per browser. */
+  studio: StudioView;
+  setStudio: (patch: Partial<StudioView>) => void;
+  /** The tab shown in the panel right of the studio. */
+  rightTab: RightTab;
+  /** Shows a tab and opens the panel if it was closed. */
+  setRightTab: (tab: RightTab) => void;
+  /** The right panel is open; closed, only its tab bar shows. On a narrow screen the open panel takes the place of the studio. */
+  panelOpen: boolean;
+  setPanelOpen: (open: boolean) => void;
+  tool: StudioTool;
+  setTool: (tool: StudioTool) => void;
+  /** The parts panel beside the studio's tool rail. */
+  partsOpen: boolean;
+  setPartsOpen: (open: boolean) => void;
   setDisplay: (patch: Partial<Display>) => void;
   setView: (view: View) => void;
   /** The community project to show selected when the Community view opens next. */
@@ -86,7 +113,6 @@ interface UiState {
   setTab: (tab: CanvasTab) => void;
   setLook: (look: ModelLook) => void;
   selectVersion: (n: number | null) => void;
-  setVersionsOpen: (open: boolean) => void;
   setCompare: (pair: [number, number] | null) => void;
   selectRun: (run: number | null) => void;
   selectMission: (run: number | null) => void;
@@ -117,6 +143,18 @@ function storedDisplay(): Display {
     return { ...DISPLAY_DEFAULT, ...(raw ? (JSON.parse(raw) as Partial<Display>) : {}), ...url };
   } catch {
     return { ...DISPLAY_DEFAULT, ...url };
+  }
+}
+
+const STUDIO_KEY = "anybuild.studio";
+const STUDIO_DEFAULT: StudioView = { grid: true, labels: false, ortho: false };
+
+function storedStudio(): StudioView {
+  try {
+    const raw = localStorage.getItem(STUDIO_KEY);
+    return { ...STUDIO_DEFAULT, ...(raw ? (JSON.parse(raw) as Partial<StudioView>) : {}) };
+  } catch {
+    return STUDIO_DEFAULT;
   }
 }
 
@@ -179,7 +217,6 @@ export const useUi = create<UiState>((set) => ({
   selectTab: (tab) => set({ tab, directorPausedUntil: Date.now() + 30_000 }),
   look: params().get("tab") === "render" ? "render" : "3d",
   selectedVersion: null,
-  versionsOpen: false,
   compare: null,
   selectedRun: null,
   selectedMission: null,
@@ -216,6 +253,25 @@ export const useUi = create<UiState>((set) => ({
   },
   chatExpanded: false,
   setChatExpanded: (chatExpanded) => set({ chatExpanded }),
+  studio: storedStudio(),
+  setStudio: (patch) =>
+    set((s) => {
+      const studio = { ...s.studio, ...patch };
+      try {
+        localStorage.setItem(STUDIO_KEY, JSON.stringify(studio));
+      } catch {
+        // Private windows may refuse storage; the choice lasts for this page.
+      }
+      return { studio };
+    }),
+  rightTab: "mechanic",
+  setRightTab: (rightTab) => set({ rightTab, panelOpen: true }),
+  panelOpen: true,
+  setPanelOpen: (panelOpen) => set({ panelOpen }),
+  tool: "select",
+  setTool: (tool) => set({ tool }),
+  partsOpen: false,
+  setPartsOpen: (partsOpen) => set({ partsOpen }),
   setDisplay: (patch) =>
     set((s) => {
       const display = { ...s.display, ...patch };
@@ -233,7 +289,6 @@ export const useUi = create<UiState>((set) => ({
   setTab: (tab) => set({ tab }),
   setLook: (look) => set({ look, tab: "modell" }),
   selectVersion: (selectedVersion) => set({ selectedVersion }),
-  setVersionsOpen: (versionsOpen) => set({ versionsOpen }),
   setCompare: (compare) => set(compare ? { compare, tab: "modell", look: "3d" } : { compare }),
   selectRun: (selectedRun) => set({ selectedRun, selectedMission: null }),
   selectMission: (selectedMission) => set({ selectedMission }),
@@ -256,5 +311,5 @@ export const useUi = create<UiState>((set) => ({
     }
     set({ voiceOn });
   },
-  resetUi: () => set({ selectedVersion: null, versionsOpen: false, compare: null, selectedRun: null, selectedMission: null, lessonStep: null, concepts: {}, bomOpen: false, bomPricing: false, confirmedBuild: null, explode: 0, focus: null }),
+  resetUi: () => set({ selectedVersion: null, compare: null, selectedRun: null, selectedMission: null, lessonStep: null, concepts: {}, bomOpen: false, bomPricing: false, confirmedBuild: null, explode: 0, focus: null, tool: "select", partsOpen: false }),
 }));

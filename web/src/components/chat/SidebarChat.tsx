@@ -19,6 +19,7 @@ import SidebarChatInput from "./SidebarChatInput";
 import RunControls from "./RunControls";
 import { useSketchDrop } from "./SketchDrop";
 import { ConfirmDesign } from "./ConfirmDesign";
+import { useStudio } from "../studio/studio";
 
 const FRESH_MS = 2500;
 
@@ -129,8 +130,25 @@ export default function SidebarChat() {
     const container = scrollContainerRef.current;
     if (!container) return;
     container.addEventListener("scroll", checkScrollPosition);
-    return () => container.removeEventListener("scroll", checkScrollPosition);
+    // A resized column, or the panel opening again after another tab, keeps the newest message in view.
+    const keep = new ResizeObserver(() => {
+      if (stickToBottom.current && container.clientHeight > 0) container.scrollTop = container.scrollHeight;
+    });
+    keep.observe(container);
+    return () => {
+      container.removeEventListener("scroll", checkScrollPosition);
+      keep.disconnect();
+    };
   }, [checkScrollPosition, isEmpty]);
+
+  // A part from the studio's parts panel arrives as a draft to edit and send, once.
+  const draft = useStudio((s) => s.draft);
+  const drafted = useRef(draft?.n ?? 0);
+  useEffect(() => {
+    if (!draft || draft.n === drafted.current) return;
+    drafted.current = draft.n;
+    fillComposer(draft.text, setInput);
+  }, [draft]);
 
   // Auto-scroll when new content arrives, unless the reader scrolled up.
   useEffect(() => {

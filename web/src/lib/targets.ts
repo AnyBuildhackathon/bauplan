@@ -80,6 +80,11 @@ export function dropAnchors(owner: string) {
 
 // --- resolution ------------------------------------------------------------------
 
+/** Whether an element can be seen: the chat stays mounted, invisible, behind the right panel's other tabs. */
+function shown(el: HTMLElement): boolean {
+  return el.checkVisibility ? el.checkVisibility({ visibilityProperty: true, checkVisibilityCSS: true }) : true;
+}
+
 function domSpot(raw: string): ScreenSpot | null {
   const wanted = normaliseName(raw);
   const bare = wanted.replace(/^[a-z]+:/, "");
@@ -88,10 +93,11 @@ function domSpot(raw: string): ScreenSpot | null {
   for (const el of els) {
     const tokens = (el.dataset.target ?? "").split(/\s+/).map(normaliseName);
     if (tokens.includes(wanted)) {
+      if (!shown(el)) continue;
       best = el;
       break;
     }
-    if (!best && tokens.some((t) => t === bare || t.replace(/^[a-z]+:/, "") === bare)) best = el;
+    if (!best && tokens.some((t) => t === bare || t.replace(/^[a-z]+:/, "") === bare) && shown(el)) best = el;
   }
   if (!best) return null;
   const rect = best.getBoundingClientRect();
@@ -109,7 +115,7 @@ function domSpot(raw: string): ScreenSpot | null {
 function controlSpot(id: string): ScreenSpot | null {
   for (const el of document.querySelectorAll<HTMLElement>(`[data-control~="${CSS.escape(id)}"]`)) {
     const rect = el.getBoundingClientRect();
-    if (rect.width === 0 && rect.height === 0) continue;
+    if ((rect.width === 0 && rect.height === 0) || !shown(el)) continue;
     return {
       x: rect.left + rect.width / 2,
       y: rect.top + rect.height / 2,

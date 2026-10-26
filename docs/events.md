@@ -946,7 +946,7 @@ The `control` values of `ui_control` and the `ui` event, each the `data-control`
 - `view:workbench`, `view:library`, `view:training`, `view:logbook`
 - `panel:bom`, `panel:guide`, `panel:compare`, `panel:settings`
 - `setting:agents`, `setting:tools`, `setting:all_metrics`, `setting:push_to_talk`, `setting:voice`
-- `explode`, the slider in the corner of the Model tab
+- `explode`, the Explode button of the Model tab's view bar (its slider sits in the button's popover)
 - `focus`, the 3D camera turns to `part` (a scene target, or a spec part's id or name)
 - `run:test`, `run:rebuild`
 - `library:{id}`, one library item

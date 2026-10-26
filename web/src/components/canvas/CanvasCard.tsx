@@ -12,7 +12,8 @@ import { assetUrl } from "../../lib/api";
 import { fmtEur } from "../../lib/format";
 import { CadScene, CadView } from "./CadView";
 import { CompareView } from "./CompareView";
-import { ApproximateModelsNote, ExplodeSlider, PartCard } from "./ExplodeControls";
+import { ApproximateModelsNote, PartCard } from "./ExplodeControls";
+import { ViewToolbar } from "../studio/ViewToolbar";
 import { RenderGallery } from "./RenderGallery";
 import { ModelScene } from "./Scenes";
 import { SimView } from "./SimView";
@@ -116,7 +117,7 @@ export function CanvasCard() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex shrink-0 items-end gap-4 border-b border-line">
+      <div className="@container flex shrink-0 items-end gap-4 border-b border-line">
         <div className="flex min-w-0 flex-1 items-end gap-5 overflow-x-auto [scrollbar-width:none]" role="tablist">
           {tabs.map((t) => {
             const active = t.value === tab;
@@ -161,11 +162,13 @@ export function CanvasCard() {
             className="mb-1.5 flex h-7 shrink-0 items-center gap-1.5 rounded-full bg-tile px-3 text-[12px] font-semibold text-ink-2 transition hover:bg-track"
           >
             <Boxes className="h-4 w-4" />
-            Bill of materials
+            {/* A narrow studio keeps the room for the tabs: the pill shows the icon and the total. */}
+            <span className="hidden @min-[760px]:inline">Bill of materials</span>
             <span className="font-label text-[11px] text-muted">{fmtEur(bom.total_eur)}</span>
           </button>
         )}
       </div>
+      <ViewToolbar />
 
       <div
         className={`relative mt-5 min-h-0 flex-1 overflow-hidden rounded-[20px] ${
@@ -220,7 +223,6 @@ export function CanvasCard() {
         {tab === "modell" && compare && <CompareView pair={compare} />}
         {tab === "modell" && !compare && (showRender ? <RenderGallery /> : product === "drone" ? <ModelScene look="modell" /> : <PartModel />)}
         {tab === "modell" && !compare && <SketchInset />}
-        {tab === "modell" && !compare && !showRender && (product === "drone" || !!cad?.glb_url) && <ExplodeSlider />}
         {tab === "modell" && !compare && !showRender && <ApproximateModelsNote />}
         <PartCard />
         {tab === "cad" && <CadView />}

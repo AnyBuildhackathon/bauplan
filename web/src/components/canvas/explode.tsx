@@ -3,8 +3,9 @@
 // one node per part: the FreeCAD drone (a propeller is a child of its motor and rides along),
 // the gripper and every spec product (parts of one assembly group move as a unit, then
 // spread inside it). Directions come from the parts' bounding boxes: away from the largest
-// part, straight up when a part sits right on top of it. Labels fade in past the middle,
-// and a hovered part glows and names itself in the card (PartCard).
+// part, straight up when a part sits right on top of it. Labels fade in past the middle, or
+// show at any amount with the studio's Labels switch, and a hovered part glows and names
+// itself in the card (PartCard). While the studio measures, the pointer belongs to the tool.
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
@@ -268,18 +269,19 @@ export function useExplode(root: THREE.Object3D, specs: PieceSpec[], opts: { glo
 
   const top = useMemo(() => new THREE.Vector3(), []);
   useFrame(() => {
-    const e = useUi.getState().explode;
+    const { explode: e, studio } = useUi.getState();
     if (e !== shown.current) {
       shown.current = e;
       for (const p of pieces) p.node.position.copy(p.base).addScaledVector(p.offset, e);
       if (layer.current) layer.current.position.y = lift * e;
-      const alpha = Math.max(0, Math.min(1, (e - 0.45) / 0.3));
-      for (const l of labels.current) if (l) l.material.opacity = alpha;
     }
-    if (e <= 0.45) return;
+    const alpha = studio.labels ? 1 : Math.max(0, Math.min(1, (e - 0.45) / 0.3));
     pieces.forEach((p, i) => {
       const l = labels.current[i];
       if (!l) return;
+      // A part hidden from the assembly tree (StudioRig) takes its label along.
+      l.material.opacity = p.node.userData.studioHidden ? 0 : alpha;
+      if (alpha <= 0) return;
       top.copy(p.center.userData.explodeTop as THREE.Vector3);
       p.node.localToWorld(top);
       l.position.copy(labelRoot.worldToLocal(top));
@@ -295,16 +297,19 @@ export function useExplode(root: THREE.Object3D, specs: PieceSpec[], opts: { glo
     return null;
   };
 
+  const selecting = () => useUi.getState().tool === "select";
   return {
     labels: labelRoot,
     layer,
     onPointerMove: (e: ThreeEvent<PointerEvent>) => {
+      if (!selecting()) return;
       const p = pieceOf(e.object);
       e.stopPropagation();
       useExplodeHover.getState().hover(p?.key ?? null, p ? p.name || p.label || p.key : "", e.nativeEvent.clientX, e.nativeEvent.clientY);
     },
     onPointerOut: () => useExplodeHover.getState().hover(null),
     onClick: (e: ThreeEvent<MouseEvent>) => {
+      if (!selecting()) return;
       const p = pieceOf(e.object);
       e.stopPropagation();
       const s = useExplodeHover.getState();

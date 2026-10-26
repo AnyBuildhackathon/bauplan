@@ -1,6 +1,6 @@
 // Two versions side by side in the Model tab: one synchronised camera for both
 // canvases, the parts that changed glow in the agent orange, and a table of the
-// parts and numbers underneath. Opened from the version history drawer.
+// parts and numbers underneath. Opened from the Versions tab of the right panel.
 import { Environment, Lightformer, OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame, useLoader, useThree } from "@react-three/fiber";
 import { ArrowRight, X } from "lucide-react";

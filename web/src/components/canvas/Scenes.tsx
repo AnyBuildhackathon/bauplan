@@ -2,7 +2,7 @@
 // (Simulation and Video tabs). Lighting is built locally, nothing loads from the web.
 import { Environment, Lightformer, Line, OrbitControls } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Suspense, useLayoutEffect, useMemo, useRef } from "react";
+import { Suspense, useLayoutEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { useSession } from "../../events/store";
 import type { Run } from "../../events/store";
@@ -13,6 +13,8 @@ import { ExplodeCamera } from "./explode";
 import { HeroDrone, useDroneUrl } from "./HeroDrone";
 import { IntroTurn } from "./IntroTurn";
 import { sampleAt, simClock } from "./simClock";
+import { StudioOverlay } from "../studio/StudioOverlay";
+import { lensFactor, StudioRig } from "../studio/StudioRig";
 
 function useSpin() {
   const sim = useSession((s) => s.steps.simulation.status);
@@ -23,17 +25,23 @@ function useSpin() {
 /** The reference quad spans about 10 cm motor to motor. */
 const DRONE_SIZE = 0.1;
 const MODEL_TARGET = new THREE.Vector3(0, 0.012, 0);
-// Low enough that the stage's horizon and sky show above the drone.
+// Low enough that the floor's horizon shows above the drone.
 const MODEL_CAMERA: [number, number, number] = [0.17, 0.064, 0.2];
 const MODEL_DISTANCE = new THREE.Vector3(...MODEL_CAMERA).distanceTo(MODEL_TARGET);
+const MODEL_HOME = new THREE.Vector3(...MODEL_CAMERA).sub(MODEL_TARGET).normalize();
+/** The sphere the 30° camera at MODEL_DISTANCE just fits. */
+const MODEL_RADIUS = MODEL_DISTANCE * Math.sin(THREE.MathUtils.degToRad(15));
+/** The drone's nose points to -z. */
+const DRONE_FRONT = new THREE.Vector3(0, 0, -1);
 
-/** Pulls the camera back on narrow canvases so the whole drone stays in frame. */
+/** Pulls the camera back on narrow canvases so the whole drone stays in frame, for whichever lens the studio uses. */
 function FitModelWidth() {
-  const camera = useThree((s) => s.camera);
+  const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
   const size = useThree((s) => s.size);
   useLayoutEffect(() => {
-    const aspect = size.width / Math.max(1, size.height);
-    const dist = Math.min(0.45, MODEL_DISTANCE * Math.max(1, 1.05 / aspect));
+    const vfov = THREE.MathUtils.degToRad(camera.fov);
+    const hfov = 2 * Math.atan(Math.tan(vfov / 2) * (size.width / Math.max(1, size.height)));
+    const dist = Math.min(0.45 * lensFactor(camera.fov), MODEL_RADIUS / Math.sin(Math.min(vfov, hfov) / 2));
     const dir = camera.position.clone().sub(MODEL_TARGET).normalize();
     camera.position.copy(MODEL_TARGET).addScaledVector(dir, dist);
   }, [camera, size.width, size.height]);
@@ -47,55 +55,62 @@ export function ModelScene({ look }: { look: "modell" | "render" }) {
   const spin = useSpin();
   const render = look === "render";
   const still = usePrefersReducedMotion();
+  // The drone's group, for the studio's part list, hidden parts and measuring.
+  const [drone, setDrone] = useState<THREE.Group | null>(null);
   return (
-    <Canvas
-      shadows
-      dpr={[1, 2]}
-      camera={{ position: MODEL_CAMERA, fov: 30, near: 0.005, far: 10 }}
-      gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}
-    >
-      <AnchorScope primary>
-        <FitModelWidth />
-        <ambientLight intensity={render ? 0.25 : 0.7} />
-        <hemisphereLight args={["#f2f9ff", "#b7cad6", render ? 0.3 : 0.6]} />
-        <directionalLight
-          position={[0.4, 0.8, 0.3]}
-          intensity={render ? 1.6 : 1.8}
-          castShadow
-          shadow-mapSize={[1024, 1024]}
-          shadow-camera-near={0.1}
-          shadow-camera-far={3}
-          shadow-camera-left={-0.15}
-          shadow-camera-right={0.15}
-          shadow-camera-top={0.15}
-          shadow-camera-bottom={-0.15}
-        />
-        {/* Metal and clear-coat parts need something to reflect, in both looks. */}
-        <Environment resolution={256} environmentIntensity={render ? 1 : 0.75}>
-          <Lightformer form="rect" intensity={3} position={[0, 2, 0]} rotation={[Math.PI / 2, 0, 0]} scale={[3, 3, 1]} />
-          <Lightformer form="rect" intensity={1.6} color="#ffd9bf" position={[-2.5, 0.6, 0.5]} rotation={[0, Math.PI / 2, 0]} scale={[2, 1.4, 1]} />
-          <Lightformer form="rect" intensity={1.2} color="#cfe0ff" position={[2.5, 0.4, -0.5]} rotation={[0, -Math.PI / 2, 0]} scale={[2, 1.4, 1]} />
-          <Lightformer form="ring" intensity={2} position={[0, 0.8, 2.4]} scale={1.2} />
-        </Environment>
-        {/* The pack hangs under the frame; lift the drone so it stands on it. */}
-        <group position={[0, build.battery[2] + 0.0028, 0]}>
-          <Suspense fallback={null}>
-            <HeroDrone url={url} battery={build.battery} sizes={build.sizes} highlight={highlight} spin={spin} explodable={!render} />
-          </Suspense>
-        </group>
-        {!render && <ExplodeCamera maxDistance={0.45} />}
-        <IntroTurn disabled={still} />
-        <GridStage size={DRONE_SIZE} lights={false} shadowArea={0.35} shadowReach={0.12} shadowOpacity={render ? 0.6 : 0.5} />
-        <OrbitControls
-          makeDefault
-          enablePan={false}
-          minDistance={0.09}
-          maxDistance={0.45}
-          target={[0, 0.012, 0]}
-          maxPolarAngle={Math.PI / 2.08}
-        />
-      </AnchorScope>
-    </Canvas>
+    <>
+      <Canvas
+        shadows
+        dpr={[1, 2]}
+        camera={{ position: MODEL_CAMERA, fov: 30, near: 0.005, far: 10 }}
+        gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}
+      >
+        <AnchorScope primary>
+          <FitModelWidth />
+          <ambientLight intensity={render ? 0.25 : 0.7} />
+          <hemisphereLight args={["#f2f9ff", "#b7cad6", render ? 0.3 : 0.6]} />
+          <directionalLight
+            position={[0.4, 0.8, 0.3]}
+            intensity={render ? 1.6 : 1.8}
+            castShadow
+            shadow-mapSize={[1024, 1024]}
+            shadow-camera-near={0.1}
+            shadow-camera-far={3}
+            shadow-camera-left={-0.15}
+            shadow-camera-right={0.15}
+            shadow-camera-top={0.15}
+            shadow-camera-bottom={-0.15}
+          />
+          {/* Metal and clear-coat parts need something to reflect, in both looks. */}
+          <Environment resolution={256} environmentIntensity={render ? 1 : 0.75}>
+            <Lightformer form="rect" intensity={3} position={[0, 2, 0]} rotation={[Math.PI / 2, 0, 0]} scale={[3, 3, 1]} />
+            <Lightformer form="rect" intensity={1.6} color="#ffd9bf" position={[-2.5, 0.6, 0.5]} rotation={[0, Math.PI / 2, 0]} scale={[2, 1.4, 1]} />
+            <Lightformer form="rect" intensity={1.2} color="#cfe0ff" position={[2.5, 0.4, -0.5]} rotation={[0, -Math.PI / 2, 0]} scale={[2, 1.4, 1]} />
+            <Lightformer form="ring" intensity={2} position={[0, 0.8, 2.4]} scale={1.2} />
+          </Environment>
+          {/* The pack hangs under the frame; lift the drone so it stands on it. */}
+          <group ref={setDrone} position={[0, build.battery[2] + 0.0028, 0]}>
+            <Suspense fallback={null}>
+              <HeroDrone url={url} battery={build.battery} sizes={build.sizes} highlight={highlight} spin={spin} explodable={!render} />
+            </Suspense>
+          </group>
+          {!render && <ExplodeCamera maxDistance={0.45} />}
+          <IntroTurn disabled={still} />
+          <GridStage variant="studio" size={DRONE_SIZE} lights={false} shadowArea={0.35} shadowReach={0.12} shadowOpacity={render ? 0.6 : 0.5} />
+          <OrbitControls
+            makeDefault
+            enablePan={false}
+            minDistance={0.09}
+            maxDistance={0.45}
+            target={[0, 0.012, 0]}
+            maxPolarAngle={Math.PI / 2.08}
+          />
+          {/* After the explode camera, so the lens scales the distance limits it set. */}
+          {!render && <StudioRig model={drone} center={MODEL_TARGET} radius={MODEL_RADIUS} home={MODEL_HOME} front={DRONE_FRONT} unit={1} />}
+        </AnchorScope>
+      </Canvas>
+      {!render && <StudioOverlay />}
+    </>
   );
 }
 

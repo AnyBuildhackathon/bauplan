@@ -21,8 +21,23 @@ import { AnchorScope, useAnchor } from "./anchors";
 import { GridStage, usePrefersReducedMotion } from "./GridStage";
 import { ExplodeCamera, ExplodeLayer, type PieceSpec } from "./explode";
 import { IntroTurn } from "./IntroTurn";
+import { StudioOverlay } from "../studio/StudioOverlay";
+import { StudioRig } from "../studio/StudioRig";
 
 export const CAD_SOURCE_LABEL = { freecad: "FreeCAD", cadquery: "CadQuery" } as const;
+
+/** Generated parts are millimetres with Z up, like FreeCAD; the drone's GLB is metres with Y up (docs/events.md). */
+const MM = 0.001;
+/** The camera's default direction, and the front view: FreeCAD's front (-Y) is +Z once a part stands Y up; the drone's nose is -Z. */
+const HOME = new THREE.Vector3(0.75, 0.62, 0.95).normalize();
+const FRONT_Z_UP = new THREE.Vector3(0, 0, 1);
+const FRONT_DRONE = new THREE.Vector3(0, 0, -1);
+
+/** The model's size and the height it stands at, for the studio grid under it. */
+interface Bounds {
+  size: number;
+  floor: number;
+}
 
 const PARAM_LABELS: Record<string, string> = {
   arm_length_mm: "Arm length",
@@ -60,7 +75,26 @@ export function partColor(name: string): { color: string; opacity: number } {
 /** "finger_left" or "Base_plate" (GLTFLoader turns spaces into underscores) as a label. */
 const prettyName = (raw: string) => raw.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
 
-function Part({ url, zUp, onSize, edged, still, explodable = false }: { url: string; zUp: boolean; onSize?: (size: number) => void; edged: boolean; still: boolean; explodable?: boolean }) {
+function Part({
+  url,
+  zUp,
+  staged,
+  onBounds,
+  edged,
+  still,
+  explodable = false,
+  unit,
+}: {
+  url: string;
+  zUp: boolean;
+  /** Stands the model on the floor at y = 0 (the Model tab). */
+  staged: boolean;
+  onBounds: (bounds: Bounds) => void;
+  edged: boolean;
+  still: boolean;
+  explodable?: boolean;
+  unit: number;
+}) {
   const bodies = useSession((s) => s.cad?.bodies);
   const gltf = useLoader(GLTFLoader, url);
   const cad = useSession((s) => s.cad);
@@ -69,12 +103,11 @@ function Part({ url, zUp, onSize, edged, still, explodable = false }: { url: str
   const controls = useThree((s) => s.controls) as unknown as { target: THREE.Vector3; update: () => void } | null;
   const highlight = useHighlight();
   const glow = highlight.has("frame");
-  const staged = !!onSize;
 
   // A studio PBR material per part (lib/materials.ts), plus crisp edges in the CAD tab.
   const tree = cad?.tree;
   const single = cad?.part && !cad.assembly ? cad.part.material : "";
-  const { object, center, radius, size: partSize, edges } = useMemo(() => {
+  const { object, center, radius, size: partSize, floor, edges } = useMemo(() => {
     const looks = materialsFromTree(tree ?? []);
     const fallback = single ? materialKey(single) : null;
     const root = gltf.scene.clone(true);
@@ -106,7 +139,7 @@ function Part({ url, zUp, onSize, edged, still, explodable = false }: { url: str
       }
     });
     const extent = box.getSize(new THREE.Vector3());
-    return { object: root, center: sphere.center, radius: sphere.radius || 1, size: Math.max(extent.x, extent.y, extent.z) || 0.1, edges: lines };
+    return { object: root, center: sphere.center, radius: sphere.radius || 1, size: Math.max(extent.x, extent.y, extent.z) || 0.1, floor: box.min.y, edges: lines };
   }, [gltf, zUp, staged, edged, tree, single]);
 
   // A live assembly flies together; a backlog replay, a seek or reduced motion just shows it.
@@ -119,7 +152,7 @@ function Part({ url, zUp, onSize, edged, still, explodable = false }: { url: str
     });
   }, [object, glow]);
   useEffect(() => () => edges.forEach((e) => e.geometry.dispose()), [edges]);
-  useEffect(() => onSize?.(partSize), [onSize, partSize]);
+  useEffect(() => onBounds({ size: partSize, floor }), [onBounds, partSize, floor]);
 
   useLayoutEffect(() => {
     const vfov = THREE.MathUtils.degToRad(camera.fov);
@@ -161,34 +194,41 @@ function Part({ url, zUp, onSize, edged, still, explodable = false }: { url: str
         <primitive object={object} />
       )}
       <group ref={anchor} position={center} />
+      <StudioRig model={object} center={center} radius={radius} home={HOME} front={zUp ? FRONT_Z_UP : FRONT_DRONE} unit={unit} />
     </>
   );
 }
 
-/** The generated part in 3D; with `stage` it stands on the grid stage (Model tab), otherwise on plain paper (CAD tab). */
+/** The generated part in 3D on the studio grid; with `stage` it stands on the floor (Model tab), otherwise it keeps its own place (CAD tab). */
 export function CadScene({ url, zUp = false, stage = false, explodable = false }: { url: string; zUp?: boolean; stage?: boolean; explodable?: boolean }) {
-  const [size, setSize] = useState<number | null>(null);
+  const [bounds, setBounds] = useState<Bounds | null>(null);
   const still = usePrefersReducedMotion();
+  const unit = zUp ? MM : 1;
   return (
-    <Canvas dpr={[1, 2]} camera={{ fov: 30 }} gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}>
-      <AnchorScope primary>
-        <ambientLight intensity={stage ? 0.35 : 0.65} />
-        {!stage && (
-          <>
-            <hemisphereLight args={["#ffffff", "#d9d6e8", 0.7]} />
-            <directionalLight position={[3, 5, 2]} intensity={1.7} />
-            <directionalLight position={[-3, 2, -2]} intensity={0.5} />
-          </>
-        )}
-        {stage && size !== null && <GridStage size={size} shadowArea={size * 3} shadowReach={size * 0.8} />}
-        <Suspense fallback={null}>
-          <Part url={url} zUp={zUp} onSize={stage ? setSize : undefined} edged={!stage} still={still} explodable={explodable} />
-        </Suspense>
-        <OrbitControls makeDefault enablePan={false} maxPolarAngle={stage ? Math.PI / 2.08 : Math.PI} />
-        <IntroTurn disabled={still} />
-        {explodable && <ExplodeCamera />}
-      </AnchorScope>
-    </Canvas>
+    <>
+      <Canvas dpr={[1, 2]} camera={{ fov: 30 }} gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}>
+        <AnchorScope primary>
+          <ambientLight intensity={stage ? 0.35 : 0.65} />
+          {!stage && (
+            <>
+              <hemisphereLight args={["#ffffff", "#d9d6e8", 0.7]} />
+              <directionalLight position={[3, 5, 2]} intensity={1.7} />
+              <directionalLight position={[-3, 2, -2]} intensity={0.5} />
+            </>
+          )}
+          {bounds && (
+            <GridStage variant="studio" size={bounds.size} floor={bounds.floor} unit={unit} lights={stage} shadowArea={bounds.size * 3} shadowReach={bounds.size * 0.8} />
+          )}
+          <Suspense fallback={null}>
+            <Part url={url} zUp={zUp} staged={stage} onBounds={setBounds} edged={!stage} still={still} explodable={explodable} unit={unit} />
+          </Suspense>
+          <OrbitControls makeDefault enablePan={false} maxPolarAngle={stage ? Math.PI / 2.08 : Math.PI} />
+          <IntroTurn disabled={still} />
+          {explodable && <ExplodeCamera />}
+        </AnchorScope>
+      </Canvas>
+      <StudioOverlay />
+    </>
   );
 }
 
@@ -377,7 +417,7 @@ export function CadView() {
             resetKey={glb}
             fallback={<div className="flex h-full items-center justify-center px-6 text-center text-[15px] text-muted">The 3D model failed to load ({glb}).</div>}
           >
-            <CadScene url={glb} zUp={!!cad.part} />
+            <CadScene url={glb} zUp={!!cad.part} explodable />
           </LoadBoundary>
         ) : (
           <div className="flex h-full items-center justify-center text-[15px] text-muted">No 3D model in the CAD event.</div>

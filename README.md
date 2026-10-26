@@ -14,7 +14,7 @@ It targets diverse physical products, from a phone stand to a plant-watering rob
 - **Partner technology:** Anthropic Claude, Reson8 (see [Partner technology](#partner-technology)).
 - **Documentation:** [Architecture](docs/ARCHITECTURE.md), [API](docs/API.md), [Agent tools](docs/TOOLS.md), [Frameworks](docs/FRAMEWORKS.md), [Event contract](docs/events.md).
 
-![The workbench: chat with Mechanic on the left, the assembled drone in the Model tab](docs/assets/screenshots/workbench-model.jpg)
+![The workbench: the assembled drone on the studio grid in the Model tab, Mechanic's chat on the right](docs/assets/screenshots/workbench-model.jpg)
 
 | CAD tab: FreeCAD assembly, feature tree and live parameters | Simulation tab: MuJoCo hover test before and after a fix |
 | --- | --- |

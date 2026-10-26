@@ -1,9 +1,13 @@
-// The test stage the 3D views stand on: a glossy pale-blue floor with thin cyan grid
-// lines out to a hazy sky, soft contact shadows, and plywood props for the tests.
-// Everything scales with the product, so a 70 mm drone and a 300 mm fan both read.
+// The floor the 3D views stand on. The test stage of the simulation replays: a glossy
+// pale-blue floor with thin cyan grid lines out to a hazy sky, soft contact shadows, and
+// plywood props for the tests. The studio (Model and CAD tabs): a calm CAD grid on the
+// canvas's own paper, with the X axis in red and the Y axis in green through the origin.
+// Everything scales with the product, so a 70 mm drone and a 300 mm fan both read, and the
+// studio's Grid switch (lib/ui `studio.grid`) hides the lines of both.
 import { ContactShadows, Grid, MeshReflectorMaterial } from "@react-three/drei";
 import { useEffect, useMemo, useState } from "react";
 import * as THREE from "three";
+import { useUi } from "../../lib/ui";
 
 const ZENITH = "#86c1e8";
 const SKY = "#b4d9f1";
@@ -13,6 +17,10 @@ const FLOOR = "#d6e8f2";
 const CELL = "#9fd9ec";
 const SECTION = "#46bddf";
 const PLYWOOD = "#d8b98f";
+const MARK = "#1d7f9f";
+
+/** The studio grid: lines a few shades darker than the canvas paper, axes in muted red and green. */
+const STUDIO = { cell: "#9a9a92", section: "#7c7c74", axisX: "#cf5b52", axisY: "#4f9b67", mark: "#9a9a92" };
 
 /** The nearest 1, 2 or 5 times a power of ten. */
 function niceStep(x: number): number {
@@ -66,8 +74,8 @@ function useSkyTexture() {
   return texture;
 }
 
-/** A scale bar lying on the floor along one major grid cell: |—— 5 cm ——|. */
-function ScaleMark({ length, position }: { length: number; position: [number, number, number] }) {
+/** A scale bar lying on the floor along one major grid cell: |-- 5 cm --|. `metres` is its real length. */
+function ScaleMark({ length, metres, position, color = MARK }: { length: number; metres: number; position: [number, number, number]; color?: string }) {
   const map = useMemo(() => {
     const w = 512;
     const h = 128;
@@ -75,8 +83,8 @@ function ScaleMark({ length, position }: { length: number; position: [number, nu
     c.width = w;
     c.height = h;
     const ctx = c.getContext("2d")!;
-    ctx.strokeStyle = "#1d7f9f";
-    ctx.fillStyle = "#1d7f9f";
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
     ctx.lineWidth = 6;
     ctx.lineCap = "round";
     const y = 92;
@@ -91,17 +99,103 @@ function ScaleMark({ length, position }: { length: number; position: [number, nu
     ctx.font = `700 54px "Inter Tight", sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "alphabetic";
-    ctx.fillText(fmtLength(length), w / 2, y - 18);
+    ctx.fillText(fmtLength(metres), w / 2, y - 18);
     const t = new THREE.CanvasTexture(c);
     t.colorSpace = THREE.SRGBColorSpace;
     t.anisotropy = 8;
     return t;
-  }, [length]);
+  }, [metres, color]);
   useEffect(() => () => map.dispose(), [map]);
   return (
     <mesh position={position} rotation={[-Math.PI / 2, 0, 0]} renderOrder={2}>
       <planeGeometry args={[length, length / 4]} />
       <meshBasicMaterial map={map} transparent depthWrite={false} toneMapped={false} polygonOffset polygonOffsetFactor={-4} />
+    </mesh>
+  );
+}
+
+const GRID_VERTEX = /* glsl */ `
+  varying vec3 vWorld;
+  void main() {
+    vec4 world = modelMatrix * vec4(position, 1.0);
+    vWorld = world.xyz;
+    gl_Position = projectionMatrix * viewMatrix * world;
+  }
+`;
+
+// Lines of constant pixel width from the screen-space derivatives; fine lines fade out where
+// they would crowd into moiré, and everything fades with the distance from the grid's centre.
+const GRID_FRAGMENT = /* glsl */ `
+  uniform float uMinor;
+  uniform float uMajor;
+  uniform float uFade;
+  uniform vec2 uCenter;
+  uniform vec3 uCell;
+  uniform vec3 uSection;
+  uniform vec3 uAxisX;
+  uniform vec3 uAxisY;
+  varying vec3 vWorld;
+
+  float lines(vec2 coord, float width) {
+    vec2 w = max(fwidth(coord), vec2(1e-6));
+    vec2 d = abs(fract(coord - 0.5) - 0.5) / w / width;
+    return 1.0 - min(min(d.x, d.y), 1.0);
+  }
+  float crowd(vec2 coord) {
+    vec2 w = fwidth(coord);
+    return 1.0 - smoothstep(0.18, 0.45, max(w.x, w.y));
+  }
+  float axis(float v, float width) {
+    return 1.0 - min(abs(v) / max(fwidth(v), 1e-6) / width, 1.0);
+  }
+  vec4 over(vec4 top, vec4 under) {
+    float a = top.a + under.a * (1.0 - top.a);
+    return vec4((top.rgb * top.a + under.rgb * under.a * (1.0 - top.a)) / max(a, 1e-5), a);
+  }
+
+  void main() {
+    vec2 p = vWorld.xz;
+    vec4 c = vec4(uCell, lines(p / uMinor, 1.0) * 0.2 * crowd(p / uMinor));
+    c = over(vec4(uSection, lines(p / uMajor, 1.2) * 0.34 * crowd(p / uMajor)), c);
+    // CAD's Y axis runs along -z here (the model is turned Z-up to Y-up), the X axis along x.
+    c = over(vec4(uAxisY, axis(p.x, 1.6) * 0.85), c);
+    c = over(vec4(uAxisX, axis(p.y, 1.6) * 0.85), c);
+    c.a *= 1.0 - smoothstep(uFade * 0.35, uFade, distance(p, uCenter));
+    if (c.a < 0.002) discard;
+    gl_FragColor = vec4(c.rgb, c.a);
+  }
+`;
+
+/** The studio's CAD grid on the floor plane: minor and major cells, and the two axes through the origin. */
+function StudioGrid({ minor, major, fade, center, y }: { minor: number; major: number; fade: number; center: [number, number]; y: number }) {
+  const material = useMemo(
+    () =>
+      new THREE.ShaderMaterial({
+        vertexShader: GRID_VERTEX,
+        fragmentShader: GRID_FRAGMENT,
+        transparent: true,
+        depthWrite: false,
+        uniforms: {
+          uMinor: { value: 1 },
+          uMajor: { value: 1 },
+          uFade: { value: 1 },
+          uCenter: { value: new THREE.Vector2() },
+          uCell: { value: new THREE.Color(STUDIO.cell) },
+          uSection: { value: new THREE.Color(STUDIO.section) },
+          uAxisX: { value: new THREE.Color(STUDIO.axisX) },
+          uAxisY: { value: new THREE.Color(STUDIO.axisY) },
+        },
+      }),
+    [],
+  );
+  useEffect(() => () => material.dispose(), [material]);
+  material.uniforms.uMinor.value = minor;
+  material.uniforms.uMajor.value = major;
+  material.uniforms.uFade.value = fade;
+  (material.uniforms.uCenter.value as THREE.Vector2).set(center[0], center[1]);
+  return (
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[center[0], y, center[1]]} material={material} renderOrder={1} raycast={() => null}>
+      <planeGeometry args={[fade * 2.2, fade * 2.2]} />
     </mesh>
   );
 }
@@ -178,7 +272,15 @@ export function stageObstacles(size: number, center: [number, number] = [0, 0]):
 }
 
 export interface GridStageProps {
-  /** Rough product size in metres; drives grid spacing, fog and shadow reach. */
+  /** "stage": the glossy test stage of the simulation replays (default); "studio": the calm CAD grid of the Model and CAD tabs. */
+  variant?: "stage" | "studio";
+  /** Grid lines and the scale mark; defaults to the studio's Grid switch. */
+  grid?: boolean;
+  /** Metres per scene unit, for the scale mark: 1 for a scene in metres, 0.001 for one in millimetres. */
+  unit?: number;
+  /** Height of the floor in scene units (default 0). */
+  floor?: number;
+  /** Rough product size in scene units; drives grid spacing, fog and shadow reach. */
   size: number;
   /** Where the shadows and the scale mark gather, [x, z]. */
   center?: [number, number];
@@ -196,8 +298,53 @@ export interface GridStageProps {
   scaleMark?: boolean;
 }
 
-export function GridStage({
+/** Where the scale bar lies: along the major line just in front of the product (cameras look
+ * from +x +z), starting at a grid crossing so it spans exactly one major cell. */
+function markAt(size: number, major: number, center: [number, number]): [number, number] {
+  const x = Math.round(center[0] / major) * major;
+  const z = (Math.round(center[1] / major) + Math.max(1, Math.ceil((size * 0.75) / major))) * major;
+  return [x + major / 2, z + major * 0.14];
+}
+
+export function GridStage(props: GridStageProps) {
+  const gridSwitch = useUi((s) => s.studio.grid);
+  const lines = props.grid ?? gridSwitch;
+  return props.variant === "studio" ? <StudioFloor {...props} lines={lines} /> : <TestStage {...props} lines={lines} />;
+}
+
+/** The studio: the canvas's own paper shows through, the CAD grid and soft contact shadows lie on it. */
+function StudioFloor({ size, unit = 1, floor = 0, center = [0, 0], shadowArea, shadowReach, shadowOpacity = 0.5, lights = true, scaleMark = true, lines }: GridStageProps & { lines: boolean }) {
+  const { major, minor } = stageGrid(size);
+  // Lift the overlays by a hair of the product size so nothing z-fights with the floor.
+  const lift = size * 0.002;
+  const [markX, markZ] = markAt(size, major, center);
+  return (
+    <>
+      {lights && (
+        <>
+          <hemisphereLight args={["#ffffff", "#cfcfc8", 1.1]} />
+          <directionalLight position={[size * 6, size * 12, size * 5]} intensity={1.5} />
+          <directionalLight position={[-size * 8, size * 5, -size * 6]} intensity={0.45} />
+        </>
+      )}
+      {lines && <StudioGrid minor={minor} major={major} fade={size * 8} center={center} y={floor + lift} />}
+      <ContactShadows
+        position={[center[0], floor + lift * 2, center[1]]}
+        scale={shadowArea ?? size * 4}
+        far={shadowReach ?? size * 1.5}
+        opacity={shadowOpacity * 0.8}
+        blur={2.4}
+        resolution={512}
+        color="#1a1a18"
+      />
+      {lines && scaleMark && <ScaleMark length={major} metres={major * unit} color={STUDIO.mark} position={[markX, floor + lift * 3, markZ]} />}
+    </>
+  );
+}
+
+function TestStage({
   size,
+  unit = 1,
   center = [0, 0],
   shadowArea,
   shadowReach,
@@ -206,7 +353,8 @@ export function GridStage({
   lights = true,
   obstacles = [],
   scaleMark = true,
-}: GridStageProps) {
+  lines,
+}: GridStageProps & { lines: boolean }) {
   const sky = useSkyTexture();
   const plywood = usePlywood();
   const { major, minor } = stageGrid(size);
@@ -215,10 +363,7 @@ export function GridStage({
   const floorSize = fogFar * 4;
   // Lift the overlays by a hair of the product size so nothing z-fights with the floor.
   const lift = size * 0.002;
-  // The scale bar lies along the major line just in front of the product (cameras look
-  // from +x +z), starting at a grid crossing so it spans exactly one major cell.
-  const markX = Math.round(center[0] / major) * major;
-  const markZ = (Math.round(center[1] / major) + Math.max(1, Math.ceil((size * 0.75) / major))) * major;
+  const [markX, markZ] = markAt(size, major, center);
   return (
     <>
       <primitive attach="background" object={sky} />
@@ -251,19 +396,21 @@ export function GridStage({
           <meshStandardMaterial color={FLOOR} roughness={0.55} metalness={0.05} />
         )}
       </mesh>
-      <Grid
-        position={[center[0], lift, center[1]]}
-        args={[1, 1]}
-        cellSize={minor}
-        cellThickness={0.7}
-        cellColor={CELL}
-        sectionSize={major}
-        sectionThickness={1.15}
-        sectionColor={SECTION}
-        fadeDistance={fogFar * 0.85}
-        fadeStrength={1.6}
-        infiniteGrid
-      />
+      {lines && (
+        <Grid
+          position={[center[0], lift, center[1]]}
+          args={[1, 1]}
+          cellSize={minor}
+          cellThickness={0.7}
+          cellColor={CELL}
+          sectionSize={major}
+          sectionThickness={1.15}
+          sectionColor={SECTION}
+          fadeDistance={fogFar * 0.85}
+          fadeStrength={1.6}
+          infiniteGrid
+        />
+      )}
       <ContactShadows
         position={[center[0], lift * 2, center[1]]}
         scale={shadowArea ?? size * 4}
@@ -273,7 +420,7 @@ export function GridStage({
         resolution={512}
         color="#29465a"
       />
-      {scaleMark && <ScaleMark length={major} position={[markX + major / 2, lift * 3, markZ + major * 0.14]} />}
+      {lines && scaleMark && <ScaleMark length={major} metres={major * unit} position={[markX, lift * 3, markZ]} />}
       {obstacles.map((p, i) => (
         <Prop key={i} prop={p} material={plywood} />
       ))}

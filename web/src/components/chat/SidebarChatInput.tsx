@@ -68,6 +68,10 @@ export default function SidebarChatInput({
   const speaking = useSpeech((s) => s.speaking);
   const [hint, setHint] = useState<string | null>(null);
   const lg = size === "lg";
+  // A longer message gets the whole width, the buttons move under it; the row of buttons
+  // beside the text would leave it a column a few words wide in the side panel. A box too
+  // narrow for text and buttons side by side (a phone) stacks them always (container query).
+  const stacked = !lg && (value.length > 28 || value.includes("\n"));
 
   // Auto-resize textarea without causing layout flash
   const adjustHeight = useCallback(() => {
@@ -186,13 +190,13 @@ export default function SidebarChatInput({
   const micHot = listening || handsFree;
 
   return (
-    <div>
+    <div className="@container">
       {sketch && onSketchChange && <SketchChip file={sketch} onRemove={() => onSketchChange(null)} />}
       <div
         className={`flex bg-card ring-1 transition ${micHot ? "ring-accent/50" : "ring-[#e2e2dd]"} ${
           lg
             ? "flex-col gap-3 rounded-[26px] pt-5 pr-4 pb-4 pl-6 shadow-[0_1px_2px_rgb(26_26_24/0.04),0_10px_30px_-12px_rgb(26_26_24/0.16)] focus-within:ring-accent/40 focus-within:shadow-[0_0_0_5px_rgb(31_111_120/0.08),0_10px_30px_-12px_rgb(26_26_24/0.16)] sm:pl-7"
-            : "min-h-[64px] items-end gap-2 rounded-[24px] py-3 pr-3 pl-4 shadow-[var(--shadow-pill)]"
+            : `min-h-[64px] gap-2 rounded-[24px] py-3 pr-3 pl-4 shadow-[var(--shadow-pill)] ${stacked ? "flex-col pt-3.5" : "items-end @max-[360px]:flex-col @max-[360px]:items-stretch @max-[360px]:pt-3.5"}`
         }`}
       >
         {hearing ? (
@@ -222,11 +226,11 @@ export default function SidebarChatInput({
             aria-label="Message to Mechanic"
             data-target="chat_input eingabe"
             className={`min-w-0 resize-none bg-transparent font-read text-ink outline-none placeholder:text-faint ${
-              lg ? "w-full text-[19px] leading-[1.5] sm:text-[22px]" : "flex-1 self-center text-[15px] leading-snug"
+              lg ? "w-full text-[19px] leading-[1.5] sm:text-[22px]" : stacked ? "w-full pr-1 text-[15px] leading-snug" : "flex-1 self-center text-[15px] leading-snug @max-[360px]:w-full @max-[360px]:flex-none @max-[360px]:pr-1"
             }`}
           />
         )}
-        <div className={lg ? "flex items-center justify-end gap-2" : "contents"}>
+        <div className={lg || stacked ? "flex items-center justify-end gap-2" : "contents @max-[360px]:flex @max-[360px]:items-center @max-[360px]:justify-end @max-[360px]:gap-2"}>
         {canSubmit && !hearing && (
           <button
             type="button"
@@ -264,7 +268,8 @@ export default function SidebarChatInput({
           aria-pressed={micMode === "handsfree" ? handsFree : undefined}
         >
           {micMode === "handsfree" && handsFree ? <Waveform active={speaking || userTalking} bars={4} className="[&>span]:bg-white" /> : <Mic className={lg ? "h-5 w-5" : "h-4 w-4"} strokeWidth={2} />}
-          {micMode === "handsfree" && <span>{handsFree ? "End" : "Talk"}</span>}
+          {/* The large box on a phone is too narrow for its row of big buttons: the mic stays, the word goes (the button names itself). */}
+          {micMode === "handsfree" && <span className={lg ? "@max-[340px]:hidden" : ""}>{handsFree ? "End" : "Talk"}</span>}
         </button>
         </div>
       </div>

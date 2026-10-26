@@ -1,6 +1,7 @@
-// The explode slider in the corner of the Model tab, and the card a hovered or clicked part
-// shows: its name, the part that was picked for it, mass, price, the shop link and which 3D model it shows.
-import { ArrowUpRight, Expand, X } from "lucide-react";
+// The explode slider (in the popover of the view bar's Explode button), and the card a hovered
+// or clicked part shows: its name, the part that was picked for it, mass, price, the shop link
+// and which 3D model it shows.
+import { ArrowUpRight, X } from "lucide-react";
 import { useEffect } from "react";
 import { useSession } from "../../events/store";
 import type { BomItem, PartModelRow } from "../../events/types";
@@ -14,13 +15,8 @@ export function ExplodeSlider() {
   const setExplode = useUi((s) => s.setExplode);
   const pct = Math.round(explode * 100);
   return (
-    <label
-      className="absolute bottom-3 left-3 z-10 flex h-10 items-center gap-2.5 rounded-full bg-white/90 pr-4 pl-3.5 shadow-[var(--shadow-pill)] backdrop-blur"
-      title="Pull every part apart"
-      data-control="explode"
-    >
-      <Expand className="h-4 w-4 shrink-0 text-ink-2" />
-      <span className="text-[14px] font-semibold text-ink-2">Explode</span>
+    <label className="flex h-10 items-center gap-3">
+      <span className="text-[13px] font-semibold text-muted">Assembled</span>
       <input
         type="range"
         min={0}
@@ -28,7 +24,7 @@ export function ExplodeSlider() {
         step={1}
         value={pct}
         onChange={(e) => setExplode(Number(e.target.value) / 100)}
-        className="bevel-range w-[120px]"
+        className="bevel-range w-[160px]"
         style={{ "--p": `${pct}%` } as React.CSSProperties}
         aria-label="Explode"
       />
@@ -98,14 +94,14 @@ function usePartFacts(key: string | null, label: string): Facts | null {
   return facts;
 }
 
-/** Above the explode slider: which parts the 3D view shows as approximate models, if any. */
+/** In the bottom-left corner of the Model tab, below Mechanic's line: which parts the 3D view shows as approximate models, if any. */
 export function ApproximateModelsNote() {
   const models = useSession((s) => s.cad?.part_models);
   const names = [...new Set((models ?? []).filter((row) => row.model_kind === "approximate").map((row) => row.part_name))];
   if (!names.length) return null;
   return (
     <p
-      className="absolute bottom-[60px] left-3 z-10 max-w-[60%] truncate rounded-full bg-white/90 px-3.5 py-1.5 text-[13px] font-semibold text-agent-ink shadow-[var(--shadow-pill)] backdrop-blur"
+      className="absolute bottom-3 left-3 z-10 max-w-[60%] truncate rounded-full bg-white/90 px-3.5 py-1.5 text-[13px] font-semibold text-agent-ink shadow-[var(--shadow-pill)] backdrop-blur"
       title={names.join(", ")}
     >
       Approximate 3D model: {names.join(", ")}
@@ -116,11 +112,10 @@ export function ApproximateModelsNote() {
 export function PartCard() {
   const { key, label, x, y, pinned, pin } = useExplodeHover();
   const facts = usePartFacts(key, label);
+  // The studio tabs show the live model; a tab change closes the card, its part is elsewhere now.
   const tab = useUi((s) => s.tab);
-  useEffect(() => {
-    if (tab !== "modell") pin(null);
-  }, [tab, pin]);
-  if (!facts || tab !== "modell") return null;
+  useEffect(() => pin(null), [tab, pin]);
+  if (!facts || (tab !== "modell" && tab !== "cad")) return null;
   const left = Math.min(x + 18, window.innerWidth - 300);
   const top = Math.min(y + 18, window.innerHeight - 190);
   return (
