@@ -44,6 +44,9 @@ Replace that fixture with an actual pod recording and verified matching metadata
 
 Use an Ubuntu 22.04+ NVIDIA RTX host or an Isaac Sim container with sufficient disk space, at least 16 GB VRAM, and a driver compatible with Isaac Sim 5.1.
 The installer checks `nvidia-smi`; it does not install or alter the NVIDIA driver.
+It rejects driver 595.x before downloading packages because NVIDIA confirms an Isaac Sim 5.1 RTX initialization crash on that branch, including headless camera runs.
+Use the validated Linux driver 580.65.06 on the GPU host; changing a container image does not replace the host driver.
+See NVIDIA's [headless camera crash diagnosis](https://forums.developer.nvidia.com/t/enable-cameras-casues-unknown-failure-on-headless-server/366918).
 From a checkout on the GPU host (root, or a user with sudo):
 
 ```bash
@@ -51,6 +54,8 @@ RUN_ON_POD=1 bash runpod/setup.sh
 ```
 
 The one-shot script installs system rendering dependencies, Python 3.11 in `~/.venvs/anybuild-isaac`, Isaac Sim 5.1.0, Isaac Lab v2.3.0, RSL-RL, TensorBoard, and the video encoder.
+It installs the Lab modules directly with `uv`, constrains Torch to 2.7.0 with CUDA 12.8 and TensorDict to 0.8.3, and uses setuptools below 81 for FlatDict's legacy build.
+This avoids the upstream shell installer's ignored module failures and temporary upgrades to unsupported Torch versions.
 It performs a bounded headless Kit startup and propagates errors.
 An existing Isaac Lab checkout must match the pinned tag; setup does not reset or overwrite another checkout.
 The versions follow NVIDIA's [Isaac Lab pip installation instructions](https://isaac-sim.github.io/IsaacLab/v2.3.0/source/setup/installation/pip_installation.html).
@@ -96,9 +101,12 @@ The APIs use the existing `POST /api/prompt`, `GET /api/events`, and session-sco
 
 ## Product export and test model
 
-The exporter reuses the Blender studio's CAD frame, motors, propellers, battery and flight controller, without its camera, lights or floor.
+The exporter reuses the Blender studio's full FreeCAD drone assembly, including its FPV camera and canopy, without the studio camera, lights or floor.
+Older frame-only builds use the procedural assembly fallback.
 The mesh layer uses metres and Z up.
-Each part group carries `mass_kg` custom metadata; the manifest lists all 11 component instances, their USD paths, their masses, and the selected motors' maximum thrust.
+Each part group carries `mass_kg` custom metadata; the manifest lists every selected component instance, its USD path and mass, and the selected motors' maximum thrust.
+Accessory masses and bolt quantities contribute to the total even when the legacy procedural assembly has no separate accessory mesh.
+The full GLB export uses material preview colours so the uploaded USD has no external texture dependency.
 A physics wrapper references the mesh layer and gives the assembly a single rigid body with its total mass in kilograms.
 The returned ZIP keeps relative USD references portable.
 
@@ -136,3 +144,13 @@ It checks chat dispatch, SSE provenance, separate recorded/requested conditions,
 The fake SSH runner checks uploads, isolated remote commands, returned artifacts, timeout/failure fallback, argument validation and shell-injection rejection.
 The frontend check is `cd web && npm run build`.
 Real GPU execution still requires the pod; passing mock and transport checks does not validate Isaac installation or simulated flight behavior.
+
+To require a real pod result, start the mock backend with the SSH connection variables, complete a drone build, then run:
+
+```bash
+cd agent
+ISAAC_LIVE=1 SMOKE_PORT=8167 uv run python scripts/smoke_omniverse.py
+```
+
+This sends a new chat request for 8 m/s wind and 10 g payload after the SSE backlog ends.
+It rejects recorded fallbacks and verifies the live provenance, assembly and payload mass, MP4 signature, and downloadable result JSON.
