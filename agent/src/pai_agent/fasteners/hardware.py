@@ -559,10 +559,20 @@ def write_inputs(made: list[Made], work: Path) -> None:
     (work / "hardware.json").write_text(json.dumps({"overlap_mm3": OVERLAP_MM3, "items": rows}), encoding="utf-8")
 
 
+def _bounds(shape) -> list[float]:
+    """The exact bounding box: CadQuery's BoundingBox of a meshed shape is its triangulation's, a few um too big."""
+
+    from OCP.Bnd import Bnd_Box
+    from OCP.BRepBndLib import BRepBndLib
+
+    box = Bnd_Box()
+    BRepBndLib.AddOptimal_s(shape.wrapped, box, False, False)
+    return [_round(v) for v in box.Get()]
+
+
 def row_of(one: Made, stl_name: str) -> dict:
     """The record a built part keeps for one standard part: what it is, its hole, its mesh and its mass."""
 
-    box = one.shape.BoundingBox()
     center = one.shape.Center()
     volume = float(one.shape.Volume())
     item = one.item
@@ -584,7 +594,7 @@ def row_of(one: Made, stl_name: str) -> dict:
         "radial_gap_mm": _gap(item, one.numbers),
         "seat_mm": one.seat,
         "stl": stl_name,
-        "bbox_mm": [_round(v) for v in (box.xmin, box.ymin, box.zmin, box.xmax, box.ymax, box.zmax)],
+        "bbox_mm": _bounds(one.shape),
         "com_mm": [_round(v) for v in (center.x, center.y, center.z)],
         "volume_mm3": round(volume, 2),
         "material": one.material,

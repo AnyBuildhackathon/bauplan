@@ -290,6 +290,18 @@ def write_glb(nodes: list[dict], geo: dict, path: Path) -> None:
     path.write_bytes(data)
 
 
+def write_frame(directory: Path, params: dict):
+    """The carbon plate as frame.stl and frame.step in directory; returns it."""
+
+    from cadquery import exporters
+
+    directory.mkdir(parents=True, exist_ok=True)
+    frame = build_frame(params["arm_length_mm"], params["thickness_mm"], params["motor_spacing_mm"])
+    exporters.export(frame, str(directory / "frame.stl"))
+    exporters.export(frame, str(directory / "frame.step"))
+    return frame
+
+
 def build(directory: Path, params: dict, geo: dict, selected: dict | None = None) -> float:
     """Writes frame.stl, frame.step, the assembly drone.step and the assembly frame.glb; returns the frame mass.
 
@@ -297,12 +309,8 @@ def build(directory: Path, params: dict, geo: dict, selected: dict | None = None
     """
 
     import cadquery as cq
-    from cadquery import exporters
 
-    directory.mkdir(parents=True, exist_ok=True)
-    frame = build_frame(params["arm_length_mm"], params["thickness_mm"], params["motor_spacing_mm"])
-    exporters.export(frame, str(directory / "frame.stl"))
-    exporters.export(frame, str(directory / "frame.step"))
+    frame = write_frame(directory, params)
     nodes = assembly_parts(geo, frame)
     # The STEP carries each bought part's own model where the library has one (part_models).
     try:

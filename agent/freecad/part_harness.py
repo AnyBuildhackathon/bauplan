@@ -85,7 +85,8 @@ def _guarded_import(name, globals=None, locals=None, fromlist=(), level=0):
 
 
 def _bbox(shape):
-    box = shape.BoundBox
+    # From the exact geometry: BoundBox of a meshed shape is its triangulation's, up to the deflection short of the part.
+    box = shape.optimalBoundingBox(False, False)
     return [round(v, 3) for v in (box.XMin, box.YMin, box.ZMin, box.XMax, box.YMax, box.ZMax)]
 
 
