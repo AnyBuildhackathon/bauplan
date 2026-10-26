@@ -16,6 +16,8 @@ const LOOKS: Record<string, Look> = {
   STEEL: { roughness: 0.25, metalness: 1 },
   PCB: { roughness: 0.5, metalness: 0.1 },
   PLASTIC: { roughness: 0.45, metalness: 0 },
+  // Standard parts, steel or brass by their color; drawn a hair in front, so an insert's top never flickers with the plastic it sits flush in.
+  HARDWARE: { roughness: 0.45, metalness: 0.35, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 },
 };
 const DEFAULT: Look = { roughness: 0.55, metalness: 0.08 };
 
@@ -38,9 +40,12 @@ const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
 export function materialsFromTree(tree: CadNode[]): Map<string, string> {
   const out = new Map<string, string>();
   const walk = (n: CadNode) => {
+    // A standard part's row names its pieces.
+    if (n.nodes) return n.nodes.forEach((node) => out.set(norm(node), "HARDWARE"));
     const name = n.label.split(" · ")[0].replace(/ ×\d+/, "").replace(/ \((bought|load)\)$/, "");
     const key = materialKey(n.label);
-    if (key && !n.children?.length) out.set(norm(name), key);
+    // Only parts have a material, not the groups around them; the screws a part holds keep it a part.
+    if (key && !n.children?.some((c) => !c.nodes)) out.set(norm(name), key);
     n.children?.forEach(walk);
   };
   tree.forEach(walk);

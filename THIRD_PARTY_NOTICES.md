@@ -10,6 +10,11 @@ Four chat components in `web/src/components/chat/` (`SidebarChat.tsx`, `SidebarC
 Each file starts with a header naming its origin and stating that it was modified.
 The changes and the full Apache License 2.0 text are in [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES).
 
+The standard parts (screws, nuts, washers and heat-set inserts with their holes) come from two Apache-2.0 sources, listed with their changes in [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES):
+
+- `agent/src/pai_agent/fasteners/fasteners.py` is the standard-parts module of [SOMA](https://github.com/Kai-Jungsthoefel/SOMA) by Kai Jungsthöfel (`python/soma/fasteners.py`, v0.10.2), licensed `GPL-3.0-or-later OR Apache-2.0` and used here under the Apache License 2.0; its header keeps SOMA's notes and lists what AnyBuild changed.
+- The dimension tables in `agent/src/pai_agent/fasteners/data/` are unchanged from [bd_warehouse](https://github.com/gumyr/bd_warehouse) by Roger Maitland (gumyr), with its license text (`LICENSE-bd_warehouse.txt`) and their origin (`README.md`) next to them.
+
 ## Part models in `agent/freecad/parts/`
 
 `agent/freecad/frame_build.py` loads these meshes and places them in the reference micro drone at real size.

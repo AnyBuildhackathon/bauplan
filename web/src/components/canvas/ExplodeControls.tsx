@@ -116,8 +116,11 @@ export function PartCard() {
   const tab = useUi((s) => s.tab);
   useEffect(() => pin(null), [tab, pin]);
   if (!facts || (tab !== "modell" && tab !== "cad")) return null;
-  const left = Math.min(x + 18, window.innerWidth - 300);
-  const top = Math.min(y + 18, window.innerHeight - 190);
+  // The card stays in the studio, beside the part: past the studio's right edge it would sit under Mechanic's panel.
+  const studio = document.querySelector('[data-target~="viewport"]')?.getBoundingClientRect();
+  const right = studio?.right ?? window.innerWidth;
+  const left = Math.max((studio?.left ?? 0) + 8, x + 18 + 300 <= right ? x + 18 : x - 18 - 280);
+  const top = Math.min(y + 18, (studio?.bottom ?? window.innerHeight) - 190);
   return (
     <div
       className={`fixed z-[65] w-[280px] animate-rise rounded-[18px] bg-white px-4 py-3 shadow-[var(--shadow-float)] ${pinned ? "" : "pointer-events-none"}`}

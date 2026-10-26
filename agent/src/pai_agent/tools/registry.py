@@ -11,6 +11,7 @@ from pai_agent.timeouts import limit, timed_out
 from pai_agent.requirements import refresh_requirements
 from pai_agent.run_control import RunStopped
 from pai_agent.scene import CONTROLS, DRAW_KINDS, MASCOT_STATES, PART_CATEGORIES, TARGETS
+from pai_agent.fasteners.hardware import SCHEMA as FASTENERS_SCHEMA
 from pai_agent.freecad_run import find_freecadcmd
 from pai_agent.tools.blender import blender_render, find_blender, recorded_still
 from pai_agent.tools.bom import bom_build
@@ -331,6 +332,7 @@ SCHEMAS = [
                 "material": {"type": "string", "enum": ["PLA", "PETG", "ABS", "ASA", "NYLON", "TPU", "ALUMINIUM", "STEEL"]},
                 "template": {"type": "string", "enum": ["gripper"]},
                 "script": {"type": "string"},
+                "fasteners": FASTENERS_SCHEMA,
             },
             "required": ["name"],
         },
@@ -431,6 +433,7 @@ SCHEMAS = [
                             "category": {"type": "string"},
                             "query": {"type": "string"},
                             "mass_g": {"type": "number"},
+                            "fasteners": FASTENERS_SCHEMA,
                         },
                         "required": ["name", "kind"],
                     },

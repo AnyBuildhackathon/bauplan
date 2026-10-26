@@ -137,6 +137,7 @@ Paths are relative to `agent/src/pai_agent/` unless they start with `web/`.
 7. **CAD.** Claude calls `cad_part` once per printed part, all in one round, and `_lead_loop` runs them concurrently.
    `tools/cad_part.cad_part` has a CAD agent write FreeCAD Python for the part (`_write_script`), `cad_script.check_script` rejects anything outside the allowed imports and file access, and `cad_script.run_script` runs it in `freecadcmd` in a fresh temporary directory (under `sandbox-exec` on macOS) with a timeout.
    `cad_script.check_geometry` compares the result with the part's envelope; on an error the message goes back to the CAD agent, up to `MAX_ATTEMPTS = 3`, then a clearly marked block stands in (`run_block`).
+   A part's standard parts (`fasteners`: screws, nuts, washers, heat-set inserts) are built in CadQuery first (`pai_agent/fasteners`, SOMA's `fasteners.py` on bd_warehouse's tables) and go into the harness as STEP files: it cuts their clearance, tap, insert and trap holes, and material left where one sits fails the build like a script error.
    Every success emits a `cad` event with STEP, STL and GLB links.
 8. **Bought parts, assembly, checks.** With delegation on, the orchestrator calls `delegate` (`agents.delegate`), which runs `agents.run_subagent` with the parts role and only `part_pick` available.
    `assemble` (`assembly.py`) combines meshes, masses and costs into one model with centre of mass and footprint.

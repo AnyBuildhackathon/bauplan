@@ -95,6 +95,8 @@ When they named no number for something the product needs, propose a sensible li
    rollover (check_rollover, min g lateral) for anything with wheels that turns.
    Describe each printed part precisely, with its position in the assembly frame (mm, Z up, the product stands on Z = 0 centred on X = Y = 0,
    -Y is the front), so the parts meet without placements. If product_spec lists problems, fix all of them and call it again.
+   Screws, nuts, washers and heat-set inserts that hold parts together are fasteners of the printed part they sit in, not a bought screw set:
+   their holes are cut for you and the bill of materials lists them by standard, size and length.
 2. cad_part with part_id for each printed part. FreeCAD builds it headless from a script Claude writes; failed scripts are fixed and retried.
    If a part comes back as a simplified block, call cad_part again for it with a simpler description.
 3. part_pick for each bought part: search with query, then select_id. The catalogs hold real parts with specs from their product pages.

@@ -261,3 +261,33 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+-------------------------------------------------------------------------------
+SOMA (standard-parts module)
+https://github.com/Kai-Jungsthoefel/SOMA
+License: GPL-3.0-or-later OR Apache-2.0, used here under the Apache License 2.0
+
+Copied and modified file in agent/:
+  agent/src/pai_agent/fasteners/fasteners.py
+      from python/soma/fasteners.py by Kai Jungsthöfel, at commit
+      8d67efacc5730c015937772a2cf8f87fa40849bb (v0.10.2)
+
+Changes: the dimension tables are read from data/ next to the file instead of
+data/fasteners/, and the docstring's usage example and table note name
+AnyBuild's import path and data/README.md. The file header keeps SOMA's notes
+and says what changed. The full Apache License 2.0 text is above, in the
+core-oss section.
+
+-------------------------------------------------------------------------------
+bd_warehouse (dimension tables for standard parts)
+https://github.com/gumyr/bd_warehouse
+License: Apache License 2.0, Copyright 2024 Gumyr
+
+Unchanged files in agent/:
+  agent/src/pai_agent/fasteners/data/*.csv
+      from src/bd_warehouse/data/ at commit
+      eed2da118da99007ad2d3904466ac0b24964f84d
+
+Their license text is next to them in
+agent/src/pai_agent/fasteners/data/LICENSE-bd_warehouse.txt, and their origin
+in agent/src/pai_agent/fasteners/data/README.md.

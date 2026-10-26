@@ -180,14 +180,15 @@ async def _source(ctx: Ctx) -> dict:
 
 
 def _aliases(state) -> dict[str, list[str]]:
-    """Other names each GLB node answers to: a product part's spec id, its kind."""
+    """Other names each GLB node answers to: a product part's spec id, its kind; a standard part also its printed part's id."""
 
     if state.product != "generic" or not state.spec or not state.assembly:
         return {}
     kinds = {part["id"]: part["kind"] for part in state.spec["parts"]}
     out: dict[str, list[str]] = {}
     for body in state.assembly.get("bodies", []):
-        out.setdefault(body["name"], []).extend([body["part_id"], kinds.get(body["part_id"], "")])
+        # A screw or insert (kind hardware) goes along with the printed part that holds it.
+        out.setdefault(body["name"], []).extend([body["part_id"], kinds.get(body["part_id"], body["kind"]), body.get("holder", "")])
     return out
 
 

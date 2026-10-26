@@ -5,9 +5,10 @@ scripts build them in place. position_mm means the same for every part: the cent
 bounding box in the assembly, so a printed part with a position is moved there (and
 rotated about its own centre), and one without it stays where its script built it.
 Bought parts and external loads with a size and position become simple blocks, so
-they show up in the model and count for the centre of mass. The result has the mass
-properties the checks need: product and total mass, centre of mass, bounding box and
-the footprint the assembly stands on.
+they show up in the model and count for the centre of mass. A printed part's standard
+parts (screws, nuts, washers, inserts) move with it and count as bought. The result has
+the mass properties the checks need: product and total mass, centre of mass, bounding
+box and the footprint the assembly stands on.
 """
 
 from __future__ import annotations
@@ -119,6 +120,9 @@ def build(spec: dict, built: dict, picked: dict, directory: Path) -> dict:
     warnings: list[str] = []
     printed_mass = 0.0
     printed_cost = 0.0
+    # Standard parts are ordered, so they count with the bought parts.
+    bought_mass = 0.0
+    bought_cost = 0.0
     color_index = 0
     for part in spec["parts"]:
         if part["kind"] != "printed":
@@ -161,10 +165,34 @@ def build(spec: dict, built: dict, picked: dict, directory: Path) -> dict:
             if not reference:
                 printed_mass += mass
                 printed_cost += mass * COST_EUR_PER_G.get(str(body.get("material") or info["material"]).upper(), 0.03)
+        for index, row in enumerate(info.get("hardware") or []):
+            vertices = [apply(matrix, offset, v) for v in read_stl_vertices(directory / row["stl"])]
+            if len(vertices) < 3:
+                continue
+            stl = directory / ("asm-" + part["id"] + ".hw" + str(index) + ".stl")
+            write_stl(stl, vertices)
+            mass = float(row["mass_g"]) * part["qty"]
+            names = {body["name"] for body in bodies}
+            bodies.append(
+                {
+                    # part_id is the line's key in the bill of materials; holder is the printed part it sits in.
+                    "part_id": row["key"],
+                    "holder": part["id"],
+                    "line": row["line"],
+                    "name": row["name"] if row["name"] not in names else row["name"] + " (" + part["name"] + ")",
+                    "kind": "hardware",
+                    "stl": stl.name,
+                    "color": row["color"],
+                    "mass_g": mass,
+                    "com_mm": list(apply(matrix, offset, tuple(row["com_mm"]))),
+                    "bbox_mm": _bbox(vertices),
+                    "vertices": vertices,
+                }
+            )
+            bought_mass += mass
+            bought_cost += float(row.get("unit_price_eur") or 0.0) * part["qty"]
         color_index += 1
 
-    bought_mass = 0.0
-    bought_cost = 0.0
     external_mass = 0.0
     unplaced: list[tuple[str, float]] = []
     for part in spec["parts"]:
@@ -230,7 +258,10 @@ def build(spec: dict, built: dict, picked: dict, directory: Path) -> dict:
     footprint = hull_2d(feet)
 
     for body in shapes:
-        others = [o for o in shapes if o["part_id"] != body["part_id"]]
+        if body["kind"] == "hardware":
+            # A standard part sits in its own printed part; the harness checked that fit.
+            continue
+        others = [o for o in shapes if o["part_id"] != body["part_id"] and o.get("holder") != body["part_id"]]
         if others and min(_gap(body["bbox_mm"], o["bbox_mm"]) for o in others) > TOUCH_GAP_MM:
             warnings.append(body["name"] + " floats: it touches no other part. Move it so the parts meet.")
 

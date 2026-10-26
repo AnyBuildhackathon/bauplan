@@ -138,7 +138,7 @@ It answers like `POST /api/prompt` with `variant`; HTTP 404 for an unknown run o
 
 All three answer HTTP 404 before the first `bom`.
 `GET /api/export/bom.csv` returns the current bill of materials as `anybuild-{product}-bom.csv`: UTF-8 with a byte order mark (so Excel reads it), comma separated, dot decimals, columns `name, qty, unit_price_eur, line_total_eur, weight_g, shop, url, price_source, availability, checked_at`, then a `Total` row.
-`GET /api/export/bundle.zip` writes `anybuild-{product}-v{n}.zip` into the session directory and returns it. One folder holds `cad/` (every STL and STEP of the build: the drone frame, each spec part, the gripper part, `assembly.stl` and `assembly.glb`), `scripts/` (the FreeCAD scripts), `bom.csv`, `build-guide.md` (the latest `build_guide`, else an ordered list from the bill of materials: print the printed parts, fit the bought ones, verify the checks), `firmware/` with the latest firmware file, `render.png` (the latest studio render, or the recorded still without Blender) and `README.md` (requirements with pass/fail and detail, key numbers, print settings per material, and any STL without a STEP under "Missing files").
+`GET /api/export/bundle.zip` writes `anybuild-{product}-v{n}.zip` into the session directory and returns it. One folder holds `cad/` (every STL and STEP of the build: the drone frame, each spec part, the gripper part, `assembly.stl` and `assembly.glb`; a part's standard parts only as `part-{id}.hardware.step`, never as STLs for the slicer), `scripts/` (the FreeCAD scripts), `bom.csv`, `build-guide.md` (the latest `build_guide`, else an ordered list from the bill of materials: print the printed parts, fit the bought ones, verify the checks), `firmware/` with the latest firmware file, `render.png` (the latest studio render, or the recorded still without Blender) and `README.md` (requirements with pass/fail and detail, key numbers, print settings per material, and any part's STL without a STEP under "Missing files"; a part's body meshes `part-{id}-{n}.stl` are in its STEP).
 `GET /api/export/order` answers `{"ok": true, "shops": [{"shop", "items": [{name, qty, unit_price_eur, line_total_eur, url, price_source}], "total_eur", "live"}], "print": {"items": [{name, qty, material, mass_g}], "filament_g", "cost_eur"}, "total_eur"}`, shops by total, most expensive first; printed parts (shop `printed` or a `url` that is not an http link) go to `print`. The shop totals plus `print.cost_eur` add up to `total_eur`.
 Share in the dashboard saves a spec product with `POST /api/library` and copies `?project={id}`; the drone and the gripper share their code reference id (`micro-drone`, `robot-gripper`) without saving.
 The dashboard opens `?project={id}` by calling `POST /api/library/{id}/open` once when the backend is live, then drops the parameter from the URL; an id that is not in the library shows a notice instead.
@@ -582,7 +582,7 @@ The CAD builds its motors, propellers, pack and board from the same numbers; the
 ### cad
 
 `source` is `freecad` or `cadquery`.
-`tree` is `[{id, label, children}]`.
+`tree` is `[{id, label, children}]`; a row of standard parts also has `nodes` (see below).
 A FreeCAD drone build has the tree `Drone` with `Printed parts` (`X-frame`, `Canopy with antenna tube`, `Battery holder`), then the motors, propellers, flight controller stack, FPV camera, battery and strap, and receiver antenna, each labelled with the chosen part's name.
 Its GLB is the whole drone, Y-up in metres with the nose at -Z, one node per part target below plus `canopy`, `camera`, `battery_strap`, and `antenna`; each propeller node is a child of its motor and spins about its own origin, and the `battery` node's extras carry `size_mm`.
 Its materials are named `pai:#rrggbb {look}`, the CAD-tab colour then the look (`carbon`, `prop`, `bell`, ...).
@@ -598,14 +598,17 @@ The motor, propeller, battery, flight controller and camera nodes show the chose
 A part from `cad_part` adds `script_url` (`/files/{session}/part-{name}.py`, the FreeCAD script that built it) and `part`, `{name, material, mass_g, bbox_mm, attempts, generated}`.
 `bbox_mm` is `[xmin, ymin, zmin, xmax, ymax, zmax]`, `attempts` counts script runs including failed ones, `generated` is `true` when Claude wrote the script and `false` for a library template.
 Its tree is the part with one child per body, `(bought)` marking reference parts such as the servo.
-Its GLB has one node per body; a material named `pai:#rrggbb` carries that body's color.
+The standard parts it holds (`fasteners` of `cad_part`: screws, nuts, washers, heat-set inserts) follow as one child per kind, such as `ISO 4762 M3x8 ×4 (hardware)`, with `nodes`, the names of the GLB nodes of its pieces.
+Its GLB has one node per body and one per standard part, in steel or brass; a material named `pai:#rrggbb` carries that body's color.
 Generated parts are Z-up, like FreeCAD.
 A `pai:#rrggbbaa` material is see-through with that alpha, used for external loads such as the phone a stand holds.
 
 A whole product built from a spec sends `assembly: true`.
 Its tree is the product with one node per assembly and one per part (`(bought)` and `(load)` mark bought parts and loads, each label ends in its mass and material or its catalog name).
+A printed part's standard parts are its children, one row per kind with `nodes`, as for a single part.
 Its `params` are every printed part's sliders as `{part_id}.{param}`, each with a `label` such as `Base plate · depth`.
 `bodies` has one row per GLB node, `{name, part_id, part_name, kind, group, mass_g}`, where `name` is the node name, `group` the spec assembly id or `null`, and `mass_g` the body's mass (the explode view groups and labels the parts with it).
+`kind` is `printed`, `bought`, `external` or `hardware`; a standard part (`hardware`) has its bill-of-materials line's `category` as `part_id`, the line's name as `part_name`, and the group of the printed part that holds it.
 `glb_url` and `stl_url` are `assembly.glb` (all bodies; bought parts as their own 3D models fitted to their size and position when they have one, listed in `part_models` as for a drone, else as blocks; loads as blocks) and `assembly.stl` (printed bodies), `step_url` is `null` (each part has its own STEP), `script_url` is `assembly-scripts.py` with every part's script, and `part` sums the printed parts.
 
 ### render
@@ -624,6 +627,8 @@ The tool pill stays `offline` when the recorded still is served.
 ### bom
 
 `items` is a list of `{name, qty, unit_price_eur, weight_g, shop, url}`, for a product built from a spec also `price_source` (`sample` for a catalog price, `estimated`, or `live` from a price provider) and `category` (the spec part id).
+The standard parts that printed parts hold come as one line per kind with `role: "hardware"`, named by standard, size and length (`ISO 4762 M3x8 socket head cap screw`, `Heat-set insert ruthex M3x4 (GE-M3Sx40-002)`): `standard` (`null` for an insert), `size` (`M3`), `length_mm` (`null` for a nut or washer), for an insert `brand` and `part_number`, `category` `hw-{designation}`, `parts` (the printed parts that hold them) and `qty` summed over them.
+Their `unit_price_eur` is one piece's share of a catalog pack (`pack_qty`, `price_source` `sample`), or `estimated` from the nearest pack with a shop search as `url`.
 Printed parts are priced at filament cost, and their `url` is the part's STL.
 `weight_g` is the mass of one piece, not the line.
 `url` may be an empty string for the printed frame.

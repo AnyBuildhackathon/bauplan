@@ -15,6 +15,8 @@ import re
 import zipfile
 from pathlib import Path
 
+from pai_agent.fasteners import hardware
+
 CSV_COLUMNS = ["name", "qty", "unit_price_eur", "line_total_eur", "weight_g", "shop", "url", "price_source", "availability", "checked_at"]
 CAD_SUFFIXES = (".stl", ".step", ".stp")
 PRINT_SETTINGS = {
@@ -171,9 +173,12 @@ def simple_guide_md(state) -> str:
 
 
 def cad_files(directory: Path) -> list[Path]:
-    """Each built part's STL and STEP and the assembly, not the per-body copies (asm-*) the assembly is made of."""
+    """Each built part's STL and STEP and the assembly, not the per-body copies (asm-*) the assembly is made of.
 
-    found = [p for p in Path(directory).glob("*") if p.is_file() and not p.name.startswith("asm-")]
+    Standard parts are bought, so their meshes stay out; their STEP (part-<id>.hardware.step) goes in for CAD.
+    """
+
+    found = [p for p in Path(directory).glob("*") if p.is_file() and not p.name.startswith("asm-") and not hardware.is_mesh(p.name)]
     return sorted(p for p in found if p.suffix.lower() in CAD_SUFFIXES or p.name == "assembly.glb")
 
 
@@ -237,10 +242,12 @@ def bundle(state, events: list[dict]) -> Path:
     folder = path.stem
     files = cad_files(directory)
     names = {p.name for p in files}
+    # A part's body meshes (part-<id>-<n>.stl) are in the part's own STEP, so they miss none.
+    bodies = {row["stl"] for info in [*(state.built or {}).values(), state.part or {}] for row in info.get("parts") or [] if row.get("stl")}
     missing = [
         p.with_suffix(".step").name
         for p in files
-        if p.suffix.lower() == ".stl" and p.stem != "assembly" and not {p.with_suffix(".step").name, p.with_suffix(".stp").name} & names
+        if p.suffix.lower() == ".stl" and p.stem != "assembly" and p.name not in bodies and not {p.with_suffix(".step").name, p.with_suffix(".stp").name} & names
     ]
     tmp = path.with_suffix(".zip.part")
     with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as archive:

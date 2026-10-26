@@ -18,6 +18,7 @@ from pathlib import Path
 from pai_agent import assembly as asm
 from pai_agent import learned_parts, web_parts
 from pai_agent.context import Ctx
+from pai_agent.fasteners import hardware
 from pai_agent.paths import DATA_DIR, PARTS_PATH, REPO_ROOT
 from pai_agent.pricing import price
 from pai_agent.requirements import attribute, keep_user_limits
@@ -156,7 +157,8 @@ async def product_spec(ctx: Ctx, args: dict) -> dict:
                     continue
                 info = state.built[part["id"]]
                 built[part["id"]] = info
-                if any(info["params"].get(k) != v for k, v in part["params"].items()):
+                # New numbers or other standard parts: the same script builds it again with them.
+                if any(info["params"].get(k) != v for k, v in part["params"].items()) or (info.get("fasteners") or []) != part.get("fasteners", []):
                     rebuild.append(part["id"])
             elif part["kind"] == "bought" and part["id"] in state.picked:
                 picked[part["id"]] = state.picked[part["id"]]
@@ -353,16 +355,23 @@ def _tree(state) -> list[dict]:
     spec = state.spec
     groups = {a["id"]: {"id": a["id"], "label": a["name"], "children": []} for a in spec["assemblies"]}
     loose = []
+    # The GLB nodes of each printed part's standard parts, by their bill-of-materials line.
+    pieces: dict[str, dict[str, list[str]]] = {}
+    for body in (state.assembly or {}).get("bodies", []):
+        if body["kind"] == "hardware":
+            pieces.setdefault(body["holder"], {}).setdefault(body["part_id"], []).append(body["name"])
     for part in spec["parts"]:
         tag = {"printed": "", "bought": " (bought)", "external": " (load)"}[part["kind"]]
         label = part["name"] + (" ×" + str(part["qty"]) if part["qty"] > 1 else "") + tag
+        children = []
         if part["kind"] == "printed":
             info = state.built.get(part["id"])
             label += " · " + (f"{info['mass_g']:.0f} g {info['material']}" if info else "not built")
+            children = hardware.tree_nodes(part["id"], (info or {}).get("hardware") or [], pieces.get(part["id"], {}))
         elif part["kind"] == "bought":
             item = state.picked.get(part["id"])
             label += " · " + (item["name"] if item else "not picked")
-        node = {"id": part["id"], "label": label, "children": []}
+        node = {"id": part["id"], "label": label, "children": children}
         (groups[part["assembly"]]["children"] if part["assembly"] in groups else loose).append(node)
     return [{"id": spec["id"], "label": spec["name"], "children": [*groups.values(), *loose]}]
 
@@ -415,12 +424,13 @@ def _bodies(state) -> list[dict]:
     for body in state.assembly.get("bodies", []):
         if not body.get("stl"):
             continue
-        part = parts.get(body["part_id"], {})
+        # A standard part is named by its bill-of-materials line and grouped with the printed part that holds it.
+        part = parts.get(body.get("holder") or body["part_id"], {})
         rows.append(
             {
                 "name": body["name"],
                 "part_id": body["part_id"],
-                "part_name": part.get("name", body["name"]),
+                "part_name": body.get("line") or part.get("name", body["name"]),
                 "kind": body["kind"],
                 "group": part.get("assembly") or None,
                 "mass_g": round(float(body.get("mass_g") or 0.0), 1),

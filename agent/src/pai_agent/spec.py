@@ -175,7 +175,17 @@ def validate_spec(raw: dict) -> dict:
                 problems.append(where + ": size_mm [x, y, z] is required, the rough envelope the script is checked against.")
             part["material"] = material
             part["params"] = _params(entry.get("params"), where, problems)
+            if entry.get("fasteners"):
+                # Standard parts with their holes (pai_agent/fasteners); the tables load only when a part has some.
+                from pai_agent.fasteners.hardware import normalize
+
+                fasteners, found = normalize(entry["fasteners"], part_name)
+                problems.extend(where + ": " + problem for problem in found)
+                if fasteners:
+                    part["fasteners"] = fasteners
         else:
+            if entry.get("fasteners"):
+                problems.append(where + ": fasteners belong to the printed part they sit in; a " + kind + " part has no holes to cut.")
             mass = _number(entry.get("mass_g"))
             if kind == "external" and (mass is None or mass <= 0):
                 problems.append(where + ": an external load needs mass_g (the phone, the water, the plant pot).")

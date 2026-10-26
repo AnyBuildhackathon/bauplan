@@ -22,7 +22,7 @@ import { OrderView, groupByShop } from "./OrderView";
 function iconFor(name: string) {
   const n = name.toLowerCase();
   if (/canopy|holder|halter/.test(n)) return Shield;
-  if (/bolt|screw|schraube/.test(n)) return Wrench;
+  if (/bolt|screw|schraube|\bnut\b|washer|insert/.test(n)) return Wrench;
   if (/camera|kamera|caddx/.test(n)) return Camera;
   if (/akku|batter|lipo|li-?ion|lava|funfly/.test(n)) return Battery;
   if (/motor|kv\b|\d{4,5}kv/.test(n)) return Cog;

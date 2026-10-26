@@ -179,7 +179,9 @@ function Part({
       const body = bodies?.find((b) => normaliseName(b.name) === normaliseName(node.name));
       const name = body?.part_name ?? prettyName(node.name);
       const label = body && body.name !== body.part_name ? prettyName(body.name) : name;
-      return { node, key: node.name, label, name: label, group: body?.group ?? null, load: body?.kind === "external", aliases: body ? [body.part_id, body.part_name] : [] };
+      // Screws, nuts and inserts come in numbers: they name themselves on hover, without a pill each.
+      const pill = body?.kind === "hardware" ? "" : label;
+      return { node, key: node.name, label: pill, name: label, group: body?.group ?? null, load: body?.kind === "external", aliases: body ? [body.part_id, body.part_name] : [] };
     });
   }, [object, bodies, explodable]);
 

@@ -179,8 +179,14 @@ export interface BomItem {
   pack_qty?: number;
   catalog_price_eur?: number;
   checked_at?: string;
-  /** The spec part this line belongs to (any product). */
+  /** The spec part this line belongs to (any product); `hw-…` for a line of standard parts. */
   category?: string;
+  /** A line of standard parts (screws, nuts, washers, heat-set inserts) the printed parts hold. */
+  role?: "hardware";
+  /** Its standard ("ISO 4762"), or null for an insert; its thread ("M3") and length in mm (null for nuts and washers). */
+  standard?: string | null;
+  size?: string;
+  length_mm?: number | null;
 }
 export interface BomEvent {
   type: "bom";
@@ -291,6 +297,8 @@ export interface CadNode {
   id: string;
   label: string;
   children: CadNode[];
+  /** The GLB nodes the row stands for, when it names them: a standard part's row lists its pieces. */
+  nodes?: string[];
 }
 export interface CadParam {
   value: number;
@@ -340,9 +348,10 @@ export interface PartModelRow {
 }
 export interface CadBody {
   name: string;
+  /** The spec part; for a standard part (`hardware`) the `category` of its bill-of-materials line. */
   part_id: string;
   part_name: string;
-  kind: "printed" | "bought" | "external";
+  kind: "printed" | "bought" | "external" | "hardware";
   group: string | null;
   mass_g: number;
 }

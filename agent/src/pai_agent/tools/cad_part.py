@@ -19,6 +19,7 @@ from pai_agent.agents import CAD_ROLE, AgentRun
 from pai_agent.cad_script import DENSITY_G_CM3, ScriptFailed, ScriptRejected, freecad_unavailable, run_block, run_script, run_script_cached
 from pai_agent.context import Ctx
 from pai_agent.env import claude_enabled
+from pai_agent.fasteners import hardware
 from pai_agent.paths import AGENT_ROOT, REPO_ROOT
 
 log = logging.getLogger(__name__)
@@ -45,7 +46,8 @@ LIBRARY = {
 _CONTRACT = """You write FreeCAD Python that builds one physical part or a small assembly.
 Rules:
 - Units are millimetres, Z is up. Build everything in its assembled position.
-- Available without import: Part, App (FreeCAD), Vector (FreeCAD.Vector), math, and P, a dict of the parameters in mm.
+- Available without import: Part, App (FreeCAD), Vector (FreeCAD.Vector), math, P, a dict of the parameters in mm,
+  and H, the standard parts the request lists (empty when it lists none).
   You may also `import math`, `import FreeCAD`, `import Part`. Nothing else can be imported.
 - No file access, no exports, no getattr/eval/exec/open, no dunder attributes. The harness exports for you.
 - Prefer Part.makeBox, makeCylinder, makeCone, makeSphere, makeTorus, extrude of Part.Face(Part.makePolygon([...closed list])),
@@ -146,12 +148,12 @@ def _write_script(description: str, params: dict, previous: str | None, error: s
     return _extract_code(text)
 
 
-def _tree(name: str, parts: list[dict]) -> list[dict]:
+def _tree(name: str, parts: list[dict], standard: list[dict]) -> list[dict]:
     children = []
     for part in parts:
         label = part["name"] + (" (bought)" if part.get("reference") else "")
         children.append({"id": _slug(part["name"]), "label": label, "children": []})
-    return [{"id": _slug(name), "label": name, "children": children}]
+    return [{"id": _slug(name), "label": name, "children": children + hardware.tree_nodes(_slug(name), standard)}]
 
 
 def _product_context(state, part: dict) -> str:
@@ -224,6 +226,18 @@ async def cad_part(ctx: Ctx, args: dict) -> dict:
     if material.replace("ALUMINUM", "ALUMINIUM") not in DENSITY_G_CM3:
         return _fail("material must be one of " + ", ".join(sorted(DENSITY_G_CM3)) + ".")
     params = _numbers(args.get("params"))
+    # A spec part keeps its standard parts in the spec; fasteners passed here replace them there too.
+    raw = args.get("fasteners")
+    if raw is None and spec_part is not None:
+        raw = spec_part.get("fasteners")
+    fasteners, problems = hardware.normalize(raw, name)
+    if problems:
+        return {**_fail("The fasteners have " + str(len(problems)) + " problem(s): " + " | ".join(problems)), "problems": problems}
+    if spec_part is not None and args.get("fasteners") is not None:
+        if fasteners:
+            spec_part["fasteners"] = fasteners
+        else:
+            spec_part.pop("fasteners", None)
     # A spec part only uses a template when it asks for one by name; keywords in its description do not count.
     template = _template_for(args) if spec_part is None or args.get("template") else None
     script = str(args.get("script") or "").strip() or None
@@ -245,7 +259,7 @@ async def cad_part(ctx: Ctx, args: dict) -> dict:
     stem = "part-" + _slug(spec_part["id"] if spec_part else name)
     directory = Path(ctx.state.directory)
     expected = spec_part["size_mm"] if spec_part else None
-    context = _product_context(ctx.state, spec_part) if spec_part else ""
+    context = (_product_context(ctx.state, spec_part) if spec_part else "") + hardware.describe(fasteners)
     passed_script = bool(args.get("script"))
     attempts: list[dict] = []
     build = None
@@ -278,7 +292,7 @@ async def cad_part(ctx: Ctx, args: dict) -> dict:
             await agent.use("freecad", "FreeCAD builds " + name)
         try:
             async with _BUILD:
-                build, cached = await asyncio.to_thread(run_script_cached, script, params, directory, stem, material, expected_mm=expected)
+                build, cached = await asyncio.to_thread(run_script_cached, script, params, directory, stem, material, expected_mm=expected, fasteners=fasteners)
             attempts.append({"attempt": attempt, "ok": True, **({"cached": True} if cached else {})})
             if agent is not None:
                 agent.called("freecad", {"detail": name + " built" + (" (cached)" if cached else "")})
@@ -297,8 +311,9 @@ async def cad_part(ctx: Ctx, args: dict) -> dict:
         failed_script = script
         script = _block_script(spec_part["size_mm"], spec_part.get("position_mm"))
         try:
+            # The block keeps the standard parts and their holes; one it buries is reported, not fatal.
             async with _BUILD:
-                build = await asyncio.to_thread(run_script, script, params, directory, stem, material)
+                build = await asyncio.to_thread(run_script, script, params, directory, stem, material, fasteners=fasteners, strict=False)
             fallback = True
             attempts.append({"attempt": len(attempts) + 1, "ok": True, "fallback": True})
         except (ScriptRejected, ScriptFailed, ValueError):
@@ -307,7 +322,7 @@ async def cad_part(ctx: Ctx, args: dict) -> dict:
     if build is None and envelope and freecad_unavailable(error):
         # FreeCAD is missing or stuck: CadQuery stands in with the envelope, so the run never stops at CAD.
         try:
-            build = await asyncio.to_thread(run_block, envelope, spec_part.get("position_mm") if spec_part else None, directory, stem, material)
+            build = await asyncio.to_thread(run_block, envelope, spec_part.get("position_mm") if spec_part else None, directory, stem, material, fasteners)
             fallback = True
             block_source = "cadquery"
             attempts.append({"attempt": len(attempts) + 1, "ok": True, "fallback": True, "source": "cadquery"})
@@ -324,6 +339,8 @@ async def cad_part(ctx: Ctx, args: dict) -> dict:
     sliders = args.get("_sliders") or _slider_params(params, template, args.get("editable"))
     for key, slider in sliders.items():
         slider["value"] = round(params.get(key, slider["value"]), 2)
+    # Each standard part carries its price per piece like a pick, so the assembly cost and the bill of materials agree.
+    standard = [hardware.price(row) for row in build.hardware]
     state.part = {
         "name": name,
         "description": description,
@@ -337,6 +354,8 @@ async def cad_part(ctx: Ctx, args: dict) -> dict:
         "bbox_mm": build.bbox_mm,
         # Joints, tool frame and collision shapes of a template that can be simulated (pai_agent/mjcf_export.py).
         "sim": build.sim,
+        "fasteners": fasteners,
+        "hardware": standard,
     }
     state.frame_mass_g = build.mass_g
     state.stl_path = build.stl.relative_to(REPO_ROOT).as_posix()
@@ -363,7 +382,7 @@ async def cad_part(ctx: Ctx, args: dict) -> dict:
         {
             "type": "cad",
             "source": block_source or "freecad",
-            "tree": _tree(name, build.parts),
+            "tree": _tree(name, build.parts, standard),
             "params": sliders,
             "glb_url": url(build.glb),
             "stl_url": url(build.stl),
@@ -408,6 +427,12 @@ async def cad_part(ctx: Ctx, args: dict) -> dict:
             extra["note"] = "FreeCAD is not available on this machine or did not answer, so CadQuery built a plain block of the envelope. Its mass is the solid block's."
     if cached:
         extra["cached"] = True
+    if standard:
+        detail += ", " + str(len(standard)) + " standard part" + ("s" if len(standard) > 1 else "")
+        keys = ("name", "designation", "hole", "hole_d_mm", "radial_gap_mm", "mass_g", "unit_price_eur", "price_source")
+        extra["hardware"] = [{key: row[key] for key in keys} for row in standard]
+    if build.hardware_warnings:
+        extra["hardware_warnings"] = build.hardware_warnings
     return {
         **extra,
         "ok": True,
@@ -445,6 +470,7 @@ async def rebuild_part(ctx: Ctx, changes: dict) -> dict:
             "material": part["material"],
             "script": part["script"],
             "params": params,
+            "fasteners": part.get("fasteners") or [],
             "_sliders": {key: dict(value) for key, value in part["sliders"].items()},
         },
     )

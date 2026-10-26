@@ -2,10 +2,11 @@
 
 The drone takes its lines from the selected catalog parts (with the FreeCAD-measured frame
 mass), the gripper from its catalog picks, a generic product from its spec's bought parts plus
-filament for the printed ones. The catalog list is emitted first; with a key, live shop prices
-(`tools/parts_search.py`) replace them line by line and the list is emitted again. Every line
-carries `price_source` (`live`, `catalog` or `estimate`) so the dashboard never shows an
-estimate as a quote.
+filament for the printed ones. Both add one line per kind of standard part their printed parts
+hold (role `hardware`, with standard, size and length). The catalog list is emitted first; with a
+key, live shop prices (`tools/parts_search.py`) replace them line by line and the list is
+emitted again. Every line carries `price_source` (`live`, `catalog` or `estimate`) so the
+dashboard never shows an estimate as a quote.
 """
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ from collections.abc import Callable
 
 from pai_agent import printers
 from pai_agent.context import Ctx, de
+from pai_agent.fasteners import hardware
 from pai_agent.scene import PART_CATEGORIES
 from pai_agent.tools.physics import PERFORMANCE_KEYS, REQUIRED
 from pai_agent.tools.parts_search import catalog_line, live_lines, live_prices_enabled
@@ -99,6 +101,8 @@ async def _gripper_bom(ctx: Ctx) -> dict:
                 "url": part["url"],
             }
         )
+    if state.part and state.part.get("hardware"):
+        items += hardware.bom_lines([({"id": "body", "qty": 1}, state.part["hardware"])])
     return await _priced_bom(ctx, items, lambda total: "Bill of materials " + f"{total:.2f}" + " €, prices are samples")
 
 
@@ -239,6 +243,8 @@ async def _generic_bom(ctx: Ctx) -> dict:
                     "category": part["id"],
                 }
             )
+    holders = [(part, state.built[part["id"]].get("hardware") or []) for part in state.spec["parts"] if part["kind"] == "printed"]
+    items += hardware.bom_lines(holders)
     estimated = sum(1 for item in items if item["price_source"] == "estimated" and item["shop"] != "printed")
 
     def detail(total: float) -> str:

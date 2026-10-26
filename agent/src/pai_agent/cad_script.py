@@ -5,6 +5,9 @@ calls), then runs under freecadcmd in a fresh temp directory with a scrubbed
 environment, so no API key ever reaches it. On macOS, sandbox-exec also denies
 network access and writes outside that directory. The harness in
 agent/freecad/part_harness.py exports STL, STEP and per-part volumes.
+A part's standard parts (pai_agent/fasteners) are built in CadQuery first and go
+in as STEP files: the harness cuts their holes and measures their fit, and one that
+sits in material fails the build.
 """
 
 from __future__ import annotations
@@ -16,9 +19,10 @@ import shutil
 import signal
 import subprocess
 import tempfile
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
+from pai_agent.fasteners import hardware
 from pai_agent.freecad_run import find_freecadcmd
 from pai_agent.mesh_export import stls_to_glb
 from pai_agent.paths import AGENT_ROOT
@@ -77,6 +81,10 @@ class PartBuild:
     glb: Path
     # What a template declares for simulation (joints, tool, collision, grip_surfaces); see pai_agent/mjcf_export.py.
     sim: dict | None = None
+    # Standard parts in this part (pai_agent/fasteners/hardware.py rows): shown and ordered, never printed.
+    hardware: list[dict] = field(default_factory=list)
+    # What their fit check found: a part sitting in material (when not strict) or touching nothing.
+    hardware_warnings: list[str] = field(default_factory=list)
 
 
 def density(material: str | None) -> float:
@@ -147,18 +155,27 @@ def run_script(
     material: str = "PLA",
     timeout_s: int = TIMEOUT_S,
     expected_mm: list[float] | None = None,
+    fasteners: list[dict] | None = None,
+    strict: bool = True,
 ) -> PartBuild:
-    """Builds the script in a temp dir, then copies STL, STEP and GLB to out_dir/stem.*"""
+    """Builds the script in a temp dir, then copies STL, STEP and GLB to out_dir/stem.*
+
+    fasteners are the part's standard parts, normalized (pai_agent.fasteners.hardware). With strict, one
+    that sits in material fails the build like a FreeCAD error; without, it is only reported.
+    """
 
     check_script(source)
     base_density = density(material)
     binary = find_freecadcmd()
     if binary is None:
         raise ScriptFailed("freecadcmd is not installed, so generated parts cannot be built on this machine.")
+    made = hardware.build(fasteners) if fasteners else []
     work = Path(tempfile.mkdtemp(prefix="pai-part-")).resolve()
     try:
         (work / "part_script.py").write_text(source, encoding="utf-8")
         (work / "params.json").write_text(json.dumps(params), encoding="utf-8")
+        if made:
+            hardware.write_inputs(made, work)
         command = [binary, str(HARNESS)]
         sandbox = shutil.which("sandbox-exec")
         if sandbox:
@@ -184,6 +201,11 @@ def run_script(
         if not result.get("ok"):
             raise ScriptFailed(str(result.get("error")) + "\n" + str(result.get("traceback") or ""))
         check_geometry(result, expected_mm)
+        # Material in a standard part's way is the script's geometry, not its code: what to change, no traceback.
+        fit = result.get("hardware") or []
+        problems = hardware.misfits(made, fit)
+        if problems and strict:
+            raise ScriptFailed(" ".join(problems))
 
         out_dir.mkdir(parents=True, exist_ok=True)
         mass = 0.0
@@ -203,7 +225,9 @@ def run_script(
             kept = out_dir / (stem + "-" + str(index) + ".stl")
             shutil.copyfile(work / row["stl"], kept)
             row["stl"] = kept.name
-        stls_to_glb([(row["name"], out_dir / row["stl"], row.get("color")) for row in result["parts"]], glb)
+        rows, warnings = hardware.apply_fit(hardware.write_meshes(made, out_dir, stem), fit, problems)
+        bodies = [(row["name"], out_dir / row["stl"], row.get("color")) for row in result["parts"]]
+        stls_to_glb(bodies + [(row["name"], out_dir / row["stl"], row["color"]) for row in rows], glb)
         (out_dir / (stem + ".py")).write_text(source, encoding="utf-8")
         return PartBuild(
             parts=result["parts"],
@@ -214,6 +238,8 @@ def run_script(
             step=step,
             glb=glb,
             sim=result.get("sim"),
+            hardware=rows,
+            hardware_warnings=warnings,
         )
     finally:
         shutil.rmtree(work, ignore_errors=True)
@@ -226,28 +252,48 @@ def run_script_cached(
     stem: str,
     material: str = "PLA",
     expected_mm: list[float] | None = None,
+    fasteners: list[dict] | None = None,
 ) -> tuple[PartBuild, bool]:
-    """run_script, but an identical script, parameters and material reuse the last FreeCAD result. Returns (build, cached)."""
+    """run_script, but an identical script, parameters, material and standard parts reuse the last FreeCAD result. Returns (build, cached)."""
 
     from pai_agent import cache
 
-    entry = cache.key("part", source, params, material.upper(), expected_mm, cache.digest(HARNESS), cache.tool_version(find_freecadcmd()))
+    standard = [fasteners, hardware.version()] if fasteners else []
+    entry = cache.key("part", source, params, material.upper(), expected_mm, cache.digest(HARNESS), cache.tool_version(find_freecadcmd()), *standard)
     meta = cache.restore("parts", entry, {})
     if meta is not None:
-        names = ["part.stl", "part.step", "part.glb"] + [row["stl"] for row in meta["parts"]]
+        hardware_rows = meta.get("hardware") or []
+        names = ["part.stl", "part.step", "part.glb"] + [row["stl"] for row in meta["parts"] + hardware_rows] + ([hardware.step_name("part")] if hardware_rows else [])
         targets = {name: out_dir / name.replace("part", stem, 1) for name in names}
+        if out_dir.is_dir():
+            hardware.clear_files(out_dir, stem)
         if cache.restore("parts", entry, targets) is not None:
             parts = [{**row, "stl": row["stl"].replace("part", stem, 1)} for row in meta["parts"]]
+            rows = [{**row, "stl": row["stl"].replace("part", stem, 1)} for row in hardware_rows]
             (out_dir / (stem + ".py")).write_text(source, encoding="utf-8")
-            return PartBuild(parts, meta["bbox_mm"], meta["volume_mm3"], meta["mass_g"], out_dir / (stem + ".stl"), out_dir / (stem + ".step"), out_dir / (stem + ".glb"), meta.get("sim")), True
-    build = run_script(source, params, out_dir, stem, material, expected_mm=expected_mm)
+            return PartBuild(
+                parts, meta["bbox_mm"], meta["volume_mm3"], meta["mass_g"], out_dir / (stem + ".stl"), out_dir / (stem + ".step"), out_dir / (stem + ".glb"),
+                meta.get("sim"), rows, meta.get("hardware_warnings") or [],
+            ), True
+    # A part without standard parts builds with the same call as before they existed.
+    build = run_script(source, params, out_dir, stem, material, expected_mm=expected_mm, **({"fasteners": fasteners} if fasteners else {}))
     files = {"part.stl": build.stl, "part.step": build.step, "part.glb": build.glb}
     rows = []
     for row in build.parts:
         cached_name = "part" + row["stl"][len(stem):]
         files[cached_name] = out_dir / row["stl"]
         rows.append({**row, "stl": cached_name})
-    cache.store("parts", entry, files, {"parts": rows, "bbox_mm": build.bbox_mm, "volume_mm3": build.volume_mm3, "mass_g": build.mass_g, "sim": build.sim})
+    hardware_rows = []
+    for row in build.hardware:
+        cached_name = "part" + row["stl"][len(stem):]
+        files[cached_name] = out_dir / row["stl"]
+        hardware_rows.append({**row, "stl": cached_name})
+    if build.hardware:
+        files[hardware.step_name("part")] = out_dir / hardware.step_name(stem)
+    meta = {"parts": rows, "bbox_mm": build.bbox_mm, "volume_mm3": build.volume_mm3, "mass_g": build.mass_g, "sim": build.sim}
+    if build.hardware:
+        meta.update(hardware=hardware_rows, hardware_warnings=build.hardware_warnings)
+    cache.store("parts", entry, files, meta)
     return build, False
 
 
@@ -257,8 +303,13 @@ def freecad_unavailable(error: str | None) -> bool:
     return find_freecadcmd() is None or "ran longer than" in str(error or "")
 
 
-def run_block(size: list[float], center: list[float] | None, out_dir: Path, stem: str, material: str = "PLA") -> PartBuild:
-    """Without a working FreeCAD, CadQuery builds the part's envelope as a plain block, so the assembly and checks go on."""
+def run_block(
+    size: list[float], center: list[float] | None, out_dir: Path, stem: str, material: str = "PLA", fasteners: list[dict] | None = None
+) -> PartBuild:
+    """Without a working FreeCAD, CadQuery builds the part's envelope as a plain block, so the assembly and checks go on.
+
+    Its standard parts come along with their holes cut into the block; one that sits in it is only reported.
+    """
 
     import cadquery as cq
     from cadquery import exporters
@@ -266,6 +317,10 @@ def run_block(size: list[float], center: list[float] | None, out_dir: Path, stem
     sx, sy, sz = (float(v) for v in size[:3])
     cx, cy, cz = (float(v) for v in (center or (0.0, 0.0, sz / 2.0))[:3])
     block = cq.Workplane("XY").box(sx, sy, sz).translate((cx, cy, cz))
+    made = hardware.build(fasteners) if fasteners else []
+    for one in made:
+        if one.hole is not None:
+            block = block.cut(one.hole)
     out_dir.mkdir(parents=True, exist_ok=True)
     stl = out_dir / (stem + ".stl")
     step = out_dir / (stem + ".step")
@@ -274,8 +329,10 @@ def run_block(size: list[float], center: list[float] | None, out_dir: Path, stem
     exporters.export(block, str(stl))
     exporters.export(block, str(step))
     shutil.copyfile(stl, kept)
-    stls_to_glb([("Block", kept, None)], glb)
-    volume = sx * sy * sz
+    fit, problems = hardware.check_cadquery(made, {"Block": block.val()})
+    rows, warnings = hardware.apply_fit(hardware.write_meshes(made, out_dir, stem), fit, problems)
+    stls_to_glb([("Block", kept, None)] + [(row["name"], out_dir / row["stl"], row["color"]) for row in rows], glb)
+    volume = float(block.val().Volume()) if made else sx * sy * sz
     mass = round(volume / 1000.0 * density(material), 2)
     bbox = [cx - sx / 2, cy - sy / 2, cz - sz / 2, cx + sx / 2, cy + sy / 2, cz + sz / 2]
     row = {"name": "Block", "volume_mm3": round(volume, 2), "mass_g": mass, "material": material.upper(), "reference": False, "bbox_mm": bbox, "stl": kept.name, "color": None}
@@ -284,4 +341,4 @@ def run_block(size: list[float], center: list[float] | None, out_dir: Path, stem
         f"shape = Part.makeBox({sx:g}, {sy:g}, {sz:g}, Vector({cx - sx / 2:g}, {cy - sy / 2:g}, {cz - sz / 2:g}))\n",
         encoding="utf-8",
     )
-    return PartBuild(parts=[row], bbox_mm=bbox, volume_mm3=round(volume, 2), mass_g=mass, stl=stl, step=step, glb=glb)
+    return PartBuild(parts=[row], bbox_mm=bbox, volume_mm3=round(volume, 2), mass_g=mass, stl=stl, step=step, glb=glb, hardware=rows, hardware_warnings=warnings)

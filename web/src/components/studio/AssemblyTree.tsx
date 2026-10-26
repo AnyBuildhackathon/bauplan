@@ -30,7 +30,9 @@ function Row({ node, depth }: { node: CadNode; depth: number }) {
   const names = rowNodes(node, cad).filter((n) => n in nodes);
   const kids = node.children.length > 0;
   const hidden = names.length > 0 && names.every((n) => hiddenNames.includes(n));
-  const selected = !kids && !!hovered && names.includes(normaliseName(hovered));
+  // The deepest row with the hovered part is marked: a part, not the group around it (a part with screws is both).
+  const spot = hovered ? normaliseName(hovered) : null;
+  const selected = !!spot && names.includes(spot) && !node.children.some((c) => rowNodes(c, cad).includes(spot));
   const [name, ...rest] = node.label.split(" · ");
   const raw = names.length ? nodes[names[0]] : null;
 
@@ -112,8 +114,12 @@ function Row({ node, depth }: { node: CadNode; depth: number }) {
   );
 }
 
-/** Rows without children: the parts, counted for the header. */
-const leaves = (nodes: CadNode[]): number => nodes.reduce((n, c) => n + (c.children.length ? leaves(c.children) : 1), 0);
+/** The parts, counted for the header: rows without children, and a part's standard parts (rows that list their `nodes`) next to it. */
+const leaves = (nodes: CadNode[]): number =>
+  nodes.reduce((n, c) => {
+    const inner = c.children.filter((k) => !k.nodes);
+    return n + (inner.length ? leaves(inner) : 1) + c.children.length - inner.length;
+  }, 0);
 
 export function AssemblyTree() {
   const cad = useSession((s) => s.cad);
