@@ -175,6 +175,7 @@ A third, fast model (Claude Haiku 5.5, `ANTHROPIC_VOICE_MODEL`) only writes the 
 The orchestrator prompt forbids claiming a pass, a price or a number that a tool did not produce.
 Prices carry a `price_source` of `live`, `catalog` or `estimate`, and the dashboard marks each one.
 Recorded GPU results say `source: recorded` and are never presented as a test of the current product.
+A recorded Robo Use trial says `status: recorded` and whether the bench holds the design it was recorded on; when it does not, its verdict reads as an example.
 When a generated CAD script fails three times, a plain block stands in and is clearly marked, so a live build never ends without geometry.
 
 ## Any product: the generic flow
@@ -212,7 +213,7 @@ Publishing shares the bench with its spec, parts, CAD files, renders and version
 The second built-in product is a parametric two-finger robot gripper, chosen because it has moving parts, a real physics question (does it hold the object while the arm moves?) and a parts choice that changes the CAD.
 `product_brief` turns the request into checks, `catalog_search` picks servo, pads, hardware and driver from `agent/data/catalogs/gripper.json`, `grip_calc` computes finger force and grip safety, `simulate_grip` lifts, shakes and pulls the object in MuJoCo with the template's fingers swinging on their gears, and `cad_part` builds the gripper from `agent/freecad/library/gripper.py` with the servo pocket sized for the chosen servo, then `blender_render` and `bom_build`.
 The template also declares its kinematics next to its parts (the finger hinges, the gear coupling, the tool frame and collision boxes), so `pai_agent/mjcf_export.py` can write the built gripper as one MuJoCo MJCF file with the catalog servo as its actuator (`agent/scripts/export_gripper_mjcf.py`).
-`anybuild-robouse/` runs that file in Robo Use's tabletop benchmark, in its own environment; the app does not call it yet.
+`anybuild-robouse/` runs that file in Robo Use's tabletop benchmark, in its own environment, and `robouse_trial` runs it from the app as an independent test of the built gripper (see [Simulation and training](#simulation-and-training)).
 In the mock, the SG90 servo drops the can and the MG996R holds it; a heavier object that the MG996R cannot hold at twice its weight steps up to the DS3218.
 
 ## The drone worked example
@@ -263,6 +264,7 @@ Without a GLB (the CadQuery fallback) the studio places simple parts around the 
 - **MuJoCo on the backend:** `simulate_drone` (hover with a downdraft gust), `simulate_assembly` (push or drop test of any assembly as one rigid body with the real centre of mass) and `simulate_grip` (lift, shake and a pull at twice the weight for the gripper).
 - **MuJoCo in the browser:** `train_in_browser` tunes the controller across 1,024 simulations (64 candidates over 16 generations, evolution strategy) and `stress_test` flies the result in 50 randomized worlds; the backend queues the job, one dashboard tab claims it through `/api/training/*` or `/api/stress/*`, and progress returns as `training` and `stress` events.
 - **NVIDIA Isaac Sim and Isaac Lab:** `product_usd` exports the assembly as USD, `isaac_test` runs wind, payload or hover experiments and `isaac_train` trains the reference Crazyflie task on a GPU host over SSH; without a host, a clearly labelled recorded result stands in.
+- **Robo Use, an independent benchmark:** `robouse_trial` (`tools/robouse_trial.py`) exports the built gripper as MJCF, writes a Robo Use task from the brief and runs `robouse tasks check` (the reference solution scores 1, the no-op control 0) and, when asked, Claude Code as the policy, through the `anybuild-robouse` bridge in its own environment; the trial's video, robo requests and hand path return as one `trial` event, and without the bridge a clearly labelled recorded trial stands in.
 
 ## Voice loop
 
@@ -306,6 +308,7 @@ Every external dependency has a fallback, so the full workflow runs on a laptop 
 | FreeCAD window | Headless `freecadcmd`, then CadQuery. |
 | Blender | The recorded still `agent/runs/fallback/render.png`. |
 | GPU host for Isaac | A recorded, clearly labelled result. |
+| Robo Use environment (`anybuild-robouse`) | The trial recorded on the gripper mock story's design (`agent/data/robouse/recorded/`), labelled as recorded, and as an example when the bench holds another design. |
 | Live shop prices | Catalog sample prices with their check date, or marked estimates. |
 
 ## Security model of the public backend

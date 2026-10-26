@@ -15,7 +15,7 @@ most `BUDGET_S` for a new one and answers the last known state, or `available: n
 Each engine is looked up where the code that runs it looks: FreeCAD, Blender, CalculiX and the
 slicer through their tools' own finders, SparkBench and Node.js as `circuit_design` finds them
 (`sparkbench.py`), KiCad, ngspice, Java and Freerouting the way SparkBench's server finds them
-(`server/api.ts`, `server/pcb.ts`), and Robo Use in the bridge's own environment, `anybuild-robouse/.venv`.
+(`server/api.ts`, `server/pcb.ts`), and Robo Use as `robouse_trial` finds it (`tools/robouse_trial.py`).
 
 `RunLog` keeps each adapter's last run (when, whether it passed, one line) for this machine,
 not per chat, in agent/runs/adapters.json, so it outlasts a reset and a restart. `watch` follows
@@ -46,6 +46,7 @@ from pai_agent.paths import REPO_ROOT, RUNS_DIR
 from pai_agent.tools.blender import find_blender
 from pai_agent.tools.isaac import ssh_setting
 from pai_agent.tools.print_prep import find_slicer
+from pai_agent.tools.robouse_trial import robouse_cli
 
 log = logging.getLogger(__name__)
 
@@ -356,13 +357,10 @@ def _mujoco() -> Found:
 
 
 def find_robouse() -> Path | None:
-    """The `anybuild-robouse` command: in the bridge's own environment (`cd anybuild-robouse && uv sync`), else on PATH."""
+    """The `anybuild-robouse` command as `robouse_trial` finds it: PAI_ROBOUSE_BIN, else the bridge's own environment
+    (`cd anybuild-robouse && uv sync`), else on PATH."""
 
-    local = REPO_ROOT / "anybuild-robouse" / ".venv" / "bin" / "anybuild-robouse"
-    if _executable(local):
-        return local
-    found = shutil.which("anybuild-robouse")
-    return Path(found) if found else None
+    return robouse_cli()[0]
 
 
 def _venv(script: Path) -> Path | None:
@@ -378,7 +376,11 @@ def _robouse() -> Found:
         hint = "`cd anybuild-robouse && uv sync`: its own environment, because Robo Use pins MuJoCo 3.3.0."
     else:
         hint = "Needs AnyBuild's Robo Use bridge, `anybuild-robouse`, in its own environment with `robouse[sim]==0.6.1`, which pins MuJoCo 3.3.0."
+    if _off("PAI_ROBOUSE_BIN"):
+        return Found(False, "Robo Use is turned off (PAI_ROBOUSE_BIN=off), so a gripper's independent trial is the recorded one.", hint)
     script = find_robouse()
+    if script is None and os.environ.get("PAI_ROBOUSE_BIN", "").strip():
+        return Found(False, "PAI_ROBOUSE_BIN names no program, so a gripper's independent trial is the recorded one.", hint)
     if script is None:
         robouse = shutil.which("robouse")
         if robouse:
@@ -561,6 +563,15 @@ def _circuit_run(event: dict) -> tuple[str, bool, str] | None:
     return "sparkbench", event["ok"], _verdict("Circuit", event["ok"], event.get("summary"))
 
 
+def _trial_run(event: dict) -> tuple[str, bool, str] | None:
+    if event.get("status") == "failed" and event.get("verdict") == "refused":
+        return "robouse", False, str(event.get("summary") or event.get("error"))
+    if event.get("status") != "done":
+        return None  # running, or a recorded trial that is no run of Robo Use here
+    passed = event.get("verdict") == "pass"
+    return "robouse", passed, _verdict("Robo Use trial", passed, event.get("summary"))
+
+
 def _isaac_run(event: dict) -> tuple[str, bool, str] | None:
     if event.get("source") != "live" or event.get("status") != "done":
         return None  # a recorded result is not a run of the pod
@@ -570,8 +581,7 @@ def _isaac_run(event: dict) -> tuple[str, bool, str] | None:
     return "isaac", passed is not False, f"{what} {verdict}" + (f": {event['detail']}" if event.get("detail") else "")
 
 
-# The events that report an adapter's run. A tool that brings a new adapter adds its event here,
-# such as Robo Use's `trial`.
+# The events that report an adapter's run. A tool that brings a new adapter adds its event here.
 _RUNS: dict[str, Callable[[dict], tuple[str, bool, str] | None]] = {
     "cad": _cad_run,
     "render": _render_run,
@@ -580,6 +590,7 @@ _RUNS: dict[str, Callable[[dict], tuple[str, bool, str] | None]] = {
     "fem": _fem_run,
     "print": _print_run,
     "circuit": _circuit_run,
+    "trial": _trial_run,
     "omniverse": _isaac_run,
 }
 

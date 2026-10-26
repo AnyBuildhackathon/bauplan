@@ -25,6 +25,7 @@ function shotFor({ ev }: LoggedEvent, state: SessionState): Shot | null {
   if (ev.type === "sim") return { tab: "simulation" };
   if (ev.type === "mission") return { tab: "simulation", pane: "missions" };
   if (ev.type === "fem") return { tab: "simulation", pane: "stress" };
+  if (ev.type === "trial") return { tab: "simulation", pane: "robouse" };
   if (ev.type === "omniverse" && ev.source === "live") return { tab: "omniverse" };
   return null;
 }

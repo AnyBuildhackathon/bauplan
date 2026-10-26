@@ -43,6 +43,7 @@ import {
   type OptimizeEvent,
   type UiEvent,
 } from "./types";
+import { emptyTrials, reduceTrial, type TrialSlice } from "./trial";
 
 export const STEP_LABELS: Record<StepId, string> = {
   meeting: "Spec",
@@ -163,6 +164,7 @@ export type ChatItem =
   | { kind: "version"; id: string; seq: number; at: number; n: number }
   | { kind: "agent"; id: string; seq: number; at: number; agentId: string }
   | { kind: "stress"; id: string; seq: number; at: number; run: number }
+  | { kind: "trial"; id: string; seq: number; at: number; trialId: string }
   | { kind: "print"; id: string; seq: number; at: number; plan: PrintEvent }
   | { kind: "explain"; id: string; seq: number; at: number; key: string }
   | { kind: "safety"; id: string; seq: number; at: number; safety: SafetyEvent }
@@ -190,7 +192,7 @@ export interface Pointing {
   at: number;
 }
 
-export interface SessionState {
+export interface SessionState extends TrialSlice {
   log: LoggedEvent[];
   steps: Record<StepId, StepState>;
   tools: Record<string, ToolState>;
@@ -309,6 +311,7 @@ const TOOL_ALIASES: Record<string, string> = {
   print_prep: "Print plan",
   firmware: "Firmware",
   electronics_plan: "Electronics",
+  robouse_trial: "Robo Use",
   safety_check: "Safety",
   ask_user: "Question",
 };
@@ -330,6 +333,7 @@ const SILENT_TOOLS = new Set([
   "delegate",
   "stress_test",
   "safety_check",
+  "robouse_trial",
 ]);
 
 /** Tool names from the backend may differ in case or spacing ("isaac_lab", "Isaac Lab"). */
@@ -385,6 +389,7 @@ function emptyState() {
     explains: {} as Record<string, ExplainEvent>,
     optimizes: {} as Record<string, OptimizeEvent>,
     ui: null as SessionState["ui"],
+    ...emptyTrials(),
   };
 }
 
@@ -614,6 +619,12 @@ export const useSession = create<SessionState>((set, get) => ({
         const known = s.chat.some((c) => c.kind === "stress" && c.run === ev.run);
         const chat: ChatItem[] = known ? s.chat : [...s.chat, { kind: "stress", id: nextId("stress"), seq, at, run: ev.run }];
         return set({ log, stress, chat });
+      }
+      case "trial": {
+        // One card per trial: its stages and its result update it in place.
+        const known = s.chat.some((c) => c.kind === "trial" && c.trialId === ev.id);
+        const chat: ChatItem[] = known ? s.chat : [...s.chat, { kind: "trial", id: nextId("trial"), seq, at, trialId: ev.id }];
+        return set({ log, ...reduceTrial(s, ev, seq, at), chat });
       }
       case "build_guide":
         return set({ log, buildGuide: ev });

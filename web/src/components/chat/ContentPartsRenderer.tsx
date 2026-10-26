@@ -29,6 +29,7 @@ import { ExplainChatCard } from "../learn/Explain";
 import { RequirementsCard, ResultsCard } from "./BuildCards";
 import { SafetyCard } from "../safety/SafetyCard";
 import { OptimizeCard } from "./OptimizeCard";
+import { TrialCard } from "./TrialCard";
 import { useSimPane } from "../training/useBrowserTraining";
 
 const TOOL_LABELS: Record<string, { running: string; done: string }> = {
@@ -375,6 +376,8 @@ function ContentPartsRenderer({ item }: { item: Exclude<ChatItem, { kind: "msg" 
       return <SafetyCard safety={item.safety} />;
     case "optimize":
       return <OptimizeCard optimizeId={item.optimizeId} />;
+    case "trial":
+      return <TrialCard trialId={item.trialId} />;
   }
 }
 

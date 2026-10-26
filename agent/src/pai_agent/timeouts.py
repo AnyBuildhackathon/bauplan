@@ -30,6 +30,8 @@ BUDGET_S = {
     "simulate_drone": 60.0,
     "simulate_grip": 60.0,
     "simulate_assembly": 60.0,
+    # robouse tasks check runs two trials of about 15 s; Claude Code as the policy has its own limit of at most 900 s.
+    "robouse_trial": 1200.0,
     # The browser runs wait for a dashboard tab: claim, run and stall limits sit inside this.
     "train_in_browser": 320.0,
     "stress_test": 320.0,
@@ -82,6 +84,7 @@ LABELS = {
     "simulate_drone": "MuJoCo",
     "simulate_grip": "MuJoCo",
     "simulate_assembly": "MuJoCo",
+    "robouse_trial": "Robo Use",
     "train_in_browser": "The browser training",
     "stress_test": "The stress test",
     "isaac_train": "Isaac Lab",

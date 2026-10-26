@@ -1,0 +1,33 @@
+{
+  "task": "anybuild-gripper-cube-66mm-200g-in-bowl",
+  "seed": 0,
+  "success": true,
+  "success_ever": true,
+  "success_mode": "final",
+  "outcome": "done",
+  "steps_used": 242,
+  "max_steps": 800,
+  "requests": 9,
+  "agent_text": "the cube is in the bowl",
+  "wall_time_s": 2.33,
+  "embodiment_mode": "sim",
+  "metrics": {
+    "success": 1,
+    "progress": 1.0,
+    "safety_events": 0,
+    "safe_failure": null,
+    "excellent": 1,
+    "execution_time_s": 4.84,
+    "execution_speed": 12.3967,
+    "control_dt_s": 0.02,
+    "smoothness_sparc": -14.9533,
+    "avg_jerk": 169.734,
+    "path_length_m": 1.1339,
+    "max_contact_force_n": 5.82
+  },
+  "video_size": [
+    960,
+    720
+  ],
+  "signature": "3d79c4c615f187d5c93fb7b03fc8dd7168fc71d92af8d3a7412b3fe2ce0222f9"
+}

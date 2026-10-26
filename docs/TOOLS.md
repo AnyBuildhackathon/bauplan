@@ -1,7 +1,7 @@
 # Agent tools
 
 Claude builds products by calling tools; it never invents a number that a tool did not compute.
-The backend registers 47 tools in `agent/src/pai_agent/tools/registry.py`, with one schema list (`SCHEMAS`) and one dispatch (`call_tool`) shared by Claude and the offline mock.
+The backend registers 53 tools in `agent/src/pai_agent/tools/registry.py`, with one schema list (`SCHEMAS`) and one dispatch (`call_tool`) shared by Claude and the offline mock.
 This document lists every tool with its inputs, what it returns and emits, and the external software behind it.
 The inputs below are generated from `SCHEMAS`; "(required)" marks required fields.
 Event payloads are specified in [events.md](events.md#tools), and the step each tool lights up on the dashboard is in `_STEP` in the registry.
@@ -16,6 +16,7 @@ Event payloads are specified in [events.md](events.md#tools), and the step each 
 | **Blender 5** | `blender_render`, `product_usd` | Headless `blender -b -P agent/blender/studio.py` (Cycles with Metal GPU, or EEVEE) | Recorded still `agent/runs/fallback/render.png` |
 | **MuJoCo 3.17** | `simulate_drone`, `simulate_assembly`, `simulate_grip` on the backend; `train_in_browser`, `stress_test` in the browser | Python bindings; `@mujoco/mujoco` WebAssembly in the dashboard | None needed |
 | **NVIDIA Isaac Sim 5.1 and Isaac Lab 2.3** | `isaac_test`, `isaac_train` and aliases | SSH to a GPU host prepared by `runpod/setup.sh`, job script `runpod/isaac_job.py` | Recorded, clearly labelled result |
+| **Robo Use 0.6.1** (MuJoCo 3.3) | `robouse_trial` | The `anybuild-robouse` command in its own uv environment (`PAI_ROBOUSE_BIN`): `task`, `check` (`robouse tasks check`) and `trial` (`robouse run`) | Recorded, clearly labelled trial (`agent/data/robouse/recorded/`) |
 | **Reson8** | Push-to-talk dictation (not a tool) | Browser WebSocket with a short-lived token from the backend | Browser Web Speech recognition |
 | **Gemini Live** | Mechanic's only voice (not a tool) | Native realtime audio through `WS /api/voice/live` | Silent, text only |
 | **Betaflight and Arduino** | `firmware` | Deterministic templates filled from the chosen parts | None needed |
@@ -77,6 +78,9 @@ Known gap: with delegation on, `check_power`, `check_thermal` and `check_rollove
 | `physics_calc` | none | Drone mass, thrust-to-weight, estimated flight time and price from the chosen parts; emits `metrics`. | Python |
 | `grip_calc` | none | Gripper finger force at the pad tips, holding force with pad friction and safety factor (needs 2x). | Python (`grip_sim.contact`, `hold_n`) |
 | `simulate_grip` | none | The CAD fingers swing shut on their gears with the servo's torque, the arm lifts 15 cm and shakes, then the object is pulled with its weight once more; pass when the object stays within 10 mm and holds twice its weight; emits `sim`. | MuJoCo (`grip_sim.py`) |
+| `robouse_trial` | `harness`: `oracle` or `claude-code`; `goal`: `bowl` or `pad`; `timeout_s`: number | Independent test of the built gripper: the task from the brief, the reference solution must score 1 and the no-op control 0, then optionally Claude Code drives it; returns verdict, reward, summary and analysis; emits `trial` with the video, the robo requests and the hand's path. | Robo Use through `anybuild-robouse` (`tools/robouse_trial.py`), else the recorded trial |
+| `simulate_mission` | `missions` (required): array of `{mission, limit, quote, proposed}` | Drone mission tests (speed run, turn, position hold, chase) flown with the chosen parts and judged against their requirements; emits one `mission` per mission. | MuJoCo (`mission_sim.py`, `plant.py`) |
+| `train_controller` | `population`, `generations`: integer | Drone only, after the missions passed: trains the seven controller gains on them, flies them again and runs the stress test with the trained gains, which decide; emits `training` and `mission`. | MuJoCo on the backend (`tools/train_loop.py`, `mission_train.py`) |
 | `train_in_browser` | none | Tunes the controller in 1,024 MuJoCo simulations (64 candidates over 16 generations, evolution strategy) in the open dashboard and returns the best gains and score; emits `training`. | MuJoCo WebAssembly in the browser |
 | `stress_test` | `gains`: object | Flies the best controller in 50 randomized worlds (mass, motor strength, gusts, sensor noise) and returns the robustness score and the weakest point; emits `stress`. | MuJoCo WebAssembly in the browser |
 | `isaac_test` | `scenario`: `wind`, `payload` or `hover`; `wind_m_s`, `payload_g`, `duration_s`: number | Video and JSON measurements of the exported drone in Isaac Sim, or a recorded illustrative result; emits `omniverse`. | NVIDIA Isaac Sim over SSH |
@@ -132,3 +136,5 @@ Scene target names and control names are listed in [events.md](events.md#scene-t
 | Tool | Inputs | Returns and emits | Behind it |
 | --- | --- | --- | --- |
 | `print_prep` | `orientation`: `flat`, `upright` or `as_modeled`; `orientations`: per-part orientation map | Emits `print` with printability warnings, per-part and total time, filament and cost; provides G-code when sliced and adds filament to the BOM. Otherwise returns explicitly labelled mesh estimates. | PrusaSlicer or OrcaSlicer CLI, else NumPy mesh calculations |
+| `material_pick` | `part_id`, `reason`: string; `max_temp_c`: number; `outdoor`, `impact`, `flex`: boolean; `material`: `PLA`, `PETG`, `ABS`, `ASA`, `NYLON` or `TPU` | The material of one printed part from the heat, sun, impact and flex it must take, among the user's printer's filaments; returns the reason and what was ruled out, and every check runs again. | The filament makers' data sheets in `printers.py` (`tools/fem.py`) |
+| `fem_check` | `part_id`: string; `cases`: array; `fixed`: object; `infill_pct`: number; `walls`: integer | FEM stress of one printed part on its CAD shape, weakened for its infill and print direction; returns stress, deflection and the safety factor and emits `fem`. | gmsh and CalculiX (`fem.py`, `tools/fem.py`) |

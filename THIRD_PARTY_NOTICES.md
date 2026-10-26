@@ -60,6 +60,8 @@ These files are output of AnyBuild's own pipeline and are MIT licensed with the 
 - `web/public/community/*.png` and `agent/data/references/*/thumbnail.png`: Blender renders of the reference builds.
 - `agent/runs/fallback/render.png`: the recorded studio still used when Blender is missing.
 - `agent/runs/fallback/omniverse.mp4`: the recorded Omniverse fallback, a browser replay with synthetic values, labelled as recorded in the app (see [docs/omniverse.md](docs/omniverse.md)).
+- `agent/data/robouse/recorded/*` and `agent/tests/fixtures/robouse/*`: Robo Use trials of AnyBuild's gripper, recorded with `agent/scripts/record_robouse_trial.py`.
+  The logs and the video are output of running [Robo Use](https://github.com/benchflow-ai/robouse) 0.6.1 (Apache-2.0 AND MIT AND CC-BY-4.0), which renders its own tabletop scene around AnyBuild's hand; they contain none of Robo Use's code or task text.
 - `docs/assets/screenshots/*.jpg`: screenshots of the AnyBuild dashboard.
 
 ## SparkBench, installed separately

@@ -17,7 +17,7 @@ from fastapi.testclient import TestClient
 from pai_agent import adapters, freecad_run, sparkbench, status
 from pai_agent.app import app
 from pai_agent.bus import EventBus
-from pai_agent.tools import blender, print_prep
+from pai_agent.tools import blender, print_prep, robouse_trial
 
 FIELDS = {"id", "name", "domain", "provides", "remote", "available", "version", "path", "detail", "install_hint", "last"}
 
@@ -60,6 +60,7 @@ class _Machine:
             patch.object(adapters, "APP_DIRS", (self.root / "Applications",)),
             patch.object(adapters, "JAVA_PATHS", ()),
             patch.object(adapters, "REPO_ROOT", self.repo),
+            patch.object(robouse_trial, "REPO_ROOT", self.repo),
             patch.object(sparkbench, "_KNOWN_NODE", ()),
             patch.object(sparkbench, "_TSX", self.root / "bridge" / "node_modules" / "tsx" / "dist" / "cli.mjs"),
             patch.object(adapters, "LOG", self.log),

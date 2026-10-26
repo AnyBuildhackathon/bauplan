@@ -54,6 +54,7 @@ from pai_agent.scene import STEPS
 from pai_agent.tools.browser_train import run_mock_training
 from pai_agent.tools.optimize import run_optimize_mock, run_pick_mock, wants_optimize, wants_pick
 from pai_agent.tools.registry import DELEGATED, SCHEMAS, call_tool
+from pai_agent.tools.robouse_trial import run_trial_mock, wants_trial
 from pai_agent.tools.stress import run_stress_mock, wants_stress
 from pai_agent.tools.ui import control_list
 
@@ -162,6 +163,7 @@ The robot gripper (gripper, claw, end effector): product_brief with product grip
 Then catalog_search with select_id for servo, pads, hardware and driver, grip_calc, simulate_grip. On fail, swap to a stronger servo and test again.
 Then cad_part with template gripper (params jaw_opening_mm at least object width plus 10, finger_length_mm), grip_calc again, blender_render, bom_build, firmware.
 Asked to stress test the build or how robust it is: stress_test (after training it flies the trained gains), then mascot_say with its explanation and name the score in English.
+Asked for an independent test, Robo Use, or whether an agent can use the built gripper: robouse_trial (harness claude-code only when the user asks for Claude Code to drive it), then its verdict in one sentence; status recorded means Robo Use did not run now.
 
 Omniverse requests: use isaac_test for gusty wind, a camera/payload mass or hover stability.
 These tools and product_usd support the drone only. For a gripper, use simulate_grip and explain that the GPU hover controller does not support it.
@@ -221,6 +223,9 @@ async def run_prompt(ctx: Ctx, text: str, messages: list[dict], voice: bool = Fa
             return
         if wants_gripper(text) and not (ctx.state.product == "gripper" and ctx.state.finished):
             await run_gripper_mock(ctx, text)
+            return
+        if wants_trial(text):
+            await run_trial_mock(ctx, text)
             return
         if wants_lamp(text) and not (ctx.state.product == "generic" and (ctx.state.spec or {}).get("name") == "Desk lamp"):
             await run_lamp_mock(ctx, text)

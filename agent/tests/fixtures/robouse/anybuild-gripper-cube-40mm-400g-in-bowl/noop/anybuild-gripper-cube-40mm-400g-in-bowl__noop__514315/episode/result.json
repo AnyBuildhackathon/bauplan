@@ -1,0 +1,22 @@
+{
+  "task": "anybuild-gripper-cube-40mm-400g-in-bowl",
+  "seed": 0,
+  "success": false,
+  "success_ever": false,
+  "success_mode": "final",
+  "outcome": "done",
+  "steps_used": 0,
+  "max_steps": 800,
+  "requests": 1,
+  "agent_text": "noop control",
+  "wall_time_s": 0.34,
+  "embodiment_mode": "sim",
+  "metrics": {
+    "success": 0,
+    "progress": 0.0,
+    "safety_events": 0,
+    "safe_failure": 1,
+    "excellent": null
+  },
+  "signature": "46d9b1bfb04757d6e81f4363171fc632f9a8e43c75aff2627541533698a769bb"
+}

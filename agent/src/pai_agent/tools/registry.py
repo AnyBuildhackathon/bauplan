@@ -29,6 +29,7 @@ from pai_agent.tools.firmware import firmware, refresh_after_training
 from pai_agent.tools.electronics import electronics_plan
 from pai_agent.tools.safety import SCHEMA as SAFETY_SCHEMA, safety_check
 from pai_agent.tools.circuit import SCHEMA as CIRCUIT_SCHEMA, circuit_design
+from pai_agent.tools.robouse_trial import SCHEMA as ROBOUSE_TRIAL_SCHEMA, robouse_trial
 from pai_agent.tools.isaac import isaac_lab_status, isaac_lab_train, isaac_sim_render, isaac_test, isaac_train, ssh_setting
 from pai_agent.tools.usd import product_usd
 from pai_agent.tools.ask import ask_user
@@ -75,6 +76,7 @@ TOOLS = {
     "catalog_search": catalog_search,
     "grip_calc": grip_calc,
     "simulate_grip": simulate_grip,
+    "robouse_trial": robouse_trial,
     "isaac_lab_train": isaac_lab_train,
     "isaac_lab_status": isaac_lab_status,
     "isaac_sim_render": isaac_sim_render,
@@ -700,6 +702,7 @@ SCHEMAS = [
         "description": "MuJoCo grip test with the CAD fingers swinging on their gears, driven by the servo: the pads close on the object, the arm lifts it 15 cm and shakes it, then the object is pulled with its weight once more. pass means it stays within 10 mm and holds twice its weight, fail means it slips or drops.",
         "input_schema": {"type": "object", "properties": {}},
     },
+    ROBOUSE_TRIAL_SCHEMA,
     {
         "name": "isaac_lab_train",
         "description": "Compatibility alias for isaac_train. Returns a completed reference Crazyflie training result or an explicitly recorded illustrative fallback.",

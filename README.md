@@ -173,6 +173,7 @@ In mock mode the first request builds drone version 1 to your budget; the change
 ### Mock mode
 
 Without `ANTHROPIC_API_KEY` and without a logged-in local Claude Code (see `PAI_LLM_PROVIDER`), the backend runs scripted stories through the same tools that Claude calls: the drone from a typed request and a typed change, the phone stand (a tip-over failure fixed by a wider base), the robot gripper (an SG90 servo that drops the can, replaced by an MG996R) and the reference builds.
+After the gripper, "Test it in Robo Use" runs it in the independent Robo Use benchmark; without the bridge's environment a trial recorded on the same design stands in, labelled as recorded.
 The top bar says whether Claude runs on the API key, on the local subscription, or the mock runs.
 `PAI_FORCE_MOCK=1` forces the mock even with a key.
 
@@ -260,6 +261,7 @@ Tokens are cached until they expire, results for a day, each provider stays insi
 | `PAI_TOOL_TIMEOUT_S`, `PAI_TIMEOUT_<TOOL>`, `PAI_MODEL_TIMEOUT_S`, `PAI_MODEL_ROUND_MAX_S` | Time limits per tool call, per silent model stream and per model round (see `agent/src/pai_agent/timeouts.py`). |
 | `PAI_TRAIN_TIMEOUT_S`, `PAI_TRAIN_CLAIM_TIMEOUT_S`, `PAI_TRAIN_STALL_S` | Time limits for browser training jobs. |
 | `PAI_SLICER` | Optional slicer executable path; `off` uses labelled estimates. |
+| `PAI_ROBOUSE_BIN` | The `anybuild-robouse` command for Robo Use trials of the gripper (default: the bridge's own environment, then `PATH`); `off` shows the recorded trial. |
 | `PAI_CACHE` | `0` turns off reuse of identical FreeCAD, Blender and SparkBench results. |
 | `SPARKBENCH_DIR` | The SparkBench checkout for `circuit_design` (default `~/.cache/anybuild/sparkbench/<commit>`). |
 | `PAI_WARM` | `0` skips warming slow imports at start. |
@@ -354,6 +356,9 @@ uv run anybuild-robouse trial runs/tasks/anybuild-gripper-cube-66mm-200g-in-bowl
 The export writes one self-contained MJCF file from the FreeCAD build: the parts as meshes, collision boxes, the finger hinges and gear coupling the template declares, and the catalog servo as a position actuator limited to its holding torque.
 [anybuild-robouse/README.md](anybuild-robouse/README.md) has the details.
 
+In the app, `robouse_trial` does all of this for the gripper on the bench: after a gripper build, ask "Test it in Robo Use" and the trial shows in the Simulation tab's Robo Use pane with its verdict, video, robo requests and the hand's path.
+Without the bridge's environment a trial recorded on the gripper mock story's design stands in, labelled as recorded; `PAI_ROBOUSE_BIN` names another `anybuild-robouse`.
+
 ## Testing
 
 ```bash
@@ -375,7 +380,7 @@ cd web && npm run typecheck && npm run e2e             # type check and Playwrig
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Components, one request through the code, orchestrator and sub-agents, CAD pipeline, simulation, voice loop, event stream, fallbacks, security, design decisions. |
 | [docs/API.md](docs/API.md) | Every HTTP endpoint and SSE event, with auth and rate limits. |
 | [docs/events.md](docs/events.md) | The authoritative wire format of every request, response and event. |
-| [docs/TOOLS.md](docs/TOOLS.md) | All 54 agent tools with inputs, outputs and the software behind them. |
+| [docs/TOOLS.md](docs/TOOLS.md) | All 53 agent tools with inputs, outputs and the software behind them. |
 | [docs/GEMINI_LIVE.md](docs/GEMINI_LIVE.md) | The Gemini Live voice agent: configuration, protocol, transcripts and measured latency. |
 | [docs/FRAMEWORKS.md](docs/FRAMEWORKS.md) | Frameworks, services and applications with versions and licenses. |
 | [docs/omniverse.md](docs/omniverse.md) | NVIDIA Isaac Sim and Isaac Lab experiments on a GPU host. |

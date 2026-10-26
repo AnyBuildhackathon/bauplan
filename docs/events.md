@@ -309,13 +309,13 @@ Each engine is looked up the way the code that runs it looks:
   KiCad before 8 and Java before 21 count as missing.
 - `sparkbench` and `node`: as `circuit_design` finds them ([circuit](#circuit), `agent/src/pai_agent/sparkbench.py`): the checkout at `SPARKBENCH_DIR` or `~/.cache/anybuild/sparkbench/<commit>` with its npm packages, the bridge's own `tsx`, and Node.js on PATH or in Homebrew's folders; `detail` names what is missing.
 - `mujoco`: the Python package in the backend environment.
-- `robouse`: `anybuild-robouse` in the bridge's own environment (`anybuild-robouse/.venv`), else on PATH; Robo Use without the bridge counts as missing.
+- `robouse`: `anybuild-robouse` as `robouse_trial` finds it ([trial](#trial)): `PAI_ROBOUSE_BIN` (`off` turns it off), the bridge's own environment (`anybuild-robouse/.venv`), else on PATH; Robo Use without the bridge counts as missing.
 - `isaac`: a GPU host in `RUNPOD_SSH_HOST` or `ISAAC_SSH_HOST` that passes the SSH `nvidia-smi` probe of [Partner status](#partner-status-and-director-mode); the row reuses that probe's 15 s cache, waits at most 0.2 s for a new one and answers the last known state meanwhile.
 
 `last` is the adapter's latest run on this machine, or `null`: `at` in Unix seconds, `pass`, and `summary`, one English line.
 The backend records runs from the live event stream, never from a backlog or a reopened chat, in `agent/runs/adapters.json` (not committed), so they outlast a reset and a restart.
-A run is a `cad` event of a part or the drone (`source: "freecad"` passes; `cadquery` fails, while FreeCAD is installed), a `render` (the recorded still fails, while Blender is installed), a `sim` or `mission` result (MuJoCo), a `fem` result (CalculiX), a `print` plan the slicer made (a part's `slicer_error` fails it; an estimate without a slicer is no run), a `circuit` (SparkBench, its `ok`) and a live, finished `omniverse` result.
-KiCad, ngspice, Freerouting and Robo Use have no run until the tools that run them publish their results.
+A run is a `cad` event of a part or the drone (`source: "freecad"` passes; `cadquery` fails, while FreeCAD is installed), a `render` (the recorded still fails, while Blender is installed), a `sim` or `mission` result (MuJoCo), a `fem` result (CalculiX), a `print` plan the slicer made (a part's `slicer_error` fails it; an estimate without a slicer is no run), a `circuit` (SparkBench, its `ok`), a finished `trial` (Robo Use, its `verdict`; a recorded trial is no run, a refused task fails) and a live, finished `omniverse` result.
+KiCad, ngspice and Freerouting have no run until the tools that run them publish their results.
 
 ### Access
 
@@ -793,6 +793,33 @@ For the gripper `gains` is `{squeeze, grip_force_n, ramp_ms, settle_ms, lift_ms,
 A local run, started with the Training pane's "Train in this browser" button while the backend is offline, never reaches the backend: it has no `job_id`, sends no claim or progress, and publishes no `training` event, so its gains do not feed the stress test or the firmware.
 `failed` with `error: "no_browser"` means no dashboard claimed the job within `PAI_TRAIN_CLAIM_TIMEOUT_S` (default 20); a run that does not finish within `PAI_TRAIN_TIMEOUT_S` (default 240) fails with `error: "timeout"`, and a claimed run that reports nothing for `PAI_TRAIN_STALL_S` (default 30) fails with `error: "browser_gone"`, for example after the tab was closed or reloaded.
 
+### trial
+
+An independent test of the built gripper in [Robo Use](https://github.com/benchflow-ai/robouse) (`robouse_trial`): a robotics benchmark whose own MuJoCo scene and episode server judge where the object ends up, not what the policy says.
+The bridge package `anybuild-robouse` (its own uv environment, Robo Use 0.6.1 with MuJoCo 3.3.0) loads the gripper exported from its CAD and writes the task from the gripper brief: put a cube of the brief's width and mass in a bowl (`goal: "bowl"`) or on a pad.
+`robouse tasks check` runs first: the task counts only when its scripted reference solution (`harness: "oracle"`) scores 1 and the no-op control 0.
+`harness: "claude-code"` then lets Claude Code drive the gripper through the `robo` command, only when asked, with `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN` set and within a time limit; otherwise the reference solution's trial is the one shown.
+
+`id` names the trial; the events of one trial share it, and the client keeps the latest of each.
+`status` is `running`, then `done`; `recorded` when Robo Use did not run now and a trial recorded earlier stands in; `failed` when no trial ran.
+`stage` while running is `export` (the gripper to MJCF), `task`, `check` or `agent`; `detail` is one line on the stage, the result or why a recorded trial stands in.
+`harness` is the policy of the trial shown (`oracle` or `claude-code`), `requested_harness` the one asked for.
+`task_id`, `task_title` (`Put the cube in the bowl`), `version` (the bench version it ran on) and `design` (`servo`, `pads`, `opening_mm`, `object_mass_g`, `object_width_mm`, `goal`, of the hand it ran with) say what was tested.
+`verdict` is `pass` (reward 1), `fail` (reward 0), `invalid` (the no-op control scored, so the task tests nothing and the trial is not counted) or `refused` (the task generator cannot pose the brief for this hand, such as a cube wider than the jaw opens; `status` is `failed` and `error` says why).
+A gripper too weak for the object fails its own reference solution: `verdict` is `fail` and `validity.valid` is `false`, which is the benchmark finding the flaw, and Claude Code is not run on it.
+`reward`, `success`, `outcome` (`done`, `timeout`, ...), `steps_used` and `max_steps` (control steps of 20 ms), `wall_s` (the trial's wall time) and `metrics` (Robo Use's episode metrics, among them `max_contact_force_n`, `safety_events`, `path_length_m` and `execution_time_s`) come from the trial's `result.json`.
+`validity` is `{reference, noop, valid, report}`: the two control rewards and `robouse tasks check`'s report, one line each.
+`summary` is one sentence for the card and Mechanic, `analysis` what the trace shows: `held` (the object was ever held), `lift_slip_mm` (how far it slid down the fingers while the hand rose), `dropped` (`lift`, `carry` or `lowering`, or `null`), `released` and `distance_mm` (from the target's middle at the end).
+`video_url` is the trial's recording copied flat into the session's files (`/files/{session}/{id}.mp4`, 960 x 720); `video_info` is `{fps, duration_s, size}`.
+The video runs only while the simulator steps, so every time below is video seconds, mapped from the episode's env steps through the frames it recorded.
+`steps` lists the policy's robo requests: `{index, op, action, result, ok, t_start, t_end, env_steps, hand_pos, gripper_open, holding, objects, message}`; `action` is the command line (`robo grip 1 --steps 25`), `result` Robo Use's answer in short, `objects` each object's place after it, and `message` an agent's own words before it (`null` for the reference solution).
+`ee_path` is `[[t, x, y, z], ...]` of the hand's tool point and `force` `[[t, newtons], ...]` of the largest contact force, one row per control step; metres, z up, the table top at 0, y away from Robo Use's front camera.
+`scene` is `{object: {name, kind, color, size_m, path}, target: {name, kind, pos, floor_z, rim_z, inner_diameter_m, size_m}}` from the episode's states; `object.path` is `[[t, x, y, z], ...]`, its place after every request.
+`provenance` is `{robouse, mujoco}` and `ran_at` when the trial started.
+A recorded trial adds `recorded: {matches_build, reason}`: `reason` why Robo Use did not run, `matches_build` whether the bench holds the design and brief it was recorded with (`agent/data/robouse/recorded/`, the gripper mock story's MG996R design with the 66 mm, 200 g can).
+When it does not, the trial is AnyBuild's example gripper's, never this build's: the card and the pane call its verdict an example, and its `summary` and `design` name that gripper.
+The client shows one chat card per trial and the trial in the Simulation tab's Robo Use pane: the verdict, the video with one mark per request on its timeline, the requests, the hand's path on the stage and the contact force, all on the video's clock.
+
 ## Scene targets
 
 One catalog motor is instanced four times.
@@ -839,7 +866,7 @@ Closing buttons are tagged `{control}:close`, and `look:3d` is the 3D switch of 
 
 ## Tools
 
-`ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `simulate_mission`, `stress_test`, `cad_frame`, `cad_part`, `product_brief`, `product_spec`, `sketch_to_spec`, `reference_load`, `delegate`, `part_pick`, `assemble`, `cad_update`, `check_totals`, `check_tip_over`, `check_deflection`, `check_torque`, `check_runtime`, `check_power`, `check_thermal`, `check_rollover`, `simulate_assembly`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `blender_render`, `bom_build`, `print_prep`, `build_guide`, `firmware`, `electronics_plan`, `circuit_design`, `safety_check`, `ui_point_at`, `ui_draw`, `ui_control`, `mascot_say`, `train_in_browser`, `train_controller`, `optimize_design`, `optimize_apply`, `material_pick`, `fem_check`.
+`ask_user`, `parts_search`, `physics_calc`, `simulate_drone`, `simulate_mission`, `stress_test`, `cad_frame`, `cad_part`, `product_brief`, `product_spec`, `sketch_to_spec`, `reference_load`, `delegate`, `part_pick`, `assemble`, `cad_update`, `check_totals`, `check_tip_over`, `check_deflection`, `check_torque`, `check_runtime`, `check_power`, `check_thermal`, `check_rollover`, `simulate_assembly`, `catalog_search`, `grip_calc`, `simulate_grip`, `isaac_lab_train`, `isaac_lab_status`, `isaac_sim_render`, `robouse_trial`, `blender_render`, `bom_build`, `print_prep`, `build_guide`, `firmware`, `electronics_plan`, `circuit_design`, `safety_check`, `ui_point_at`, `ui_draw`, `ui_control`, `mascot_say`, `train_in_browser`, `train_controller`, `optimize_design`, `optimize_apply`, `material_pick`, `fem_check`.
 
 `material_pick` takes `part_id` (none for the drone frame), `max_temp_c`, `outdoor`, `impact`, `flex` and optionally `material` and `reason`; it chooses among the filaments the user's printer prints (every material without a printer): heat and flex rule a material out (heat deflection temperature at least 5 °C over `max_temp_c`), then outdoor UV and impact toughness rank, then stiffness and strength, then the spool price. It returns `material`, a one-sentence `reason`, `meets_needs`, `rejected` with why, and the data sheet `properties` and `source`; the part's mass follows the density and every check runs again.
 `fem_check` takes `part_id` and optionally `cases` (`[{name, region, force_n}]`, newtons in the assembly frame), `fixed` (the held region), `infill_pct` and `walls`; a region is `{face: x_min ... z_max}`, `{near: [x, y, z], radius_mm}` or `{box: [x0, y0, z0, x1, y1, z1]}`. Without cases a spec part is held on its lowest face and loaded by each external load within 40 mm at twice its weight (else a 10 N press on its top); the drone frame is held at the stack, with all four motors at full thrust and a crash on one motor at 10 g. It emits the `fem` event, stores its result as a check (rerun by `cad_update`, by `cad_frame` for the drone and by `material_pick`) and judges the `strength` requirement.
@@ -902,6 +929,8 @@ Without `ANTHROPIC_API_KEY` only templates and passed scripts build.
 The holding force is `μ × 0.7 × stall torque / (lever − μ × offset)`, where the offset runs across from the gear axis to the object's face: the object's weight drags the tips further shut.
 The safety factor is the holding force against the object weight; 2× is the requirement.
 `simulate_grip` runs the MuJoCo grip test above.
+`robouse_trial` takes `harness` (`oracle`, the default, or `claude-code`), `goal` (`bowl` or `pad`) and `timeout_s` (Claude Code's limit, 60 to 900, default 600) and emits `trial`; it needs a gripper built by `cad_part` from its template.
+`PAI_ROBOUSE_BIN` names the `anybuild-robouse` command (`off` turns Robo Use off); without it the bridge's own environment (`cd anybuild-robouse && uv sync`) or the command on `PATH` runs, and when there is none, or the export, the task or a trial fails, the recorded trial stands in.
 
 `train_in_browser` queues a browser training job and waits until a dashboard tab finishes it; the result carries `best_params`, `best_metrics`, `best_score`, and `curve`.
 
@@ -944,6 +973,7 @@ Mechanic turns the request into checks, tries the 2.49 € SG90 first: 0.9 N per
 The swap to the MG996R gives 4.5 N per finger, a safety of 4.8×, and passes with no measurable slip.
 An object the MG996R cannot hold at twice its weight, such as a 400 g cube 40 mm wide, steps up to the DS3218.
 FreeCAD builds the gripper headless from the library template with the servo pocket sized for the MG996R (58 g PLA), Blender renders it, and the bill of materials comes to 18.65 € and 128 g.
+Once the gripper is built, "Test it in Robo Use" (or "an independent test") runs `robouse_trial` on it; naming Claude Code asks for `harness: "claude-code"`, which still needs its credentials. Before any gripper, Mechanic asks for one first.
 The drone and gripper stories call `firmware` right after `bom_build`: the drone gets a Betaflight CLI file, the gripper an Arduino sketch.
 Both call `safety_check` right before `bom_build`: the drone gets the EU class C0 note (under 250 g, register the operator, no remote ID) and the lithium battery shipping note, the gripper the pinch-point warning with a gear cover and a firmware travel limit as the fix.
 A prompt that asks for a lamp on mains (`lamp` with `230 V`, `mains` or `wall socket`) plays the safety story: Mechanic writes a 230 V desk lamp spec, `safety_check` flags mains voltage inside printed PETG, Mechanic asks whether to switch to a USB-C 5 V supply (the default), revises the spec and runs the check again without the mains finding. The run stops before FreeCAD; with a key Claude builds it.

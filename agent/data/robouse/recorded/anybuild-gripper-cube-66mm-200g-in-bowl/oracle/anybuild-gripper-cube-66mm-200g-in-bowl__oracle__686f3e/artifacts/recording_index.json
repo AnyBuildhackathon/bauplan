@@ -1,0 +1,62 @@
+{
+ "synthesised": false,
+ "source": "robouse episode server: MuJoCo offscreen render of the simulator, one frame every few env steps while the robot moves (episode/frames.jsonl)",
+ "time_axis": "video time runs only while the simulator steps; the agent's thinking time between robo requests is not in the video",
+ "fps": 30,
+ "size": [
+  960,
+  720
+ ],
+ "n_frames": 132,
+ "duration_s": 4.4,
+ "recording_start_epoch": 1792970243.604,
+ "harness": "oracle",
+ "steps": [
+  {
+   "index": 1,
+   "action": "task",
+   "t_video_start_s": 0.0,
+   "t_video_end_s": 0.0,
+   "real_duration_s": null
+  },
+  {
+   "index": 2,
+   "action": "robo move-to -0.13 -0.06 0.1162 --grip -1.0 (+7)",
+   "t_video_start_s": 0.0,
+   "t_video_end_s": 4.067,
+   "real_duration_s": 1.717,
+   "episode_t_s": 0.473,
+   "env_steps": [
+    0,
+    242
+   ],
+   "robo_requests": 8
+  },
+  {
+   "index": 3,
+   "action": "robo done \"the cube is in the bowl\"",
+   "t_video_start_s": 4.067,
+   "t_video_end_s": 4.4,
+   "real_duration_s": 0.094,
+   "episode_t_s": 2.237,
+   "env_steps": [
+    242,
+    242
+   ],
+   "robo_requests": 1
+  },
+  {
+   "index": 4,
+   "action": "system: episode: outcome=done success=True steps_used=242/800",
+   "t_video_start_s": 4.4,
+   "t_video_end_s": 4.4,
+   "real_duration_s": null,
+   "episode_t_s": 2.524,
+   "env_steps": [
+    242,
+    242
+   ],
+   "robo_requests": 1
+  }
+ ]
+}

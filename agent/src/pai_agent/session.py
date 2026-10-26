@@ -315,11 +315,22 @@ class Session:
         return False
 
     async def update_params(self, body: dict) -> dict:
-        from pai_agent.tools.cad import apply_param_body, cad_frame
-
         if self._busy():
             message = "Mechanic is building. Try again in a moment."
             return {"ok": False, "error": message, "detail": message, "busy": True}
+        before = len(self.bus.events)
+        result = await self._update_params(body)
+        # A slider rebuild calls the CAD tools directly, not through call_tool, so nothing ends the tool cards
+        # their progress lines opened: they end here with the result.
+        opened = {ev["name"] for ev in self.bus.events[before:] if ev.get("type") == "tool" and ev.get("status") == "running"}
+        for name in sorted(opened):
+            status = "error" if result.get("ok") is False else "ok"
+            await self.bus.publish({"type": "tool", "name": name, "status": status, "detail": str(result.get("detail") or result.get("error") or "")})
+        return result
+
+    async def _update_params(self, body: dict) -> dict:
+        from pai_agent.tools.cad import apply_param_body, cad_frame
+
         if self.state.product == "generic":
             return await self._update_generic(body)
         if self._part_is_current():

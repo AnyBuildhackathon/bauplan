@@ -1,5 +1,6 @@
 // The SSE contract shared with the agent backend (agent/, documented in docs/events.md).
 // Every message on GET /api/events is one JSON object with a `type` field.
+import type { TrialEvent } from "./trial";
 
 export const STEP_IDS = ["meeting", "teile", "cad", "render", "simulation", "training", "stueckliste"] as const;
 export type StepId = (typeof STEP_IDS)[number];
@@ -822,6 +823,7 @@ export type AgentEvent =
   | TrainingEvent
   | OmniverseEvent
   | StressEvent
+  | TrialEvent
   | CadEvent
   | RenderEvent
   | VersionEvent
@@ -860,6 +862,7 @@ const EVENT_TYPES = new Set<AgentEvent["type"]>([
   "training",
   "omniverse",
   "stress",
+  "trial",
   "cad",
   "render",
   "version",

@@ -1,0 +1,12 @@
+{
+ "task_dir": "tasks/anybuild-gripper-cube-40mm-400g-in-bowl",
+ "valid": false,
+ "check": [
+  "schema: ok (anybuild-gripper-cube-40mm-400g-in-bowl, backend anybuild-gripper)",
+  "bench tasks check: skipped (BenchFlow is not installed)",
+  "reference solution: reward 0.0 (done, 235 steps)",
+  "no-op control: reward 0.0 (done)",
+  "  - the reference solution does not score 1",
+  "1 problem(s)"
+ ]
+}

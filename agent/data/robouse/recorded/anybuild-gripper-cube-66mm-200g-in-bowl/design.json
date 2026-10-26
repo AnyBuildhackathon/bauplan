@@ -1,0 +1,22 @@
+{
+ "hand": "anybuild-robouse's example hand: the gripper template at its default sizes, TowerPro MG996R servo, Printed TPU finger pads",
+ "template": "gripper",
+ "servo_id": "towerpro-mg996r",
+ "pads_id": "pads-tpu-printed",
+ "params": {
+  "finger_length_mm": 70.0,
+  "jaw_opening_mm": 76.0,
+  "finger_thickness_mm": 6.0,
+  "pad_thickness_mm": 3.0,
+  "servo_length_mm": 40.7,
+  "servo_width_mm": 19.7,
+  "servo_height_mm": 42.9,
+  "servo_shaft_offset_mm": 10.0
+ },
+ "brief": {
+  "object_mass_g": 200.0,
+  "object_width_mm": 66.0,
+  "goal": "bowl"
+ },
+ "recorded_on": "2026-10-26"
+}

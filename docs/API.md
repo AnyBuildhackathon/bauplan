@@ -131,6 +131,7 @@ Each event has a `type`; every stream begins with `reset`, then the backlog, the
 | `sim` | A MuJoCo run with its trajectory and pass or fail. | [sim](events.md#sim) |
 | `training` | Controller training progress from the browser (1,024 MuJoCo simulations) or Isaac Lab. | [training](events.md#training) |
 | `stress` | The 50-world stress test and its robustness score. | [stress](events.md#stress) |
+| `trial` | An independent Robo Use trial of the built gripper: verdict, validity check, video, robo requests, the hand's path; live or clearly recorded. | [trial](events.md#trial) |
 | `omniverse` | An Isaac Sim test or Isaac Lab training result, live or clearly recorded. | [Omniverse results](events.md#omniverse-results) |
 | `safety` | Advisory safety findings with severity, source rule, reason, fix and disclaimer. | [safety](events.md#safety) |
 | `bom` | The full bill of materials with prices, price sources and weights. | [bom](events.md#bom) |
